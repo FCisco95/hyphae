@@ -1,0 +1,24 @@
+{
+  "name": "hyphae",
+  "private": true,
+  "packageManager": "pnpm@10.29.3",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "@anchor-lang/core": "^1.0.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0",
+    "@types/bn.js": "^5.1.0",
+    "@types/chai": "^4.3.0",
+    "@types/mocha": "^9.0.0",
+    "chai": "^4.3.4",
+    "mocha": "^9.0.3",
+    "ts-mocha": "^10.0.0",
+    "typescript": "^5.9.0"
+  }
+}
