@@ -1,0 +1,29 @@
+# Node
+node_modules/
+dist/
+build/
+.next/
+out/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# Rust / Anchor
+target/
+Cargo.lock
+**/*.rs.bk
+test-ledger/
+.anchor/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
