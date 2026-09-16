@@ -1,18 +1,11 @@
 # Node
 node_modules/
 dist/
-build/
 .next/
-out/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-.pnpm-store/
+*.log
 
 # Rust / Anchor
 target/
-Cargo.lock
 **/*.rs.bk
 test-ledger/
 .anchor/
@@ -21,6 +14,9 @@ test-ledger/
 .env
 .env.*
 !.env.example
+
+# Local plan mirror — canonical copy lives in the vault, never committed here
+docs/plans/
 
 # OS / editor
 .DS_Store
