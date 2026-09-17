@@ -2,6 +2,12 @@
 
 Every rubric a Hyphae community scores against is public here. A community's `rubric_version` points at one of these files; the epoch commits its hash on-chain.
 
+## MYCEL 1.1.0 — 2026-09-17 (evening)
+
+- The "never" list is scoped to a specific coin: MYCEL, any named coin, or the coin of the post being replied to. Telling people to buy or hold it, price direction or targets for it, promised gains or claimed returns on it: hard zero, unchanged.
+- General market talk is opinion, not a breach: "holding usually beats trading", "long-term doesn't have to mean years". Founder ruling after the first live test graded such a line as a breach.
+- Criteria, weights, timing, caps and floor unchanged from 1.0.0. Runs scored under 1.0.0 keep their version; re-scores under 1.1.0 are new rows next to them.
+
 ## MYCEL 1.0.0 — 2026-09-17
 
 - Three criteria: `context_fit` 0.35 · `own_voice` 0.30 · `value_angle` 0.35.

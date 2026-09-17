@@ -11,6 +11,8 @@ import { scoreMessage } from "./score-message.js";
 
 export interface ScoreJob {
   contributionId: string;
+  // Re-score after a rubric change: adds a new run next to the old one instead of skipping.
+  force?: boolean;
 }
 
 const model = scoringModel(env.SCORING_MODEL, {
@@ -28,12 +30,12 @@ async function loadContribution(contributionId: string) {
   return { c, community };
 }
 
-export async function scoreContribution({ contributionId }: ScoreJob): Promise<void> {
+export async function scoreContribution({ contributionId, force }: ScoreJob): Promise<void> {
   const { c, community } = await loadContribution(contributionId);
   // A retry after the run was stored must not pay for a second model call.
-  const existing = await db.query.scoringRuns.findFirst({
-    where: eq(scoringRuns.contributionId, c.id),
-  });
+  const existing = force
+    ? undefined
+    : await db.query.scoringRuns.findFirst({ where: eq(scoringRuns.contributionId, c.id) });
   if (existing) return;
 
   const member = await db.query.members.findFirst({ where: eq(members.id, c.memberId) });
