@@ -13,7 +13,11 @@ describe("rubric", () => {
       const rubric = load(`mycel-${v}.json`);
       expect(rubric.version).toBe(v);
       expect(rubric.timing).toEqual({ fullUntil: 360, zeroAt: 2880 });
-      expect(rubric.criteria.map((c) => c.key)).toEqual(["context_fit", "own_voice", "value_angle"]);
+      expect(rubric.criteria.map((c) => c.key)).toEqual([
+        "context_fit",
+        "own_voice",
+        "value_angle",
+      ]);
       expect(rubric.criteria.reduce((s, c) => s + c.weight, 0)).toBeCloseTo(1);
     }
   });
