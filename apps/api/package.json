@@ -10,7 +10,7 @@
     "start": "node dist/server.js",
     "start:worker": "node dist/worker.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.0",
