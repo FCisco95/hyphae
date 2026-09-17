@@ -10,9 +10,9 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 - Settlement rounds down and leaves dust in the vault rather than redistributing it — simpler, and the loss per epoch is bounded by wallet count, not worth the complexity of a remainder pass.
 - Workspace packages are bundled into the api image by tsup, so the runtime `node_modules` is only third-party code. pnpm 10's `deploy` needs `--legacy` for that layout; documented in the Dockerfile.
 - Every bot reply is a Telegram reply-to, so group threads stay readable when several testers are active.
-**Numbers:** 14/14 tests passing · 7 tables on Neon · 2 Fly machines (api, worker) · 0 testers on the bot yet · 0 contributions · $0.00 scoring spend.
+**Numbers:** 14/14 tests passing · 7 tables on Neon · 2 Fly machines (api, worker) · 1 community registered (Hyphae Lab, MYCEL mint) · 1 wallet linked · 0 contributions · $0.00 scoring spend.
 **Commits:** f9b1c3c, 8ef4c6e, c32f447, 58111ef, 7b4bb3d, dc40b51
-**Next:** seed the Hyphae Lab community, BotFather commands, then Day 2: oEmbed capture and the scoring job.
+**Next:** BotFather command menu, then Day 2: oEmbed capture and the scoring job so `/submit` answers with a score and its reasoning.
 
 ## 2026-09-16 (evening) · Day 3 of 28 — toolchain and scaffold
 
