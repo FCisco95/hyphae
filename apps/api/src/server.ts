@@ -3,6 +3,10 @@ import { webhookCallback } from "grammy";
 import { Hono } from "hono";
 import { bot } from "./bot/index.js";
 import { env } from "./env.js";
+import { startQueue } from "./jobs/queue.js";
+
+// The api only sends jobs; `work` runs in the worker process.
+await startQueue();
 
 const app = new Hono();
 
