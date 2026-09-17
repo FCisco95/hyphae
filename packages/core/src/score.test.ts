@@ -52,6 +52,7 @@ describe("scoring contract", () => {
       score: 50,
       rubricHits: [],
       flags: [],
+      aiSlop: { patterns: [], templateRhythm: false },
       reasoning: "Twenty characters of reasoning here.",
     };
     const a = evidenceHash({
