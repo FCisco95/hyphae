@@ -1,4 +1,15 @@
-import { bigint, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  bigint,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 const id = () => uuid("id").primaryKey().defaultRandom();
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
@@ -22,7 +33,9 @@ export const members = pgTable(
   "members",
   {
     id: id(),
-    communityId: uuid("community_id").notNull().references(() => communities.id),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
     telegramUserId: bigint("telegram_user_id", { mode: "bigint" }).notNull(),
     telegramUsername: text("telegram_username"),
     wallet: text("wallet").notNull(),
@@ -41,7 +54,9 @@ export const taskStatus = pgEnum("task_status", ["proposed", "rejected", "open",
 
 export const tasks = pgTable("tasks", {
   id: id(),
-  communityId: uuid("community_id").notNull().references(() => communities.id),
+  communityId: uuid("community_id")
+    .notNull()
+    .references(() => communities.id),
   kind: taskKind("kind").notNull(),
   status: taskStatus("status").notNull(),
   targetUrl: text("target_url"),
@@ -64,8 +79,12 @@ export const contributions = pgTable(
   "contributions",
   {
     id: id(),
-    communityId: uuid("community_id").notNull().references(() => communities.id),
-    memberId: uuid("member_id").notNull().references(() => members.id),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
     taskId: uuid("task_id").references(() => tasks.id),
     kind: contributionKind("kind").notNull(),
     url: text("url"),
@@ -80,7 +99,9 @@ export const contributions = pgTable(
 // Append-only. One row per model call; the audit page reads this.
 export const scoringRuns = pgTable("scoring_runs", {
   id: id(),
-  contributionId: uuid("contribution_id").notNull().references(() => contributions.id),
+  contributionId: uuid("contribution_id")
+    .notNull()
+    .references(() => contributions.id),
   model: text("model").notNull(),
   rubricVersion: text("rubric_version").notNull(),
   promptHash: text("prompt_hash").notNull(),
@@ -102,7 +123,9 @@ export const epochs = pgTable(
   "epochs",
   {
     id: id(),
-    communityId: uuid("community_id").notNull().references(() => communities.id),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
     index: integer("index").notNull(),
     status: epochStatus("status").notNull().default("open"),
     opensAt: timestamp("opens_at", { withTimezone: true }).notNull(),
@@ -120,8 +143,12 @@ export const leaves = pgTable(
   "leaves",
   {
     id: id(),
-    epochId: uuid("epoch_id").notNull().references(() => epochs.id),
-    memberId: uuid("member_id").notNull().references(() => members.id),
+    epochId: uuid("epoch_id")
+      .notNull()
+      .references(() => epochs.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
     wallet: text("wallet").notNull(),
     score: bigint("score", { mode: "bigint" }).notNull(),
     amountLamports: bigint("amount_lamports", { mode: "bigint" }).notNull(),

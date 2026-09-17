@@ -2,7 +2,14 @@ import { z } from "zod";
 import { canonicalJson, sha256Hex } from "./canonical.js";
 import type { Rubric } from "./rubric.js";
 
-export const ScoreFlag = z.enum(["off_topic", "low_effort", "ai_slop", "link_mismatch", "spam", "guideline_breach"]);
+export const ScoreFlag = z.enum([
+  "off_topic",
+  "low_effort",
+  "ai_slop",
+  "link_mismatch",
+  "spam",
+  "guideline_breach",
+]);
 
 export const ScoreOutputSchema = z.object({
   score: z.number().int().min(0).max(100),
@@ -15,7 +22,12 @@ export type ScoreOutput = z.infer<typeof ScoreOutputSchema>;
 export interface ScoringInput {
   rubric: Rubric;
   task?: { targetUrl: string; targetText: string; targetAuthor: string; brief: string } | undefined;
-  contribution: { kind: "reply" | "quote" | "post" | "text"; url?: string | undefined; text: string; authorHandle?: string | undefined };
+  contribution: {
+    kind: "reply" | "quote" | "post" | "text";
+    url?: string | undefined;
+    text: string;
+    authorHandle?: string | undefined;
+  };
 }
 
 export interface Prompt {
@@ -50,7 +62,11 @@ export function buildScoringPrompt(input: ScoringInput): Prompt {
 export const promptHash = (p: Prompt): string => sha256Hex(p.system);
 
 // 1.0 inside the full-credit window, linear decay to 0 at zeroAt, 1.0 when there is no task.
-export function timingMultiplier(rubric: Rubric, taskOpensAt: Date | undefined, submittedAt: Date): number {
+export function timingMultiplier(
+  rubric: Rubric,
+  taskOpensAt: Date | undefined,
+  submittedAt: Date,
+): number {
   if (!taskOpensAt) return 1;
   const minutes = (submittedAt.getTime() - taskOpensAt.getTime()) / 60_000;
   if (minutes <= rubric.timing.fullUntil) return 1;

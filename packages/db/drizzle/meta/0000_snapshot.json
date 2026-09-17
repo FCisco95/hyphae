@@ -78,16 +78,12 @@
         "communities_mint_unique": {
           "name": "communities_mint_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "mint"
-          ]
+          "columns": ["mint"]
         },
         "communities_telegram_chat_id_unique": {
           "name": "communities_telegram_chat_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "telegram_chat_id"
-          ]
+          "columns": ["telegram_chat_id"]
         }
       },
       "policies": {},
@@ -190,12 +186,8 @@
           "name": "contributions_community_id_communities_id_fk",
           "tableFrom": "contributions",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -203,12 +195,8 @@
           "name": "contributions_member_id_members_id_fk",
           "tableFrom": "contributions",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -216,12 +204,8 @@
           "name": "contributions_task_id_tasks_id_fk",
           "tableFrom": "contributions",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -334,12 +318,8 @@
           "name": "epochs_community_id_communities_id_fk",
           "tableFrom": "epochs",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -438,12 +418,8 @@
           "name": "leaves_epoch_id_epochs_id_fk",
           "tableFrom": "leaves",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -451,12 +427,8 @@
           "name": "leaves_member_id_members_id_fk",
           "tableFrom": "leaves",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -572,12 +544,8 @@
           "name": "members_community_id_communities_id_fk",
           "tableFrom": "members",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -691,12 +659,8 @@
           "name": "scoring_runs_contribution_id_contributions_id_fk",
           "tableFrom": "scoring_runs",
           "tableTo": "contributions",
-          "columnsFrom": [
-            "contribution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["contribution_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -706,9 +670,7 @@
         "scoring_runs_evidence_hash_unique": {
           "name": "scoring_runs_evidence_hash_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "evidence_hash"
-          ]
+          "columns": ["evidence_hash"]
         }
       },
       "policies": {},
@@ -821,12 +783,8 @@
           "name": "tasks_community_id_communities_id_fk",
           "tableFrom": "tasks",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -834,12 +792,8 @@
           "name": "tasks_proposed_by_members_id_fk",
           "tableFrom": "tasks",
           "tableTo": "members",
-          "columnsFrom": [
-            "proposed_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["proposed_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -855,47 +809,27 @@
     "public.contribution_kind": {
       "name": "contribution_kind",
       "schema": "public",
-      "values": [
-        "reply",
-        "quote",
-        "post",
-        "text"
-      ]
+      "values": ["reply", "quote", "post", "text"]
     },
     "public.epoch_status": {
       "name": "epoch_status",
       "schema": "public",
-      "values": [
-        "open",
-        "closed",
-        "published"
-      ]
+      "values": ["open", "closed", "published"]
     },
     "public.link_method": {
       "name": "link_method",
       "schema": "public",
-      "values": [
-        "paste",
-        "signature"
-      ]
+      "values": ["paste", "signature"]
     },
     "public.task_kind": {
       "name": "task_kind",
       "schema": "public",
-      "values": [
-        "raid",
-        "open"
-      ]
+      "values": ["raid", "open"]
     },
     "public.task_status": {
       "name": "task_status",
       "schema": "public",
-      "values": [
-        "proposed",
-        "rejected",
-        "open",
-        "closed"
-      ]
+      "values": ["proposed", "rejected", "open", "closed"]
     }
   },
   "schemas": {},

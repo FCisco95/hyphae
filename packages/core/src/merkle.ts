@@ -26,8 +26,16 @@ function u64le(v: bigint): Uint8Array {
 }
 
 export function encodeLeaf(l: Leaf): Uint8Array {
-  if (l.wallet.length !== 32 || l.evidenceHash.length !== 32) throw new Error("leaf: 32-byte fields required");
-  return concatBytes(LEAF_PREFIX, l.wallet, u64le(l.epochIndex), u64le(l.score), u64le(l.amount), l.evidenceHash);
+  if (l.wallet.length !== 32 || l.evidenceHash.length !== 32)
+    throw new Error("leaf: 32-byte fields required");
+  return concatBytes(
+    LEAF_PREFIX,
+    l.wallet,
+    u64le(l.epochIndex),
+    u64le(l.score),
+    u64le(l.amount),
+    l.evidenceHash,
+  );
 }
 
 export const leafHash = (l: Leaf): Uint8Array => sha256(encodeLeaf(l));

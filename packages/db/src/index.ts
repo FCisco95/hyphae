@@ -9,5 +9,5 @@ export function createDb(url: string) {
   return drizzle({ client, schema });
 }
 
-export { schema };
 export * from "./schema.js";
+export { schema };

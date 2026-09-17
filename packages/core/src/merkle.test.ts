@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTree, getProof, leafHash, verifyProof, type Leaf } from "./merkle.js";
+import { buildTree, getProof, type Leaf, leafHash, verifyProof } from "./merkle.js";
 
 const wallet = (n: number) => new Uint8Array(32).fill(n);
 const ev = (n: number) => new Uint8Array(32).fill(0xa0 + n);
