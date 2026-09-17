@@ -97,11 +97,7 @@ export async function submit(ctx: CommandContext<Context>) {
   if (!row) return;
   await boss.send(QUEUES.score, { contributionId: row.id }, { singletonKey: row.id });
 
-  const note = row.taskId
-    ? ""
-    : args.kind === "text"
-      ? ""
-      : " No raid is open, so this is scored on its own.";
-  const rubric = RubricSchema.parse(community.rubric);
-  return reply(ctx, `Received. Scoring against rubric ${rubric.version}…${note}`);
+  const note =
+    args.kind !== "text" && !row.taskId ? " No raid is open, so this is scored on its own." : "";
+  return reply(ctx, `Received. Scoring against rubric ${community.rubricVersion}…${note}`);
 }
