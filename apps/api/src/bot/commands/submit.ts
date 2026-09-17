@@ -6,6 +6,7 @@ import { boss, QUEUES } from "../../jobs/queue.js";
 import { fetchPost, parsePostUrl } from "../../x/oembed.js";
 import { reply } from "../reply.js";
 import { parseSubmitArgs } from "./args.js";
+import { bindHandle, MAX_HANDLES } from "./handles.js";
 
 const USAGE =
   "Usage: /submit <link to your reply>, /submit quote <link to your quote>, or /submit <text of your work>";
@@ -69,14 +70,16 @@ export async function submit(ctx: CommandContext<Context>) {
 
     const post = await fetchPost(args.url);
     if (!post) return reply(ctx, "Could not read that post. Is it public?");
-    if (member.xHandle && post.handle.toLowerCase() !== member.xHandle.toLowerCase()) {
+    const bind = bindHandle(member.xHandles, post.handle);
+    if (!bind.ok) {
+      const known = bind.handles.map((h) => `@${h}`).join(", ");
       return reply(
         ctx,
-        `That post is by @${post.handle}, but you are linked as @${member.xHandle}.`,
+        `That post is by @${post.handle}; you submit as ${known} (max ${MAX_HANDLES}).`,
       );
     }
-    if (!member.xHandle) {
-      await db.update(members).set({ xHandle: post.handle }).where(eq(members.id, member.id));
+    if (bind.bound) {
+      await db.update(members).set({ xHandles: bind.handles }).where(eq(members.id, member.id));
     }
     values = {
       communityId: community.id,

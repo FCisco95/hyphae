@@ -6,6 +6,7 @@ import { db } from "../db.js";
 import { env } from "../env.js";
 import { scoringModel } from "../scoring/provider.js";
 import { runScoring } from "../scoring/run.js";
+import type { XPost } from "../x/oembed.js";
 import { scoreMessage } from "./score-message.js";
 
 export interface ScoreJob {
@@ -56,7 +57,7 @@ export async function scoreContribution({ contributionId }: ScoreJob): Promise<v
       kind: c.kind,
       url: c.url ?? undefined,
       text: c.text,
-      authorHandle: member.xHandle ?? undefined,
+      authorHandle: (c.oembed as XPost | null)?.handle,
     },
   };
   const result = await runScoring(input, model);

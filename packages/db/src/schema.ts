@@ -39,7 +39,8 @@ export const members = pgTable(
     telegramUserId: bigint("telegram_user_id", { mode: "bigint" }).notNull(),
     telegramUsername: text("telegram_username"),
     wallet: text("wallet").notNull(),
-    xHandle: text("x_handle"),
+    // X accounts this member has submitted from; bound on first sight, max 3 (see bindHandle).
+    xHandles: jsonb("x_handles").$type<string[]>().notNull().default([]),
     linkMethod: linkMethod("link_method").notNull(),
     linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
   },

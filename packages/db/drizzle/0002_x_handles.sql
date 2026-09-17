@@ -1,0 +1,1 @@
+ALTER TABLE "members" ADD COLUMN "x_handles" jsonb DEFAULT '[]'::jsonb NOT NULL;
