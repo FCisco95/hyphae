@@ -51,12 +51,18 @@ describe("x oembed", () => {
   });
 
   it("returns null when the post is private or gone", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("Not Found", { status: 404 })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("Not Found", { status: 404 })),
+    );
     expect(await fetchPost("https://x.com/jack/status/22")).toBeNull();
   });
 
   it("uses the handle from author_url, not the pasted one", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => oembed("<p>hi there</p>", "RealJack")));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => oembed("<p>hi there</p>", "RealJack")),
+    );
     const post = await fetchPost("https://x.com/whoever/status/23");
     expect(post?.handle).toBe("RealJack");
   });
