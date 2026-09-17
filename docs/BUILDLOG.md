@@ -2,15 +2,17 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
-## 2026-09-17 · Day 4 of 28 — merkle, settlement, scoring core, and the database
+## 2026-09-17 · Day 4 of 28 — core, database, and the bot is live on Fly
 
-**Shipped:** `packages/db` — Drizzle schema for the seven tables (communities, members, tasks, contributions, scoring runs, epochs, leaves), first migration generated and applied on Neon. Contributions and scoring runs are append-only by convention: a correction is a new row, so the audit trail never loses history. And `packages/core`, test-first. A sha256 merkle tree with domain-separated leaves (`0x00`) and internal nodes (`0x01`) so a node can never be replayed as a leaf, sorted-pair hashing so root order doesn't matter, odd nodes promoted unchanged. Deterministic epoch settlement (`none` or `sqrt` stake weighting, per-wallet cap, remainder dust stays in the vault, never redistributed). The scoring contract: rubric schema (zod), canonical JSON for stable hashing, the scoring prompt that quotes contributor content as `<content>` data rather than instructions, a linear timing multiplier, and an evidence hash that changes whenever the model, rubric version, or output changes.
+**Shipped:** `apps/api` deployed on Fly (`hyphae-api`, Paris) as two process groups from one image: `api` (Hono, `/health` and the Telegram webhook, secret-token verified) and `worker` (idle stub until scoring lands). Bot `@hyphaeprotocol_bot` answers `/start`, `/link <wallet>` (validated with `@solana/kit`, upsert per community + Telegram user, refuses a wallet already linked to someone else) and `/me`. Telegram webhook pointed at the Fly URL. `packages/db` — Drizzle schema for the seven tables (communities, members, tasks, contributions, scoring runs, epochs, leaves), first migration generated and applied on Neon. Contributions and scoring runs are append-only by convention: a correction is a new row, so the audit trail never loses history. And `packages/core`, test-first. A sha256 merkle tree with domain-separated leaves (`0x00`) and internal nodes (`0x01`) so a node can never be replayed as a leaf, sorted-pair hashing so root order doesn't matter, odd nodes promoted unchanged. Deterministic epoch settlement (`none` or `sqrt` stake weighting, per-wallet cap, remainder dust stays in the vault, never redistributed). The scoring contract: rubric schema (zod), canonical JSON for stable hashing, the scoring prompt that quotes contributor content as `<content>` data rather than instructions, a linear timing multiplier, and an evidence hash that changes whenever the model, rubric version, or output changes.
 **Decisions:**
 - Verified `@noble/hashes` v2 import paths (`sha2.js`, `utils.js`) against current docs before writing the merkle code — v2 consolidated `sha256`/`sha512` into `sha2.js` and requires the `.js` extension on every import.
 - Settlement rounds down and leaves dust in the vault rather than redistributing it — simpler, and the loss per epoch is bounded by wallet count, not worth the complexity of a remainder pass.
-**Numbers:** 14/14 tests passing · 7 tables on Neon · 0 testers on the bot yet · 0 contributions · $0.00 scoring spend.
-**Commits:** f9b1c3c, 8ef4c6e, c32f447, 58111ef
-**Next:** Hono + grammY webhook, deploy to Fly, `/link` `/me` live.
+- Workspace packages are bundled into the api image by tsup, so the runtime `node_modules` is only third-party code. pnpm 10's `deploy` needs `--legacy` for that layout; documented in the Dockerfile.
+- Every bot reply is a Telegram reply-to, so group threads stay readable when several testers are active.
+**Numbers:** 14/14 tests passing · 7 tables on Neon · 2 Fly machines (api, worker) · 0 testers on the bot yet · 0 contributions · $0.00 scoring spend.
+**Commits:** f9b1c3c, 8ef4c6e, c32f447, 58111ef, 7b4bb3d, dc40b51
+**Next:** seed the Hyphae Lab community, BotFather commands, then Day 2: oEmbed capture and the scoring job.
 
 ## 2026-09-16 (evening) · Day 3 of 28 — toolchain and scaffold
 
