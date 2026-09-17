@@ -2,6 +2,12 @@
 
 Every rubric a Hyphae community scores against is public here. A community's `rubric_version` points at one of these files; the epoch commits its hash on-chain.
 
+## MYCEL 1.2.0 — 2026-09-17 (evening)
+
+- `context_fit` opened: naming something concrete from the post earns full marks, a genuine take on the post's theme or question earns most of it, reusable hype that fits any post earns none. Founder ruling: an on-theme reply the model graded "could sit under any project's post" is a 4/5 engagement under the Masterblox rules the guidelines come from.
+- "What earns zero" narrowed the same way: reusable hype, not any reply that does not quote the post.
+- Weights, timing, caps, floor and the 1.1.0 coin scoping unchanged.
+
 ## MYCEL 1.1.0 — 2026-09-17 (evening)
 
 - The "never" list is scoped to a specific coin: MYCEL, any named coin, or the coin of the post being replied to. Telling people to buy or hold it, price direction or targets for it, promised gains or claimed returns on it: hard zero, unchanged.
