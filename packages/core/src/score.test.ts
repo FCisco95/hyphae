@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { canonicalJson } from "./canonical.js";
 import type { Rubric } from "./rubric.js";
-import { buildScoringPrompt, evidenceHash, timingMultiplier } from "./score.js";
+import {
+  buildScoringPrompt,
+  creditedScore,
+  creditReason,
+  evidenceHash,
+  ScoreFlag,
+  type ScoreOutput,
+  ScoreOutputSchema,
+  timingMultiplier,
+} from "./score.js";
 
 const rubric: Rubric = {
   version: "0.1.0",
@@ -69,5 +78,76 @@ describe("scoring contract", () => {
     });
     expect(p.user).toContain("<content");
     expect(p.system).toContain("untrusted data");
+  });
+});
+
+describe("credited score (MYCEL ruling 2026-09-17)", () => {
+  const out = (
+    score: number,
+    flags: ScoreOutput["flags"] = [],
+    aiSlop: ScoreOutput["aiSlop"] = { patterns: [], templateRhythm: false },
+  ): ScoreOutput => ({
+    score,
+    rubricHits: [],
+    flags,
+    aiSlop,
+    reasoning: "Twenty characters of reasoning here.",
+  });
+
+  it.each([
+    ["95 clean", out(95), 95],
+    ["95 + guideline breach", out(95, ["guideline_breach"]), 0],
+    ["95 + spam", out(95, ["spam"]), 0],
+    ["95 + off topic", out(95, ["off_topic"]), 0],
+    [
+      "84 + mild ai_slop caps at 79",
+      out(84, ["ai_slop"], { patterns: ["landscape"], templateRhythm: false }),
+      79,
+    ],
+    [
+      "84 + strong ai_slop (3 patterns) caps at 40 then floors to 0",
+      out(84, ["ai_slop"], {
+        patterns: ["landscape", "testament", "pivotal"],
+        templateRhythm: false,
+      }),
+      0,
+    ],
+    [
+      "84 + template rhythm is strong",
+      out(84, ["ai_slop"], { patterns: [], templateRhythm: true }),
+      0,
+    ],
+    [
+      "70 + mild ai_slop stays 70",
+      out(70, ["ai_slop"], { patterns: ["additionally"], templateRhythm: false }),
+      70,
+    ],
+    ["59 clean floors to 0", out(59), 0],
+    ["60 clean is 60", out(60), 60],
+    ["low_effort is not a hard zero", out(65, ["low_effort"]), 65],
+  ])("%s", (_name, output, expected) => {
+    expect(creditedScore(output)).toBe(expected);
+  });
+
+  it("explains why credit differs from the raw score", () => {
+    expect(creditReason(out(95))).toBeNull();
+    expect(creditReason(out(95, ["guideline_breach"]))).toBe("guideline breach");
+    expect(creditReason(out(84, ["ai_slop"], { patterns: ["a"], templateRhythm: false }))).toBe(
+      "reads AI-written, capped at 79",
+    );
+    expect(
+      creditReason(out(84, ["ai_slop"], { patterns: ["a", "b", "c"], templateRhythm: false })),
+    ).toBe("reads AI-written, capped at 40, below the 60 floor");
+    expect(creditReason(out(59))).toBe("below the 60 floor");
+  });
+
+  it("output schema requires the ai_slop detail so the cap is auditable", () => {
+    expect(ScoreOutputSchema.safeParse({ ...out(50), aiSlop: undefined }).success).toBe(false);
+  });
+
+  it("prompt tells the model what each flag means and that flags are enforced by code", () => {
+    const p = buildScoringPrompt({ rubric, contribution: { kind: "text", text: "x" } });
+    for (const f of ScoreFlag.options) expect(p.system).toContain(f);
+    expect(p.system).toMatch(/never lower the score because of a flag/i);
   });
 });
