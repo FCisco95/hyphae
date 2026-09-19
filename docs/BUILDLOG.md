@@ -2,6 +2,22 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-09-19 · Day 6 of 28 — contribution quality rules
+
+**Shipped locally:** candidate rubric 1.3.0 now explicitly grades explanations, relevant questions, original perspectives, and constructive criticism alongside praise. Coin mentions and engagement metrics earn no quality bonus. Honest holder statements and reward disclosures do not themselves lower quality. Nine synthetic review scenarios document the intended distinctions.
+**Decision:** preserve contribution points and epoch reward allocation; judge the substance of participation independently of sentiment. The candidate defines scoring policy, not platform eligibility or legal clearance.
+**Numbers:** core schema/score validation and lint checked; no paid model evaluation or live rubric update.
+**Commits:** uncommitted local work; `.git` is read-only in this session.
+**Next:** evaluate the candidate against full-context examples and review praise/criticism pairs for sentiment bias. Numeric founder labels and project context remain outstanding.
+
+## 2026-09-18 · Day 5 of 28 — scoring evaluation harness
+
+**Shipped locally:** a fixture-driven evaluation command using the production scoring runner. Each case compares raw and credited scores against explicit founder-labelled ranges, checks required/forbidden flags, and emits the full run with reasoning, hashes, latency, and cost. A dry run validates the dataset without credentials or model calls. Invalid ranges, duplicate IDs, and contradictory flag labels are rejected before scoring.
+**Decision:** capture the founder's labels before tuning the prompt. Six coaching screenshots now provide qualitative examples; selected pairs are retained privately, without invented numeric grades or target posts. Founder rulings are captured in candidate rubric 1.3.0: grounded, uncertain price speculation is allowed, and members may truthfully disclose their holdings or personal decision to hold. Unsupported hype, guarantees, and instructions for others to buy/hold remain breaches. The candidate is schema-checked, not live-evaluated or applied to the community.
+**Numbers:** 75 tests passing (32 core, 43 API) · workspace typecheck passed · 0 paid evaluation calls.
+**Commits:** uncommitted local work; this session's sandbox exposes `.git` read-only.
+**Next:** collect full target/reply text and founder grades, plus the project description; run a baseline, evaluate prompt changes, and publish rubric 1.3.0 only after the results support it. Usage and fixture format: `docs/rubrics/eval/README.md`.
+
 ## 2026-09-17 (evening) · Day 4 of 28 — the bot scores, and shows its reasoning
 
 **Shipped:** the scoring loop, end to end, live in Hyphae Lab. An admin opens a raid with `/raid <X post>`; the bot reads the target post through X's public oEmbed (no API key, no credits) and opens a window that defaults to the rubric's decay horizon. A member replies on X and sends `/submit <link>`; the bot captures the reply text, refuses a second reply or quote for the same raid before spending anything, refuses a post already submitted in the community, binds the X account to the member on first use (up to three accounts per member), and queues a job. The worker (pg-boss on the same Neon database, no Redis) runs the model with a structured-output schema, stores an append-only `scoring_runs` row (model, rubric version, prompt hash, full input and output, evidence hash, latency, cost in micro-dollars), and replies in the group thread with the score, the flags, and the reasoning. Every model call is money, so the job is idempotent: a retry after the row exists returns without a second call, and the evidence hash is unique as a second guard. Telegram delivery is best-effort after the row is stored. `SCORING_MODEL` is a `provider:model` string with a price table; Sonnet 5 by default, DeepSeek wired.
