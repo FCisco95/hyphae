@@ -10,7 +10,8 @@
     "start": "node dist/server.js",
     "start:worker": "node dist/worker.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "eval:scoring": "node --import tsx scripts/eval-scoring.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.0",

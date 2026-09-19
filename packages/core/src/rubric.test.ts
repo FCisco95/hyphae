@@ -8,8 +8,8 @@ const load = (file: string) =>
   );
 
 describe("rubric", () => {
-  it("every published MYCEL rubric parses", () => {
-    for (const v of ["1.0.0", "1.1.0", "1.2.0"]) {
+  it("every published or candidate MYCEL rubric parses", () => {
+    for (const v of ["1.0.0", "1.1.0", "1.2.0", "1.3.0"]) {
       const rubric = load(`mycel-${v}.json`);
       expect(rubric.version).toBe(v);
       expect(rubric.timing).toEqual({ fullUntil: 360, zeroAt: 2880 });

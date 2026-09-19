@@ -1,0 +1,479 @@
+{
+  "status": "awaiting-founder-labels",
+  "labelSource": "assistant-authored synthetic policy cases",
+  "purpose": "Review policy boundaries before converting approved cases to the numeric evaluation harness.",
+  "warnings": [
+    "These are synthetic examples, not real contributions or founder-labelled grades.",
+    "expectedPolicy records the locked qualitative direction; it is not evidence of model performance.",
+    "founderLabels must be completed before paid baseline or candidate runs.",
+    "Do not merge these cases with the private Masterblox examples, which lack complete target posts and numeric grades."
+  ],
+  "founderScalePolicy": {
+    "ordinaryReplyCeiling": 90,
+    "score100ReservedFor": [
+      "threads",
+      "blog posts",
+      "real product or protocol tests",
+      "videos",
+      "comparable extra-mile work"
+    ],
+    "note": "A highly specific, genuinely interested, organic community reply can be almost perfect at 90. Reserve 100 for contributions that require substantial extra effort beyond an ordinary reply."
+  },
+  "founderProductRequirements": {
+    "mediaContext": {
+      "required": true,
+      "reason": "Pictures often carry essential post context and can materially change whether a reply is relevant.",
+      "currentFallback": "When only extracted text is available, state the evidence limitation and do not penalise a plausible image-specific reply solely because the image is unavailable."
+    }
+  },
+  "cases": [
+    {
+      "id": "synthetic-receipt-specific-praise",
+      "policyUnderTest": "Specific useful praise can earn quality credit.",
+      "task": {
+        "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000001",
+        "targetText": "Every scored contribution now has a public receipt with the rubric version, model, reasoning, prompt hash, and evidence hash. Admin corrections are appended instead of replacing the original score.",
+        "targetAuthor": "hyphaeprotocol",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "The append-only correction is the bit I care about. Anyone can compare the model's first call with the admin override instead of trusting a cleaned-up final number."
+      },
+      "expectedPolicy": {
+        "treatment": "Eligible for credit because it is specific and useful, but the staged setup followed by 'is the bit I care about' reads like a typical AI answer to the founder.",
+        "requiredFlags": ["ai_slop"],
+        "forbiddenFlags": ["off_topic", "low_effort", "guideline_breach"],
+        "expectedAiSignals": [
+          "staged setup before the personal reaction",
+          "formulaic 'is the bit I care about' turn"
+        ]
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScore": 70,
+        "reason": "The answer is specific, but its sentence structure feels typically AI-written, especially the setup before 'is the bit I care about'. A direct first-person reaction would sound more natural.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      },
+      "founderVoiceDirection": {
+        "example": "I care about verification and being on-chain makes me way more relieved.",
+        "note": "Use the direct, imperfect first-person sentence shape as the signal; the substituted topic is not the point."
+      }
+    },
+    {
+      "id": "synthetic-receipt-specific-criticism",
+      "policyUnderTest": "Useful criticism gets the same opportunity as praise.",
+      "task": {
+        "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000001",
+        "targetText": "Every scored contribution now has a public receipt with the rubric version, model, reasoning, prompt hash, and evidence hash. Admin corrections are appended instead of replacing the original score.",
+        "targetAuthor": "hyphaeprotocol",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "Receipts show how a score was produced, but they don't explain why a submission was rejected before scoring. Can the public page include those rejection reasons too?"
+      },
+      "expectedPolicy": {
+        "treatment": "Eligible for strong quality credit; criticism alone must not reduce the score or cause a breach flag.",
+        "requiredFlags": [],
+        "forbiddenFlags": ["off_topic", "low_effort", "ai_slop", "guideline_breach"]
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScore": 90,
+        "reason": "The question shows genuine interest, feels highly organic, and sounds like a real community member trying to improve the product. It is almost perfect for a reply, while 100 is reserved for extra-mile work.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      }
+    },
+    {
+      "id": "synthetic-popularity-no-quality-bonus",
+      "policyUnderTest": "Likes, views, and bullish sentiment do not establish quality.",
+      "task": {
+        "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000002",
+        "targetText": "The first public score receipts are live on the contribution page.",
+        "targetAuthor": "hyphaeprotocol",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "Amazing project! 5,000 views already. LFG 🚀"
+      },
+      "expectedPolicy": {
+        "treatment": "Very low-effort blind shilling. It comments on the view count instead of the substance of the post; popularity and enthusiasm add no quality bonus. The phrasing may feel AI-like, but that alone does not require an authorship inference.",
+        "requiredFlags": ["low_effort"],
+        "forbiddenFlags": ["guideline_breach"]
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScore": 35,
+        "reason": "Blind shilling that feels almost like an AI comment. It reacts to the views rather than the post itself and is extremely low effort.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      }
+    },
+    {
+      "id": "synthetic-holder-with-product-reason",
+      "policyUnderTest": "A truthful holder statement is allowed and the explanation is graded normally.",
+      "task": {
+        "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000003",
+        "targetText": "Hyphae commits each epoch's complete score set to Solana as a Merkle root. Contributors receive non-transferable points first, then treasury rewards settle from the epoch allocation.",
+        "targetAuthor": "hyphaeprotocol",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "I hold MYCEL, and the delayed settlement makes sense to me because the epoch can be audited as one complete set before the treasury splits."
+      },
+      "expectedPolicy": {
+        "treatment": "Natural, on-topic, and compliant. Grade the product reasoning normally; first-person ownership is not a buy or hold instruction. The reply earns solid credit but adds only a modest angle beyond the target.",
+        "requiredFlags": [],
+        "forbiddenFlags": ["off_topic", "low_effort", "guideline_breach"]
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScore": 75,
+        "reason": "It follows the rules, stays on topic, and feels natural. It does not add much beyond the post, but it is a good contribution and the holder disclosure is allowed.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      }
+    },
+    {
+      "id": "synthetic-holder-only",
+      "policyUnderTest": "Holder status is allowed but does not create quality by itself.",
+      "task": {
+        "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000003",
+        "targetText": "Hyphae commits each epoch's complete score set to Solana as a Merkle root. Contributors receive non-transferable points first, then treasury rewards settle from the epoch allocation.",
+        "targetAuthor": "hyphaeprotocol",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "I hold MYCEL."
+      },
+      "expectedPolicy": {
+        "treatment": "Zero-quality contribution. The truthful holder statement is allowed, but it adds nothing to a target that is not asking about holders and must not be rewarded.",
+        "requiredFlags": ["low_effort"],
+        "forbiddenFlags": ["guideline_breach"]
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScore": 0,
+        "reason": "It adds nothing, and the target is not about holders. The statement is permitted but should not receive a reward.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      }
+    },
+    {
+      "id": "synthetic-grounded-uncertain-price",
+      "policyUnderTest": "Grounded and uncertain price or valuation speculation is allowed.",
+      "task": {
+        "targetUrl": "https://x.com/mycel/status/1000000000000000004",
+        "targetText": "This epoch generated 12 SOL in protocol fees, up from 6 SOL last epoch. The eligible contribution pool grew 20%, while MYCEL supply stayed unchanged.",
+        "targetAuthor": "mycel",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "If fee growth holds while supply stays flat, a higher MYCEL valuation could make sense. Two epochs still isn't enough to call it a trend though."
+      },
+      "expectedPolicy": {
+        "treatment": "Strong natural and organic engagement with real reasoning. The stated basis, uncertainty, and counterpoint prevent a price-policy breach. The voice may feel holder-like, but it does not prove ownership.",
+        "requiredFlags": [],
+        "forbiddenFlags": ["off_topic", "low_effort", "guideline_breach"]
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScore": 85,
+        "reason": "Natural, organic engagement with thought and reasoning. It feels like the perspective of a holder while remaining uncertain and grounded.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      }
+    },
+    {
+      "id": "synthetic-unsupported-price-with-hedge",
+      "policyUnderTest": "A hedge does not ground an unsupported target.",
+      "task": {
+        "targetUrl": "https://x.com/mycel/status/1000000000000000004",
+        "targetText": "This epoch generated 12 SOL in protocol fees, up from 6 SOL last epoch. The eligible contribution pool grew 20%, while MYCEL supply stayed unchanged.",
+        "targetAuthor": "mycel",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "MYCEL to $1 easy, NFA."
+      },
+      "expectedPolicy": {
+        "treatment": "Low-effort unsupported price hype. 'NFA' adds a small amount of caution to the raw-quality judgment, but it does not replace an explanation connecting the target facts to the $1 prediction and does not remove the guideline breach.",
+        "requiredFlags": ["guideline_breach"],
+        "forbiddenFlags": []
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScore": 50,
+        "reason": "Low effort. The NFA disclaimer makes it somewhat better than the same unsupported target stated without any caution, but it still lacks reasoning.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      }
+    },
+    {
+      "id": "synthetic-buy-guaranteed-gains",
+      "policyUnderTest": "A factual premise does not excuse a buy instruction or guaranteed gains.",
+      "task": {
+        "targetUrl": "https://x.com/mycel/status/1000000000000000004",
+        "targetText": "This epoch generated 12 SOL in protocol fees, up from 6 SOL last epoch. The eligible contribution pool grew 20%, while MYCEL supply stayed unchanged.",
+        "targetAuthor": "mycel",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "Fees doubled, so buy MYCEL now. Guaranteed 10x."
+      },
+      "expectedPolicy": {
+        "treatment": "Maximum-severity hard zero. The direct buy instruction and guaranteed return each independently violate the rules and require a breach flag.",
+        "requiredFlags": ["guideline_breach"],
+        "forbiddenFlags": []
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "founderVerdict": -100,
+        "targetScore": 0,
+        "reason": "Against the rules and must be flagged. Both the direct buy instruction and the guaranteed 10x claim are prohibited.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      }
+    },
+    {
+      "id": "synthetic-honest-reward-disclosure",
+      "policyUnderTest": "An honest reward disclosure does not reduce writing quality.",
+      "task": {
+        "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000001",
+        "targetText": "Every scored contribution now has a public receipt with the rubric version, model, reasoning, prompt hash, and evidence hash. Admin corrections are appended instead of replacing the original score.",
+        "targetAuthor": "hyphaeprotocol",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "Disclosure: I can earn Hyphae points for this reply. The evidence hash still matters because changing the model output would change the receipt, so edits can't be hidden."
+      },
+      "expectedPolicy": {
+        "treatment": "Almost-perfect reply-quality contribution. It clearly explains how the evidence hash works and sounds like someone who knows the project. Do not penalise the honest disclosure; X best practice and platform eligibility remain separate reviews.",
+        "requiredFlags": [],
+        "forbiddenFlags": ["off_topic", "low_effort", "ai_slop", "guideline_breach"]
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScore": 90,
+        "reason": "It explains how the mechanism works and is clearly written by someone who knows the project. The disclosure should not reduce writing quality, regardless of whether it is ideal for X distribution.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      }
+    },
+    {
+      "id": "synthetic-question-already-answered",
+      "policyUnderTest": "A question already answered by the target does not add value merely because it is a question.",
+      "task": {
+        "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000005",
+        "targetText": "Epoch claims open Friday at 16:00 UTC and close Sunday at 16:00 UTC. Use /claim in the bot during that window.",
+        "targetAuthor": "hyphaeprotocol",
+        "brief": "Ask a useful question or add an observation."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "When do claims close?"
+      },
+      "expectedPolicy": {
+        "treatment": "Very low effort because the answer is explicit in the supplied target. It does not break a rule, but question form alone creates almost no value.",
+        "requiredFlags": ["low_effort"],
+        "forbiddenFlags": ["off_topic", "guideline_breach"]
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScore": 10,
+        "reason": "It is not against the rules, but it adds nothing because the answer is right there in the target.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      }
+    },
+    {
+      "id": "synthetic-project-name-wrong-topic",
+      "policyUnderTest": "Naming the project does not establish context fit.",
+      "task": {
+        "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000006",
+        "targetText": "The public score page now shows the original model grade beside every admin correction.",
+        "targetAuthor": "hyphaeprotocol",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "I am really excited to see what AI trading agents will look like on MYCEL."
+      },
+      "expectedPolicy": {
+        "treatment": "The writing is understandable enough for a 50 raw-quality target, but its relationship to the score-page announcement is unclear. The MYCEL name-drop does not create context fit, so the off-topic gate still makes credited quality zero.",
+        "requiredFlags": ["off_topic"],
+        "forbiddenFlags": ["guideline_breach"]
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScore": 50,
+        "reason": "It is unclear how the reply relates to the target. The sentence can receive some raw writing credit, but it misses the announcement's subject.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      }
+    },
+    {
+      "id": "synthetic-polished-strong-original-control",
+      "policyUnderTest": "Polished contrast and rhetorical structure alone do not prove AI authorship.",
+      "task": {
+        "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000007",
+        "targetText": "A Hyphae receipt keeps the model output, rubric version, and any later admin correction in one public audit trail.",
+        "targetAuthor": "hyphaeprotocol",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "A score receipt is more than a number. Not just model output, but a trail anyone can inspect. Hyphae is showing that contribution rewards don't need a black box."
+      },
+      "expectedPolicy": {
+        "treatment": "A normal, acceptable comment that confirms the post in different words. It is solid rather than exceptional, and one polished contrast should not trigger an AI-writing flag without stronger combined evidence.",
+        "requiredFlags": [],
+        "forbiddenFlags": ["off_topic", "low_effort", "ai_slop", "guideline_breach"]
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScoreRange": [75, 80],
+        "reason": "It confirms the post in a different way and resembles what a normal community comment would look like. It is okay, but it does not add enough for an exceptional score.",
+        "raw": [75, 80],
+        "credited": [75, 80],
+        "status": "founder-labelled"
+      }
+    },
+    {
+      "id": "synthetic-multiple-ai-writing-signals",
+      "policyUnderTest": "Multiple concrete AI-writing signals should be reported structurally.",
+      "task": {
+        "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000007",
+        "targetText": "A Hyphae receipt keeps the model output, rubric version, and any later admin correction in one public audit trail.",
+        "targetAuthor": "hyphaeprotocol",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "This groundbreaking initiative serves as a testament to Hyphae's pivotal role in the evolving Web3 landscape, highlighting its commitment to transparency, innovation, and community empowerment."
+      },
+      "expectedPolicy": {
+        "treatment": "Coherent enough for a 70 raw-quality target, but over-complimentary, promotional, and non-organic. Flag the combined templated signals by naming textual evidence rather than asserting hidden authorship.",
+        "requiredFlags": ["ai_slop", "low_effort"],
+        "forbiddenFlags": ["guideline_breach"],
+        "expectedAiSignals": [
+          "inflated significance",
+          "promotional language",
+          "AI vocabulary cluster",
+          "superficial -ing phrase",
+          "rule-of-three phrasing"
+        ]
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScore": 70,
+        "reason": "It feels AI-based, is too over-complimentary, and does not look organic, even though the prose is coherent.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      }
+    },
+    {
+      "id": "synthetic-single-ai-word-false-positive-control",
+      "policyUnderTest": "A single common AI-associated word does not prove an unedited AI draft.",
+      "task": {
+        "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000007",
+        "targetText": "A Hyphae receipt keeps the model output, rubric version, and any later admin correction in one public audit trail.",
+        "targetAuthor": "hyphaeprotocol",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "This transparency is crucial for contributors because they can match each score to the receipt and see every later correction."
+      },
+      "expectedPolicy": {
+        "treatment": "A normal organic reply that says what is expected from the target. Grade it normally; the word 'crucial' alone is insufficient for an AI-writing flag.",
+        "requiredFlags": [],
+        "forbiddenFlags": ["off_topic", "low_effort", "ai_slop", "guideline_breach"]
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScore": 75,
+        "reason": "It sounds organic and says what would reasonably be expected in response to the post.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      }
+    },
+    {
+      "id": "synthetic-image-context-limitation",
+      "policyUnderTest": "The scorer must not invent image content or hard-zero a plausible image-specific reply when only extracted text is supplied.",
+      "task": {
+        "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000008",
+        "targetText": "A new way to inspect every score. pic.x.com/hyphae-demo",
+        "targetAuthor": "hyphaeprotocol",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "Putting the model score and admin correction side by side makes the audit trail much easier to follow."
+      },
+      "expectedPolicy": {
+        "treatment": "An acceptable 75-quality reply if the image shows the referenced layout. Do not invent what the image contains or apply an off-topic hard zero solely because extracted text cannot verify the detail; state the evidence limitation. Product direction is to include images in scoring because they carry important context.",
+        "requiredFlags": [],
+        "forbiddenFlags": ["off_topic", "guideline_breach"]
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScore": 75,
+        "reason": "This would be an acceptable reply if the image shows the side-by-side layout. Images need to be included in scoring because they often communicate a large part of the post.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      }
+    },
+    {
+      "id": "synthetic-code-only-spam",
+      "policyUnderTest": "A code-only submission is spam rather than a contribution.",
+      "task": {
+        "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000009",
+        "targetText": "The next epoch starts Monday. Read the published rubric before submitting a contribution.",
+        "targetAuthor": "hyphaeprotocol",
+        "brief": "React in your own words."
+      },
+      "contribution": {
+        "kind": "reply",
+        "text": "7F3K-91QZ"
+      },
+      "expectedPolicy": {
+        "treatment": "Zero-quality code-only spam with no interpretable relationship to the target. Do not infer copying or coordination beyond the supplied text.",
+        "requiredFlags": ["spam"],
+        "forbiddenFlags": ["guideline_breach"]
+      },
+      "founderLabels": {
+        "founderGrade": null,
+        "targetScore": 0,
+        "reason": "The code is not interpretable in context and appears to be spam.",
+        "raw": null,
+        "credited": null,
+        "status": "founder-scored-range-pending"
+      }
+    }
+  ]
+}

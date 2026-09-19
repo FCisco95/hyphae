@@ -2,6 +2,16 @@
 
 Every rubric a Hyphae community scores against is public here. A community's `rubric_version` points at one of these files; the epoch commits its hash on-chain.
 
+## MYCEL 1.3.0 — 2026-09-18 (candidate, not applied)
+
+- Founder ruling: price discussion and speculation are allowed when supported by a concrete basis. A price, market-cap figure, or target is not automatically a guideline breach. The forecast must be framed as uncertain and connected to the supplied evidence; a token hedge such as "could" does not substitute for reasoning.
+- Unsupported hype such as "we are going up to 100M easy", guarantees, promised gains, and direct buy/hold instructions remain hard-zero breaches. The basis may come from the target post; every short reply need not repeat a full analysis or include a separate citation.
+- This replaces the blanket price-direction/target ban in 1.2.0. Prior versions and their scoring history remain intact. Weights, timing, credit caps, and floor are unchanged.
+- Founder ruling: truthful holder disclosures and first-person holding decisions are allowed ("I hold MYCEL", "I am still holding"). They are distinct from instructing another person to buy or hold. Ownership alone does not earn a high quality score or excuse unsupported price hype.
+- Founder-approved direction, 2026-09-19: preserve contributions → points → epoch allocation. Score substantive participation independently of sentiment; substantiated criticism, useful questions, and explanations have the same opportunity as praise. Mere posting, repetition, popularity, and engagement counts earn no quality bonus.
+- `context_fit` now distinguishes actual engagement from project name-dropping; `value_angle` explicitly includes constructive criticism. Honest reward disclosures do not themselves reduce writing quality. The candidate asks for independent authorship and transparency without pretending that the scorer can verify ownership or hidden payments from text.
+- Status: candidate file and schema validation only. No live model evaluation, community rubric update, or deployment yet. Other planned scoring-calibration changes remain pending.
+
 ## MYCEL 1.2.0 — 2026-09-17 (evening)
 
 - `context_fit` opened: naming something concrete from the post earns full marks, a genuine take on the post's theme or question earns most of it, reusable hype that fits any post earns none. Founder ruling: an on-theme reply the model graded "could sit under any project's post" is a 4/5 engagement under the Masterblox rules the guidelines come from.
