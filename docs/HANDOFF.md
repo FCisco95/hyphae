@@ -1,6 +1,6 @@
 ---
 date: 2026-09-20
-summary: D1–D3 and the full written operational design O1–O7 are approved. Record the private canonical amendments through organic-sync; separate implementation planning is next.
+summary: D1–D3 and the full written operational design O1–O7 are approved. Organic-sync applied approval; a fresh efficient Orca session is being prepared for bounded implementation planning.
 ---
 
 # Hyphae H-DESIGN handoff
@@ -9,7 +9,7 @@ summary: D1–D3 and the full written operational design O1–O7 are approved. R
 
 **Full written operational design approved.** On 2026-09-20, the founder answered “yes” to the explicit approval question for O1–O7. D1–D3 remain approved. Read `docs/handoffs/2026-09-20-h-design-written-approval.md`; it supersedes the historical awaiting-approval wording in the unchanged design snapshot.
 
-Work stays on `h-design-2026-09-19`. All 16 synthetic labels and the complete fixture file remain unchanged. Separate dirty Mac main is preserved. This approval-recording task changes local design/handoff notes only; implementation planning is the next separately scoped task.
+Work stays on `h-design-2026-09-19`. All 16 synthetic labels and the complete fixture file remain unchanged. Separate dirty Mac main is preserved. The user has requested a fresh Orca session to continue with bounded implementation planning. It owns local design/handoff notes and the ignored private planning mirror only.
 
 ## Metadata
 
@@ -22,7 +22,7 @@ Work stays on `h-design-2026-09-19`. All 16 synthetic labels and the complete fi
 
 ## Current Objective
 
-Return the founder's explicit approval to organic-sync so its owner can update the private canonical design, plan, board and contract without repeating review. Preserve other owners' changes and all excluded gates.
+Hand ownership to a fresh GPT-5.6 Terra high session to scope and write the implementation plan from the approved design. See `docs/handoffs/2026-09-20-implementation-planning-session.md` for the exact continuation prompt, file ownership and acceptance criteria. The user requested an efficient runner; this selection supersedes the earlier Astra recommendation for the next session only.
 
 ## Current State
 
@@ -43,8 +43,8 @@ Added a dated approval record tied to the exact artifact shown to the founder, p
 
 ## Next Actions
 
-1. Organic-sync: incorporate D1–D3 and O1–O7 as approved, with the exact approval record; preserve concurrent edits and excluded gates.
-2. Scope the separate implementation-planning task against the approved design and outstanding contracts. Do not repeat the full-design approval question or execute the old calendar.
+1. Fresh session: scope and write the bounded implementation plan against the approved design and outstanding contracts; use the continuation prompt below. Do not repeat the full-design approval question or execute the old calendar.
+2. Return the resulting private-plan amendments to organic-sync, preserving other owners' work. Approval propagation is already verified in its private report `10 - PROJECTS/Organic/reports/organic-sync/2026-09-20-h-design-approval-sync.md`.
 3. Keep H-FIXTURES, public API/contract work, settlement/payment and Sentinel adoption separately bounded. No reward code, fixture conversion or paid evaluation follows automatically from this handoff.
 
 ## Quick Reference
@@ -80,12 +80,17 @@ Prior design validation passed documentation checks, handoff validation, integer
 | Written approval record / dated checkpoint | `docs/handoffs/2026-09-20-h-design-written-approval.md` | Founder approval tied to exact O1–O7 artifact |
 | Private approval amendment | `docs/plans/h-design-private-approval-2026-09-20.md` | Ignored; return to organic-sync |
 | Current engineering handoff | `docs/HANDOFF.md` | Full design approved; planning next |
+| Fresh-session handoff and prompt | `docs/handoffs/2026-09-20-implementation-planning-session.md` | Terra high; existing worktree; verified terminal readiness |
 
 No credentials, deployed resources, scheduled jobs, public build-log edits or sibling writes. `CLAUDE.md` already links this handoff and remains unchanged.
 
 ## Approval Return Receipt
 
-Returned to the existing organic-sync vault terminal: `accepted: true`, request `ec0856c0-2cd2-4dc1-aac3-d8985b5a796b`, stage `input_accepted`. Receiving turn start and canonical private application remain unverified; do not resend on silence. The earlier proposal-only receipt `eaae4f8b-9f83-45e8-bc7d-43562622a7d5` is historical and does not reflect this subsequent founder approval.
+Returned to the existing organic-sync vault terminal: `accepted: true`, request `ec0856c0-2cd2-4dc1-aac3-d8985b5a796b`, stage `input_accepted`. Subsequent read-only verification of the private approval-sync report and current Integration Board confirms canonical approval application and private amendment archival; no resend is needed. The earlier proposal-only receipt `eaae4f8b-9f83-45e8-bc7d-43562622a7d5` is historical and does not reflect this subsequent founder approval.
+
+## Fresh Session Continuation
+
+The user requested a fresh, efficient Orca session. Runner: GPT-5.6 Terra, high effort, for bounded planning from the approved design. Reuse the existing H-DESIGN worktree so ignored notes stay available. The new dated checkpoint and exact prompt are `docs/handoffs/2026-09-20-implementation-planning-session.md`; launch/readiness state and the terminal handle are recorded there; the outgoing session reports prompt acceptance in chat and stops. No code or paid evaluation is authorized.
 
 ## Resume Prompt
 
@@ -97,8 +102,8 @@ Use the verified prompt below for a cold start; no repeated design approval is n
 Resume Hyphae on h-design-2026-09-19. D1-D3 and the full written operational design O1-O7 are approved; the founder answered yes on 2026-09-20. Preserve all 16 reviewed synthetic scores and the separate dirty main checkout.
 
 Files: docs/HANDOFF.md, docs/handoffs/2026-09-20-h-design-written-approval.md, docs/handoffs/2026-09-20-h-design-operational-definitions.md, docs/rubrics/eval/mycel-synthetic-review.json, CLAUDE.md
-Model: GPT-6 Astra (xhigh) — user-authorized reward/epoch design runner.
+Model: GPT-5.6 Terra (high) — user-requested efficient runner for bounded planning from the approved design.
 Skills: handoff-memory, orca-cli, handoff.
 
-Use the approval record to supersede historical awaiting-approval wording. Reconcile private canonical amendments through organic-sync, then scope the separate implementation-planning task. Do not reopen approved decisions or start reward code, fixture conversion or paid evaluation from this handoff. H-CONTRACT, fees/funding/payment, campaign and Sentinel adoption retain their separate gates.
+Use the approval record to supersede historical awaiting-approval wording. Approval propagation through organic-sync is verified. Execute the bounded implementation-planning prompt in docs/handoffs/2026-09-20-implementation-planning-session.md, returning the resulting private amendments to organic-sync. Do not reopen approved decisions or start reward code, fixture conversion or paid evaluation from this handoff. H-CONTRACT, fees/funding/payment, campaign and Sentinel adoption retain their separate gates.
 ```
