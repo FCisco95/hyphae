@@ -12,25 +12,25 @@ The approved reward/epoch design has a complete bounded implementation plan. Its
 ## Metadata
 
 - Scope: approved D1–D3/O1–O7 implementation planning; no implementation.
-- Worktree: `h-design-2026-09-19`, current planning baseline `5b65a0a`; approval checkpoint `07072fb` remains in history.
+- Branch state: H-DESIGN merged into `main` at `863d905`; planning baseline `5b65a0a` and approval checkpoint `07072fb` remain in history.
 - Approved design checkpoint: `c08871f`; approved artifact SHA-256 `ddeb69325d6b9621fe05de504f30356c4c0d7ec16d8b59fa4c9faf69184c1e99`.
 - Runner: GPT-5.6 Terra, high, user-selected. Session billing unavailable.
 - Evidence stage: local design/source inspection and notes validation only.
 
 ## Current Objective
 
-The ignored implementation-plan amendment was returned to organic-sync (receipt below). Stop before implementation. A later, separately authorized session may implement R1 only and must retain the remaining dependency order.
+The ignored implementation-plan amendment was returned to organic-sync (receipt below), and the H-DESIGN tree is now merged into `main`. Stop before implementation. A later, separately authorized session may implement R1 only and must retain the remaining dependency order.
 
 ## Current State
 
 - D1–D3/O1–O7 are approved. Authority: `docs/handoffs/2026-09-20-h-design-written-approval.md`; exact operating design: `docs/handoffs/2026-09-20-h-design-operational-definitions.md`.
 - The plan covers persistent slot/candidate/dispatch counters, ordinary-to-effort upgrade, strict scheduled close/late recovery/re-entry, indexed cooldown, exact/whole points, effective correction lineage, and staged logical commitments.
-- No source, fixture, database, deployment, push, paid evaluation, or sibling write occurred. The separate dirty Mac main checkout is untouched.
+- No source, fixture, database, deployment, push, or paid evaluation occurred. The former dirty main checkout is now reconciled and clean after the local merge.
 - Synthetic review SHA-256 remains `1b851fa03059c00838438a7bc8d677299da4e87f01e6010e483ce62e75afd936`; all 16 labels remain unchanged.
 
 ## Recent Changes
 
-Created the complete private plan and public-safe planning snapshot, then refreshed this handoff. Targeted source inspection recorded the current gaps: mutable rubric reads, retriable provider/job behavior, `/me` summing all runs, no close job, and float settlement. These are future changes, not implemented behavior. Returned the private amendment to organic-sync via Orca request `35fc0dfe-a7db-4c9f-a526-1d4df21d99c4`; receipt stages were `input_accepted` and `turn_started`, not application proof.
+Created the complete private plan and public-safe planning snapshot, then refreshed this handoff. Targeted source inspection recorded the current gaps: mutable rubric reads, retriable provider/job behavior, `/me` summing all runs, no close job, and float settlement. These are future changes, not implemented behavior. Returned the private amendment to organic-sync via Orca request `35fc0dfe-a7db-4c9f-a526-1d4df21d99c4`; receipt stages were `input_accepted` and `turn_started`, not application proof. The branch was merged locally into `main`; the prior Mac-setup note is retained in its dated snapshot/history.
 
 ## Known Issues / Watch List
 
@@ -51,6 +51,7 @@ Created the complete private plan and public-safe planning snapshot, then refres
 - Approval: `docs/handoffs/2026-09-20-h-design-written-approval.md`
 - Approved operating design: `docs/handoffs/2026-09-20-h-design-operational-definitions.md`
 - Planning snapshot: `docs/handoffs/2026-09-20-h-design-implementation-planning.md`
+- Merge snapshot: `docs/handoffs/2026-09-20-h-design-merged-to-main.md`
 - Private plan mirror: `docs/plans/h-design-implementation-plan-2026-09-20.md`
 - Current source: `packages/db/src/schema.ts`, `apps/api/src/jobs/score.ts`, `apps/api/src/scoring/run.ts`, `apps/api/src/bot/commands/{submit,me,link}.ts`, `packages/core/src/{score,settle}.ts`
 
@@ -60,7 +61,7 @@ Verified approval/design and synthetic-review hashes against `c08871f`; checked 
 
 ## Resume Checklist
 
-- Use this H-DESIGN worktree, not the dirty main checkout; inspect branch/status.
+- Use the main Hyphae checkout; H-DESIGN has been merged. Inspect branch/status before any new work.
 - Read the approval record before the historical proposal wording in the unchanged operational snapshot.
 - Read the public planning checkpoint and ignored private plan; keep approved design distinct from unimplemented behavior.
 - Confirm organic-sync received the amendment. Do not treat receipt acceptance as source implementation.
@@ -76,12 +77,13 @@ Verified approval/design and synthetic-review hashes against `c08871f`; checked 
 |---|---|---|
 | Complete private implementation plan | `docs/plans/h-design-implementation-plan-2026-09-20.md` | Ignored planning mirror; return to organic-sync |
 | Dated planning snapshot | `docs/handoffs/2026-09-20-h-design-implementation-planning.md` | Public-safe checkpoint |
+| Merge snapshot | `docs/handoffs/2026-09-20-h-design-merged-to-main.md` | Confirms local consolidation to main |
 | Canonical repo handoff | `docs/HANDOFF.md` | This file |
 
 ## Resume Prompt
 
 ```text
-Resume Hyphae on h-design-2026-09-19. D1–D3/O1–O7 are approved and the bounded implementation plan is complete; no implementation has begun. Preserve all 16 synthetic labels and the separate dirty main checkout.
+Resume Hyphae on main. D1–D3/O1–O7 are approved and the bounded implementation plan is complete; no implementation has begun. H-DESIGN is merged and the repo is clean. Preserve all 16 synthetic labels.
 
 Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-09-20-h-design-written-approval.md, docs/handoffs/2026-09-20-h-design-implementation-planning.md, docs/plans/h-design-implementation-plan-2026-09-20.md
 Model: GPT-5.6 Terra (high) — user-selected efficient runner for the first bounded implementation slice.
