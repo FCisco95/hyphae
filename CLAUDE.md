@@ -3,7 +3,7 @@
 Colosseum Crypto World's Fair entry (2026-09-14 → 2026-10-12). Solo build under the Organic/MYCEL umbrella. Public repo, MIT.
 
 ## Where the plan lives
-- **Canonical spec + plan (private, vault):** `~/Documents/cisco-brain/10 - PROJECTS/Organic/plans/2026-09-16-hyphae-design.md` and `2026-09-16-hyphae-implementation-plan.md`. Session handoff: `~/Documents/cisco-brain/_memory/HANDOFF.md`. Read these before planning or implementing.
+- **Canonical spec + plan (private, vault):** `~/Documents/cisco-brain/10 - PROJECTS/Organic/plans/2026-09-16-hyphae-design.md` and `2026-09-16-hyphae-implementation-plan.md`. Current repo handoff: `docs/HANDOFF.md`. Read these before planning or implementing.
 - **Local mirror:** `docs/plans/` (gitignored). Copy from the vault at session start if it is stale; never commit it. This repo is public; strategy and competitive reasoning stay out of it.
 - **Public build log:** `docs/BUILDLOG.md`, one entry per session (shipped · decision + one-line why · numbers · commits · next). Update it before ending a session. It is the script source for the weekly judge video and the final demo.
 
