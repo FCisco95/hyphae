@@ -2,6 +2,23 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-09-20 · R1 external review — changes requested
+
+**Reviewed locally:** exact reward-point helpers against approved O5 arithmetic and the R1 acceptance matrix. Credit gates, millisecond timing, fractions and aggregate rounding passed; one P2 defect remains: whole-claim values above the existing unsigned 64-bit range are accepted instead of rejected.
+**Decision:** keep R1 unaccepted pending a bounded overflow guard and regression tests. This review changed documentation only; no source fixes or integration were made.
+**Numbers:** 39 core tests passing · typecheck and focused Biome passed · independent arithmetic probes passed except the reproduced claim-range rejection defect · 0 paid evaluation calls or fixture runs. Actual review runner: GPT-6 Astra, xhigh, verified from session metadata; billing unavailable.
+**Commits:** reviewed implementation: `9e9558c` (`feat(core): add exact reward point primitives`). This review record documents a known follow-up; it does not mark R1 accepted.
+**Next:** resolve R1-01 in `docs/handoffs/2026-09-20-r1-external-review.md` under a separately scoped fix, then re-review. R2 and all integration/payment gates remain closed.
+
+## 2026-09-20 · R1 — exact reward-point arithmetic
+
+**Shipped locally:** `packages/core` now has bigint-only reward-point helpers. They preserve raw quality, credited quality, exact point units, and whole claim points as distinct values; apply hard-zero/AI-cap/floor credit rules before integer-millisecond timing and a basis-point multiplier; aggregate exact units; and round half-up only once for whole points.
+**Decision:** R1 is deliberately a pure core boundary. No existing settlement or score caller was changed, so the legacy float settlement path is not represented as O5-conforming behavior.
+**Review:** internal review tightened pure-input guards for a no-task timestamp, unknown flags, and non-boolean AI metadata; no arithmetic or scope defect remained.
+**Numbers:** 39 core tests passing · 7 new reward-point cases · 0 model calls, fixtures, database changes, deployments, payments, roots, or claims. Verified 85 eligible at full timing → 255; 85 at 27h → 127.5 exact / 128 whole alone; two 0.5-point contributions → 1 whole point; and the 47h59m 60-quality fraction.
+**Commits:** `9e9558c` (`feat(core): add exact reward point primitives`).
+**Next:** review R1 only. Do not start R2 or wire these helpers into DB/API/settlement callers until that review and the separate dependency gates.
+
 ## 2026-09-19 · Day 6 of 28 — contribution quality rules
 
 **Shipped locally:** candidate rubric 1.3.0 now explicitly grades explanations, relevant questions, original perspectives, and constructive criticism alongside praise. Coin mentions and engagement metrics earn no quality bonus. Honest holder statements and reward disclosures do not themselves lower quality. Nine synthetic review scenarios document the intended distinctions.
