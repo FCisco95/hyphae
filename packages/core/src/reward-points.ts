@@ -1,6 +1,7 @@
 export const BASIS_POINTS = 10_000n;
 export const POINT_UNITS_PER_POINT = 100_000_000n;
 export const REWARD_CREDIT_FLOOR = 60n;
+export const MAX_WHOLE_POINTS = (1n << 64n) - 1n;
 
 declare const rawQualityBrand: unique symbol;
 declare const creditedQualityBrand: unique symbol;
@@ -146,5 +147,9 @@ export function aggregatePointUnits(values: readonly PointUnits[]): PointUnits {
 
 export function wholePoints(pointUnits: PointUnits): WholePoints {
   const units = requireNonNegative(pointUnits, "pointUnits");
-  return roundHalfUp(units, POINT_UNITS_PER_POINT) as WholePoints;
+  const points = roundHalfUp(units, POINT_UNITS_PER_POINT);
+  if (points > MAX_WHOLE_POINTS) {
+    throw new RangeError("wholePoints must fit in an unsigned 64-bit claim value");
+  }
+  return points as WholePoints;
 }

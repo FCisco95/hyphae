@@ -4,7 +4,9 @@ import {
   BASIS_POINTS,
   type CreditInput,
   creditedQuality,
+  MAX_WHOLE_POINTS,
   POINT_UNITS_PER_POINT,
+  type PointUnits,
   rawQuality,
   rewardPointUnits,
   timingBps,
@@ -91,6 +93,25 @@ describe("reward points", () => {
     expect(halfPoint).toBe(50_000_000n);
     expect(wholePoints(halfPoint)).toBe(1n);
     expect(wholePoints(aggregatePointUnits([halfPoint, halfPoint]))).toBe(1n);
+  });
+
+  it("accepts the largest unsigned 64-bit whole claim and rejects overflow", () => {
+    const maximumClaimUnits = (MAX_WHOLE_POINTS * POINT_UNITS_PER_POINT) as PointUnits;
+    expect(wholePoints(maximumClaimUnits)).toBe(MAX_WHOLE_POINTS);
+
+    const roundingThreshold = (maximumClaimUnits + POINT_UNITS_PER_POINT / 2n) as PointUnits;
+    expect(wholePoints((roundingThreshold - 1n) as PointUnits)).toBe(MAX_WHOLE_POINTS);
+    expect(() => wholePoints(roundingThreshold)).toThrow(RangeError);
+  });
+
+  it("rejects aggregate overflow from individually valid contributions", () => {
+    const individual = rewardPointUnits({
+      credit: credit(100n),
+      timing: { taskOpensAtMs: 0n, submittedAtMs: 0n, ...MYCEL_TIMING },
+      multiplierBps: (1n << 63n) * 100n,
+    }).pointUnits;
+    expect(wholePoints(individual)).toBe(1n << 63n);
+    expect(() => wholePoints(aggregatePointUnits([individual, individual]))).toThrow(RangeError);
   });
 
   it("rejects unsupported quality, timing, and multiplier bounds", () => {
