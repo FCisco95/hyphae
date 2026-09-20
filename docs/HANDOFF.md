@@ -12,7 +12,8 @@ summary: R1-01 whole-claim overflow guard is fixed and locally verified; R1 awai
 ## Metadata
 
 - Last Updated: 2026-09-20.
-- Base: `main` includes `3f9a5dd` (`fix(core): reject overflowing whole point claims`); R1 source/tests/export and the bounded R1-01 fix are committed locally.
+- Branch: `hackathon/r1-exact-reward-points`, pushed to `origin`; [PR #1](https://github.com/FCisco95/hyphae/pull/1) is open against `main` with the local H-DESIGN and R1 history.
+- Base: `3f9a5dd` (`fix(core): reject overflowing whole point claims`) is included in the branch; R1 source/tests/export and the bounded R1-01 fix are committed and published for review.
 - Actual review runner: **GPT-6 Astra (`gpt-6-astra`), xhigh**, verified from this session's local `turn_context` metadata. This differs from the prior implementation handoff's requested GPT-5.6 Terra/high runner. No model switch or sub-agents; billing unavailable.
 - Authority: `docs/handoffs/2026-09-20-h-design-written-approval.md`; approved O1–O7 artifact remains byte-identical.
 - Canonical queue consulted: `cisco-brain/10 - PROJECTS/Organic/plans/2026-09-16-hyphae-implementation-plan.md` (private; unchanged).
@@ -32,7 +33,7 @@ Complete an independent R1 re-review before accepting R1. R1-01 is fixed in `3f9
 
 ## Recent Changes
 
-`3f9a5dd` resolves R1-01 with a post-rounding u64 guard and three boundary regressions. This checkpoint refreshes the public build log and handoff; the external-review snapshot remains historical evidence of the discovered defect. No deployment, root, claim, fixture run, paid evaluation or payment occurred.
+`3f9a5dd` resolves R1-01 with a post-rounding u64 guard and three boundary regressions. `9e9558c`, `2ce7c93`, `3f9a5dd`, and `bbaf020` are published with the earlier H-DESIGN commits on `hackathon/r1-exact-reward-points`; [PR #1](https://github.com/FCisco95/hyphae/pull/1) is open. This checkpoint refreshes the public build log and handoff; the external-review snapshot remains historical evidence of the discovered defect. No deployment, root, claim, fixture run, paid evaluation or payment occurred.
 
 ## Validation
 
@@ -53,7 +54,7 @@ Complete an independent R1 re-review before accepting R1. R1-01 is fixed in `3f9
 
 ## Next Actions
 
-1. Perform an independent R1 re-review of `3f9a5dd`; accept R1 only if the whole-claim boundary and existing O5 checks pass.
+1. Obtain an independent R1 re-review of `3f9a5dd` in [PR #1](https://github.com/FCisco95/hyphae/pull/1); accept R1 only if the whole-claim boundary and existing O5 checks pass.
 2. Organic-sync post-ship should record **R1-01 fixed locally — independent re-review pending**, linking the review snapshot and preserving task IDs. No sibling/private queue was edited and no receipt was sent; canonical application is unverified.
 3. Do not begin R2 without separately scoped authorization after R1 acceptance. Preserve all 16 labels and H-FIXTURES, H-CONTRACT, fee/funding/payment, campaign, Sentinel adoption, wallet migration and optional sqrt gates.
 
@@ -82,6 +83,7 @@ Complete an independent R1 re-review before accepting R1. R1-01 is fixed in `3f9
 | External R1 review / dated snapshot | `docs/handoffs/2026-09-20-r1-external-review.md` | Historical defect, reproduction, coverage and source fingerprints |
 | Current handoff | `docs/HANDOFF.md` | Organic-sync receipt; review checkpoint |
 | Public build log | `docs/BUILDLOG.md` | Links implementation and R1-01 fix commits |
+| GitHub review | [PR #1](https://github.com/FCisco95/hyphae/pull/1) | Open against `main`; no merge or deployed-behavior evidence |
 
 No credentials, deployed resources or scheduled jobs created.
 
