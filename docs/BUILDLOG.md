@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-09-20 · R1-01 — whole-claim range guard
+
+**Fixed locally:** `wholePoints()` now rejects a result above the existing unsigned 64-bit claim range, after exact-unit aggregation and half-up rounding. Exact scaled point units remain arbitrary precision; nothing is clamped.
+**Decision:** make the supported bound explicit at claim conversion, because applying it earlier would incorrectly reject valid aggregation weights. R1 remains pending independent re-review; R2 is still gated.
+**Numbers:** 41 core tests passing · typecheck and focused Biome passed · maximum claim, half-up threshold, and aggregate-overflow probes passed · 0 paid evaluation calls, fixture runs, deployments, payments, roots, or claims.
+**Commits:** `3f9a5dd` (`fix(core): reject overflowing whole point claims`). This is part of today's GitHub push set.
+**Next:** perform the bounded R1 re-review, then decide whether to accept R1. Do not begin R2 before that decision.
+
 ## 2026-09-20 · R1 external review — changes requested
 
 **Reviewed locally:** exact reward-point helpers against approved O5 arithmetic and the R1 acceptance matrix. Credit gates, millisecond timing, fractions and aggregate rounding passed; one P2 defect remains: whole-claim values above the existing unsigned 64-bit range are accepted instead of rejected.
