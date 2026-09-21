@@ -1,18 +1,18 @@
 ---
 date: 2026-09-21
-summary: R1 accepted on 2026-09-21 after independent re-review of the R1-01 overflow guard plus a native test/typecheck/lint re-run. PR #1 stays unmerged; R2–R6 remain gated.
+summary: R1 accepted on 2026-09-21 after independent re-review of the R1-01 overflow guard plus a native test/typecheck/lint re-run. PR #1 merged to main; R2–R6 remain gated.
 ---
 
 # Hyphae H-DESIGN handoff
 
 ## TL;DR
 
-**R1 status: ACCEPTED (2026-09-21).** The bounded R1-01 fix in `3f9a5dd` passed an independent re-review (verdict ACCEPT, no blocking findings) and the native gate was re-run afterwards: 41 tests, typecheck and Biome all green. Cisco accepted the verdict in-session. PR #1 is still open and unmerged. Do not begin R2 without separately scoped authorization.
+**R1 status: ACCEPTED (2026-09-21).** The bounded R1-01 fix in `3f9a5dd` passed an independent re-review (verdict ACCEPT, no blocking findings) and the native gate was re-run afterwards: 41 tests, typecheck and Biome all green. Cisco accepted the verdict in-session and PR #1 was merged to `main` on 2026-09-21. Resume on `main`. Do not begin R2 without separately scoped authorization.
 
 ## Metadata
 
 - Last Updated: 2026-09-21.
-- Branch: `hackathon/r1-exact-reward-points`, pushed to `origin`; PR #1 on `FCisco95/hyphae` is open against `main` with the local H-DESIGN and R1 history.
+- Branch: `main`. PR #1 (`hackathon/r1-exact-reward-points`) merged into `main` on 2026-09-21 with the H-DESIGN and R1 history; the feature branch is finished.
 - Base: `3f9a5dd` (`fix(core): reject overflowing whole point claims`) is included in the branch; R1 source/tests/export and the bounded R1-01 fix are committed and published.
 - Re-review runner: Codex CLI session on Windows, 2026-09-21. Model/effort metadata could not be verified because the session's sandbox failed (`helper_unknown_error: apply deny-read ACLs`); its checks were type-erased JavaScript probes in isolated V8, not native Vitest.
 - Native gate re-run: Claude Code (Fable 5.1) session on Windows, 2026-09-21, from a clean checkout of `2fd2470` plus this handoff edit. This handoff was saved from that session because the Codex sandbox could not write files.
@@ -23,7 +23,7 @@ summary: R1 accepted on 2026-09-21 after independent re-review of the R1-01 over
 
 ## Current Objective
 
-R1 is accepted. Next: record the acceptance through organic-sync post-ship, decide whether to merge PR #1 (Cisco's call, manual gate, no CI), and wait for separately scoped R2 authorization.
+R1 is accepted and merged. Next: record the acceptance through organic-sync post-ship and wait for separately scoped R2 authorization.
 
 ## Current State
 
@@ -73,7 +73,7 @@ R1 is accepted. Next: record the acceptance through organic-sync post-ship, deci
 ## Next Actions
 
 1. Organic-sync post-ship should record **R1 accepted 2026-09-21**, linking `docs/handoffs/2026-09-21-r1-accepted.md` and the review snapshot, preserving task IDs. No sibling/private queue was edited and no receipt was sent; canonical application is unverified.
-2. Cisco decides PR #1 merge. Nothing blocks it technically; it is a manual gate.
+2. PR #1 merged 2026-09-21 (manual gate, no CI). Nothing further.
 3. Do not begin R2 without separately scoped authorization. Preserve all 16 labels and H-FIXTURES, H-CONTRACT, fee/funding/payment, campaign, Sentinel adoption, wallet migration and optional sqrt gates.
 
 ## Quick Reference
@@ -103,7 +103,7 @@ R1 is accepted. Next: record the acceptance through organic-sync post-ship, deci
 | Current handoff | `docs/HANDOFF.md` | Organic-sync receipt; acceptance checkpoint |
 | External R1 review / dated snapshot | `docs/handoffs/2026-09-20-r1-external-review.md` | Historical defect, reproduction, coverage and source fingerprints |
 | Public build log | `docs/BUILDLOG.md` | Links implementation and R1-01 fix commits |
-| GitHub review | PR #1 on `FCisco95/hyphae` | Open against `main`; no merge or deployed-behavior evidence |
+| GitHub review | PR #1 on `FCisco95/hyphae` | Merged into `main` 2026-09-21; no deployed-behavior evidence |
 
 No credentials, deployed resources or scheduled jobs created.
 
@@ -114,7 +114,7 @@ Use the following prompt only after R2 has been separately scoped and authorized
 ## Next-session prompt
 
 ```text
-Resume Hyphae on `hackathon/r1-exact-reward-points` at the tip after `2fd2470`. Not `main`, and not `sync/mac-handoff-2026-09-19` — a stale SessionStart overlay may still name the latter. R1 is ACCEPTED as of 2026-09-21 (see docs/HANDOFF.md and docs/handoffs/2026-09-21-r1-accepted.md). PR #1 is open and unmerged; merge is Cisco's manual call, the repo has no CI. R2–R6 remain unstarted and gated.
+Resume Hyphae on `main` at the PR #1 merge commit. Not `hackathon/r1-exact-reward-points` (merged, finished) and not `sync/mac-handoff-2026-09-19` — a stale SessionStart overlay may still name either. R1 is ACCEPTED and merged as of 2026-09-21 (see docs/HANDOFF.md and docs/handoffs/2026-09-21-r1-accepted.md). The repo has no CI. R2–R6 remain unstarted and gated.
 
 Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-09-21-r1-accepted.md, docs/handoffs/2026-09-20-h-design-operational-definitions.md, packages/core/src/reward-points.ts, packages/core/src/reward-points.test.ts, packages/core/src/index.ts
 Model: Opus-class runner (xhigh) for R2 design/implementation; record actual session metadata.
