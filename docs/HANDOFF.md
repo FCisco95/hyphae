@@ -1,6 +1,6 @@
 ---
 date: 2026-09-22
-summary: R2 (pinned reward configuration and epoch admission) reviewed and ACCEPTED at bcdb328 on feat/r2-pinned-config after Codex's two P2 findings plus one same-class finding were fixed test-first; native gate green; migration generated but not applied; no production caller. PR #2 merge waits on Cisco's yes. R3–R6 gated.
+summary: R2 (pinned reward configuration and epoch admission) reviewed ACCEPT at bcdb328 and merged to main at 336d48d on Cisco's in-session yes (2026-09-22) after Codex's two P2 findings plus one same-class finding were fixed test-first; native gate green; migration generated but not applied; no production caller. R3–R6 gated.
 ---
 
 # Hyphae H-DESIGN handoff
@@ -9,12 +9,12 @@ summary: R2 (pinned reward configuration and epoch admission) reviewed and ACCEP
 
 **R1 status: ACCEPTED (2026-09-21).** PR #1 merged to `main` at `aebb147`.
 
-**R2 status: REVIEWED, ACCEPT, AWAITING CISCO'S MERGE YES (2026-09-22).** Implementation `ddb2776` plus three review-session commits (`37a2cca` Codex P2 fixes, `e81fa98` foreign-member guard, `bcdb328` formatting) on `feat/r2-pinned-config`. Independent review verdict ACCEPT with six non-blocking observations, recorded in `docs/handoffs/2026-09-22-r2-review.md` and as a review comment on PR #2. Production behavior unchanged: `/submit`, the score job and `/me` untouched, migration 0003 generated but **not applied to Neon**, nothing calls admission. Next: Cisco says yes → merge PR #2 → organic-sync post-ship → R3 scope proposal.
+**R2 status: MERGED (2026-09-22).** PR #2 merged to `main` at `336d48d` on Cisco's in-session yes; merge tree identical to the reviewed `d24ceef`. Implementation `ddb2776` plus three review-session commits (`37a2cca` Codex P2 fixes, `e81fa98` foreign-member guard, `bcdb328` formatting). Independent review verdict ACCEPT with six non-blocking observations, recorded in `docs/handoffs/2026-09-22-r2-review.md` and as a review comment on PR #2. Production behavior unchanged: `/submit`, the score job and `/me` untouched, migration 0003 generated but **not applied to Neon**, nothing calls admission. Next: organic-sync post-ship → R3 scope proposal.
 
 ## Metadata
 
 - Last Updated: 2026-09-22 (review session).
-- Branch: `feat/r2-pinned-config` at `bcdb328` = `origin`; `main` at `aebb147`. PR #2 open, mergeable, head `bcdb328`.
+- Branch: `main` at `336d48d` = `origin/main` (merge of PR #2, head `d24ceef`). `feat/r2-pinned-config` deleted locally and on origin. This docs refresh rides on a short `docs/r2-merged` branch (PR #3).
 - Runner (this session): Claude Code, Fable 5.1 (`claude-fable-5-1`), Windows, 2026-09-22. Effort not readable from inside the session; requested xhigh. Wrote only under `apps/api/src/rewards`, `apps/api/scripts`, `docs/handoffs`, `docs/HANDOFF.md`. No Neon command, deploy, model call, fixture run, settlement, root, claim, Sentinel or vault edit. `docs/BUILDLOG.md` not touched (outside the session's writable list).
 - Runner (implementation, 2026-09-22 earlier): Claude Code, Fable 5.1, effort xhigh; see `docs/handoffs/2026-09-22-r2-implemented.md`.
 - Authority: `docs/handoffs/2026-09-20-h-design-written-approval.md` (O1–O7); R2 scope authorization given in-session 2026-09-22 against the proposal document; Cisco's 2026-09-22 authorization covers the Codex P2 fixes.
@@ -23,7 +23,7 @@ summary: R2 (pinned reward configuration and epoch admission) reviewed and ACCEP
 
 ## Current Objective
 
-Merge PR #2 on Cisco's yes. Then organic-sync post-ship records R1 accepted, R2 scoped, implemented, reviewed and merged, and the proposed Week 2–4 calendar rebaseline (last section of the proposal; not applied). Then an R3 scope proposal.
+Organic-sync post-ship: record R1 accepted, R2 scoped, implemented, reviewed and merged, and the proposed Week 2–4 calendar rebaseline (last section of the proposal; not applied). Then an R3 scope proposal for written authorization.
 
 ## Current State
 
@@ -36,7 +36,7 @@ Merge PR #2 on Cisco's yes. Then organic-sync post-ship records R1 accepted, R2 
 
 ## Recent Changes
 
-2026-09-22 (review session): Codex GitHub review of `7e43f80` raised two P2s (offset-free `--activate-at`; task lookup by id only). Fixed test-first in `37a2cca`. Review found the same hole for `memberId`; fixed test-first in `e81fa98`, formatting follow-up `bcdb328`. Independent review of the full diff: ACCEPT, six non-blocking observations for R3/R5. Review comment posted on PR #2 (review id 5279752308). Handoff refreshed.
+2026-09-22 (review session): Codex GitHub review of `7e43f80` raised two P2s (offset-free `--activate-at`; task lookup by id only). Fixed test-first in `37a2cca`. Review found the same hole for `memberId`; fixed test-first in `e81fa98`, formatting follow-up `bcdb328`. Independent review of the full diff: ACCEPT, six non-blocking observations for R3/R5. Review comment posted on PR #2 (review id 5279752308). Cisco said yes in-session; PR #2 merged to `main` at `336d48d` (merge commit, branch deleted, merge tree identical to `d24ceef`).
 
 2026-09-22 (implementation session): R2 scope proposal (`a6028b3`); Cisco authorized all five decisions; R2 implemented test-first (`ddb2776`); docs checkpoint (`7e43f80`, `e184d8b`); PR #2 opened.
 
@@ -69,9 +69,9 @@ Merge PR #2 on Cisco's yes. Then organic-sync post-ship records R1 accepted, R2 
 
 ## Next Actions
 
-1. Cisco: yes/no to merging PR #2 at `bcdb328`. On yes: merge (no CI; native gate is the evidence), confirm `main` fast-forwards, delete the branch.
-2. Organic-sync post-ship: record R1 accepted 2026-09-21, R2 scoped, implemented and reviewed 2026-09-22 (link the proposal, `2026-09-22-r2-implemented.md`, `2026-09-22-r2-review.md`), the six observations as R3/R5 inputs, and the proposed calendar rebaseline as a proposal. Canonical application unverified.
-3. Decide whether `docs/BUILDLOG.md` gets a 2026-09-22 review line (not written this session).
+1. Merge PR #3 (`docs/r2-merged`, this handoff refresh only). Docs-only; Cisco's call.
+2. Organic-sync post-ship: record R1 accepted 2026-09-21, R2 scoped, implemented, reviewed and merged 2026-09-22 at `336d48d` (link the proposal, `2026-09-22-r2-implemented.md`, `2026-09-22-r2-review.md`), the six observations as R3/R5 inputs, and the proposed calendar rebaseline as a proposal. Canonical application unverified.
+3. Decide whether `docs/BUILDLOG.md` gets a 2026-09-22 review-and-merge line (not written this session; outside the writable list).
 4. R3 (slots, candidates, dispatch fencing, nomination adapter, `/submit` rewire) needs its own scope document and written authorization. No settlement, root, claim, fixture or paid run.
 
 ## Quick Reference
@@ -91,7 +91,7 @@ Merge PR #2 on Cisco's yes. Then organic-sync post-ship records R1 accepted, R2 
 
 ## Resume Checklist
 
-- `git checkout feat/r2-pinned-config` (or `main` once merged) and confirm `bcdb328` is present.
+- `git checkout main && git pull --ff-only` and confirm `336d48d` is present. `feat/r2-pinned-config` no longer exists.
 - Run the native gate before trusting anything: `pnpm -r test`, `pnpm -r typecheck`, `pnpm exec biome check .` (check the exit code).
 - Stay within explicit authorization; no R3–R6, Neon migration apply, callers, fixtures/paid runs, settlement, root or payment work.
 
@@ -102,14 +102,15 @@ Merge PR #2 on Cisco's yes. Then organic-sync post-ship records R1 accepted, R2 
 | R2 review record | `docs/handoffs/2026-09-22-r2-review.md` | ACCEPT at `bcdb328`; fixes table, evidence, six observations |
 | PR #2 review comment | https://github.com/FCisco95/hyphae/pull/2#pullrequestreview-5279752308 | Same verdict, condensed |
 | P2 fixes + tests | `37a2cca`, `e81fa98`, `bcdb328` | `parseActivationTime`, community-scoped task and member lookups |
-| Current handoff | `docs/HANDOFF.md` | This file |
+| PR #2 merge | `main` `336d48d` | Merge commit on Cisco's yes; tree = `d24ceef` |
+| Current handoff | `docs/HANDOFF.md` | This file, via PR #3 (`docs/r2-merged`) |
 
-No credentials, deployed resources or scheduled jobs created. Migration not applied. Nothing merged.
+No credentials, deployed resources or scheduled jobs created. Migration not applied.
 
 ## Next-session prompt
 
 ```text
-Resume Hyphae. R2 (pinned reward configuration and admission) is reviewed and ACCEPTED at bcdb328 on feat/r2-pinned-config (PR #2 → main, main at aebb147). If Cisco has said yes to the merge, merge PR #2 first and confirm main; otherwise do not merge. The repo has no CI; the native gate (pnpm -r test, pnpm -r typecheck, biome check . with exit code) is the only evidence. Migration 0003 is generated, not applied to Neon.
+Resume Hyphae. R2 (pinned reward configuration and admission) is merged to main at 336d48d (PR #2, reviewed ACCEPT at bcdb328). Branch feat/r2-pinned-config is gone; work from main. PR #3 (docs/r2-merged) is a docs-only handoff refresh; merge it if still open. The repo has no CI; the native gate (pnpm -r test, pnpm -r typecheck, biome check . with exit code) is the only evidence. Migration 0003 is generated, not applied to Neon.
 
 Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-09-22-r2-review.md, docs/handoffs/2026-09-22-r2-implemented.md, docs/handoffs/2026-09-21-r2-scope-proposal.md, apps/api/src/rewards/config.ts, apps/api/src/rewards/intake.ts
 Model: Fable 5.1 xhigh or Opus-class xhigh; record actual session metadata.
