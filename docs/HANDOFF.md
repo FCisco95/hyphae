@@ -1,18 +1,21 @@
 ---
-date: 2026-09-21
-summary: R1 accepted on 2026-09-21 after independent re-review of the R1-01 overflow guard plus a native test/typecheck/lint re-run. PR #1 merged to main; R2–R6 remain gated.
+date: 2026-09-22
+summary: R1 accepted and merged (PR #1, main aebb147). R2 scope proposal written 2026-09-22 and awaiting Cisco's written authorization; nothing implemented. R3–R6 remain gated.
 ---
 
 # Hyphae H-DESIGN handoff
 
 ## TL;DR
 
-**R1 status: ACCEPTED (2026-09-21).** The bounded R1-01 fix in `3f9a5dd` passed an independent re-review (verdict ACCEPT, no blocking findings) and the native gate was re-run afterwards: 41 tests, typecheck and Biome all green. Cisco accepted the verdict in-session and PR #1 was merged to `main` on 2026-09-21. Resume on `main`. Do not begin R2 without separately scoped authorization.
+**R1 status: ACCEPTED (2026-09-21).** The bounded R1-01 fix in `3f9a5dd` passed an independent re-review (verdict ACCEPT, no blocking findings) and the native gate was re-run afterwards: 41 tests, typecheck and Biome all green. PR #1 merged to `main` at `aebb147` on 2026-09-21.
+
+**R2 status: SCOPED, NOT AUTHORIZED (2026-09-22).** The bounded R2 scope is written in `docs/handoffs/2026-09-21-r2-scope-proposal.md`: additive schema (three tables, one enum, two nullable columns), `apps/api/src/rewards/config.ts` and `rewards/intake.ts`, `set-rubric.ts` as a proposal producer, cooldown indexing with the E11/E12→E13 example, five acceptance tests on PGlite, explicit exclusions. It ends with five yes/no decisions. No code, schema or migration exists yet. Implementation goes on `feat/r2-pinned-config` only after Cisco answers yes to all five.
 
 ## Metadata
 
-- Last Updated: 2026-09-21.
-- Branch: `main`. PR #1 (`hackathon/r1-exact-reward-points`) merged into `main` on 2026-09-21 with the H-DESIGN and R1 history; the feature branch is finished.
+- Last Updated: 2026-09-22.
+- Branch: `main` at `aebb147` = `origin/main`. PR #1 (`hackathon/r1-exact-reward-points`) merged 2026-09-21; that branch is finished. R2 docs live on `feat/r2-pinned-config` (docs-only until authorized).
+- R2 scoping runner: Claude Code, Fable 5.1 (`claude-fable-5-1`), effort xhigh, Windows, 2026-09-22. Read-only against the repo and the private plan; no DB command, model call, deploy or push.
 - Base: `3f9a5dd` (`fix(core): reject overflowing whole point claims`) is included in the branch; R1 source/tests/export and the bounded R1-01 fix are committed and published.
 - Re-review runner: Codex CLI session on Windows, 2026-09-21. Model/effort metadata could not be verified because the session's sandbox failed (`helper_unknown_error: apply deny-read ACLs`); its checks were type-erased JavaScript probes in isolated V8, not native Vitest.
 - Native gate re-run: Claude Code (Fable 5.1) session on Windows, 2026-09-21, from a clean checkout of `2fd2470` plus this handoff edit. This handoff was saved from that session because the Codex sandbox could not write files.
@@ -23,7 +26,7 @@ summary: R1 accepted on 2026-09-21 after independent re-review of the R1-01 over
 
 ## Current Objective
 
-R1 is accepted and merged. Next: record the acceptance through organic-sync post-ship and wait for separately scoped R2 authorization.
+R1 is accepted and merged. R2 is scoped and waiting for written authorization (five yes/no decisions in the proposal). Organic-sync post-ship still needs to record the R1 acceptance and the R2 proposal, plus the proposed Week 2–4 calendar rebaseline in the proposal's last section.
 
 ## Current State
 
@@ -72,12 +75,13 @@ R1 is accepted and merged. Next: record the acceptance through organic-sync post
 
 ## Next Actions
 
-1. Organic-sync post-ship should record **R1 accepted 2026-09-21**, linking `docs/handoffs/2026-09-21-r1-accepted.md` and the review snapshot, preserving task IDs. No sibling/private queue was edited and no receipt was sent; canonical application is unverified.
-2. PR #1 merged 2026-09-21 (manual gate, no CI). Nothing further.
-3. Do not begin R2 without separately scoped authorization. Preserve all 16 labels and H-FIXTURES, H-CONTRACT, fee/funding/payment, campaign, Sentinel adoption, wallet migration and optional sqrt gates.
+1. Cisco answers the five decisions in `docs/handoffs/2026-09-21-r2-scope-proposal.md`. All yes = R2 authorized on `feat/r2-pinned-config` (schema + migration generated, config/intake modules, set-rubric proposal producer, PGlite tests; migration not applied to Neon). Any no = revise the proposal, no partial build.
+2. Organic-sync post-ship should record **R1 accepted 2026-09-21** and **R2 scoped 2026-09-22**, linking `docs/handoffs/2026-09-21-r1-accepted.md` and the R2 proposal, and record the proposed calendar rebaseline (proposal, not applied). Canonical application is unverified.
+3. Preserve all 16 labels and H-FIXTURES, H-CONTRACT, fee/funding/payment, campaign, Sentinel adoption, wallet migration and optional sqrt gates. No R3–R6, settlement, root, claim, fixture or paid run.
 
 ## Quick Reference
 
+- R2 scope proposal (awaiting authorization): `docs/handoffs/2026-09-21-r2-scope-proposal.md`
 - Acceptance snapshot: `docs/handoffs/2026-09-21-r1-accepted.md`
 - Review: `docs/handoffs/2026-09-20-r1-external-review.md`
 - Implementation snapshot: `docs/handoffs/2026-09-20-r1-exact-reward-points.md`
@@ -109,16 +113,16 @@ No credentials, deployed resources or scheduled jobs created.
 
 ## Resume Prompt
 
-Use the following prompt only after R2 has been separately scoped and authorized.
+Use the following prompt after Cisco has answered the R2 proposal.
 
 ## Next-session prompt
 
 ```text
-Resume Hyphae on `main` at the PR #1 merge commit. Not `hackathon/r1-exact-reward-points` (merged, finished) and not `sync/mac-handoff-2026-09-19` — a stale SessionStart overlay may still name either. R1 is ACCEPTED and merged as of 2026-09-21 (see docs/HANDOFF.md and docs/handoffs/2026-09-21-r1-accepted.md). The repo has no CI. R2–R6 remain unstarted and gated.
+Resume Hyphae on `feat/r2-pinned-config` (branched from `main` at `aebb147`). Not `hackathon/r1-exact-reward-points` (merged, finished) and not `sync/mac-handoff-2026-09-19`. R1 is ACCEPTED and merged. R2 is scoped in docs/handoffs/2026-09-21-r2-scope-proposal.md and waits for five yes/no answers. The repo has no CI; the native gate (pnpm test, pnpm typecheck, biome check .) is the only evidence.
 
-Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-09-21-r1-accepted.md, docs/handoffs/2026-09-20-h-design-operational-definitions.md, packages/core/src/reward-points.ts, packages/core/src/reward-points.test.ts, packages/core/src/index.ts
-Model: Opus-class runner (xhigh) for R2 design/implementation; record actual session metadata.
-Skills: handoff-memory, andrej-karpathy-skills:karpathy-guidelines, handoff.
+Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-09-21-r2-scope-proposal.md, docs/handoffs/2026-09-20-h-design-operational-definitions.md, packages/db/src/schema.ts, apps/api/scripts/set-rubric.ts, packages/core/src/reward-points.ts
+Model: Fable 5.1 xhigh (or Opus-class xhigh); record actual session metadata.
+Skills: handoff-memory, superpowers:test-driven-development, handoff.
 
-Do not start R2, callers/DB/API integration, fixtures/paid runs or settlement without an explicit R2 scope from Cisco in this session. If none is given, stop after confirming the branch and handoff state.
+If Cisco's written answer is yes to all five decisions, implement R2 exactly as proposed: schema + generated migration (not applied to Neon), rewards/config.ts, rewards/intake.ts, set-rubric proposal producer, reward-intake pause script, PGlite tests; keep R1 untouched; run the native gate; open a PR. Otherwise revise the proposal and stop. No R3–R6, settlement, root, claim, fixture or paid run.
 ```
