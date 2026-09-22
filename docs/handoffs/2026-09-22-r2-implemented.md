@@ -55,4 +55,4 @@ Watched fail first: `config.test.ts` and `intake.test.ts` both failed on missing
 
 ## Next
 
-Independent review of PR on `FCisco95/hyphae` (branch `feat/r2-pinned-config`), then merge. R3 needs its own scope and written authorization.
+Independent review of PR #2 on `FCisco95/hyphae` (branch `feat/r2-pinned-config`), then merge. R3 needs its own scope and written authorization.

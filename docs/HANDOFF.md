@@ -14,7 +14,7 @@ summary: R2 (pinned reward configuration and epoch admission) implemented on fea
 ## Metadata
 
 - Last Updated: 2026-09-22.
-- Branch: `feat/r2-pinned-config` from `main` `aebb147`. Commits: `a6028b3` (proposal docs), `ddb2776` (implementation + tests), plus this docs checkpoint. PR to `main` opened from this session; see the build log for the number.
+- Branch: `feat/r2-pinned-config` from `main` `aebb147`. Commits: `a6028b3` (proposal docs), `ddb2776` (implementation + tests), plus this docs checkpoint. PR #2 to `main` opened from this session.
 - Runner: Claude Code, Fable 5.1 (`claude-fable-5-1`), effort xhigh, Windows, 2026-09-22. Read the repo and the private plan; wrote only under `docs/`, `packages/db`, `apps/api/src/rewards`, `apps/api/scripts`, `apps/api/package.json`, `pnpm-lock.yaml`. No Neon command, deploy, model call, fixture run or vault edit.
 - Authority: `docs/handoffs/2026-09-20-h-design-written-approval.md` (O1–O7); R2 scope authorization given in-session 2026-09-22 against the proposal document.
 - Canonical queue: `cisco-brain/10 - PROJECTS/Organic/plans/2026-09-16-hyphae-implementation-plan.md` (private; unchanged this session).
@@ -63,7 +63,7 @@ Get R2 reviewed and merged. Then organic-sync post-ship records R1 accepted, R2 
 
 ## Next Actions
 
-1. Independent review of the R2 PR (`feat/r2-pinned-config` → `main`), focus: lock/clock ordering in `withCommunityLock`, materialization loop, admission guards, migration SQL. Merge on ACCEPT.
+1. Independent review of PR #2 (`feat/r2-pinned-config` → `main`), focus: lock/clock ordering in `withCommunityLock`, materialization loop, admission guards, migration SQL. Merge on ACCEPT.
 2. Organic-sync post-ship: record R1 accepted 2026-09-21, R2 scoped and implemented 2026-09-22 (link the proposal and `docs/handoffs/2026-09-22-r2-implemented.md`), and the proposed calendar rebaseline as a proposal. Canonical application unverified.
 3. R3 (slots, candidates, dispatch fencing, nomination adapter, `/submit` rewire) needs its own scope document and written authorization. No settlement, root, claim, fixture or paid run.
 
