@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   bigint,
   index,
@@ -24,6 +25,8 @@ export const communities = pgTable("communities", {
   rubric: jsonb("rubric").notNull(),
   publisherPubkey: text("publisher_pubkey"),
   chainAddress: text("chain_address"),
+  // Explicit reward intake pause (O4): null means intake is allowed. Epochs keep their schedule.
+  rewardIntakePausedAt: timestamp("reward_intake_paused_at", { withTimezone: true }),
   createdAt: createdAt(),
 });
 
@@ -136,6 +139,8 @@ export const epochs = pgTable(
     rubricHash: text("rubric_hash"),
     publishTx: text("publish_tx"),
     publishedAt: timestamp("published_at", { withTimezone: true }),
+    // The pinned reward configuration. Null marks a legacy epoch that cannot admit reward intake.
+    rewardConfigId: uuid("reward_config_id").references(() => rewardConfigs.id),
   },
   (t) => [uniqueIndex("epochs_community_index").on(t.communityId, t.index)],
 );
@@ -158,4 +163,90 @@ export const leaves = pgTable(
     claimTx: text("claim_tx"),
   },
   (t) => [uniqueIndex("leaves_epoch_wallet").on(t.epochId, t.wallet)],
+);
+
+// Immutable reward configuration bundles (O4). Insert-only.
+export const rewardConfigs = pgTable(
+  "reward_configs",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    payloadVersion: integer("payload_version").notNull(),
+    payload: jsonb("payload").notNull(),
+    // Internal digest of the versioned canonical payload. Not the O7 configuration hash.
+    digest: text("digest").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("reward_configs_community_digest").on(t.communityId, t.digest)],
+);
+
+export const rewardProposalStatus = pgEnum("reward_proposal_status", [
+  "pending",
+  "activated",
+  "superseded",
+  "cancelled",
+]);
+
+// Proposal and activation history (O4). A row changes status once; its values never change.
+export const rewardConfigProposals = pgTable(
+  "reward_config_proposals",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    configId: uuid("config_id")
+      .notNull()
+      .references(() => rewardConfigs.id),
+    proposedBy: text("proposed_by").notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+    acceptedInEpoch: integer("accepted_in_epoch"), // null only for the bootstrap activation
+    earliestActivationEpoch: integer("earliest_activation_epoch").notNull(),
+    status: rewardProposalStatus("status").notNull(),
+    activatedEpochIndex: integer("activated_epoch_index"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedReason: text("resolved_reason"),
+  },
+  (t) => [
+    uniqueIndex("reward_config_proposals_one_pending")
+      .on(t.communityId)
+      .where(sql`${t.status} = 'pending'`),
+    index("reward_config_proposals_community_accepted").on(t.communityId, t.acceptedAt),
+  ],
+);
+
+// Immutable reward intake (O2/O3): one row per admitted contribution. Insert-only.
+export const rewardIntakes = pgTable(
+  "reward_intakes",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    epochId: uuid("epoch_id")
+      .notNull()
+      .references(() => epochs.id),
+    configId: uuid("config_id")
+      .notNull()
+      .references(() => rewardConfigs.id),
+    contributionId: uuid("contribution_id")
+      .notNull()
+      .references(() => contributions.id),
+    taskId: uuid("task_id").references(() => tasks.id),
+    artifactKey: text("artifact_key").notNull(), // "x:status:<id>" or "text:sha256:<hex>"
+    idempotencyKey: text("idempotency_key").notNull(), // "tg:<chat_id>:<message_id>"
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+    capture: jsonb("capture").notNull(),
+  },
+  (t) => [
+    uniqueIndex("reward_intakes_contribution").on(t.contributionId),
+    uniqueIndex("reward_intakes_community_artifact").on(t.communityId, t.artifactKey),
+    uniqueIndex("reward_intakes_community_idempotency").on(t.communityId, t.idempotencyKey),
+    index("reward_intakes_epoch_member").on(t.epochId, t.memberId),
+  ],
 );

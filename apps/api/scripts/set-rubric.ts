@@ -1,19 +1,74 @@
-// Usage: node --env-file=<abs .env> --import tsx scripts/set-rubric.ts <mint> <path/to/rubric.json>
-// Replaces a community's rubric in place. Past scoring runs keep their own rubric_version.
+// Usage: node --env-file=<abs .env> --import tsx scripts/set-rubric.ts <mint> <rubric.json>
+//        … <mint> <rubric.json> --activate-at <iso>   bootstrap epoch 1 (community has no epochs)
+//        … <mint> --cancel                            withdraw the pending proposal
+// Updates the community's staging rubric (still read by the legacy score job and /raid) and
+// records a reward configuration proposal that activates at the O4 cooldown boundary. The
+// pinned configuration of any open epoch never changes here.
 import { readFileSync } from "node:fs";
+import { parseArgs } from "node:util";
 import { RubricSchema } from "@hyphae/core";
 import { communities } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { db } from "../src/db.js";
+import {
+  bootstrapRewardEpochs,
+  buildRewardConfigPayload,
+  cancelRewardProposal,
+  latestEpoch,
+  proposeRewardConfig,
+} from "../src/rewards/config.js";
 
-const [mint, file] = process.argv.slice(2);
-if (!mint || !file) throw new Error("usage: set-rubric <mint> <rubric.json>");
+const usage =
+  "usage: set-rubric <mint> <rubric.json> [--activate-at <iso>] | set-rubric <mint> --cancel";
+const { values, positionals } = parseArgs({
+  allowPositionals: true,
+  options: { "activate-at": { type: "string" }, cancel: { type: "boolean" } },
+});
+const [mint, file] = positionals;
+if (!mint) throw new Error(usage);
+const community = await db.query.communities.findFirst({ where: eq(communities.mint, mint) });
+if (!community) throw new Error(`no community with mint ${mint}`);
+const proposedBy = "script:set-rubric";
+
+if (values.cancel) {
+  const cancelled = await cancelRewardProposal(db, { communityId: community.id });
+  console.log(
+    `${community.name}: cancelled proposal ${cancelled.id} (earliest activation was E${cancelled.earliestActivationEpoch})`,
+  );
+  process.exit(0);
+}
+
+if (!file) throw new Error(usage);
 const rubric = RubricSchema.parse(JSON.parse(readFileSync(file, "utf8")));
-const [row] = await db
+await db
   .update(communities)
   .set({ rubric, rubricVersion: rubric.version })
-  .where(eq(communities.mint, mint))
-  .returning({ name: communities.name, rubricVersion: communities.rubricVersion });
-if (!row) throw new Error(`no community with mint ${mint}`);
-console.log(`${row.name}: rubric ${row.rubricVersion} (${rubric.community})`);
+  .where(eq(communities.id, community.id));
+console.log(`${community.name}: staging rubric ${rubric.version} (legacy score job and /raid)`);
+
+const payload = buildRewardConfigPayload(rubric);
+if (values["activate-at"] !== undefined) {
+  const opensAt = new Date(values["activate-at"]);
+  if (Number.isNaN(opensAt.getTime())) throw new Error("--activate-at must be an ISO timestamp");
+  const { config, epoch } = await bootstrapRewardEpochs(db, {
+    communityId: community.id,
+    payload,
+    opensAt,
+    proposedBy,
+  });
+  console.log(
+    `${community.name}: epoch 1 opens ${epoch.opensAt.toISOString()}, closes ${epoch.closesAt.toISOString()}, config ${config.digest}`,
+  );
+} else if (!(await latestEpoch(db, community.id))) {
+  console.log(`${community.name}: no reward epochs yet; bootstrap with --activate-at <iso>`);
+} else {
+  const proposal = await proposeRewardConfig(db, {
+    communityId: community.id,
+    payload,
+    proposedBy,
+  });
+  console.log(
+    `${community.name}: proposal ${proposal.id} accepted in E${proposal.acceptedInEpoch}, earliest activation E${proposal.earliestActivationEpoch}`,
+  );
+}
 process.exit(0);
