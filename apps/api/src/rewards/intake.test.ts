@@ -267,11 +267,9 @@ describe("admitContribution", () => {
     await boot(community.id);
     const other = await seedCommunity(t.db);
     await expect(
-      admitContribution(
-        t.db,
-        admit({ communityId: community.id, memberId: other.member.id }),
-        { clock: at(plus(T0, 60)) },
-      ),
+      admitContribution(t.db, admit({ communityId: community.id, memberId: other.member.id }), {
+        clock: at(plus(T0, 60)),
+      }),
     ).rejects.toThrow(/member .* community/);
     const stored = await t.db
       .select()
