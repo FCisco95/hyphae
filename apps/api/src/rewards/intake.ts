@@ -1,5 +1,5 @@
 import { sha256Hex } from "@hyphae/core";
-import { contributions, type Db, rewardIntakes, tasks } from "@hyphae/db";
+import { contributions, type Db, members, rewardIntakes, tasks } from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
 import { ensureEpochAt, type RewardDeps, withCommunityLock } from "./config.js";
 
@@ -58,6 +58,15 @@ export async function admitContribution(
     if (!epoch) return { status: "not_open" };
     if (!epoch.rewardConfigId) return { status: "legacy_epoch" };
 
+    const [member] = await tx
+      .select({ id: members.id })
+      .from(members)
+      .where(and(eq(members.id, input.memberId), eq(members.communityId, input.communityId)));
+    if (!member) {
+      throw new Error(
+        `reward: member ${input.memberId} is not a member of community ${input.communityId}`,
+      );
+    }
     const taskId = input.taskId ?? null;
     if (taskId) {
       const [task] = await tx
