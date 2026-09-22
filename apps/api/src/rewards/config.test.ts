@@ -6,6 +6,7 @@ import {
   DEFAULT_REWARD_POLICY,
   earliestActivationEpoch,
   nextWindow,
+  parseActivationTime,
   RewardConfigPayload,
 } from "./config.js";
 
@@ -134,5 +135,27 @@ describe("configDigest", () => {
     expect(configDigest(a)).toMatch(/^[0-9a-f]{64}$/);
     const b = buildRewardConfigPayload(rubric, { effort: { multiplierBps: 20_000 } });
     expect(configDigest(b)).not.toBe(configDigest(a));
+  });
+});
+
+describe("parseActivationTime", () => {
+  it("accepts a UTC instant", () => {
+    expect(parseActivationTime("2026-10-01T00:00:00Z")).toEqual(
+      new Date("2026-10-01T00:00:00.000Z"),
+    );
+  });
+  it("accepts an explicit offset and normalizes it to the instant", () => {
+    expect(parseActivationTime("2026-10-01T02:00:00+02:00")).toEqual(
+      new Date("2026-10-01T00:00:00.000Z"),
+    );
+  });
+  it("rejects a timestamp without a zone, which the host would read in local time", () => {
+    expect(() => parseActivationTime("2026-10-01T00:00:00")).toThrow(/Z or an explicit UTC offset/);
+  });
+  it("rejects a date without a time", () => {
+    expect(() => parseActivationTime("2026-10-01")).toThrow(/Z or an explicit UTC offset/);
+  });
+  it("rejects a zoned value that is not a real instant", () => {
+    expect(() => parseActivationTime("2026-10-01T25:00:00Z")).toThrow(/not a valid instant/);
   });
 });

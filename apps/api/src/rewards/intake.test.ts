@@ -243,6 +243,25 @@ describe("admitContribution", () => {
     expect(onTime.intake.taskId).toBe(task.id);
   });
 
+  it("rejects a task that belongs to another community", async () => {
+    const { community, member } = await seedCommunity(t.db);
+    await boot(community.id);
+    const other = await seedCommunity(t.db);
+    const foreignTask = await seedTask(t.db, other.community.id, T0);
+    await expect(
+      admitContribution(
+        t.db,
+        admit({ communityId: community.id, memberId: member.id, taskId: foreignTask.id }),
+        { clock: at(plus(T0, 60)) },
+      ),
+    ).rejects.toThrow(/community/);
+    const stored = await t.db
+      .select()
+      .from(contributions)
+      .where(eq(contributions.communityId, community.id));
+    expect(stored).toHaveLength(0);
+  });
+
   it("refuses a legacy epoch that carries no pinned configuration", async () => {
     const { community, member } = await seedCommunity(t.db);
     await t.db.insert(epochs).values({

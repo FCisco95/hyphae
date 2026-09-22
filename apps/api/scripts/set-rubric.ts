@@ -15,6 +15,7 @@ import {
   buildRewardConfigPayload,
   cancelRewardProposal,
   latestEpoch,
+  parseActivationTime,
   proposeRewardConfig,
 } from "../src/rewards/config.js";
 
@@ -39,6 +40,8 @@ if (values.cancel) {
 }
 
 if (!file) throw new Error(usage);
+const activateAt =
+  values["activate-at"] === undefined ? undefined : parseActivationTime(values["activate-at"]);
 const rubric = RubricSchema.parse(JSON.parse(readFileSync(file, "utf8")));
 await db
   .update(communities)
@@ -47,13 +50,11 @@ await db
 console.log(`${community.name}: staging rubric ${rubric.version} (legacy score job and /raid)`);
 
 const payload = buildRewardConfigPayload(rubric);
-if (values["activate-at"] !== undefined) {
-  const opensAt = new Date(values["activate-at"]);
-  if (Number.isNaN(opensAt.getTime())) throw new Error("--activate-at must be an ISO timestamp");
+if (activateAt) {
   const { config, epoch } = await bootstrapRewardEpochs(db, {
     communityId: community.id,
     payload,
-    opensAt,
+    opensAt: activateAt,
     proposedBy,
   });
   console.log(

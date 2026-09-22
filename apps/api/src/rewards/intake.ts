@@ -63,8 +63,10 @@ export async function admitContribution(
       const [task] = await tx
         .select({ opensAt: tasks.opensAt })
         .from(tasks)
-        .where(eq(tasks.id, taskId));
-      if (!task) throw new Error(`reward: task ${taskId} missing`);
+        .where(and(eq(tasks.id, taskId), eq(tasks.communityId, input.communityId)));
+      if (!task) {
+        throw new Error(`reward: task ${taskId} is not a task of community ${input.communityId}`);
+      }
       if (now.getTime() < task.opensAt.getTime()) return { status: "before_task_open" };
     }
 

@@ -131,6 +131,23 @@ export function nextWindow(
   };
 }
 
+// Bootstrap takes a UTC boundary. A value without a zone would be read in the host's local time,
+// so only `Z` or an explicit offset is accepted.
+const ZONED_ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+export function parseActivationTime(value: string): Date {
+  if (!ZONED_ISO.test(value)) {
+    throw new Error(
+      `activation time must be an ISO 8601 timestamp with Z or an explicit UTC offset, got "${value}"`,
+    );
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`activation time is not a valid instant, got "${value}"`);
+  }
+  return date;
+}
+
 export type Community = typeof communities.$inferSelect;
 export type Epoch = typeof epochs.$inferSelect;
 export type RewardConfig = typeof rewardConfigs.$inferSelect;
