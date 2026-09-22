@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-09-22 · R2 — pinned configuration and admission
+
+**Shipped locally (branch `feat/r2-pinned-config`, PR open):** the reward lane now has an immutable configuration record and a real admission step. A community's reward rules live in a versioned bundle (rubric, timing in milliseconds, credit gates, effort multiplier and slot limit, epoch duration, points representation) that is inserted once and never edited. Epochs pin one bundle at opening and are materialized contiguously, each opening exactly at the previous close. A rubric change is now a proposal that activates no earlier than `E(max(k+1, a+2))`: activate at E11 and the earliest replacement is E13, even if proposed during E11 or E12. Admission is one transaction per community under a row lock: the acceptance time is read from the database clock after the lock, the half-open epoch is assigned from it (a submission exactly at close belongs to the next epoch), the pinned config is copied onto the intake, and duplicate webhook deliveries or URL aliases of the same X post map to the one existing record. An explicit pause switch refuses new intake without touching rules or schedule.
+**Decision:** no live rewiring yet. `/submit`, the score job and `/me` are untouched, the migration is generated but not applied to Neon, and nothing in production calls admission until R3 wires the nomination adapter. That keeps R2 reviewable on its own and leaves today's MYCEL flow exactly as it is. `set-rubric` keeps updating the staging rubric the legacy path reads, and additionally records a cooldown proposal.
+**Numbers:** 117 tests passing (41 core, 76 api; 33 new: 16 pure, 17 against an in-process PGlite Postgres with the real migrations) · typecheck and Biome green · 3 new tables, 1 enum, 2 nullable columns · 0 model calls, Neon commands, deployments, roots, claims or payments.
+**Commits:** `a6028b3` (`docs: propose bounded R2 scope for authorization`), `ddb2776` (`feat(rewards): pin reward configuration and admit contributions`); docs checkpoint follows. Pushed on `feat/r2-pinned-config`; PR #2 against `main`.
+**Next:** independent review of the PR, merge on accept. Then an R3 scope proposal (slots, dispatch fencing, nomination, `/submit` rewire) for separate authorization. Cutover (apply migration, bootstrap MYCEL paused) is its own authorized step.
+
 ## 2026-09-20 · R1-01 — whole-claim range guard
 
 **Fixed locally:** `wholePoints()` now rejects a result above the existing unsigned 64-bit claim range, after exact-unit aggregation and half-up rounding. Exact scaled point units remain arbitrary precision; nothing is clamped.

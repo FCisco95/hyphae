@@ -1,124 +1,119 @@
 ---
-date: 2026-09-21
-summary: R1 accepted on 2026-09-21 after independent re-review of the R1-01 overflow guard plus a native test/typecheck/lint re-run. PR #1 merged to main; R2–R6 remain gated.
+date: 2026-09-22
+summary: R2 (pinned reward configuration and epoch admission) reviewed and ACCEPTED at bcdb328 on feat/r2-pinned-config after Codex's two P2 findings plus one same-class finding were fixed test-first; native gate green; migration generated but not applied; no production caller. PR #2 merge waits on Cisco's yes. R3–R6 gated.
 ---
 
 # Hyphae H-DESIGN handoff
 
 ## TL;DR
 
-**R1 status: ACCEPTED (2026-09-21).** The bounded R1-01 fix in `3f9a5dd` passed an independent re-review (verdict ACCEPT, no blocking findings) and the native gate was re-run afterwards: 41 tests, typecheck and Biome all green. Cisco accepted the verdict in-session and PR #1 was merged to `main` on 2026-09-21. Resume on `main`. Do not begin R2 without separately scoped authorization.
+**R1 status: ACCEPTED (2026-09-21).** PR #1 merged to `main` at `aebb147`.
+
+**R2 status: REVIEWED, ACCEPT, AWAITING CISCO'S MERGE YES (2026-09-22).** Implementation `ddb2776` plus three review-session commits (`37a2cca` Codex P2 fixes, `e81fa98` foreign-member guard, `bcdb328` formatting) on `feat/r2-pinned-config`. Independent review verdict ACCEPT with six non-blocking observations, recorded in `docs/handoffs/2026-09-22-r2-review.md` and as a review comment on PR #2. Production behavior unchanged: `/submit`, the score job and `/me` untouched, migration 0003 generated but **not applied to Neon**, nothing calls admission. Next: Cisco says yes → merge PR #2 → organic-sync post-ship → R3 scope proposal.
 
 ## Metadata
 
-- Last Updated: 2026-09-21.
-- Branch: `main`. PR #1 (`hackathon/r1-exact-reward-points`) merged into `main` on 2026-09-21 with the H-DESIGN and R1 history; the feature branch is finished.
-- Base: `3f9a5dd` (`fix(core): reject overflowing whole point claims`) is included in the branch; R1 source/tests/export and the bounded R1-01 fix are committed and published.
-- Re-review runner: Codex CLI session on Windows, 2026-09-21. Model/effort metadata could not be verified because the session's sandbox failed (`helper_unknown_error: apply deny-read ACLs`); its checks were type-erased JavaScript probes in isolated V8, not native Vitest.
-- Native gate re-run: Claude Code (Fable 5.1) session on Windows, 2026-09-21, from a clean checkout of `2fd2470` plus this handoff edit. This handoff was saved from that session because the Codex sandbox could not write files.
-- Prior implementation runner: GPT-6 Astra (`gpt-6-astra`), xhigh (2026-09-20, verified then from `turn_context`).
-- Authority: `docs/handoffs/2026-09-20-h-design-written-approval.md`; approved O1–O7 artifact remains byte-identical.
-- Canonical queue consulted: `cisco-brain/10 - PROJECTS/Organic/plans/2026-09-16-hyphae-implementation-plan.md` (private; unchanged).
-- Evidence stage: local source/design review, deterministic core tests, read-only arithmetic probes, typecheck, Biome and documentation/scope checks. No integration or deployed-behavior evidence.
+- Last Updated: 2026-09-22 (review session).
+- Branch: `feat/r2-pinned-config` at `bcdb328` = `origin`; `main` at `aebb147`. PR #2 open, mergeable, head `bcdb328`.
+- Runner (this session): Claude Code, Fable 5.1 (`claude-fable-5-1`), Windows, 2026-09-22. Effort not readable from inside the session; requested xhigh. Wrote only under `apps/api/src/rewards`, `apps/api/scripts`, `docs/handoffs`, `docs/HANDOFF.md`. No Neon command, deploy, model call, fixture run, settlement, root, claim, Sentinel or vault edit. `docs/BUILDLOG.md` not touched (outside the session's writable list).
+- Runner (implementation, 2026-09-22 earlier): Claude Code, Fable 5.1, effort xhigh; see `docs/handoffs/2026-09-22-r2-implemented.md`.
+- Authority: `docs/handoffs/2026-09-20-h-design-written-approval.md` (O1–O7); R2 scope authorization given in-session 2026-09-22 against the proposal document; Cisco's 2026-09-22 authorization covers the Codex P2 fixes.
+- Canonical queue: `cisco-brain/10 - PROJECTS/Organic/plans/2026-09-16-hyphae-implementation-plan.md` (private; unchanged this session).
+- Evidence stage: deterministic tests (pure + PGlite in-process Postgres), typecheck, Biome, diff check, drizzle-kit snapshot check, mutation probes. No integration against Neon or deployed behavior; no two-writer concurrency run.
 
 ## Current Objective
 
-R1 is accepted and merged. Next: record the acceptance through organic-sync post-ship and wait for separately scoped R2 authorization.
+Merge PR #2 on Cisco's yes. Then organic-sync post-ship records R1 accepted, R2 scoped, implemented, reviewed and merged, and the proposed Week 2–4 calendar rebaseline (last section of the proposal; not applied). Then an R3 scope proposal.
 
 ## Current State
 
-- R1 preserves separate branded raw quality, credited quality, exact point units and whole points. `index.ts` only adds the new export.
-- Credit gates match O5: hard-zero flags, mild/strong AI cap, then the 60 floor; timing and effort follow. Integer-millisecond timing, fractions and once-after-aggregation rounding pass reviewed cases. The floor is not applied again after decay.
-- **R1-01 fixed and accepted:** `wholePoints()` rejects values above `MAX_WHOLE_POINTS` (`2^64 - 1`) only after aggregation and half-up rounding. It does not clamp and does not limit scaled exact point units.
-- Nine persistent R1 tests include maximum-valid, half-up-overflow and aggregate-overflow regression coverage. The millisecond half-up tie coverage observation remains a future quality improvement, not a reproduced defect.
-- Score/settlement behavior remains unchanged. R1 has no callers; this finding establishes no current production payment loss.
+- R1 unchanged: `packages/core/src/reward-points.ts` and tests as merged.
+- R2 schema: `reward_configs` (insert-only bundles, unique on community + digest), `reward_config_proposals` (one pending per community via partial unique index; statuses pending/activated/superseded/cancelled), `reward_intakes` (unique on contribution, community + artifact key, community + idempotency key), `epochs.reward_config_id` (null = legacy, cannot admit), `communities.reward_intake_paused_at`.
+- R2 config module: payload v1 tied to R1 constants with timing milliseconds validated against rubric minutes; `earliestActivationEpoch(k, a) = max(k+1, a+2)`; contiguous materialization up to "now" only; bootstrap at an explicit future whole-second `opensAt` counts as activation 1; propose supersedes the pending row and rejects a no-op; cancel keeps `a`; pause is a column. New this session: `parseActivationTime` accepts only `Z` or `±HH:MM` timestamps.
+- R2 intake module: idempotency → pause → epoch (half-open) → legacy pin → **member of this community** → **task of this community** and opened → artifact duplicate → insert contribution + intake with `acceptedAt` from the DB clock read after the community row lock. Foreign member or task ids throw before any write.
+- Scripts: `set-rubric.ts` validates `--activate-at` before the staging rubric update, still updates the staging rubric, records a proposal, bootstraps with `--activate-at`, cancels with `--cancel`; `reward-intake.ts <mint> pause|resume`.
+- `Db` type in `@hyphae/db` is the generic `PgDatabase`, so PGlite tests and postgres-js production share the same functions.
 
 ## Recent Changes
 
-2026-09-21: independent re-review of `3f9a5dd` returned ACCEPT. Findings confirmed: overflow rejects only after exact aggregation and half-up rounding; removing the guard fails both overflow tests; the u64-max preservation check passes without the guard and fails if `>` becomes `>=`; exact units unchanged; 526 boundary and 2,630 aggregation probes passed. Native gate re-run green afterwards. Only docs changed in this checkpoint (this handoff and its dated snapshot). No deployment, root, claim, fixture run, paid evaluation or payment occurred.
+2026-09-22 (review session): Codex GitHub review of `7e43f80` raised two P2s (offset-free `--activate-at`; task lookup by id only). Fixed test-first in `37a2cca`. Review found the same hole for `memberId`; fixed test-first in `e81fa98`, formatting follow-up `bcdb328`. Independent review of the full diff: ACCEPT, six non-blocking observations for R3/R5. Review comment posted on PR #2 (review id 5279752308). Handoff refreshed.
 
-`3f9a5dd` resolves R1-01 with a post-rounding u64 guard and three boundary regressions. `9e9558c`, `2ce7c93`, `3f9a5dd`, `bbaf020`, `d5a38c5` and `2fd2470` are published on `hackathon/r1-exact-reward-points`; PR #1 on `FCisco95/hyphae` is open.
+2026-09-22 (implementation session): R2 scope proposal (`a6028b3`); Cisco authorized all five decisions; R2 implemented test-first (`ddb2776`); docs checkpoint (`7e43f80`, `e184d8b`); PR #2 opened.
+
+2026-09-21: R1 accepted after independent re-review of `3f9a5dd`; PR #1 merged.
 
 ## Validation
 
-2026-09-21 native gate (Claude Code session, Windows):
+2026-09-22 native gate at `bcdb328` (review session):
 
-- `pnpm vitest run` in `packages/core` — passed: 5 files, 41 tests.
-- `pnpm tsc --noEmit` in `packages/core` — passed.
-- `pnpm biome check .` at repo root — passed: 68 files, no fixes.
+- `pnpm -r test` — core: 5 files, 41 tests; api: 10 files, 83 tests (7 new this session: 5 `parseActivationTime`, foreign task, foreign member). All passed.
+- `pnpm -r typecheck` — core, db, api passed.
+- `pnpm exec biome check .` — 75 files, no fixes, exit 0.
+- `git diff --check` — clean.
+- `pnpm exec drizzle-kit check` — fine; `drizzle-kit generate` — no schema changes (snapshot 0003 matches the schema).
+- Mutation probes: six invariant mutations each made 1–5 tests fail, reverted. Lock-before-clock ordering verified by reading only.
+- All three new tests were watched failing before their implementation (`is not a function`; promise resolved `admitted`).
 
-2026-09-21 re-review (Codex session, type-erased JS in isolated V8, not native Vitest):
-
-- All nine R1 test bodies passed; guard removal fails both overflow tests; `>` to `>=` fails the u64-max preservation check.
-- 526 boundary probes and 2,630 aggregation probes passed; exact units unchanged.
-
-2026-09-20 (implementation session):
-
-- `pnpm --filter @hyphae/core test` — passed: 5 files, 41 tests (9 R1).
-- `pnpm --filter @hyphae/core typecheck` — passed.
-- `pnpm exec biome check packages/core/src/reward-points.ts packages/core/src/reward-points.test.ts packages/core/src/index.ts` — passed; no fixes.
-- Read-only Node probes — passed: 38,784 credit combinations, 30,565 timing cases (including every MYCEL half-up threshold at ±1 ms and short odd/even curves), 24 whole-rounding cases, 26 invalid-input rejections and all 9 O5 numeric examples. Empty aggregation, custom multipliers and exactness beyond safe-number precision also checked.
-- Whole-claim boundary probes — maximum value succeeds; rounding across the maximum and aggregate overflow from individually valid contributions reject.
-- `git diff --check` and handoff validation — passed.
-- Approved O1–O7 SHA-256 remains `ddeb69325d6b9621fe05de504f30356c4c0d7ec16d8b59fa4c9faf69184c1e99`; synthetic review JSON remains `1b851fa03059c00838438a7bc8d677299da4e87f01e6010e483ce62e75afd936` (16 labels preserved; no fixture run).
+2026-09-22 native gate at `ddb2776` (implementation session) — core 41, api 76, typecheck, Biome 75 files, diff check green.
 
 ## Known Issues / Watch List
 
-- Codex CLI sandbox on this Windows machine fails with `apply deny-read ACLs`; it can read but not run commands or write files. Fix before the next Codex session: `/approvals` → full access, or restart with `codex --sandbox danger-full-access`. Same failure hit the organic-app session on 2026-09-21.
-- The repo has no CI workflows. PR #1 merge is a manual gate with no automated checks behind it.
-- R2 owns immutable configuration/admission; R3–R5 retain sequential persistence/decision/close dependencies. R6 retains H-CONTRACT and payment gates.
-- Effective-decision filtering, original accepted timestamps and selection of ordinary versus eligible multipliers remain future caller responsibilities.
-- Exact units remain future allocation weight; whole-point rounding must not replace them. Existing floating settlement behavior remains outside R1 and is not verified as O5-conforming.
+- No CI. PR merge is a manual gate; the native gate above is the only evidence.
+- Migration 0003 is not applied to Neon. Applying it, bootstrapping MYCEL and resuming intake are a separate authorized cutover (checklist in the R2 record, plus one new precondition: `epochs` must be empty for MYCEL, see review observation 3).
+- PGlite is single-connection: concurrent-writer races are proven by unique indexes and the lock discipline, not by a live race. R3's dispatch fencing needs a real-Postgres concurrency check.
+- Review observations to carry into scope docs: (R3) `FOR UPDATE` vs FK `KEY SHARE` queueing, consider `for("no key update")`; closed legacy epoch has no path to pinned; (R5) `ensureEpochAt` `t`/`now` split; `resolvedAt` semantics. Minor: re-proposing the pending payload supersedes itself; `set-rubric.ts` updates staging before the reward write.
+- pnpm may re-split `drizzle-orm` into two instances when a driver peer changes; symptom is a typecheck failure on `Column` class identity. Fix: `pnpm dedupe`.
+- Gate output filtering hid a Biome failure once this session (`e81fa98`). Run `biome check .` unfiltered and check its exit code before claiming green.
+- Codex CLI sandbox on this Windows machine still fails with `apply deny-read ACLs`; start it with `codex --sandbox danger-full-access` for a review session.
+- R3–R5 remain sequential; R6 waits on H-CONTRACT and payment gates. Effective-decision reads, timing computation from `intake.acceptedAt`, and multiplier selection are R3/R4 caller work.
 
 ## Next Actions
 
-1. Organic-sync post-ship should record **R1 accepted 2026-09-21**, linking `docs/handoffs/2026-09-21-r1-accepted.md` and the review snapshot, preserving task IDs. No sibling/private queue was edited and no receipt was sent; canonical application is unverified.
-2. PR #1 merged 2026-09-21 (manual gate, no CI). Nothing further.
-3. Do not begin R2 without separately scoped authorization. Preserve all 16 labels and H-FIXTURES, H-CONTRACT, fee/funding/payment, campaign, Sentinel adoption, wallet migration and optional sqrt gates.
+1. Cisco: yes/no to merging PR #2 at `bcdb328`. On yes: merge (no CI; native gate is the evidence), confirm `main` fast-forwards, delete the branch.
+2. Organic-sync post-ship: record R1 accepted 2026-09-21, R2 scoped, implemented and reviewed 2026-09-22 (link the proposal, `2026-09-22-r2-implemented.md`, `2026-09-22-r2-review.md`), the six observations as R3/R5 inputs, and the proposed calendar rebaseline as a proposal. Canonical application unverified.
+3. Decide whether `docs/BUILDLOG.md` gets a 2026-09-22 review line (not written this session).
+4. R3 (slots, candidates, dispatch fencing, nomination adapter, `/submit` rewire) needs its own scope document and written authorization. No settlement, root, claim, fixture or paid run.
 
 ## Quick Reference
 
-- Acceptance snapshot: `docs/handoffs/2026-09-21-r1-accepted.md`
-- Review: `docs/handoffs/2026-09-20-r1-external-review.md`
-- Implementation snapshot: `docs/handoffs/2026-09-20-r1-exact-reward-points.md`
-- Core: `packages/core/src/reward-points.ts`, `reward-points.test.ts`, `index.ts`
-- R1-01 fix: `3f9a5dd`
-- Approved rules: `docs/handoffs/2026-09-20-h-design-operational-definitions.md`, O4 bounds and O5 arithmetic
+- R2 review (ACCEPT): `docs/handoffs/2026-09-22-r2-review.md`
+- R2 record: `docs/handoffs/2026-09-22-r2-implemented.md`
+- R2 scope (authorized): `docs/handoffs/2026-09-21-r2-scope-proposal.md`
+- R2 code: `apps/api/src/rewards/config.ts`, `intake.ts`, `test-db.ts`, tests; `packages/db/src/schema.ts`; `packages/db/drizzle/0003_reward_config_intake.sql`
+- Scripts: `apps/api/scripts/set-rubric.ts`, `apps/api/scripts/reward-intake.ts`
+- PR #2: https://github.com/FCisco95/hyphae/pull/2
+- R1 acceptance: `docs/handoffs/2026-09-21-r1-accepted.md`
+- Approved rules: `docs/handoffs/2026-09-20-h-design-operational-definitions.md`
 
 ## Suggested skills
 
-`handoff-memory`, `andrej-karpathy-skills:karpathy-guidelines`, `handoff`. Database/security guidance belongs to separately authorized R2+ work.
+`handoff-memory`, `superpowers:test-driven-development`, `handoff`. For R3 planning: `superpowers:brainstorming`, `superpowers:writing-plans`. Database/security guidance applies to R3+.
 
 ## Resume Checklist
 
-- Verify base/worktree and source fingerprints in the review snapshot.
-- Confirm R1 acceptance in this handoff before touching anything R2-shaped.
-- Stay within explicit authorization; no R2, caller/DB/API integration, fixtures/paid runs, settlement, root or payment work.
+- `git checkout feat/r2-pinned-config` (or `main` once merged) and confirm `bcdb328` is present.
+- Run the native gate before trusting anything: `pnpm -r test`, `pnpm -r typecheck`, `pnpm exec biome check .` (check the exit code).
+- Stay within explicit authorization; no R3–R6, Neon migration apply, callers, fixtures/paid runs, settlement, root or payment work.
 
 ## Generated artifacts this session
 
 | What | Where it lives | Notes |
 |---|---|---|
-| R1 acceptance snapshot | `docs/handoffs/2026-09-21-r1-accepted.md` | Verdict, evidence, sandbox limitation |
-| Current handoff | `docs/HANDOFF.md` | Organic-sync receipt; acceptance checkpoint |
-| External R1 review / dated snapshot | `docs/handoffs/2026-09-20-r1-external-review.md` | Historical defect, reproduction, coverage and source fingerprints |
-| Public build log | `docs/BUILDLOG.md` | Links implementation and R1-01 fix commits |
-| GitHub review | PR #1 on `FCisco95/hyphae` | Merged into `main` 2026-09-21; no deployed-behavior evidence |
+| R2 review record | `docs/handoffs/2026-09-22-r2-review.md` | ACCEPT at `bcdb328`; fixes table, evidence, six observations |
+| PR #2 review comment | https://github.com/FCisco95/hyphae/pull/2#pullrequestreview-5279752308 | Same verdict, condensed |
+| P2 fixes + tests | `37a2cca`, `e81fa98`, `bcdb328` | `parseActivationTime`, community-scoped task and member lookups |
+| Current handoff | `docs/HANDOFF.md` | This file |
 
-No credentials, deployed resources or scheduled jobs created.
-
-## Resume Prompt
-
-Use the following prompt only after R2 has been separately scoped and authorized.
+No credentials, deployed resources or scheduled jobs created. Migration not applied. Nothing merged.
 
 ## Next-session prompt
 
 ```text
-Resume Hyphae on `main` at the PR #1 merge commit. Not `hackathon/r1-exact-reward-points` (merged, finished) and not `sync/mac-handoff-2026-09-19` — a stale SessionStart overlay may still name either. R1 is ACCEPTED and merged as of 2026-09-21 (see docs/HANDOFF.md and docs/handoffs/2026-09-21-r1-accepted.md). The repo has no CI. R2–R6 remain unstarted and gated.
+Resume Hyphae. R2 (pinned reward configuration and admission) is reviewed and ACCEPTED at bcdb328 on feat/r2-pinned-config (PR #2 → main, main at aebb147). If Cisco has said yes to the merge, merge PR #2 first and confirm main; otherwise do not merge. The repo has no CI; the native gate (pnpm -r test, pnpm -r typecheck, biome check . with exit code) is the only evidence. Migration 0003 is generated, not applied to Neon.
 
-Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-09-21-r1-accepted.md, docs/handoffs/2026-09-20-h-design-operational-definitions.md, packages/core/src/reward-points.ts, packages/core/src/reward-points.test.ts, packages/core/src/index.ts
-Model: Opus-class runner (xhigh) for R2 design/implementation; record actual session metadata.
-Skills: handoff-memory, andrej-karpathy-skills:karpathy-guidelines, handoff.
+Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-09-22-r2-review.md, docs/handoffs/2026-09-22-r2-implemented.md, docs/handoffs/2026-09-21-r2-scope-proposal.md, apps/api/src/rewards/config.ts, apps/api/src/rewards/intake.ts
+Model: Fable 5.1 xhigh or Opus-class xhigh; record actual session metadata.
+Skills: handoff-memory, brainstorming, writing-plans, handoff.
 
-Do not start R2, callers/DB/API integration, fixtures/paid runs or settlement without an explicit R2 scope from Cisco in this session. If none is given, stop after confirming the branch and handoff state.
+If the task is organic-sync: record R1 accepted, R2 reviewed/merged, the six review observations as R3/R5 inputs, and the calendar rebaseline proposal. If the task is R3: stop and write an R3 scope proposal for written authorization first, carrying review observations 1–3. No Neon apply, callers, fixtures/paid runs, settlement, root or payment work without explicit authorization.
 ```

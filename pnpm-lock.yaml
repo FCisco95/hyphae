@@ -62,7 +62,7 @@ importers:
         version: 7.0.105(zod@4.6.5)
       drizzle-orm:
         specifier: ^0.45.0
-        version: 0.45.2(pg@8.23.0)(postgres@3.4.9)
+        version: 0.45.2(@electric-sql/pglite@0.5.8)(pg@8.23.0)(postgres@3.4.9)
       grammy:
         specifier: ^1.46.0
         version: 1.46.0
@@ -76,6 +76,9 @@ importers:
         specifier: ^4.0.0
         version: 4.6.5
     devDependencies:
+      '@electric-sql/pglite':
+        specifier: ^0.5.8
+        version: 0.5.8
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.3
@@ -106,7 +109,7 @@ importers:
     dependencies:
       drizzle-orm:
         specifier: ^0.45.0
-        version: 0.45.2(pg@8.23.0)(postgres@3.4.9)
+        version: 0.45.2(@electric-sql/pglite@0.5.8)(pg@8.23.0)(postgres@3.4.9)
       postgres:
         specifier: ^3.4.0
         version: 3.4.9
@@ -222,6 +225,9 @@ packages:
 
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
+
+  '@electric-sql/pglite@0.5.8':
+    resolution: {integrity: sha512-n9tsbUOhwx2epK1V0ZG9Ar4SHWUju04dhmzZXiSBXwBoleOvIfals33NAaWgagQVAL4Rbvx/Ptsu3P+pA09f6Q==}
 
   '@esbuild-kit/core-utils@3.3.2':
     resolution: {integrity: sha512-sPRAnw9CdSsRmEtnsl2WXWdyquogVpB3yZ3dgwJfe8zrOzTsV7cJvmwrKVa+0ma5BoiGJ+BoqkMvawbayKUsqQ==}
@@ -2792,6 +2798,8 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
+  '@electric-sql/pglite@0.5.8': {}
+
   '@esbuild-kit/core-utils@3.3.2':
     dependencies:
       esbuild: 0.18.20
@@ -4045,8 +4053,9 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.23.13
 
-  drizzle-orm@0.45.2(pg@8.23.0)(postgres@3.4.9):
+  drizzle-orm@0.45.2(@electric-sql/pglite@0.5.8)(pg@8.23.0)(postgres@3.4.9):
     optionalDependencies:
+      '@electric-sql/pglite': 0.5.8
       pg: 8.23.0
       postgres: 3.4.9
 
