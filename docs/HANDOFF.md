@@ -27,7 +27,7 @@ R3 test-first on `feat/r3-slots-dispatch`, per the approved proposal. Approval c
 
 - Code unchanged since R2: `packages/core/src/reward-points.ts` (R1), `apps/api/src/rewards/config.ts` and `intake.ts` (R2), migration 0003 generated, not applied. Nothing calls admission. `/submit`, the score job and `/me` are the Sep 17 legacy path.
 - Founder rulings (confirmed): mainnet payout remains a committed hackathon target; the public audit page takes priority if time forces a tradeoff. Precondition: verified tester wallet linking before paying real testers on mainnet (today `/link` pastes and can rewrite the wallet).
-- Recommendations (awaiting confirmation): A — Lab-controlled wallet for the devnet demonstration; B — one combined scope approval with sequential implementation and independent review after each stage.
+- Recommendations A (Lab-controlled devnet wallet) and B (combined approval, sequential stages, review after each) confirmed 2026-09-23.
 - R3–R5 proposal resolves before code: P1 prompt/policy pinning (payload v2 pins `promptVersion` + `promptTemplateHash`; model recorded, not pinned); P2 durable pre-close acceptance (lock-then-clock argument; real-Postgres race test). All six R2 review observations assigned (1, 3, 4, 5 → R3; 2, 6 → R5).
 
 ## Recent Changes
@@ -53,7 +53,7 @@ Documentation claims checked against current docs (Context7, 2026-09-23): AI SDK
 ## Known Issues / Watch List
 
 - No CI. The native gate and an independent review are the only evidence.
-- Migration 0003 not on Neon. After R3 merges, `main` must not be deployed before 0003 and 0004 are applied under a separate cutover authorization (R3 decision 4).
+- Migration 0003 not on Neon. After R3 merges, apply 0003 and 0004 (authorized 2026-09-23; preconditions in the approval record) before any deploy of `main`. Bootstrap and deploy stay separately authorized.
 - Real-Postgres concurrency is unproven so far; R3 adds a `test:pg` gate on local Docker Postgres 17 (Docker 28.1.1 present). Not Neon.
 - Verified wallet linking is unscheduled as a build; the rulings doc places the decision in Sep 29–30.
 - Tester usage since Sep 20 is not evidenced anywhere in the repo; do not state counts without a fresh read.
@@ -65,13 +65,13 @@ Documentation claims checked against current docs (Context7, 2026-09-23): AI SDK
 1. Cisco: merge `docs/2026-09-23-scope-checkpoint` (docs-only) so `main` carries the proposal.
 2. Done 2026-09-23: approval recorded in `docs/handoffs/2026-09-23-r3-r5-approval.md`.
 3. Sep 24: `docs/WHITEPAPER.md`, `docs/demo/2026-09-25-weekly-video-2.md`, `docs/TESTING.md` from existing evidence, labelled historical / locally tested / deployed / planned (`2026-09-23-tomorrow-plan.md`).
-4. After approval: `git checkout main && git pull --ff-only && git checkout -b feat/r3-slots-dispatch`; failing tests first (payload v2, lock mode), then slots/nomination, then dispatch.
+4. R3: `git checkout main && git pull --ff-only && git checkout -b feat/r3-slots-dispatch`; failing tests first (payload v2, lock mode), then slots/nomination, then dispatch.
 5. Organic-sync: record the rulings, the proposal and the adopted-or-not calendar in the private plan.
 
 ## Quick Reference
 
 - Schedule rulings: `docs/handoffs/2026-09-23-schedule-rulings.md`
-- R3–R5 scope (awaiting approval): `docs/handoffs/2026-09-23-r3-r5-scope-proposal.md`
+- R3–R5 scope (approved 2026-09-23): `docs/handoffs/2026-09-23-r3-r5-scope-proposal.md`
 - Tomorrow plan: `docs/handoffs/2026-09-23-tomorrow-plan.md`
 - R2 review and observations: `docs/handoffs/2026-09-22-r2-review.md`
 - Approved rules O1–O7: `docs/handoffs/2026-09-20-h-design-operational-definitions.md`
@@ -85,9 +85,9 @@ Documentation claims checked against current docs (Context7, 2026-09-23): AI SDK
 ## Resume Checklist
 
 - `git fetch --prune && git status -sb`; confirm whether `docs/2026-09-23-scope-checkpoint` is merged.
-- Look for Cisco's written approval; without it, no schema, worker or `/submit` change.
+- R3–R5 approved (`2026-09-23-r3-r5-approval.md`); R4 and R5 only after the preceding stage merges.
 - Run the native gate before trusting any count.
-- Stay out of: Neon migration apply, deployment, R6, settlement/root/claim, fixture or paid runs, Sentinel adoption code, vault edits.
+- Stay out of: Neon migration apply before R3 merges, bootstrap, deployment, R6, settlement/root/claim, fixture or paid runs, Sentinel adoption code, vault edits.
 
 ## Generated artifacts this session
 
