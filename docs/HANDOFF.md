@@ -7,7 +7,7 @@ summary: Documentation checkpoint. Founder schedule rulings recorded (mainnet pa
 
 ## TL;DR
 
-**Awaiting written approval** of `docs/handoffs/2026-09-23-r3-r5-scope-proposal.md` (nine yes/no decisions) and of recommendations A and B in `docs/handoffs/2026-09-23-schedule-rulings.md`. Nothing is implemented. R1 and R2 are merged and locally tested; R2 is **not deployed** (migration 0003 not on Neon). After approval: R3 test-first on `feat/r3-slots-dispatch`, then R4, then R5, each independently reviewed and merged before the next.
+**R3–R5 APPROVED (2026-09-23).** Cisco: "yes to all nine + A + B + apply 0003/0004 after R3 merge". Record: `docs/handoffs/2026-09-23-r3-r5-approval.md`. R3 starts test-first on `feat/r3-slots-dispatch` from `main`; R4 and R5 follow only after the preceding stage is reviewed and merged. Migrations 0003 and 0004 go to Neon after R3 merges (no bootstrap, no deploy). R1 and R2 are merged and locally tested; R2 is **not deployed**.
 
 ## Metadata
 
@@ -16,12 +16,12 @@ summary: Documentation checkpoint. Founder schedule rulings recorded (mainnet pa
 - Other branches left untouched: `hackathon/r1-exact-reward-points`, `sync/mac-handoff-2026-09-19` (local and origin).
 - Runner: Claude Code, Opus 5.5 (`claude-opus-5-5`, as reported by the session environment), Windows, 2026-09-23. Requested: Fable 5.1 xhigh or Astra xhigh; neither is what ran. Effort is not observable from inside the session and is not recorded as verified.
 - The previous session (per Cisco's brief) could read files but not run Git, tests or writes (`apply deny-read ACLs`); it produced nothing. This session had working Git, tests and writes.
-- Authority: `docs/handoffs/2026-09-20-h-design-written-approval.md` (O1–O7). Founder rulings: `docs/handoffs/2026-09-23-schedule-rulings.md`. No R3–R5 authorization exists yet.
+- Authority: `docs/handoffs/2026-09-20-h-design-written-approval.md` (O1–O7). Founder rulings: `docs/handoffs/2026-09-23-schedule-rulings.md`. R3–R5: `docs/handoffs/2026-09-23-r3-r5-approval.md`.
 - Canonical queue: `cisco-brain/10 - PROJECTS/Organic/plans/2026-09-16-hyphae-implementation-plan.md` (private; read, not edited). Organic-sync owns private-plan updates for today's rulings.
 
 ## Current Objective
 
-Get Cisco's written yes (or revisions) on the nine R3–R5 decisions and on recommendations A (Lab-controlled wallet for the devnet demo) and B (one combined approval, sequential stages, review after each). Then R3.
+R3 test-first on `feat/r3-slots-dispatch`, per the approved proposal. Approval covers decisions 1–9, A (Lab-controlled devnet wallet), B (combined approval, sequential stages) and the post-R3 apply of 0003/0004.
 
 ## Current State
 
@@ -63,7 +63,7 @@ Documentation claims checked against current docs (Context7, 2026-09-23): AI SDK
 ## Next Actions
 
 1. Cisco: merge `docs/2026-09-23-scope-checkpoint` (docs-only) so `main` carries the proposal.
-2. Cisco: written yes/no on the nine decisions in the R3–R5 proposal and on recommendations A and B. Record the exact words in a dated handoff before code.
+2. Done 2026-09-23: approval recorded in `docs/handoffs/2026-09-23-r3-r5-approval.md`.
 3. Sep 24: `docs/WHITEPAPER.md`, `docs/demo/2026-09-25-weekly-video-2.md`, `docs/TESTING.md` from existing evidence, labelled historical / locally tested / deployed / planned (`2026-09-23-tomorrow-plan.md`).
 4. After approval: `git checkout main && git pull --ff-only && git checkout -b feat/r3-slots-dispatch`; failing tests first (payload v2, lock mode), then slots/nomination, then dispatch.
 5. Organic-sync: record the rulings, the proposal and the adopted-or-not calendar in the private plan.
