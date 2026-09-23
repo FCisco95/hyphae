@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-09-23 (late) · Day 10 of 28 — work that was accepted now finishes
+
+**Shipped on branch `fix/r3-recovery` (pushed, not merged, not deployed):** three of the four review findings are fixed test-first. A raid that closes while the bot is still fetching the post now refuses the submission, judged by the database clock under the community lock. And a sweep now runs every five minutes to find reward work the database says is waiting but that no job will ever pick up: a submission admitted just before a queue failure, a nomination an operator cleared after proving a call was never sent, an evidence retry that was never scheduled, a call whose follow-up check was lost. It re-queues each one. Nothing it sends can cause a second paid call, because every job re-checks its state under the lock first.
+**Decision:** stop before the fourth fix. Making sure a crash cannot swallow the member's score message needs either a small new column (a migration outside the current approval) or queueing the message inside the scoring transaction. The score itself is never lost; only the reply can be. That choice goes to Cisco.
+**Numbers:** 214 tests passing (54 core, 160 api; 16 new) · typecheck, Biome (97 files), drizzle-kit check, `git diff --check` all exit 0 · `test:pg` on Postgres 17: 4/4 · 13 of 13 mutation probes on the sweep killed; two redundant filters removed, and two tests caught passing for the wrong reason and fixed · 0 migrations applied, deployments, model calls or payments.
+**Commits:** `25cd7b4` (task-close check), `4d0bd4d` (recovery sweep); record `docs/handoffs/2026-09-23-r3-recovery.md`.
+**Next:** review and merge the fix PR on Cisco's yes; Cisco's call on the notification marker; then apply migrations 0003 and 0004.
+
 ## 2026-09-23 (close) · Day 10 of 28 — R3 merged, four review findings open
 
 **Shipped:** Cisco merged the scope checkpoint (PR #5) and R3 (PR #6) to `main`. Codex's automated review of R3 found real gaps that were not fixed before the merge, and they are now tracked in the open. A proven "never sent" call is recorded but nothing re-queues it. A submission admitted just before a queue failure could sit unscored. A crash at the wrong moment can drop the member's score message. And a raid that closes during the post fetch can still take the submission.

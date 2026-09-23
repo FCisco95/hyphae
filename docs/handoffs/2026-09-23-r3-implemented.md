@@ -42,7 +42,7 @@ No test calls a real model; the provider is injected and counted. No test touche
 - `/effort <link or text>`: legacy communities are told effort rewards are not open. Admitted work is nominated directly (upgrade if it has a completed ordinary decision). New work goes through the `/submit` preflight, admission, then nomination. Uncaptured media → `pending_evidence` and retrieval rounds at +1 min and +5 min.
 - Dispatch: row committed before the call; one call per begun dispatch; any provider error, refusal or schema-invalid output → `pending_reconciliation`; a re-run within the 5-minute horizon waits, after it reconciles; only `reward-reconcile.ts <id> not-sent --reason` re-enables one call. Completion writes the decision, consumes the slot and stores the output in one locked transaction; `affects_allocation = accepted_at < closesAt`.
 - Upgrade: 85 ordinary → revision 2 at 255 points with the predecessor's quality, flags and timing; the effort-only prompt carries the prior result.
-- Notifications go through their own `reward-notify` queue and retry independently.
+- Notifications go through their own `reward-notify` queue and retry independently **once queued**. Correction (2026-09-23, review finding F3): the notification is queued after the completion commits, so a crash between the two loses the message, and a re-run returns `already_completed`, which sends nothing. Fixing that needs a durable notified marker (a migration) or a transactional enqueue; see `2026-09-23-r3-recovery.md`.
 
 ## Deviations from the proposal
 
