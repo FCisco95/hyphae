@@ -2,19 +2,28 @@ import {
   type Db,
   epochs,
   rewardConfigs,
+  rewardDecisions,
   rewardDispatches,
   rewardIntakes,
   rewardNominations,
   rewardRetrievals,
 } from "@hyphae/db";
-import { and, desc, eq, gt, inArray, lte, ne, notExists, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lte, ne, notExists, sql } from "drizzle-orm";
 import { RewardConfigPayload } from "./config.js";
 import type { EvaluationTarget } from "./evaluation.js";
 
 export interface StrandedWork {
   evaluations: { communityId: string; target: EvaluationTarget }[];
   retrievals: { communityId: string; nominationId: string; round: number }[];
+  notifications: {
+    communityId: string;
+    contributionId: string;
+    decision: typeof rewardDecisions.$inferSelect;
+  }[];
 }
+
+// A message Telegram still refuses a day after the decision is abandoned; the decision stands.
+export const NOTIFY_WINDOW_MS = 24 * 3_600_000;
 
 const one = sql`1`;
 
@@ -136,6 +145,18 @@ export async function strandedWork(
     }
   }
 
+  // A decision's acceptedAt is its completion time under the lock.
+  const unnotified = await db
+    .select()
+    .from(rewardDecisions)
+    .where(
+      and(
+        isNull(rewardDecisions.notifiedAt),
+        lte(rewardDecisions.acceptedAt, settled),
+        gt(rewardDecisions.acceptedAt, new Date(input.now.getTime() - NOTIFY_WINDOW_MS)),
+      ),
+    );
+
   return {
     evaluations: [
       ...intakes.map((i) => ({
@@ -153,5 +174,29 @@ export async function strandedWork(
       })),
     ],
     retrievals,
+    notifications: unnotified.map((decision) => ({
+      communityId: decision.communityId,
+      contributionId: decision.contributionId,
+      decision,
+    })),
   };
+}
+
+export async function decisionNotified(db: Db, decisionId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ notifiedAt: rewardDecisions.notifiedAt })
+    .from(rewardDecisions)
+    .where(eq(rewardDecisions.id, decisionId));
+  if (!row) throw new Error(`reward: decision ${decisionId} missing`);
+  return row.notifiedAt !== null;
+}
+
+// Returns false when another job already marked it.
+export async function markNotified(db: Db, decisionId: string, now: Date): Promise<boolean> {
+  const marked = await db
+    .update(rewardDecisions)
+    .set({ notifiedAt: now })
+    .where(and(eq(rewardDecisions.id, decisionId), isNull(rewardDecisions.notifiedAt)))
+    .returning({ id: rewardDecisions.id });
+  return marked.length > 0;
 }

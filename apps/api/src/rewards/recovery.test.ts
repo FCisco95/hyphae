@@ -8,7 +8,7 @@ import {
   recordNotSentProven,
   runEvaluation,
 } from "./evaluation.js";
-import { strandedWork } from "./recovery.js";
+import { decisionNotified, markNotified, NOTIFY_WINDOW_MS, strandedWork } from "./recovery.js";
 import { nominate, recordRetrieval, withdrawNomination } from "./slots.js";
 import { createTestDb, later, seedRewardLane, T0 } from "./test-db.js";
 
@@ -81,6 +81,7 @@ async function lane() {
     return {
       evaluations: work.evaluations.filter((j) => j.communityId === communityId),
       retrievals: work.retrievals.filter((j) => j.communityId === communityId),
+      notifications: work.notifications.filter((j) => j.communityId === communityId),
     };
   };
   return { ...s, communityId, nom, run, sweep };
@@ -101,6 +102,7 @@ describe("strandedWork: admitted work whose evaluation was never queued (F2)", (
         { communityId: s.communityId, target: { contributionId: intake.contributionId } },
       ],
       retrievals: [],
+      notifications: [],
     });
   });
 
@@ -217,7 +219,7 @@ describe("strandedWork: ready nominations with no live dispatch (F1, F2)", () =>
       deps(model(() => ({ ...quality, effort: effort() })).call),
     );
     expect(done.status).toBe("completed");
-    expect(await s.sweep()).toEqual({ evaluations: [], retrievals: [] });
+    expect(await s.sweep()).toMatchObject({ evaluations: [], retrievals: [] });
   });
 });
 
@@ -229,6 +231,7 @@ describe("strandedWork: retrieval rounds that were never scheduled (F2 for /effo
     expect(await s.sweep()).toEqual({
       evaluations: [],
       retrievals: [{ communityId: s.communityId, nominationId: nomination.id, round: 2 }],
+      notifications: [],
     });
   });
 
@@ -261,7 +264,7 @@ describe("strandedWork: retrieval rounds that were never scheduled (F2 for /effo
         deps(model(() => ({ ...quality, effort: effort("the linked video") })).call),
       ),
     ).toEqual({ status: "pending_evidence", reason: "the linked video" });
-    expect(await s.sweep()).toEqual({ evaluations: [], retrievals: [] });
+    expect(await s.sweep()).toEqual({ evaluations: [], retrievals: [], notifications: [] });
   });
 });
 
@@ -307,5 +310,43 @@ describe("strandedWork: dispatches whose recheck was never queued", () => {
     expect((await s.sweep()).evaluations).toEqual([
       { communityId: s.communityId, target: { contributionId: intake.contributionId } },
     ]);
+  });
+});
+
+describe("strandedWork: decisions whose message was never sent (F3)", () => {
+  // Completion runs at T0 + 2 min, so the decision's acceptedAt is T0 + 2 min.
+  const decided = async () => {
+    const s = await lane();
+    const intake = await s.admitOne();
+    const result = await s.run({ contributionId: intake.contributionId }, deps(model().call));
+    if (result.status !== "completed") throw new Error(`run: ${result.status}`);
+    return { s, decision: result.decision };
+  };
+
+  it("re-queues the message for a completed decision not marked notified, after the grace", async () => {
+    const { s, decision } = await decided();
+    expect((await s.sweep(new Date(AFTER_GRACE.getTime() - 1))).notifications).toEqual([]);
+    const { notifications } = await s.sweep();
+    expect(notifications.map((n) => [n.contributionId, n.decision.id])).toEqual([
+      [decision.contributionId, decision.id],
+    ]);
+  });
+
+  it("marks a decision notified once, and the sweep then leaves it alone", async () => {
+    const { s, decision } = await decided();
+    expect(await decisionNotified(t.db, decision.id)).toBe(false);
+    expect(await markNotified(t.db, decision.id, AFTER_GRACE)).toBe(true);
+    expect(await markNotified(t.db, decision.id, AFTER_GRACE)).toBe(false);
+    expect(await decisionNotified(t.db, decision.id)).toBe(true);
+    expect((await s.sweep()).notifications).toEqual([]);
+  });
+
+  it("gives up on a message still unsent after the notify window", async () => {
+    const { s, decision } = await decided();
+    const acceptedAt = decision.acceptedAt.getTime();
+    expect((await s.sweep(new Date(acceptedAt + NOTIFY_WINDOW_MS - 1))).notifications).toHaveLength(
+      1,
+    );
+    expect((await s.sweep(new Date(acceptedAt + NOTIFY_WINDOW_MS))).notifications).toEqual([]);
   });
 });

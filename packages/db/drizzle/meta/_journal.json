@@ -36,6 +36,13 @@
       "when": 1790178141169,
       "tag": "0004_reward_slots_dispatch",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790202415529,
+      "tag": "0005_reward_decision_notified",
+      "breakpoints": true
     }
   ]
 }
