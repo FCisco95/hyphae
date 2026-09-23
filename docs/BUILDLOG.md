@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-09-23 (close) · Day 10 of 28 — R3 merged, four review findings open
+
+**Shipped:** Cisco merged the scope checkpoint (PR #5) and R3 (PR #6) to `main`. Codex's automated review of R3 found real gaps that were not fixed before the merge, and they are now tracked in the open. A proven "never sent" call is recorded but nothing re-queues it. A submission admitted just before a queue failure could sit unscored. A crash at the wrong moment can drop the member's score message. And a raid that closes during the post fetch can still take the submission.
+**Decision:** hold the Neon migration apply until those four are fixed test-first, even though the apply itself is already approved. The fixes are about recovering work already accepted, and the database should not start accepting reward work before that recovery exists. Nothing is deployed, so no member is affected.
+**Numbers:** gate on merged `main` `3754534`: 198 tests (54 core, 144 api), typecheck, Biome, drizzle-kit check all exit 0 · 4 open findings (2 P1, 2 P2) · 0 migrations applied, deployments, model calls or payments.
+**Commits:** merges `6b7a24d` (PR #5), `3754534` (PR #6); record `docs/handoffs/2026-09-23-r3-merged.md`.
+**Next:** `fix/r3-recovery`: task-close check inside admission, one idempotent recovery sweep for queue gaps; then apply migrations 0003 and 0004.
+
 ## 2026-09-23 (evening) · Day 10 of 28 — R3: effort slots and paid calls that never repeat
 
 **Shipped locally (branch `feat/r3-slots-dispatch`, not deployed):** Cisco approved the R3–R5 scope in writing ("yes to all nine + A + B + apply 0003/0004 after R3 merge"), and R3 was built test-first the same day. Members now nominate work for the 3× effort slot with `/effort`; plain `/submit` never touches it. Every paid model call is a row committed before the call. If the provider times out or answers garbage, Hyphae does not call again on its own: the work waits for the original answer or for an operator's written proof that nothing was sent. A second job that finds a call in progress waits instead of calling. When the answer lands, one transaction stores it, writes the decision and uses up the slot. Upgrading already-scored work reuses its quality and asks the model about effort only, so 85 becomes 255, never 85 + 255. Each epoch pins the exact prompt text by hash, and if the running code no longer matches, nothing is sent. A post with media the text-only capture cannot see stays "waiting for evidence" instead of being judged blind. One R2 review finding was proven on a real Postgres: the old row lock made `/link` and `/raid` queue behind reward writes; the new lock mode fixes that, and the test fails if the old mode comes back.
