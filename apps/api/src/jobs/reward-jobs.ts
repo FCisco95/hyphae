@@ -4,7 +4,7 @@ import { bot } from "../bot/index.js";
 import { db } from "../db.js";
 import { env } from "../env.js";
 import { type EvaluationTarget, type RunResult, runEvaluation } from "../rewards/evaluation.js";
-import { strandedWork } from "../rewards/recovery.js";
+import { decisionNotified, markNotified, strandedWork } from "../rewards/recovery.js";
 import { recordRetrieval } from "../rewards/slots.js";
 import { defaultModel } from "../scoring/default-model.js";
 import { callRewardModel, REWARD_CALL_TIMEOUT_MS } from "../scoring/run.js";
@@ -25,6 +25,8 @@ export interface RewardNotifyJob {
   communityId: string;
   contributionId: string;
   text: string;
+  // Set for a decision's message, which is marked sent so the recovery sweep can resend it.
+  decisionId?: string;
 }
 
 // Longer than one provider call can take, so an older dispatch cannot be a live call.
@@ -77,6 +79,7 @@ export async function evaluateReward(job: RewardEvaluationJob): Promise<void> {
     communityId: job.communityId,
     contributionId,
     text: rewardMessage(outcome, `${env.PUBLIC_WEB_URL}/x/${contributionId}`),
+    ...(result.status === "completed" && { decisionId: result.decision.id }),
   } satisfies RewardNotifyJob);
 }
 
@@ -104,22 +107,36 @@ export async function retrieveEvidence(job: RewardRetrievalJob): Promise<void> {
 // duplicate a job that is merely waiting.
 const RECOVERY_GRACE_MS = 10 * 60_000;
 
-// Scheduled sweep: re-queues work whose queue insert was lost after its commit (F1, F2). The
+// Scheduled sweep: re-queues work whose queue insert was lost after its commit (F1–F3). The
 // jobs it sends are sent without delay; each one re-checks its state under the community lock.
 export async function recoverRewardWork(): Promise<void> {
   const work = await strandedWork(db, { now: new Date(), graceMs: RECOVERY_GRACE_MS });
   for (const job of work.evaluations) await sendEvaluation(job);
   for (const job of work.retrievals) await boss.send(QUEUES.rewardRetrieval, job);
+  for (const { communityId, contributionId, decision } of work.notifications) {
+    await boss.send(QUEUES.rewardNotify, {
+      communityId,
+      contributionId,
+      text: rewardMessage(
+        { status: "completed", decision },
+        `${env.PUBLIC_WEB_URL}/x/${contributionId}`,
+      ),
+      decisionId: decision.id,
+    } satisfies RewardNotifyJob);
+  }
   console.log(
     JSON.stringify({
       job: "reward-recovery",
       evaluations: work.evaluations.length,
       retrievals: work.retrievals.length,
+      notifications: work.notifications.length,
     }),
   );
 }
 
+// At least once: a crash between Telegram's accept and the mark sends the message again.
 export async function notifyReward(job: RewardNotifyJob): Promise<void> {
+  if (job.decisionId && (await decisionNotified(db, job.decisionId))) return;
   const [row] = await db
     .select({
       chatId: communities.telegramChatId,
@@ -133,4 +150,5 @@ export async function notifyReward(job: RewardNotifyJob): Promise<void> {
     reply_parameters: { message_id: row.messageId, allow_sending_without_reply: true },
     link_preview_options: { is_disabled: true },
   });
+  if (job.decisionId) await markNotified(db, job.decisionId, new Date());
 }

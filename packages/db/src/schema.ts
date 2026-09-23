@@ -455,6 +455,8 @@ export const rewardDecisions = pgTable(
     acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
     // accepted_at < the origin epoch's closesAt, decided under the community lock (O3).
     affectsAllocation: boolean("affects_allocation").notNull(),
+    // Set after Telegram accepts the member's message; null past the grace means it was lost.
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
   },
   (t) => [
     uniqueIndex("reward_decisions_contribution_revision").on(t.contributionId, t.revision),
