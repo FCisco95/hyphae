@@ -39,8 +39,12 @@ export const QualityEffortOutputSchema = ScoreOutputSchema.extend({ effort: Effo
 export const EffortOnlyOutputSchema = z.object({ effort: EffortOutputSchema });
 
 export type RewardPurpose = "quality" | "quality_effort" | "effort";
+export type RewardOutput =
+  | z.infer<typeof ScoreOutputSchema>
+  | z.infer<typeof QualityEffortOutputSchema>
+  | z.infer<typeof EffortOnlyOutputSchema>;
 
-export const rewardOutputSchema = (purpose: RewardPurpose) =>
+export const rewardOutputSchema = (purpose: RewardPurpose): z.ZodType<RewardOutput> =>
   purpose === "quality"
     ? ScoreOutputSchema
     : purpose === "quality_effort"

@@ -3,7 +3,8 @@ import { PGlite } from "@electric-sql/pglite";
 import { communities, members, schema, tasks } from "@hyphae/db";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import type { Clock } from "./config.js";
+import { bootstrapRewardEpochs, buildRewardConfigPayload, type Clock } from "./config.js";
+import { admitContribution, type Capture } from "./intake.js";
 
 // In-process Postgres with the repo migrations applied; no network, no Neon.
 export async function createTestDb() {
@@ -76,4 +77,46 @@ export async function seedTask(db: TestDb, communityId: string, opensAt: Date) {
     .returning();
   if (!task) throw new Error("seed: task");
   return task;
+}
+
+export const T0 = new Date("2026-10-01T00:00:00.000Z");
+export const later = (ms: number): Clock => at(new Date(T0.getTime() + ms));
+
+let artifactSeq = 0;
+
+// A community bootstrapped at T0 with one member, plus a helper that admits a post at T0 + 1 min.
+export async function seedRewardLane(db: TestDb, payload = buildRewardConfigPayload(rubric)) {
+  const { community, member } = await seedCommunity(db);
+  await bootstrapRewardEpochs(
+    db,
+    { communityId: community.id, payload, opensAt: T0, proposedBy: "test" },
+    { clock: later(-3_600_000) },
+  );
+  const admitOne = async (
+    capture: Capture = { source: "x_oembed", capturedAt: T0.toISOString(), limitations: [] },
+    memberId = member.id,
+  ) => {
+    artifactSeq += 1;
+    const result = await admitContribution(
+      db,
+      {
+        communityId: community.id,
+        memberId,
+        contribution: {
+          kind: "post",
+          url: `https://x.com/a/status/${artifactSeq}`,
+          text: `work ${artifactSeq}`,
+          oembed: null,
+          telegramMessageId: artifactSeq,
+        },
+        artifactKey: `x:status:${artifactSeq}`,
+        idempotencyKey: `tg:-1:${artifactSeq}`,
+        capture,
+      },
+      { clock: later(60_000) },
+    );
+    if (result.status !== "admitted") throw new Error(`admit: ${result.status}`);
+    return result.intake;
+  };
+  return { community, member, admitOne };
 }

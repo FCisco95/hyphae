@@ -1,7 +1,10 @@
 import {
   buildScoringPrompt,
   evidenceHash,
+  type Prompt,
   promptHash,
+  type RewardPurpose,
+  rewardOutputSchema,
   ScoreOutputSchema,
   type ScoringInput,
   type ScoringRunRecord,
@@ -36,6 +39,29 @@ export async function runScoring(input: ScoringInput, m: ScoringModel): Promise<
   return {
     ...record,
     evidenceHash: evidenceHash(record),
+    latencyMs: Date.now() - started,
+    costMicroUsd: m.costMicroUsd(result.usage),
+  };
+}
+
+// Upper bound on one reward call; the reconciliation horizon must exceed it.
+export const REWARD_CALL_TIMEOUT_MS = 90_000;
+
+// Reward evaluation calls are never retried by the SDK: a retry after a possibly executed
+// request could bill twice (O2). Failures go to reconciliation instead.
+export async function callRewardModel(prompt: Prompt, purpose: RewardPurpose, m: ScoringModel) {
+  const started = Date.now();
+  const result = await generateText({
+    model: m.model,
+    system: prompt.system,
+    prompt: prompt.user,
+    output: Output.object({ schema: rewardOutputSchema(purpose) }),
+    maxRetries: 0,
+    timeout: REWARD_CALL_TIMEOUT_MS,
+  });
+  if (result.finishReason === "content-filter") throw new Error(`scoring: ${m.id} refused`);
+  return {
+    output: result.output as unknown,
     latencyMs: Date.now() - started,
     costMicroUsd: m.costMicroUsd(result.usage),
   };
