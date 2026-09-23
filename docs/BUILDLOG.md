@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-09-23 (midnight) · Day 10 of 28 — the reward tables are on Neon
+
+**Shipped:** Cisco merged the F3 fix (PR #10), which closes all four R3 review findings. Migrations 0003, 0004 and 0005 then went onto the production database in one run. Before touching it, three read-only checks ran: zero epochs, a migration journal showing exactly the first three migrations with hashes matching the files, and no reward tables. After the run, the same checks show six migrations, the eight reward tables, the new `notified_at` column, and the original data untouched: one community, three contributions, six scoring runs. The live bot kept answering throughout.
+**Decision:** apply without a deploy or a bootstrap. The tables exist, but nothing writes to them until the cutover, and Hyphae Lab has no reward epoch, so even new code would keep `/submit` on the path testers use today. That keeps the database change and the behavior change as two separate, reversible steps.
+**Numbers:** gate on merge commit `99f7596`: 217 tests (54 core, 163 api), typecheck, Biome, drizzle-kit check, `test:pg` 4/4 all exit 0 · 3 migrations applied at 22:42:49Z, exit 0 · 8 new tables, 3 new columns · `/health` 200 afterwards · 0 deployments, bootstraps, model calls or payments.
+**Commits:** merge `99f7596` (PR #10); record `docs/handoffs/2026-09-23-migrations-applied.md`.
+**Next:** R4 on `feat/r4-effective-reads`, test-first: one read that picks each contribution's effective decision, `/me` for the current epoch only, and operator corrections as appended rows.
+
 ## 2026-09-23 (night) · Day 10 of 28 — no score message lost, and the public docs
 
 **Shipped:** Cisco merged the findings record (PR #7), the recovery fixes (PR #9) and the public docs (PR #8). The docs are a short whitepaper, a checklist for Hyphae Lab testers and the script for Friday's weekly video. Each claim is labelled historical, locally tested, deployed or planned, and nothing is called live beyond the bot as last recorded on September 17. The last review finding is fixed on branch `fix/r3-f3-notified` (pushed, not merged, not deployed). Every decision now records when the member's message was accepted by Telegram. If a crash drops the message, the five-minute sweep finds the unmarked decision after ten minutes and sends it again. After a day of refusals it gives up on the message; the score always stands.
