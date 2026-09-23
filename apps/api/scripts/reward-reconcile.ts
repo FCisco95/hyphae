@@ -2,6 +2,7 @@
 // Records that a dispatch in pending_reconciliation provably never reached the provider (for
 // example, the provider's usage log shows no request). Only this frees the slot for one more
 // call; without it the work stays pending until the epoch closes. The reason is kept for audit.
+// The worker's reward-recovery sweep queues that one call once the grace period has passed.
 import { parseArgs } from "node:util";
 import { rewardDispatches } from "@hyphae/db";
 import { eq } from "drizzle-orm";
@@ -25,5 +26,7 @@ const updated = await recordNotSentProven(db, {
   dispatchId,
   reason: values.reason.trim(),
 });
-console.log(`dispatch ${updated.id}: not_sent_proven (${updated.reconcileReason})`);
+console.log(
+  `dispatch ${updated.id}: not_sent_proven (${updated.reconcileReason}); the recovery sweep re-queues it within ~15 minutes`,
+);
 process.exit(0);

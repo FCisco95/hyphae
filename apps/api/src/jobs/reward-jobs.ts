@@ -4,6 +4,7 @@ import { bot } from "../bot/index.js";
 import { db } from "../db.js";
 import { env } from "../env.js";
 import { type EvaluationTarget, type RunResult, runEvaluation } from "../rewards/evaluation.js";
+import { strandedWork } from "../rewards/recovery.js";
 import { recordRetrieval } from "../rewards/slots.js";
 import { defaultModel } from "../scoring/default-model.js";
 import { callRewardModel, REWARD_CALL_TIMEOUT_MS } from "../scoring/run.js";
@@ -97,6 +98,25 @@ export async function retrieveEvidence(job: RewardRetrievalJob): Promise<void> {
   } else if (result.status === "pending" && result.nextRound) {
     await sendRetrieval({ ...job, round: result.nextRound });
   }
+}
+
+// Longer than the reconciliation horizon and the last retrieval delay, so the sweep does not
+// duplicate a job that is merely waiting.
+const RECOVERY_GRACE_MS = 10 * 60_000;
+
+// Scheduled sweep: re-queues work whose queue insert was lost after its commit (F1, F2). The
+// jobs it sends are sent without delay; each one re-checks its state under the community lock.
+export async function recoverRewardWork(): Promise<void> {
+  const work = await strandedWork(db, { now: new Date(), graceMs: RECOVERY_GRACE_MS });
+  for (const job of work.evaluations) await sendEvaluation(job);
+  for (const job of work.retrievals) await boss.send(QUEUES.rewardRetrieval, job);
+  console.log(
+    JSON.stringify({
+      job: "reward-recovery",
+      evaluations: work.evaluations.length,
+      retrievals: work.retrievals.length,
+    }),
+  );
 }
 
 export async function notifyReward(job: RewardNotifyJob): Promise<void> {
