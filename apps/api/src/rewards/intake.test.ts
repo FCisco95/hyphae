@@ -294,6 +294,22 @@ describe("admitContribution", () => {
     expect(result).toEqual({ status: "legacy_epoch" });
   });
 
+  it("refuses, without throwing, when the latest legacy epoch has already closed", async () => {
+    const { community, member } = await seedCommunity(t.db);
+    await t.db.insert(epochs).values({
+      communityId: community.id,
+      index: 1,
+      opensAt: T0,
+      closesAt: plus(T0, WEEK),
+    });
+    const result = await admitContribution(
+      t.db,
+      admit({ communityId: community.id, memberId: member.id }),
+      { clock: at(plus(T0, WEEK + 60)) },
+    );
+    expect(result).toEqual({ status: "legacy_epoch" });
+  });
+
   it("keeps the pinned config when the community rubric changes later", async () => {
     const { community, member } = await seedCommunity(t.db);
     const booted = await boot(community.id);
@@ -493,6 +509,28 @@ describe("configuration cooldown and materialization", () => {
         { clock: at(plus(T0, 5)) },
       ),
     ).rejects.toThrow(/already pinned/);
+  });
+
+  it("rejects re-proposing the payload that is already pending", async () => {
+    const { community } = await seedCommunity(t.db);
+    await bootShort(community.id);
+    const first = await proposeRewardConfig(
+      t.db,
+      { communityId: community.id, payload: payloadB, proposedBy: "test" },
+      { clock: at(plus(T0, 5)) },
+    );
+    await expect(
+      proposeRewardConfig(
+        t.db,
+        { communityId: community.id, payload: payloadB, proposedBy: "test" },
+        { clock: at(plus(T0, 6)) },
+      ),
+    ).rejects.toThrow(/already pending/);
+    const rows = await t.db
+      .select()
+      .from(rewardConfigProposals)
+      .where(eq(rewardConfigProposals.id, first.id));
+    expect(rows[0]?.status).toBe("pending");
   });
 
   it("refuses a proposal before bootstrap", async () => {

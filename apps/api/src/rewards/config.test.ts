@@ -1,4 +1,9 @@
-import { RubricSchema } from "@hyphae/core";
+import {
+  EFFORT_CRITERIA_V1,
+  promptTemplateHash,
+  REWARD_PROMPT_VERSION,
+  RubricSchema,
+} from "@hyphae/core";
 import { describe, expect, it } from "vitest";
 import {
   buildRewardConfigPayload,
@@ -50,11 +55,15 @@ describe("nextWindow", () => {
 });
 
 describe("buildRewardConfigPayload", () => {
-  it("pins the rubric, default policy and millisecond timing", () => {
+  it("pins the rubric, prompt, default policy and millisecond timing", () => {
     const payload = buildRewardConfigPayload(rubric);
     expect(payload).toEqual({
-      version: 1,
+      version: 2,
       rubric,
+      scoring: {
+        promptVersion: REWARD_PROMPT_VERSION,
+        promptTemplateHash: promptTemplateHash(REWARD_PROMPT_VERSION),
+      },
       epoch: { durationSeconds: 604_800 },
       timing: { fullCreditUntilMs: 21_600_000, zeroCreditAtMs: 172_800_000 },
       credit: {
@@ -63,7 +72,13 @@ describe("buildRewardConfigPayload", () => {
         aiCapStrong: 40,
         hardZeroFlags: ["guideline_breach", "spam", "off_topic"],
       },
-      effort: { multiplierBps: 30_000, slotLimit: 1, candidatesPerSlot: 3, retrievalRounds: 3 },
+      effort: {
+        multiplierBps: 30_000,
+        slotLimit: 1,
+        candidatesPerSlot: 3,
+        retrievalRounds: 3,
+        criteria: EFFORT_CRITERIA_V1,
+      },
       points: {
         unitsPerPoint: "100000000",
         rounding: "half_up_after_aggregation",
@@ -118,6 +133,24 @@ describe("RewardConfigPayload validation", () => {
     reject((p) => {
       p.timing.fullCreditUntilMs = 21_600_001;
     }, /rubric\.timing/);
+  });
+  it("rejects payload version 1", () => {
+    reject((p) => {
+      (p as { version: number }).version = 1;
+    }, /2/);
+  });
+  it("rejects a prompt template hash that is not a sha256 hex digest", () => {
+    reject((p) => {
+      p.scoring.promptTemplateHash = "abc";
+    }, /promptTemplateHash|string/);
+  });
+  it("rejects more than three candidates per slot or retrieval rounds", () => {
+    reject((p) => {
+      p.effort.candidatesPerSlot = 4;
+    }, /3/);
+    reject((p) => {
+      p.effort.retrievalRounds = 4;
+    }, /3/);
   });
   it("rejects zero credit at or before full credit", () => {
     reject((p) => {

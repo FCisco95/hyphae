@@ -1,7 +1,12 @@
 import { PgBoss } from "pg-boss";
 import { env } from "../env.js";
 
-export const QUEUES = { score: "score" } as const;
+export const QUEUES = {
+  score: "score",
+  rewardEvaluation: "reward-evaluation",
+  rewardRetrieval: "reward-retrieval",
+  rewardNotify: "reward-notify",
+} as const;
 
 export const boss = new PgBoss({
   connectionString: env.DATABASE_URL,
@@ -19,6 +24,22 @@ export async function startQueue() {
     retryDelay: 5,
     retryBackoff: true,
     expireInSeconds: 120,
+  });
+  // A reward evaluation job never calls the provider twice (runEvaluation), so pg-boss retries are
+  // safe; expiry exceeds the 90 s call timeout so a live call is not failed underneath itself.
+  await boss.createQueue(QUEUES.rewardEvaluation, {
+    retryLimit: 3,
+    retryDelay: 30,
+    retryBackoff: true,
+    expireInSeconds: 180,
+  });
+  await boss.createQueue(QUEUES.rewardRetrieval, { retryLimit: 2, expireInSeconds: 60 });
+  // Telegram delivery retries on its own; a failed message never re-runs scoring.
+  await boss.createQueue(QUEUES.rewardNotify, {
+    retryLimit: 5,
+    retryDelay: 10,
+    retryBackoff: true,
+    expireInSeconds: 30,
   });
   return boss;
 }

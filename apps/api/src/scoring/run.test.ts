@@ -1,9 +1,10 @@
 import type { Rubric, ScoreOutput } from "@hyphae/core";
 import { buildScoringPrompt, promptHash } from "@hyphae/core";
+import { APICallError } from "ai";
 import { MockLanguageModelV3 } from "ai/test";
 import { describe, expect, it } from "vitest";
 import type { ScoringModel } from "./provider.js";
-import { runScoring } from "./run.js";
+import { callRewardModel, runScoring } from "./run.js";
 
 const rubric: Rubric = {
   version: "1.0.0",
@@ -68,5 +69,36 @@ describe("runScoring", () => {
     await expect(runScoring(input, fake("", "content-filter"))).rejects.toThrow(
       /refus|content-filter|No object/i,
     );
+  });
+});
+
+describe("callRewardModel", () => {
+  const prompt = { system: "judge", user: "<content>x</content>" };
+
+  it("returns the parsed output with cost and latency", async () => {
+    const r = await callRewardModel(prompt, "quality", fake(JSON.stringify(output)));
+    expect(r.output).toEqual(output);
+    expect(r.costMicroUsd).toBe(4500);
+  });
+
+  it("never retries: a retryable provider error reaches the provider once", async () => {
+    let calls = 0;
+    const flaky: ScoringModel = {
+      ...fake(""),
+      model: new MockLanguageModelV3({
+        doGenerate: async () => {
+          calls += 1;
+          throw new APICallError({
+            message: "overloaded",
+            url: "https://provider.test",
+            requestBodyValues: {},
+            statusCode: 529,
+            isRetryable: true,
+          });
+        },
+      }),
+    };
+    await expect(callRewardModel(prompt, "quality", flaky)).rejects.toThrow();
+    expect(calls).toBe(1);
   });
 });

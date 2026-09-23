@@ -1,5 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchPost, parsePostUrl } from "./oembed.js";
+import { captureLimitations, fetchPost, parsePostUrl } from "./oembed.js";
+
+describe("captureLimitations", () => {
+  const post = (text: string) => ({ id: "1", handle: "a", text, url: "https://x.com/a/status/1" });
+  it("marks an unreadable post as unavailable", () => {
+    expect(captureLimitations(null)).toEqual(["post_unavailable"]);
+  });
+  it("marks media the text-only capture cannot include", () => {
+    expect(captureLimitations(post("my test run pic.twitter.com/abc"))).toEqual([
+      "text_only",
+      "media_not_captured",
+    ]);
+    expect(captureLimitations(post("chart pic.x.com/xyz"))).toContain("media_not_captured");
+  });
+  it("records a plain text post as text only", () => {
+    expect(captureLimitations(post("a real take"))).toEqual(["text_only"]);
+  });
+});
 
 const oembed = (html: string, author = "jack") =>
   new Response(

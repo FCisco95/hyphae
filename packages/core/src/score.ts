@@ -11,7 +11,7 @@ export const ScoreFlag = z.enum([
   "guideline_breach",
 ]);
 
-const FLAG_MEANING: Record<z.infer<typeof ScoreFlag>, string> = {
+export const FLAG_MEANING: Record<z.infer<typeof ScoreFlag>, string> = {
   off_topic: "does not engage the target post or the community at all",
   low_effort: '"lfg", "gm", emoji-only, or a line that would fit under any post',
   ai_slop: "reads like an unedited AI draft (list the patterns you see in aiSlop)",

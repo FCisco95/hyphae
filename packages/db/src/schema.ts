@@ -1,6 +1,9 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   bigint,
+  boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -248,5 +251,214 @@ export const rewardIntakes = pgTable(
     uniqueIndex("reward_intakes_community_artifact").on(t.communityId, t.artifactKey),
     uniqueIndex("reward_intakes_community_idempotency").on(t.communityId, t.idempotencyKey),
     index("reward_intakes_epoch_member").on(t.epochId, t.memberId),
+  ],
+);
+
+// Effort slots (O2). One row per (epoch, member, ordinal); counters only ever grow, and the
+// generation is the fence a dispatch must still hold to complete.
+export const rewardSlotState = pgEnum("reward_slot_state", ["open", "reserved", "consumed"]);
+
+export const rewardSlots = pgTable(
+  "reward_slots",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    epochId: uuid("epoch_id")
+      .notNull()
+      .references(() => epochs.id),
+    ordinal: integer("ordinal").notNull(),
+    state: rewardSlotState("state").notNull().default("open"),
+    generation: integer("generation").notNull().default(0),
+    candidatesUsed: integer("candidates_used").notNull().default(0),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    consumedDecisionId: uuid("consumed_decision_id").references(
+      (): AnyPgColumn => rewardDecisions.id,
+    ),
+  },
+  (t) => [
+    uniqueIndex("reward_slots_epoch_member_ordinal").on(t.epochId, t.memberId, t.ordinal),
+    check("reward_slots_ordinal_positive", sql`${t.ordinal} >= 1`),
+    check("reward_slots_candidates_bound", sql`${t.candidatesUsed} between 0 and 3`),
+  ],
+);
+
+export const rewardNominationKind = pgEnum("reward_nomination_kind", ["new_work", "upgrade"]);
+export const rewardNominationState = pgEnum("reward_nomination_state", [
+  "pending_evidence",
+  "ready",
+  "evaluating",
+  "pending_reconciliation",
+  "completed_eligible",
+  "completed_ineligible",
+  "withdrawn",
+]);
+
+// Explicit effort nominations (O2): the candidates of a slot.
+export const rewardNominations = pgTable(
+  "reward_nominations",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    epochId: uuid("epoch_id")
+      .notNull()
+      .references(() => epochs.id),
+    slotId: uuid("slot_id")
+      .notNull()
+      .references(() => rewardSlots.id),
+    candidateOrdinal: integer("candidate_ordinal").notNull(),
+    contributionId: uuid("contribution_id")
+      .notNull()
+      .references(() => contributions.id),
+    intakeId: uuid("intake_id")
+      .notNull()
+      .references(() => rewardIntakes.id),
+    kind: rewardNominationKind("kind").notNull(),
+    state: rewardNominationState("state").notNull(),
+    pendingReason: text("pending_reason"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("reward_nominations_slot_candidate").on(t.slotId, t.candidateOrdinal),
+    uniqueIndex("reward_nominations_community_idempotency").on(t.communityId, t.idempotencyKey),
+    uniqueIndex("reward_nominations_one_live")
+      .on(t.contributionId)
+      .where(sql`${t.state} <> 'withdrawn'`),
+    check("reward_nominations_candidate_bound", sql`${t.candidateOrdinal} between 1 and 3`),
+  ],
+);
+
+// Free evidence retrieval rounds per artifact and epoch (O2). Round 1 is the admission capture.
+export const rewardRetrievals = pgTable(
+  "reward_retrievals",
+  {
+    id: id(),
+    contributionId: uuid("contribution_id")
+      .notNull()
+      .references(() => contributions.id),
+    epochId: uuid("epoch_id")
+      .notNull()
+      .references(() => epochs.id),
+    round: integer("round").notNull(),
+    outcome: text("outcome").notNull(), // "complete" or the essential gap
+    limitations: jsonb("limitations").$type<string[]>().notNull(),
+    attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("reward_retrievals_contribution_epoch_round").on(
+      t.contributionId,
+      t.epochId,
+      t.round,
+    ),
+    check("reward_retrievals_round_bound", sql`${t.round} between 1 and 3`),
+  ],
+);
+
+export const rewardDispatchPurpose = pgEnum("reward_dispatch_purpose", [
+  "quality",
+  "quality_effort",
+  "effort",
+]);
+export const rewardDispatchState = pgEnum("reward_dispatch_state", [
+  "dispatched",
+  "completed",
+  "pending_reconciliation",
+  "not_sent_proven",
+]);
+
+// Possibly billable model calls (O2). The row is committed before the call, so its existence
+// means "may have been sent"; only an operator record of proven non-dispatch frees the budget.
+export const rewardDispatches = pgTable(
+  "reward_dispatches",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    contributionId: uuid("contribution_id")
+      .notNull()
+      .references(() => contributions.id),
+    nominationId: uuid("nomination_id").references(() => rewardNominations.id),
+    slotId: uuid("slot_id").references(() => rewardSlots.id),
+    purpose: rewardDispatchPurpose("purpose").notNull(),
+    fence: integer("fence").notNull(),
+    idempotencyKey: text("idempotency_key").notNull().unique(),
+    state: rewardDispatchState("state").notNull(),
+    model: text("model").notNull(),
+    promptVersion: text("prompt_version").notNull(),
+    promptHash: text("prompt_hash").notNull(),
+    inputHash: text("input_hash").notNull(),
+    input: jsonb("input").notNull(),
+    output: jsonb("output"),
+    outputHash: text("output_hash"),
+    latencyMs: integer("latency_ms"),
+    costMicroUsd: integer("cost_micro_usd"),
+    error: text("error"),
+    dispatchedAt: timestamp("dispatched_at", { withTimezone: true }).notNull(),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    reconcileReason: text("reconcile_reason"),
+  },
+  (t) => [
+    uniqueIndex("reward_dispatches_one_per_slot")
+      .on(t.slotId)
+      .where(sql`${t.state} <> 'not_sent_proven'`),
+    uniqueIndex("reward_dispatches_one_quality")
+      .on(t.contributionId)
+      .where(sql`${t.purpose} = 'quality' and ${t.state} <> 'not_sent_proven'`),
+  ],
+);
+
+export const rewardEffort = pgEnum("reward_effort", ["eligible", "ineligible", "not_nominated"]);
+
+// Completed reward decisions (O6). A linear lineage per contribution: revision 1 has no
+// predecessor, each later revision names exactly one, and no predecessor has two successors.
+export const rewardDecisions = pgTable(
+  "reward_decisions",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    contributionId: uuid("contribution_id")
+      .notNull()
+      .references(() => contributions.id),
+    epochId: uuid("epoch_id")
+      .notNull()
+      .references(() => epochs.id),
+    configId: uuid("config_id")
+      .notNull()
+      .references(() => rewardConfigs.id),
+    revision: integer("revision").notNull(),
+    predecessorId: uuid("predecessor_id").references((): AnyPgColumn => rewardDecisions.id),
+    dispatchId: uuid("dispatch_id").references(() => rewardDispatches.id),
+    nominationId: uuid("nomination_id").references(() => rewardNominations.id),
+    rawQuality: integer("raw_quality").notNull(),
+    creditedQuality: integer("credited_quality").notNull(),
+    flags: jsonb("flags").notNull(),
+    effort: rewardEffort("effort").notNull(),
+    effortCriteria: jsonb("effort_criteria"),
+    timingBps: integer("timing_bps").notNull(),
+    multiplierBps: integer("multiplier_bps").notNull(),
+    pointUnits: bigint("point_units", { mode: "bigint" }).notNull(),
+    explanation: text("explanation").notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
+    // accepted_at < the origin epoch's closesAt, decided under the community lock (O3).
+    affectsAllocation: boolean("affects_allocation").notNull(),
+  },
+  (t) => [
+    uniqueIndex("reward_decisions_contribution_revision").on(t.contributionId, t.revision),
+    uniqueIndex("reward_decisions_predecessor").on(t.predecessorId),
+    check("reward_decisions_revision_positive", sql`${t.revision} >= 1`),
   ],
 );

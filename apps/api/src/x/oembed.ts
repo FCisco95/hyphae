@@ -36,6 +36,15 @@ function textFromHtml(html: string): string {
     .trim();
 }
 
+const MEDIA_LINK = /\bpic\.(?:x|twitter)\.com\//;
+
+// What a capture could not include. oEmbed is text only: attached media shows up as a
+// pic.x.com / pic.twitter.com link and is never seen by the scorer.
+export function captureLimitations(post: XPost | null): string[] {
+  if (!post) return ["post_unavailable"];
+  return MEDIA_LINK.test(post.text) ? ["text_only", "media_not_captured"] : ["text_only"];
+}
+
 // publish.x.com/oembed is public and unauthenticated; one call per post, no API credits.
 export async function fetchPost(url: string): Promise<XPost | null> {
   const parsed = parsePostUrl(url);

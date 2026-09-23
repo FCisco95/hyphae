@@ -1,5 +1,6 @@
 import { Bot } from "grammy";
 import { env } from "../env.js";
+import { effort } from "./commands/effort.js";
 import { link } from "./commands/link.js";
 import { me } from "./commands/me.js";
 import { raid } from "./commands/raid.js";
@@ -15,6 +16,7 @@ bot.command("start", (ctx) =>
 bot.command("link", link);
 bot.command("me", me);
 bot.command("submit", submit);
+bot.command("effort", effort);
 bot.command("raid", raid);
 
 bot.catch((err) => {

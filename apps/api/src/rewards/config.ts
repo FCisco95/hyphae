@@ -1,9 +1,12 @@
 import { randomUUID } from "node:crypto";
 import {
   canonicalJson,
+  EFFORT_CRITERIA_V1,
   MAX_WHOLE_POINTS,
   POINT_UNITS_PER_POINT,
+  promptTemplateHash,
   REWARD_CREDIT_FLOOR,
+  REWARD_PROMPT_VERSION,
   type Rubric,
   RubricSchema,
   sha256Hex,
@@ -14,13 +17,23 @@ import { z } from "zod";
 
 // Pinned reward configuration (O4). The bundle is complete so reward work never reads
 // mutable community settings. Credit and points fields must equal the R1 constants: a
-// different gate needs an R1 change and a fresh activation, never a config edit.
+// different gate needs an R1 change and a fresh activation, never a config edit. Version 2 pins
+// the evaluation prompt; no version 1 bundle was ever stored outside test databases.
 const MINUTE_MS = 60_000;
+// O2's attempt bounds; the slot and retrieval tables enforce the same ceiling.
+const MAX_CANDIDATES_PER_SLOT = 3;
+const MAX_RETRIEVAL_ROUNDS = 3;
 
 export const RewardConfigPayload = z
   .object({
-    version: z.literal(1),
+    version: z.literal(2),
     rubric: RubricSchema,
+    scoring: z.object({
+      promptVersion: z.string().min(1),
+      promptTemplateHash: z
+        .string()
+        .regex(/^[0-9a-f]{64}$/, "promptTemplateHash must be sha256 hex"),
+    }),
     epoch: z.object({ durationSeconds: z.number().int().positive() }),
     timing: z.object({
       fullCreditUntilMs: z.number().int().nonnegative(),
@@ -39,8 +52,9 @@ export const RewardConfigPayload = z
     effort: z.object({
       multiplierBps: z.number().int().min(10_000),
       slotLimit: z.number().int().positive(),
-      candidatesPerSlot: z.number().int().positive(),
-      retrievalRounds: z.number().int().positive(),
+      candidatesPerSlot: z.number().int().positive().max(MAX_CANDIDATES_PER_SLOT),
+      retrievalRounds: z.number().int().positive().max(MAX_RETRIEVAL_ROUNDS),
+      criteria: z.string().min(20),
     }),
     points: z.object({
       unitsPerPoint: z.literal(POINT_UNITS_PER_POINT.toString()),
@@ -75,7 +89,13 @@ export type RewardConfigPayload = z.infer<typeof RewardConfigPayload>;
 
 export const DEFAULT_REWARD_POLICY = {
   epoch: { durationSeconds: 604_800 },
-  effort: { multiplierBps: 30_000, slotLimit: 1, candidatesPerSlot: 3, retrievalRounds: 3 },
+  effort: {
+    multiplierBps: 30_000,
+    slotLimit: 1,
+    candidatesPerSlot: MAX_CANDIDATES_PER_SLOT,
+    retrievalRounds: MAX_RETRIEVAL_ROUNDS,
+    criteria: EFFORT_CRITERIA_V1,
+  },
 } as const;
 
 export interface RewardPolicyOverrides {
@@ -83,13 +103,20 @@ export interface RewardPolicyOverrides {
   effort?: Partial<RewardConfigPayload["effort"]>;
 }
 
+function currentPromptPin(): RewardConfigPayload["scoring"] {
+  const hash = promptTemplateHash(REWARD_PROMPT_VERSION);
+  if (!hash) throw new Error(`reward: prompt ${REWARD_PROMPT_VERSION} is not registered`);
+  return { promptVersion: REWARD_PROMPT_VERSION, promptTemplateHash: hash };
+}
+
 export function buildRewardConfigPayload(
   rubric: Rubric,
   overrides: RewardPolicyOverrides = {},
 ): RewardConfigPayload {
   return RewardConfigPayload.parse({
-    version: 1,
+    version: 2,
     rubric,
+    scoring: currentPromptPin(),
     epoch: { ...DEFAULT_REWARD_POLICY.epoch, ...overrides.epoch },
     timing: {
       fullCreditUntilMs: rubric.timing.fullUntil * MINUTE_MS,
@@ -171,7 +198,9 @@ export const dbClock: Clock = async (db, communityId) => {
 };
 
 // Every reward write serializes on the community row and takes its timestamp afterwards, so
-// acceptance order equals commit order per community (O3 durable acceptance).
+// acceptance order equals commit order per community (O3 durable acceptance). NO KEY UPDATE
+// excludes other reward writers but not the KEY SHARE that foreign-key inserts (/link, /raid,
+// legacy /submit) take on the same row.
 export async function withCommunityLock<T>(
   db: Db,
   communityId: string,
@@ -183,7 +212,7 @@ export async function withCommunityLock<T>(
       .select()
       .from(communities)
       .where(eq(communities.id, communityId))
-      .for("update");
+      .for("no key update");
     if (!community) throw new Error(`reward: community ${communityId} missing`);
     const now = await (deps.clock ?? dbClock)(tx, communityId);
     return fn(tx, community, now);
@@ -400,12 +429,15 @@ export async function proposeRewardConfig(
     if (pinned.rewardConfigId === config.id) {
       throw new Error("reward: this configuration is already pinned; nothing to propose");
     }
+    const pending = await pendingProposal(tx, input.communityId);
+    if (pending?.configId === config.id) {
+      throw new Error("reward: this configuration is already pending; nothing to propose");
+    }
     const earliest = earliestActivationEpoch(
       acceptedInEpoch,
       await lastActivation(tx, input.communityId),
     );
     const id = randomUUID();
-    const pending = await pendingProposal(tx, input.communityId);
     if (pending) {
       await tx
         .update(rewardConfigProposals)

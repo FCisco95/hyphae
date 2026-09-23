@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { bot } from "../bot/index.js";
 import { db } from "../db.js";
 import { env } from "../env.js";
-import { scoringModel } from "../scoring/provider.js";
+import { defaultModel as model } from "../scoring/default-model.js";
 import { runScoring } from "../scoring/run.js";
 import type { XPost } from "../x/oembed.js";
 import { scoreMessage } from "./score-message.js";
@@ -14,11 +14,6 @@ export interface ScoreJob {
   // Re-score after a rubric change: adds a new run next to the old one instead of skipping.
   force?: boolean;
 }
-
-const model = scoringModel(env.SCORING_MODEL, {
-  anthropic: env.ANTHROPIC_API_KEY,
-  deepseek: env.DEEPSEEK_API_KEY,
-});
 
 async function loadContribution(contributionId: string) {
   const c = await db.query.contributions.findFirst({ where: eq(contributions.id, contributionId) });
