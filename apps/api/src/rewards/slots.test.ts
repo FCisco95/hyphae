@@ -10,7 +10,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { bootstrapRewardEpochs, buildRewardConfigPayload } from "./config.js";
 import { admitContribution, type Capture } from "./intake.js";
-import { nominate, withdrawNomination } from "./slots.js";
+import { nominate, recordRetrieval, withdrawNomination } from "./slots.js";
 import { at, createTestDb, rubric, seedCommunity } from "./test-db.js";
 
 const T0 = new Date("2026-10-01T00:00:00.000Z");
@@ -284,5 +284,73 @@ describe("withdrawNomination", () => {
       .set({ state: "evaluating" })
       .where(eq(rewardNominations.id, result.nomination.id));
     expect((await s.withdraw(result.nomination.id)).status).toBe("dispatched");
+  });
+});
+
+describe("recordRetrieval", () => {
+  const retrieve = (
+    s: Awaited<ReturnType<typeof setup>>,
+    nominationId: string,
+    round: number,
+    limitations: string[],
+    clockMs = 200_000,
+  ) =>
+    recordRetrieval(
+      t.db,
+      { communityId: s.community.id, nominationId, round, limitations },
+      { clock: later(clockMs) },
+    );
+  const nominated = async (s: Awaited<ReturnType<typeof setup>>, capture: Capture) => {
+    const intake = await s.admitOne(capture);
+    const n = await s.nom(intake.contributionId, "n1");
+    if (n.status !== "nominated") throw new Error(n.status);
+    return { intake, nomination: n.nomination };
+  };
+
+  it("keeps uncaptured media pending through round 3, then stops", async () => {
+    const s = await setup();
+    const { intake, nomination } = await nominated(s, withMedia);
+    const gap = ["text_only", "media_not_captured"];
+    expect(await retrieve(s, nomination.id, 2, gap)).toMatchObject({
+      status: "pending",
+      reason: "media_not_captured",
+      nextRound: 3,
+    });
+    expect(await retrieve(s, nomination.id, 3, gap)).toMatchObject({
+      status: "pending",
+      nextRound: null,
+    });
+    expect((await retrieve(s, nomination.id, 4, gap)).status).toBe("exhausted");
+    const rounds = await t.db
+      .select()
+      .from(rewardRetrievals)
+      .where(eq(rewardRetrievals.contributionId, intake.contributionId));
+    expect(rounds.map((r) => r.round).sort()).toEqual([1, 2, 3]);
+  });
+
+  it("makes the nomination ready when a later round captures the evidence", async () => {
+    const s = await setup();
+    const { nomination } = await nominated(s, { ...textOnly, limitations: ["post_unavailable"] });
+    expect(await retrieve(s, nomination.id, 2, ["text_only"])).toMatchObject({
+      status: "ready",
+      nomination: { state: "ready", pendingReason: null },
+    });
+  });
+
+  it("ignores a repeated round", async () => {
+    const s = await setup();
+    const { nomination } = await nominated(s, withMedia);
+    await retrieve(s, nomination.id, 2, ["media_not_captured"]);
+    expect((await retrieve(s, nomination.id, 2, ["media_not_captured"])).status).toBe(
+      "duplicate_round",
+    );
+  });
+
+  it("stops at the epoch close", async () => {
+    const s = await setup();
+    const { nomination } = await nominated(s, withMedia);
+    expect((await retrieve(s, nomination.id, 2, ["text_only"], WEEK_MS)).status).toBe(
+      "epoch_closed",
+    );
   });
 });

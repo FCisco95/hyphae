@@ -290,3 +290,83 @@ export async function withdrawNomination(
     return { status: "withdrawn", nomination: withdrawn };
   });
 }
+
+export type RetrievalResult =
+  | { status: "ready"; nomination: Nomination }
+  | { status: "pending"; reason: string; nextRound: number | null }
+  | { status: "not_pending" | "duplicate_round" | "exhausted" | "epoch_closed" };
+
+// One free retrieval round (O2). Rounds are counted per artifact and epoch, never reset, and stop
+// at the pinned bound or the epoch close. Exhaustion stays pending; it is never a rejection.
+export async function recordRetrieval(
+  db: Db,
+  input: { communityId: string; nominationId: string; round: number; limitations: string[] },
+  deps: RewardDeps = {},
+): Promise<RetrievalResult> {
+  return withCommunityLock(db, input.communityId, deps, async (tx, _community, now) => {
+    const [nomination] = await tx
+      .select()
+      .from(rewardNominations)
+      .where(
+        and(
+          eq(rewardNominations.id, input.nominationId),
+          eq(rewardNominations.communityId, input.communityId),
+        ),
+      );
+    if (!nomination || nomination.state !== "pending_evidence") return { status: "not_pending" };
+    const [epoch] = await tx.select().from(epochs).where(eq(epochs.id, nomination.epochId));
+    if (!epoch) throw new Error(`reward: epoch ${nomination.epochId} missing`);
+    if (now.getTime() >= epoch.closesAt.getTime()) return { status: "epoch_closed" };
+    const [intake] = await tx
+      .select({ configId: rewardIntakes.configId })
+      .from(rewardIntakes)
+      .where(eq(rewardIntakes.id, nomination.intakeId));
+    const [config] = intake
+      ? await tx
+          .select({ payload: rewardConfigs.payload })
+          .from(rewardConfigs)
+          .where(eq(rewardConfigs.id, intake.configId))
+      : [];
+    if (!config) throw new Error(`reward: config for nomination ${nomination.id} missing`);
+    const { retrievalRounds } = RewardConfigPayload.parse(config.payload).effort;
+    if (input.round > retrievalRounds) return { status: "exhausted" };
+
+    const [last] = await tx
+      .select({ round: rewardRetrievals.round })
+      .from(rewardRetrievals)
+      .where(
+        and(
+          eq(rewardRetrievals.contributionId, nomination.contributionId),
+          eq(rewardRetrievals.epochId, nomination.epochId),
+        ),
+      )
+      .orderBy(desc(rewardRetrievals.round))
+      .limit(1);
+    if (input.round !== (last?.round ?? 0) + 1) return { status: "duplicate_round" };
+
+    const gap = essentialGap(input.limitations);
+    await tx.insert(rewardRetrievals).values({
+      contributionId: nomination.contributionId,
+      epochId: nomination.epochId,
+      round: input.round,
+      outcome: gap ?? "complete",
+      limitations: input.limitations,
+      attemptedAt: now,
+    });
+    if (gap) {
+      await tx
+        .update(rewardNominations)
+        .set({ pendingReason: gap, updatedAt: now })
+        .where(eq(rewardNominations.id, nomination.id));
+      const nextRound = input.round < retrievalRounds ? input.round + 1 : null;
+      return { status: "pending", reason: gap, nextRound };
+    }
+    const [ready] = await tx
+      .update(rewardNominations)
+      .set({ state: "ready", pendingReason: null, updatedAt: now })
+      .where(eq(rewardNominations.id, nomination.id))
+      .returning();
+    if (!ready) throw new Error("reward: nomination update returned nothing");
+    return { status: "ready", nomination: ready };
+  });
+}
