@@ -1,7 +1,7 @@
 import { sha256Hex } from "@hyphae/core";
 import { contributions, type Db, members, rewardIntakes, tasks } from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
-import { ensureEpochAt, type RewardDeps, withCommunityLock } from "./config.js";
+import { ensureEpochAt, latestEpoch, type RewardDeps, withCommunityLock } from "./config.js";
 
 export type RewardIntake = typeof rewardIntakes.$inferSelect;
 
@@ -54,9 +54,12 @@ export async function admitContribution(
     if (existing) return { status: "admitted", intake: existing, created: false };
     if (community.rewardIntakePausedAt) return { status: "paused" };
 
+    // A legacy community stays legacy: its unpinned epochs are never extended.
+    const latest = await latestEpoch(tx, input.communityId);
+    if (latest && !latest.rewardConfigId) return { status: "legacy_epoch" };
     const epoch = await ensureEpochAt(tx, input.communityId, now, now);
     if (!epoch) return { status: "not_open" };
-    if (!epoch.rewardConfigId) return { status: "legacy_epoch" };
+    if (!epoch.rewardConfigId) throw new Error("reward: materialized epoch has no pinned config");
 
     const [member] = await tx
       .select({ id: members.id })
