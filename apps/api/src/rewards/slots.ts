@@ -313,7 +313,7 @@ export async function recordRetrieval(
           eq(rewardNominations.communityId, input.communityId),
         ),
       );
-    if (!nomination || nomination.state !== "pending_evidence") return { status: "not_pending" };
+    if (nomination?.state !== "pending_evidence") return { status: "not_pending" };
     const [epoch] = await tx.select().from(epochs).where(eq(epochs.id, nomination.epochId));
     if (!epoch) throw new Error(`reward: epoch ${nomination.epochId} missing`);
     if (now.getTime() >= epoch.closesAt.getTime()) return { status: "epoch_closed" };

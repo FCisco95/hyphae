@@ -1,4 +1,12 @@
 import { QUEUES, startQueue } from "./jobs/queue.js";
+import {
+  evaluateReward,
+  notifyReward,
+  type RewardEvaluationJob,
+  type RewardNotifyJob,
+  type RewardRetrievalJob,
+  retrieveEvidence,
+} from "./jobs/reward-jobs.js";
 import { notifyScoringFailed, type ScoreJob, scoreContribution } from "./jobs/score.js";
 
 const boss = await startQueue();
@@ -15,6 +23,16 @@ await boss.work<ScoreJob, unknown, typeof workOptions>(QUEUES.score, workOptions
     }
     throw err;
   }
+});
+
+await boss.work<RewardEvaluationJob>(QUEUES.rewardEvaluation, { batchSize: 1 }, async ([job]) => {
+  if (job) await evaluateReward(job.data);
+});
+await boss.work<RewardRetrievalJob>(QUEUES.rewardRetrieval, { batchSize: 1 }, async ([job]) => {
+  if (job) await retrieveEvidence(job.data);
+});
+await boss.work<RewardNotifyJob>(QUEUES.rewardNotify, { batchSize: 1 }, async ([job]) => {
+  if (job) await notifyReward(job.data);
 });
 
 console.log(`worker: consuming ${Object.values(QUEUES).join(", ")}`);

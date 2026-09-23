@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { setRewardIntakePaused } from "./config.js";
 import type { AdmitInput } from "./intake.js";
-import { routeSubmission, submitEffort } from "./submission.js";
+import { admittedIntake, routeSubmission, submitEffort } from "./submission.js";
 import { createTestDb, later, seedCommunity, seedRewardLane, T0 } from "./test-db.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
@@ -93,5 +93,17 @@ describe("submitEffort", () => {
       { clock: later(60_000) },
     );
     expect(result).toEqual({ admit: { status: "paused" } });
+  });
+});
+
+describe("admittedIntake", () => {
+  it("finds an admitted artifact by its canonical key in this community only", async () => {
+    const { community, member } = await seedRewardLane(t.db);
+    const other = await seedRewardLane(t.db);
+    await routeSubmission(t.db, input(community.id, member.id, 1), { clock: later(60_000) });
+    expect(await admittedIntake(t.db, community.id, "x:status:777")).toMatchObject({
+      memberId: member.id,
+    });
+    expect(await admittedIntake(t.db, other.community.id, "x:status:777")).toBeUndefined();
   });
 });

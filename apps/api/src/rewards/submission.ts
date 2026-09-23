@@ -1,17 +1,26 @@
-import type { Db } from "@hyphae/db";
+import { type Db, rewardIntakes } from "@hyphae/db";
+import { and, eq } from "drizzle-orm";
 import { latestEpoch, type RewardDeps } from "./config.js";
-import { type AdmitInput, type AdmitResult, admitContribution } from "./intake.js";
+import {
+  type AdmitInput,
+  type AdmitResult,
+  admitContribution,
+  type RewardIntake,
+} from "./intake.js";
 import { type NominateResult, nominate } from "./slots.js";
 
 export type RoutedSubmission = { lane: "legacy" } | { lane: "reward"; result: AdmitResult };
 
 // A community without reward epochs keeps the legacy /submit path until its separate cutover.
+export const hasRewardLane = async (db: Db, communityId: string): Promise<boolean> =>
+  (await latestEpoch(db, communityId)) !== undefined;
+
 export async function routeSubmission(
   db: Db,
   input: AdmitInput,
   deps: RewardDeps = {},
 ): Promise<RoutedSubmission> {
-  if (!(await latestEpoch(db, input.communityId))) return { lane: "legacy" };
+  if (!(await hasRewardLane(db, input.communityId))) return { lane: "legacy" };
   return { lane: "reward", result: await admitContribution(db, input, deps) };
 }
 
@@ -39,4 +48,19 @@ export async function submitEffort(
     deps,
   );
   return { admit, nominate: result };
+}
+
+// Lets /effort nominate already admitted work without repeating the submission preflight.
+export async function admittedIntake(
+  db: Db,
+  communityId: string,
+  artifactKey: string,
+): Promise<RewardIntake | undefined> {
+  const [row] = await db
+    .select()
+    .from(rewardIntakes)
+    .where(
+      and(eq(rewardIntakes.communityId, communityId), eq(rewardIntakes.artifactKey, artifactKey)),
+    );
+  return row;
 }
