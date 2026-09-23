@@ -11,7 +11,8 @@
     "start:worker": "node dist/worker.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "eval:scoring": "node --import tsx scripts/eval-scoring.ts"
+    "eval:scoring": "node --import tsx scripts/eval-scoring.ts",
+    "test:pg": "bash scripts/test-pg.sh"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.0",

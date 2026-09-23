@@ -198,7 +198,9 @@ export const dbClock: Clock = async (db, communityId) => {
 };
 
 // Every reward write serializes on the community row and takes its timestamp afterwards, so
-// acceptance order equals commit order per community (O3 durable acceptance).
+// acceptance order equals commit order per community (O3 durable acceptance). NO KEY UPDATE
+// excludes other reward writers but not the KEY SHARE that foreign-key inserts (/link, /raid,
+// legacy /submit) take on the same row.
 export async function withCommunityLock<T>(
   db: Db,
   communityId: string,
@@ -210,7 +212,7 @@ export async function withCommunityLock<T>(
       .select()
       .from(communities)
       .where(eq(communities.id, communityId))
-      .for("update");
+      .for("no key update");
     if (!community) throw new Error(`reward: community ${communityId} missing`);
     const now = await (deps.clock ?? dbClock)(tx, communityId);
     return fn(tx, community, now);

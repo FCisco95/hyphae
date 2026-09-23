@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
-import { communities, members, schema, tasks } from "@hyphae/db";
+import { communities, type Db, members, schema, tasks } from "@hyphae/db";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { bootstrapRewardEpochs, buildRewardConfigPayload, type Clock } from "./config.js";
@@ -36,7 +36,7 @@ export const rubric = {
 
 let seq = 0;
 
-export async function seedCommunity(db: TestDb) {
+export async function seedCommunity(db: Db) {
   seq += 1;
   const [community] = await db
     .insert(communities)
@@ -63,7 +63,7 @@ export async function seedCommunity(db: TestDb) {
   return { community, member };
 }
 
-export async function seedTask(db: TestDb, communityId: string, opensAt: Date) {
+export async function seedTask(db: Db, communityId: string, opensAt: Date) {
   const [task] = await db
     .insert(tasks)
     .values({
@@ -85,7 +85,7 @@ export const later = (ms: number): Clock => at(new Date(T0.getTime() + ms));
 let artifactSeq = 0;
 
 // A community bootstrapped at T0 with one member, plus a helper that admits a post at T0 + 1 min.
-export async function seedRewardLane(db: TestDb, payload = buildRewardConfigPayload(rubric)) {
+export async function seedRewardLane(db: Db, payload = buildRewardConfigPayload(rubric)) {
   const { community, member } = await seedCommunity(db);
   await bootstrapRewardEpochs(
     db,
