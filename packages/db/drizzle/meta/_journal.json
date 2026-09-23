@@ -29,6 +29,13 @@
       "when": 1790085607607,
       "tag": "0003_reward_config_intake",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790178141169,
+      "tag": "0004_reward_slots_dispatch",
+      "breakpoints": true
     }
   ]
 }
