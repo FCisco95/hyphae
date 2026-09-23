@@ -27,7 +27,7 @@ export interface AdmitInput {
 export type AdmitResult =
   | { status: "admitted"; intake: RewardIntake; created: boolean }
   | { status: "duplicate_artifact"; intake: RewardIntake }
-  | { status: "paused" | "not_open" | "legacy_epoch" | "before_task_open" };
+  | { status: "paused" | "not_open" | "legacy_epoch" | "before_task_open" | "task_closed" };
 
 // Canonical artifact identity (O2): the provider's status id or the text itself, never the URL.
 export function artifactKeyFor(ref: { statusId: string } | { text: string }): string {
@@ -73,11 +73,15 @@ export async function admitContribution(
     const taskId = input.taskId ?? null;
     if (taskId) {
       const [task] = await tx
-        .select({ opensAt: tasks.opensAt })
+        .select({ status: tasks.status, opensAt: tasks.opensAt, closesAt: tasks.closesAt })
         .from(tasks)
         .where(and(eq(tasks.id, taskId), eq(tasks.communityId, input.communityId)));
       if (!task) {
         throw new Error(`reward: task ${taskId} is not a task of community ${input.communityId}`);
+      }
+      // The raid can close while the post is being fetched; the locked clock decides.
+      if (task.status !== "open" || now.getTime() >= task.closesAt.getTime()) {
+        return { status: "task_closed" };
       }
       if (now.getTime() < task.opensAt.getTime()) return { status: "before_task_open" };
     }

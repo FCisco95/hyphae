@@ -128,6 +128,7 @@ export const ADMIT_REFUSAL: Record<Exclude<AdmitResult["status"], "admitted">, s
   not_open: "The first reward epoch has not opened yet.",
   legacy_epoch: "This community's epochs predate reward intake.",
   before_task_open: "That raid has not opened yet.",
+  task_closed: "That raid has closed.",
 };
 
 export async function submit(ctx: CommandContext<Context>) {

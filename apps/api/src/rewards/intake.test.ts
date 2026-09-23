@@ -4,6 +4,7 @@ import {
   epochs,
   rewardConfigProposals,
   rewardIntakes,
+  tasks,
 } from "@hyphae/db";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -241,6 +242,43 @@ describe("admitContribution", () => {
     );
     if (onTime.status !== "admitted") throw new Error(onTime.status);
     expect(onTime.intake.taskId).toBe(task.id);
+  });
+
+  it("refuses intake at or after the task closes: closesAt - 1 ms is in, closesAt is out", async () => {
+    const { community, member } = await seedCommunity(t.db);
+    await boot(community.id);
+    const task = await seedTask(t.db, community.id, T0);
+    const late = await admitContribution(
+      t.db,
+      admit({ communityId: community.id, memberId: member.id, taskId: task.id }),
+      { clock: at(task.closesAt) },
+    );
+    expect(late).toEqual({ status: "task_closed" });
+    const lastMs = await admitContribution(
+      t.db,
+      admit({ communityId: community.id, memberId: member.id, taskId: task.id }),
+      { clock: at(plusMs(task.closesAt, -1)) },
+    );
+    if (lastMs.status !== "admitted") throw new Error(lastMs.status);
+    expect(lastMs.intake.taskId).toBe(task.id);
+  });
+
+  it("refuses intake for a task whose status is not open, even inside its window", async () => {
+    const { community, member } = await seedCommunity(t.db);
+    await boot(community.id);
+    const task = await seedTask(t.db, community.id, T0);
+    await t.db.update(tasks).set({ status: "closed" }).where(eq(tasks.id, task.id));
+    const result = await admitContribution(
+      t.db,
+      admit({ communityId: community.id, memberId: member.id, taskId: task.id }),
+      { clock: at(plus(T0, 60)) },
+    );
+    expect(result).toEqual({ status: "task_closed" });
+    const stored = await t.db
+      .select()
+      .from(contributions)
+      .where(eq(contributions.communityId, community.id));
+    expect(stored).toHaveLength(0);
   });
 
   it("rejects a task that belongs to another community", async () => {

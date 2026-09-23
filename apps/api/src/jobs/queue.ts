@@ -6,6 +6,7 @@ export const QUEUES = {
   rewardEvaluation: "reward-evaluation",
   rewardRetrieval: "reward-retrieval",
   rewardNotify: "reward-notify",
+  rewardRecovery: "reward-recovery",
 } as const;
 
 export const boss = new PgBoss({
@@ -41,5 +42,7 @@ export async function startQueue() {
     retryBackoff: true,
     expireInSeconds: 30,
   });
+  // A failed sweep is not retried: the next scheduled run repeats it.
+  await boss.createQueue(QUEUES.rewardRecovery, { retryLimit: 0, expireInSeconds: 60 });
   return boss;
 }

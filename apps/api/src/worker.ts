@@ -5,6 +5,7 @@ import {
   type RewardEvaluationJob,
   type RewardNotifyJob,
   type RewardRetrievalJob,
+  recoverRewardWork,
   retrieveEvidence,
 } from "./jobs/reward-jobs.js";
 import { notifyScoringFailed, type ScoreJob, scoreContribution } from "./jobs/score.js";
@@ -34,6 +35,8 @@ await boss.work<RewardRetrievalJob>(QUEUES.rewardRetrieval, { batchSize: 1 }, as
 await boss.work<RewardNotifyJob>(QUEUES.rewardNotify, { batchSize: 1 }, async ([job]) => {
   if (job) await notifyReward(job.data);
 });
+await boss.work(QUEUES.rewardRecovery, { batchSize: 1 }, recoverRewardWork);
+await boss.schedule(QUEUES.rewardRecovery, "*/5 * * * *");
 
 console.log(`worker: consuming ${Object.values(QUEUES).join(", ")}`);
 
