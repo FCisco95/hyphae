@@ -1,97 +1,97 @@
 ---
 date: 2026-09-23
-summary: R3 review findings F1, F2 and F4 fixed test-first on fix/r3-recovery (task-close check; scheduled recovery sweep), gate green including test:pg, PR open against main. F3 (lost score message after a crash) waits on Cisco's choice between migration 0005 and a transactional enqueue. Nothing applied or deployed.
+summary: F1, F2 and F4 are merged (PR #9); the public docs are merged (PR #8). F3 is fixed on fix/r3-f3-notified with migration 0005 (approved in writing by Cisco), and its PR is open. Next: merge on Cisco's yes, then apply 0003–0005 to Neon in one run. Nothing applied or deployed.
 ---
 
 # Hyphae handoff
 
 ## TL;DR
 
-**F1, F2, F4 FIXED on `fix/r3-recovery`; F3 OPEN pending a decision.** `main` = `3754534` (R3). The fix branch adds a task-close check inside admission (`25cd7b4`) and a 5-minute, idempotent `reward-recovery` sweep (`4d0bd4d`). F3 needs either migration 0005 (a `notified_at` marker, recommended) or a transactional enqueue; the approval covers only 0003/0004, so it waits for Cisco. **Next:** review and merge the fix PR on Cisco's yes; Cisco's F3 call; then apply 0003/0004 (plus 0005 if approved). No bootstrap, no deploy.
+**All four R3 review findings are fixed; F3's fix awaits merge.** `main` = `68091d5` (PRs #7, #9 and #8 merged 2026-09-23). The F3 branch `fix/r3-f3-notified` (`26f51bc`) adds migration 0005, a nullable `reward_decisions.notified_at`, which Cisco approved in writing ("Yes, add 0005"). **Next:** review and merge the F3 PR on Cisco's yes, then apply 0003, 0004 and 0005 to Neon in one run per `docs/handoffs/2026-09-23-f3-notified.md`. No bootstrap, no deploy.
 
 ## Metadata
 
-- Last Updated: 2026-09-23 (late). Snapshots: `docs/handoffs/2026-09-23-r3-recovery.md` (this fix, F3 options), `2026-09-23-r3-merged.md` (findings), `2026-09-23-r3-implemented.md` (R3, corrected on notifications).
-- Branches: `main` = `origin/main` = `3754534`. `docs/2026-09-23-r3-merged` (PR #7) open, not merged. `fix/r3-recovery` is based on it and pushed as PR #9; it targets `main` and therefore also carries PR #7's docs commit.
-- Runner: Claude Code, Opus 5.5 (`claude-opus-5-5`, as reported by the session environment), Windows, 2026-09-23. Launch requested effort high; effort is not observable in-session.
-- Authority: O1–O7 (`2026-09-20-h-design-written-approval.md`); schedule rulings (`2026-09-23-schedule-rulings.md`); R3–R5 approval (`2026-09-23-r3-r5-approval.md`).
+- Last Updated: 2026-09-23 (night). Snapshots: `docs/handoffs/2026-09-23-f3-notified.md` (approval, F3 fix, apply preconditions), `2026-09-23-r3-recovery.md` (F1/F2/F4), `2026-09-23-r3-merged.md` (findings).
+- Branches: `main` = `origin/main` = `68091d5`. `fix/r3-f3-notified` is pushed with a PR against `main`. Merged branches are deleted.
+- Runner: Claude Code, Opus 5.5 (`claude-opus-5-5`, as reported by the session environment), Windows, 2026-09-23. Effort is not observable in-session.
+- Authority: O1–O7 (`2026-09-20-h-design-written-approval.md`); schedule rulings; R3–R5 approval (`2026-09-23-r3-r5-approval.md`); migration 0005 approval (`2026-09-23-f3-notified.md`).
 - Canonical private plan: not read or edited this session.
 
 ## Current Objective
 
-Get the recovery fix reviewed and merged, settle F3, then apply migrations 0003/0004 per the approval preconditions.
+Merge the F3 fix, then apply migrations 0003–0005 to Neon per the preconditions in `2026-09-23-f3-notified.md`.
 
 ## Current State
 
-- On `fix/r3-recovery` (not merged, not deployed): `admitContribution` refuses `task_closed` when the task is not `open` or `now >= closesAt` under the lock. `strandedWork` + `reward-recovery` queue re-queue, after a 10-minute grace: admitted intakes with no live quality dispatch and no live new-work nomination; `ready` nominations with no live slot dispatch (covers `reward-reconcile.ts`); pending-evidence nominations missing their next retrieval round; dispatches stuck in `dispatched`. The worker schedules it with `*/5 * * * *`.
-- R3 on `main` as before; the withdraw-without-quality gap is closed by the sweep once the fix merges.
+- On `main` (not deployed): R3 plus the recovery fixes. Admission refuses closed tasks. A 5-minute `reward-recovery` sweep re-queues stranded intakes, ready nominations, missing retrieval rounds and stuck dispatches.
+- On `fix/r3-f3-notified` (not merged): `notifyReward` skips decisions already marked and marks them after Telegram accepts; sweep part (c) resends unmarked decisions after a 10-minute grace, for up to 24 h. Delivery is at least once.
+- Public docs on `main`: `docs/WHITEPAPER.md`, `docs/TESTING.md`, `docs/demo/2026-09-25-weekly-video-2.md`.
 - Production unchanged: Neon has migrations 0000–0002 only (last recorded Sep 17; not re-checked); the deployed bot runs the Sep 17 path.
 
 ## Recent Changes
 
-2026-09-23 (late): F4 fix `25cd7b4`; recovery sweep `4d0bd4d`; R3 record corrected ("retry independently" only once queued); record `2026-09-23-r3-recovery.md`; build log.
+2026-09-23 (night): PRs #7, #9 and #8 merged; Cisco approved 0005; F3 fixed (`26f51bc`); record `2026-09-23-f3-notified.md`; build log.
 
-2026-09-23: PR #5 and PR #6 merged; findings F1–F4 recorded (PR #7).
+2026-09-23 (late): F4 `25cd7b4`, recovery sweep `4d0bd4d` (PR #9); public docs `5f2c27e` (PR #8).
+
+2026-09-23: R3 merged (PR #6); findings F1–F4 recorded (PR #7).
 
 ## Validation
 
-Fresh on `4d0bd4d`: `pnpm -r test` exit 0 (core 54, api 160); `pnpm -r typecheck` exit 0; `pnpm exec biome check .` exit 0 (97 files); `drizzle-kit check` exit 0; `pnpm --filter @hyphae/api test:pg` 4/4 exit 0; `git diff --check` exit 0. Mutation probes on the sweep: 13/13 killed.
+Fresh on `26f51bc`: `pnpm -r test` exit 0 (core 54, api 163); `pnpm -r typecheck` exit 0; `pnpm exec biome check .` exit 0 (98 files); `drizzle-kit check` exit 0; `test:pg` 4/4 exit 0; `git diff --check` exit 0. Mutation probes on the F3 code: 5 of 5 killed.
 
 ## Known Issues / Watch List
 
-- **F3 open:** a crash between completion and queueing the notification loses the member's message (the score is kept). Options and recommendation in `2026-09-23-r3-recovery.md`.
-- The sweep's worker wiring (`recoverRewardWork`, `boss.schedule`) is typechecked, not run against pg-boss; first real run is at cutover.
+- The worker wiring (`recoverRewardWork`, `boss.schedule`, the notify marker) has never run against pg-boss; its first real run is at cutover. Check that the worker log shows a `reward-recovery` line about every 5 minutes.
+- A decision's message can be sent twice (crash after Telegram accepts, before the mark). It is abandoned after 24 h of refusals.
+- `main` must not be deployed before 0003–0005 are applied.
 - No CI. The native gate, `test:pg` and an independent review are the evidence.
-- `main` must not be deployed before 0003 and 0004 are applied (approved; check zero MYCEL epochs and a 0000–0002 journal first).
-- `/me` still sums legacy `scoring_runs` (R4). BotFather menu lacks `/effort` (manual step at cutover). No bot withdraw command.
+- `/me` still sums legacy `scoring_runs` (R4). The BotFather menu lacks `/effort` and still lists `/propose` and `/rubric`, which aren't built. No bot withdraw command.
 - Live Telegram, oEmbed and provider paths are exercised only through injected fakes.
-- Codex CLI sandbox on this machine fails with `apply deny-read ACLs`; use `codex --sandbox danger-full-access` for a review session.
-- Worktree-isolated sessions refuse compound shell commands that mix `cd` or runtime variables with git; run git and pnpm as plain single commands.
+- Cross-session messages to a background session in a different permission mode are held for the user's approval and expire when nobody approves them.
 
 ## Next Actions
 
-1. Review PR #9: read Codex's inline comments (`gh api repos/FCisco95/hyphae/pulls/9/comments`), address any, merge on Cisco's yes. Merge PR #7 first or together.
-2. Cisco: F3 option 1 (migration 0005, `notified_at`) or option 2 (transactional enqueue). Option 1 needs a written yes for 0005.
-3. Apply 0003/0004 (and 0005 if approved and built) to Neon per the approval preconditions; record it. No bootstrap, no deploy.
-4. Sep 24 docs per `2026-09-23-tomorrow-plan.md`.
-5. R4 on `feat/r4-effective-reads` after the fixes merge.
+1. Review the F3 PR and merge it on Cisco's yes.
+2. Apply 0003, 0004 and 0005 to Neon in one run per `2026-09-23-f3-notified.md` (zero epochs, journal 0000–0002, Drizzle migrator from the merge commit), and record it. No bootstrap, no deploy.
+3. R4 on `feat/r4-effective-reads` (effective reads, epoch-scoped `/me`, operator corrections).
+4. Weekly video #2 on Friday per `docs/demo/2026-09-25-weekly-video-2.md`.
 
 ## Quick Reference
 
-- This fix: `apps/api/src/rewards/{intake,recovery}.ts`, `recovery.test.ts`, `apps/api/src/jobs/{queue,reward-jobs}.ts`, `apps/api/src/worker.ts`
-- Findings: `docs/handoffs/2026-09-23-r3-merged.md`; fix record: `2026-09-23-r3-recovery.md`
-- Approval: `docs/handoffs/2026-09-23-r3-r5-approval.md`
+- F3 fix: `apps/api/src/rewards/recovery.ts` (`strandedWork` part (c), `decisionNotified`, `markNotified`), `apps/api/src/jobs/reward-jobs.ts`, `packages/db/drizzle/0005_reward_decision_notified.sql`
+- Apply preconditions: `docs/handoffs/2026-09-23-f3-notified.md`
 - Real-Postgres gate: `apps/api/scripts/test-pg.sh`
-- Operator script: `apps/api/scripts/reward-reconcile.ts <dispatch-id> not-sent --reason "<evidence>"` (the sweep queues the follow-up call)
+- Operator script: `apps/api/scripts/reward-reconcile.ts <dispatch-id> not-sent --reason "<evidence>"`
 
 ## Suggested skills
 
-`handoff-memory` (resume), `superpowers:receiving-code-review` (PR comments), `superpowers:test-driven-development` (F3 once chosen, R4), `supabase:supabase-postgres-best-practices` (migration apply), `handoff`.
+`handoff-memory` (resume), `superpowers:receiving-code-review` (F3 PR), `supabase:supabase-postgres-best-practices` (migration apply), `superpowers:test-driven-development` (R4), `handoff`.
 
 ## Resume Checklist
 
-- `git fetch --prune && git status -sb`; check whether PR #7 and the fix PR are merged.
+- `git fetch --prune && git status -sb`; check whether the F3 PR is merged.
 - Run the native gate and `pnpm --filter @hyphae/api test:pg` (Docker must be running).
-- Do not apply any migration until the fix PR merges; 0005 only with its own written yes.
+- Apply the migrations only after the F3 PR merges, and only in one run.
 
 ## Generated artifacts this session
 
 | What | Where it lives | Notes |
 |---|---|---|
-| F4 fix, recovery sweep | `fix/r3-recovery` (`25cd7b4`, `4d0bd4d`) | Not merged, not deployed |
-| Fix record + F3 options | `docs/handoffs/2026-09-23-r3-recovery.md` | |
-| R3 record correction | `docs/handoffs/2026-09-23-r3-implemented.md` | Notifications line |
-| Build log | `docs/BUILDLOG.md` | 2026-09-23 (late) entry |
+| Public docs | `docs/WHITEPAPER.md`, `docs/TESTING.md`, `docs/demo/2026-09-25-weekly-video-2.md` | Merged (PR #8) |
+| Review of PR #9 | PR #9 comment | Gate re-run, no blockers |
+| F3 fix + migration 0005 | `fix/r3-f3-notified` (`26f51bc`) | Not merged, not applied |
+| Approval + F3 record | `docs/handoffs/2026-09-23-f3-notified.md` | |
+| Build log | `docs/BUILDLOG.md` | 2026-09-23 (night) entry |
 
-No credentials, deployed resources, Neon changes or live scheduled jobs. Docker test containers are removed by `test-pg.sh` on exit.
+No credentials, deployed resources, Neon changes or live scheduled jobs.
 
 ## Next-session prompt
 
 ```text
-Resume Hyphae. R3 is on main (3754534). Review findings F1, F2, F4 are fixed on fix/r3-recovery (PR #9 against main); F3 waits on Cisco's choice. Read CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-09-23-r3-recovery.md, docs/handoffs/2026-09-23-r3-r5-approval.md.
+Resume Hyphae. All four R3 review findings are fixed. F1, F2 and F4 are on main (68091d5). F3 (migration 0005, notified_at) is on fix/r3-f3-notified with an open PR. Read CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-09-23-f3-notified.md.
 
-Check git state and whether PR #7 and the fix PR are merged. If the fix PR is open, read Codex's inline comments (gh api repos/FCisco95/hyphae/pulls/9/comments) and address them test-first. If Cisco chose F3 option 1 with a written yes for 0005, build it test-first (nullable reward_decisions.notified_at; notifyReward sets it; sweep part (c)). Gate: pnpm -r test; pnpm -r typecheck; pnpm exec biome check .; pnpm --filter @hyphae/db exec drizzle-kit check; pnpm --filter @hyphae/api test:pg; git diff --check.
-
-After the fixes merge on Cisco's yes: apply 0003/0004 (and 0005 only if approved) to Neon per the approval preconditions, record it. No bootstrap, deploy, R6, settlement/root/claim, fixture or paid runs, Sentinel code or vault edits.
-Skills: handoff-memory, receiving-code-review, test-driven-development, supabase-postgres-best-practices, handoff.
+Check git state and whether the F3 PR is merged. If it's open, read Codex's inline comments and address them test-first. Once merged on Cisco's yes: re-run the gate on the merge commit (pnpm -r test; pnpm -r typecheck; pnpm exec biome check .; pnpm --filter @hyphae/db exec drizzle-kit check; pnpm --filter @hyphae/api test:pg). Then run the read-only checks: zero epochs, and a journal showing 0000-0002. Apply 0003-0005 in one Drizzle migrator run and record it in a dated handoff. Then start R4 on feat/r4-effective-reads test-first.
+Out of bounds: bootstrap, deploy, R6, settlement/root/claim, fixture or paid runs, Sentinel code, vault edits.
+Skills: handoff-memory, receiving-code-review, supabase-postgres-best-practices, test-driven-development, handoff.
 ```

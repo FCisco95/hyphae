@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-09-23 (night) · Day 10 of 28 — no score message lost, and the public docs
+
+**Shipped:** Cisco merged the findings record (PR #7), the recovery fixes (PR #9) and the public docs (PR #8). The docs are a short whitepaper, a checklist for Hyphae Lab testers and the script for Friday's weekly video. Each claim is labelled historical, locally tested, deployed or planned, and nothing is called live beyond the bot as last recorded on September 17. The last review finding is fixed on branch `fix/r3-f3-notified` (pushed, not merged, not deployed). Every decision now records when the member's message was accepted by Telegram. If a crash drops the message, the five-minute sweep finds the unmarked decision after ten minutes and sends it again. After a day of refusals it gives up on the message; the score always stands.
+**Decision:** Cisco approved migration 0005 in writing ("Yes, add 0005") instead of queueing the message inside the scoring transaction. It's one nullable column, applied together with 0003 and 0004 while the reward tables are still empty, so nothing needs backfilling. Delivery is at least once: a duplicate message is possible, and a lost one isn't.
+**Numbers:** 217 tests passing (54 core, 163 api; 3 new) · typecheck, Biome (98 files), drizzle-kit check, `git diff --check` all exit 0 · `test:pg` on Postgres 17: 4/4 · 5 of 5 mutation probes on the new code killed · PR #9 independently re-gated before merge, with no blocking findings · 0 migrations applied, deployments, model calls or payments.
+**Commits:** merges `10d80a5` (PR #7), `2d8a13d` (PR #9), `68091d5` (PR #8); docs `5f2c27e`; fix `26f51bc`; record `docs/handoffs/2026-09-23-f3-notified.md`.
+**Next:** review and merge the F3 PR on Cisco's yes, then apply migrations 0003, 0004 and 0005 to Neon in one run (no bootstrap, no deploy). R4 after that.
+
 ## 2026-09-23 (late) · Day 10 of 28 — work that was accepted now finishes
 
 **Shipped on branch `fix/r3-recovery` (pushed, not merged, not deployed):** three of the four review findings are fixed test-first. A raid that closes while the bot is still fetching the post now refuses the submission, judged by the database clock under the community lock. And a sweep now runs every five minutes to find reward work the database says is waiting but that no job will ever pick up: a submission admitted just before a queue failure, a nomination an operator cleared after proving a call was never sent, an evidence retry that was never scheduled, a call whose follow-up check was lost. It re-queues each one. Nothing it sends can cause a second paid call, because every job re-checks its state under the lock first.
