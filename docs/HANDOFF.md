@@ -1,118 +1,104 @@
 ---
 date: 2026-09-23
-summary: Documentation checkpoint. Founder schedule rulings recorded (mainnet payout committed; public audit page wins a time tradeoff; verified wallet linking before real mainnet payouts). R3–R5 scope proposal written for one written approval with sequential delivery. Tomorrow plan written. Fresh native gate green at dc261c7. No code changed; R3 not started.
+summary: R3–R5 scope approved in writing; R3 implemented test-first on feat/r3-slots-dispatch (7 code commits), native gate green (core 54, api 144) plus a new real-Postgres test:pg gate (4 tests, 50-round races). Awaiting independent review and Cisco's yes to merge; then apply migrations 0003/0004 (no bootstrap, no deploy). R4/R5 wait for the R3 merge.
 ---
 
 # Hyphae handoff
 
 ## TL;DR
 
-**R3–R5 APPROVED (2026-09-23).** Cisco: "yes to all nine + A + B + apply 0003/0004 after R3 merge". Record: `docs/handoffs/2026-09-23-r3-r5-approval.md`. R3 starts test-first on `feat/r3-slots-dispatch` from `main`; R4 and R5 follow only after the preceding stage is reviewed and merged. Migrations 0003 and 0004 go to Neon after R3 merges (no bootstrap, no deploy). R1 and R2 are merged and locally tested; R2 is **not deployed**.
+**R3 IMPLEMENTED, awaiting independent review (2026-09-23).** Branch `feat/r3-slots-dispatch`, record `docs/handoffs/2026-09-23-r3-implemented.md`. R3–R5 scope approved by Cisco the same day ("yes to all nine + A + B + apply 0003/0004 after R3 merge", `docs/handoffs/2026-09-23-r3-r5-approval.md`). Nothing merged, applied or deployed. Next: review → Cisco's yes → merge → apply 0003 and 0004 to Neon → R4.
 
 ## Metadata
 
-- Last Updated: 2026-09-23. Session snapshot: `docs/handoffs/2026-09-23-tomorrow-plan.md` (the durable checkpoint for this session).
-- Branch state verified this session, not copied from the Sep 22 handoff: `main` = `origin/main` = `dc261c7` (PR #4 merge). `docs/r2-merged-snapshot` (`aafa126`) confirmed an ancestor of `main`, then deleted locally and on origin. This checkpoint rides on `docs/2026-09-23-scope-checkpoint` (commits `87db70d` and the log/handoff commit after it); `main` does not contain it until that branch is merged.
-- Other branches left untouched: `hackathon/r1-exact-reward-points`, `sync/mac-handoff-2026-09-19` (local and origin).
-- Runner: Claude Code, Opus 5.5 (`claude-opus-5-5`, as reported by the session environment), Windows, 2026-09-23. Requested: Fable 5.1 xhigh or Astra xhigh; neither is what ran. Effort is not observable from inside the session and is not recorded as verified.
-- The previous session (per Cisco's brief) could read files but not run Git, tests or writes (`apply deny-read ACLs`); it produced nothing. This session had working Git, tests and writes.
-- Authority: `docs/handoffs/2026-09-20-h-design-written-approval.md` (O1–O7). Founder rulings: `docs/handoffs/2026-09-23-schedule-rulings.md`. R3–R5: `docs/handoffs/2026-09-23-r3-r5-approval.md`.
-- Canonical queue: `cisco-brain/10 - PROJECTS/Organic/plans/2026-09-16-hyphae-implementation-plan.md` (private; read, not edited). Organic-sync owns private-plan updates for today's rulings.
+- Last Updated: 2026-09-23 (evening). Snapshots: `docs/handoffs/2026-09-23-r3-implemented.md` (R3), `2026-09-23-tomorrow-plan.md` (Sep 24 docs plan).
+- Branches (verified this session): `main` = `origin/main` = `dc261c7`. `docs/2026-09-23-scope-checkpoint` → PR #5 (rulings, R3–R5 proposal, approval, tomorrow plan; docs only; open). `feat/r3-slots-dispatch` is based on that docs branch, so its PR shows the docs commits until PR #5 merges; merge PR #5 first. `docs/r2-merged-snapshot` deleted locally and on origin after confirming it was merged.
+- Runner: Claude Code, Opus 5.5 (`claude-opus-5-5`, as reported by the session environment), Windows, 2026-09-23. Requested Fable 5.1 xhigh or Astra xhigh; neither ran. Effort not observable in-session.
+- Authority: O1–O7 (`2026-09-20-h-design-written-approval.md`); schedule rulings (`2026-09-23-schedule-rulings.md`); R3–R5 approval (`2026-09-23-r3-r5-approval.md`).
+- Canonical private plan: read, not edited. Organic-sync owns updating it with today's rulings, approval and R3 state.
 
 ## Current Objective
 
-R3 test-first on `feat/r3-slots-dispatch`, per the approved proposal. Approval covers decisions 1–9, A (Lab-controlled devnet wallet), B (combined approval, sequential stages) and the post-R3 apply of 0003/0004.
+Independent review of the R3 PR. Then merge on Cisco's yes and apply migrations 0003 and 0004 per the approval preconditions.
 
 ## Current State
 
-- Code unchanged since R2: `packages/core/src/reward-points.ts` (R1), `apps/api/src/rewards/config.ts` and `intake.ts` (R2), migration 0003 generated, not applied. Nothing calls admission. `/submit`, the score job and `/me` are the Sep 17 legacy path.
-- Founder rulings (confirmed): mainnet payout remains a committed hackathon target; the public audit page takes priority if time forces a tradeoff. Precondition: verified tester wallet linking before paying real testers on mainnet (today `/link` pastes and can rewrite the wallet).
-- Recommendations A (Lab-controlled devnet wallet) and B (combined approval, sequential stages, review after each) confirmed 2026-09-23.
-- R3–R5 proposal resolves before code: P1 prompt/policy pinning (payload v2 pins `promptVersion` + `promptTemplateHash`; model recorded, not pinned); P2 durable pre-close acceptance (lock-then-clock argument; real-Postgres race test). All six R2 review observations assigned (1, 3, 4, 5 → R3; 2, 6 → R5).
+- R3 on the branch: payload v2 pins the `reward-eval/1` prompt by template hash; migration 0004 adds slots, nominations, retrievals, dispatches, decisions with the O2 bounds as constraints; `/submit` routes legacy vs reward lane; `/effort` nominates explicitly; fenced dispatch with `maxRetries: 0`, reconciliation instead of repeats, operator `reward-reconcile.ts`; atomic completion and consumption; three pg-boss queues (`reward-evaluation`, `reward-retrieval`, `reward-notify`).
+- R2 review observations: 1, 3, 4, 5 resolved in R3 (lock mode proven on real Postgres); 2 and 6 belong to R5.
+- Founder rulings: mainnet payout committed; public audit page wins a time tradeoff; verified wallet linking before paying real testers; Lab-controlled wallet for devnet (A); combined approval, sequential stages (B).
+- Production unchanged: Neon has migrations 0000–0002 only (last recorded Sep 17; not re-checked); the deployed bot runs the Sep 17 path.
 
 ## Recent Changes
 
-2026-09-23: branch cleanup (above); fresh native gate; `87db70d` adds the schedule rulings, the R3–R5 scope proposal and the tomorrow plan; this handoff and a build-log entry follow in a second docs commit.
+2026-09-23: branch cleanup; fresh gate at `dc261c7`; rulings, R3–R5 proposal and tomorrow plan (PR #5); written approval recorded (`8650383`); R3 built test-first (`f4fd68e`..`7992bb2`); R3 record, build log and this handoff.
 
-2026-09-22: R2 reviewed ACCEPT at `bcdb328`, merged as PR #2 at `336d48d`; docs PRs #3 (`9bc0464`) and #4 (`dc261c7`) merged.
+2026-09-22: R2 reviewed ACCEPT and merged (PR #2, `336d48d`); docs PRs #3 and #4 merged.
 
 ## Validation
 
-2026-09-23, fresh, at `dc261c7` (before any docs change; this session changed no code):
+Fresh this session, R3 tip before the docs-base rebase (`adef9f6`, code identical to `7992bb2`):
 
-- `pnpm -r test` — core 5 files / 41 tests; api 10 files / 83 tests; exit 0.
-- `pnpm -r typecheck` — core, db, api passed; exit 0.
-- `pnpm exec biome check .` — 75 files, no fixes; exit 0 (run unfiltered, exit code captured).
-- `pnpm --filter @hyphae/db exec drizzle-kit check` — "Everything's fine"; exit 0.
-- `git diff --cached --check` clean for the docs commit.
-
-The Sep 22 review's 41 + 83 is historical; the numbers above are this session's own run with the same counts.
-
-Documentation claims checked against current docs (Context7, 2026-09-23): AI SDK `maxRetries` default 2, `0` disables; pg-boss fails and retries a job whose handler exceeds `expireInSeconds` while the handler may still run.
+- `pnpm -r test` exit 0 — core 54 tests (6 files), api 144 tests (15 files).
+- `pnpm -r typecheck` exit 0. `pnpm exec biome check .` exit 0, 95 files, no warnings. `drizzle-kit check` exit 0. `git diff --check` clean. api build succeeded.
+- `pnpm --filter @hyphae/api test:pg` (local Docker `postgres:17`, never Neon): 4 passed; fails if the lock mode reverts to `FOR UPDATE`.
+- Mutation probes: 6 of 7 killed; the survivor (a redundant fence check) was removed.
+- Re-run after the rebase and docs commit: recorded in the PR description.
 
 ## Known Issues / Watch List
 
-- No CI. The native gate and an independent review are the only evidence.
-- Migration 0003 not on Neon. After R3 merges, apply 0003 and 0004 (authorized 2026-09-23; preconditions in the approval record) before any deploy of `main`. Bootstrap and deploy stay separately authorized.
-- Real-Postgres concurrency is unproven so far; R3 adds a `test:pg` gate on local Docker Postgres 17 (Docker 28.1.1 present). Not Neon.
-- Verified wallet linking is unscheduled as a build; the rulings doc places the decision in Sep 29–30.
-- Tester usage since Sep 20 is not evidenced anywhere in the repo; do not state counts without a fresh read.
-- Codex CLI sandbox on this Windows machine fails with `apply deny-read ACLs`; use `codex --sandbox danger-full-access` for review sessions.
-- pnpm can split `drizzle-orm` into two instances when a driver peer changes; fix with `pnpm dedupe`.
+- No CI. The native gate, `test:pg` and an independent review are the evidence.
+- After R3 merges, `main` must not be deployed before 0003 and 0004 are applied (approved; check zero MYCEL epochs and a 0000–0002 journal first).
+- Withdrawing a new-work nomination leaves that artifact without an ordinary quality score; no bot withdraw command exists yet.
+- `/me` still sums legacy `scoring_runs` (R4). BotFather menu lacks `/effort` (manual step at cutover).
+- Live Telegram, oEmbed and provider paths are exercised only through injected fakes.
+- Codex CLI sandbox on this machine fails with `apply deny-read ACLs`; use `codex --sandbox danger-full-access` for a review session.
+- Bash tool heredocs occasionally fail to parse long Python patches ("unexpected EOF"); use the Write/Edit tools or a `PYEOF` delimiter.
 
 ## Next Actions
 
-1. Cisco: merge `docs/2026-09-23-scope-checkpoint` (docs-only) so `main` carries the proposal.
-2. Done 2026-09-23: approval recorded in `docs/handoffs/2026-09-23-r3-r5-approval.md`.
-3. Sep 24: `docs/WHITEPAPER.md`, `docs/demo/2026-09-25-weekly-video-2.md`, `docs/TESTING.md` from existing evidence, labelled historical / locally tested / deployed / planned (`2026-09-23-tomorrow-plan.md`).
-4. R3: `git checkout main && git pull --ff-only && git checkout -b feat/r3-slots-dispatch`; failing tests first (payload v2, lock mode), then slots/nomination, then dispatch.
-5. Organic-sync: record the rulings, the proposal and the adopted-or-not calendar in the private plan.
+1. Cisco: merge PR #5 (docs only).
+2. Independent review of the R3 PR (cross-family preferred), against the proposal's R3 section and `2026-09-23-r3-implemented.md`, including its deviations and known gaps.
+3. Cisco's yes → merge R3. Then apply 0003 and 0004 per the approval preconditions and record it in a dated handoff. No bootstrap, no deploy.
+4. Sep 24 docs (whitepaper, demo script, tester checklist) per `2026-09-23-tomorrow-plan.md`; they can now describe R3 as locally tested, not deployed.
+5. R4 on `feat/r4-effective-reads` after R3 merges.
 
 ## Quick Reference
 
-- Schedule rulings: `docs/handoffs/2026-09-23-schedule-rulings.md`
-- R3–R5 scope (approved 2026-09-23): `docs/handoffs/2026-09-23-r3-r5-scope-proposal.md`
-- Tomorrow plan: `docs/handoffs/2026-09-23-tomorrow-plan.md`
-- R2 review and observations: `docs/handoffs/2026-09-22-r2-review.md`
-- Approved rules O1–O7: `docs/handoffs/2026-09-20-h-design-operational-definitions.md`
-- R2 code: `apps/api/src/rewards/config.ts`, `intake.ts`; `packages/db/src/schema.ts`; `packages/db/drizzle/0003_reward_config_intake.sql`
-- Legacy path R3 rewires: `apps/api/src/bot/commands/submit.ts`, `jobs/score.ts`, `scoring/run.ts`, `jobs/queue.ts`, `worker.ts`, `bot/commands/me.ts`
+- R3 record: `docs/handoffs/2026-09-23-r3-implemented.md`
+- Approval: `docs/handoffs/2026-09-23-r3-r5-approval.md`; scope: `2026-09-23-r3-r5-scope-proposal.md`; rulings: `2026-09-23-schedule-rulings.md`
+- R3 code: `packages/core/src/reward-eval.ts`; `apps/api/src/rewards/{slots,evaluation,submission,staging}.ts`; `apps/api/src/jobs/{reward-jobs,reward-message}.ts`; `apps/api/src/bot/commands/{submit,effort}.ts`; `packages/db/drizzle/0004_reward_slots_dispatch.sql`
+- Real-Postgres gate: `apps/api/scripts/test-pg.sh`, `apps/api/src/rewards/concurrency.pg.test.ts`
+- Operator script: `apps/api/scripts/reward-reconcile.ts <dispatch-id> not-sent --reason "<evidence>"`
 
 ## Suggested skills
 
-`handoff-memory` (resume), `superpowers:test-driven-development` (R3, after approval), `supabase:supabase-postgres-best-practices` (locking and constraints), `superpowers:writing-plans` (R3 task list), `humanizer` (whitepaper), `handoff` (session end).
+`handoff-memory` (resume), `code-review` or a Codex review session (R3 review), `superpowers:receiving-code-review` (fixes), `superpowers:test-driven-development` (R4), `supabase:supabase-postgres-best-practices` (migration apply), `humanizer` (whitepaper), `handoff`.
 
 ## Resume Checklist
 
-- `git fetch --prune && git status -sb`; confirm whether `docs/2026-09-23-scope-checkpoint` is merged.
-- R3–R5 approved (`2026-09-23-r3-r5-approval.md`); R4 and R5 only after the preceding stage merges.
-- Run the native gate before trusting any count.
-- Stay out of: Neon migration apply before R3 merges, bootstrap, deployment, R6, settlement/root/claim, fixture or paid runs, Sentinel adoption code, vault edits.
+- `git fetch --prune && git status -sb`; check PR #5 and the R3 PR state.
+- Run the native gate and `pnpm --filter @hyphae/api test:pg` (Docker must be running).
+- R4 and R5 only after the preceding stage merges. No Neon apply before R3 merges; no bootstrap, deploy, R6, settlement/root/claim, fixture or paid runs, Sentinel code or vault edits.
 
 ## Generated artifacts this session
 
 | What | Where it lives | Notes |
 |---|---|---|
-| Schedule rulings | `docs/handoffs/2026-09-23-schedule-rulings.md` | Two confirmed rulings, two recommendations, wallet precondition, proposed calendar |
-| R3–R5 scope proposal | `docs/handoffs/2026-09-23-r3-r5-scope-proposal.md` | Nine decisions; awaiting written approval |
-| Tomorrow plan | `docs/handoffs/2026-09-23-tomorrow-plan.md` | Whitepaper, demo script, tester checklist, R3 start |
-| Build log entry | `docs/BUILDLOG.md` | 2026-09-23 |
-| This handoff | `docs/HANDOFF.md` | Canonical |
+| Schedule rulings, R3–R5 proposal, tomorrow plan, approval | `docs/handoffs/2026-09-23-*.md` | PR #5 |
+| R3 code and migration 0004 | `feat/r3-slots-dispatch` | Not applied, not deployed |
+| R3 record | `docs/handoffs/2026-09-23-r3-implemented.md` | Evidence, deviations, gaps |
+| Build log | `docs/BUILDLOG.md` | Two 2026-09-23 entries |
 
-No credentials, deployed resources, scheduled jobs or database changes. Deleted: the merged `docs/r2-merged-snapshot` branch (local and origin).
+No credentials, deployed resources, scheduled jobs or Neon changes. Docker test containers are removed by `test-pg.sh` on exit.
 
 ## Next-session prompt
 
 ```text
-Resume Hyphae for 2026-09-24. Read CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-09-23-tomorrow-plan.md, docs/handoffs/2026-09-23-r3-r5-scope-proposal.md, docs/handoffs/2026-09-23-schedule-rulings.md.
+Resume Hyphae. Read CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-09-23-r3-implemented.md, docs/handoffs/2026-09-23-r3-r5-scope-proposal.md (R3 section), docs/handoffs/2026-09-23-r3-r5-approval.md.
 
-Check git state first (git fetch --prune; git status -sb); confirm whether docs/2026-09-23-scope-checkpoint is merged to main. Look for Cisco's written answer on the nine R3-R5 decisions and recommendations A and B; record exact words in a dated handoff before any code.
+Check git and PR state first. If the task is the R3 review: review feat/r3-slots-dispatch against the approved R3 scope, including the five recorded deviations and the known gaps; run pnpm -r test, pnpm -r typecheck, pnpm exec biome check . (exit code), drizzle-kit check, and pnpm --filter @hyphae/api test:pg (Docker). Record a verdict in docs/handoffs; merge only on Cisco's yes. After merge, apply 0003/0004 to Neon only per the approval preconditions; no bootstrap or deploy.
 
-Today: docs/WHITEPAPER.md, docs/demo/2026-09-25-weekly-video-2.md, docs/TESTING.md from existing evidence only, labelled historical / locally tested / deployed / planned. No invented usage or submission numbers.
+If the task is the Sep 24 docs: follow docs/handoffs/2026-09-23-tomorrow-plan.md; R3 is locally tested, not deployed.
 
-If approved: branch feat/r3-slots-dispatch from main, test-first. Gate: pnpm -r test; pnpm -r typecheck; pnpm exec biome check . (unfiltered, exit code); pnpm --filter @hyphae/db exec drizzle-kit check; plus test:pg once it exists.
-
-No Neon migration apply, deployment, R6, settlement/root/claim, fixture or paid runs, Sentinel adoption code or vault edits.
-Model: Fable 5.1 xhigh preferred; record what actually runs.
-Skills: handoff-memory, test-driven-development (after approval), writing-plans, humanizer, handoff.
+Model: Fable 5.1 xhigh or a different family for review; record what actually runs.
 ```
