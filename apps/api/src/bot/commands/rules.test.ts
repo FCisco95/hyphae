@@ -4,7 +4,8 @@ import { Bot } from "grammy";
 import type { InlineKeyboardMarkup, Update, UserFromGetMe } from "grammy/types";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { rulesTestById } from "../../payout/rules-test.js";
-import { createTestDb, seedCommunity, seedRewardLane } from "../../rewards/test-db.js";
+import { buildRewardConfigPayload } from "../../rewards/config.js";
+import { createTestDb, rubric, seedCommunity, seedRewardLane } from "../../rewards/test-db.js";
 import {
   parseRulesData,
   parseRulesStartPayload,
@@ -266,6 +267,20 @@ describe("button data is not trusted", () => {
     }
     expect(await passesOf(lane.member.id)).toEqual([]);
     expect(h.out.filter((o) => o.method === "answerCallbackQuery")).toHaveLength(5);
+  });
+
+  it("a test that is not the community's current one records nothing", async () => {
+    const lane = await seedRewardLane(
+      t.db,
+      buildRewardConfigPayload({ ...rubric, community: "DEMO" }),
+    );
+    const h = harness();
+    const stale = "That test message is out of date. Send /rules in your community chat.";
+    await h.bot.handleUpdate(tap(rulesData("mycel-rules-1", lane.community.id, allRight())));
+    expect(last(h.out)?.text).toBe(stale);
+    await h.bot.handleUpdate(tap(rulesData("mycel-rules-1", lane.community.id, [0])));
+    expect(last(h.out)?.text).toBe(stale);
+    expect(await passesOf(lane.member.id)).toEqual([]);
   });
 
   it("taps outside a private chat do nothing", async () => {

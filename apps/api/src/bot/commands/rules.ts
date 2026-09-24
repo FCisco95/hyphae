@@ -1,13 +1,7 @@
 import { communities, type Db, members, rewardConfigs } from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
 import { type CommandContext, Composer, type Context, InlineKeyboard } from "grammy";
-import {
-  grade,
-  type RulesTest,
-  recordPass,
-  rulesTestById,
-  rulesTestFor,
-} from "../../payout/rules-test.js";
+import { grade, type RulesTest, recordPass, rulesTestFor } from "../../payout/rules-test.js";
 import { latestEpoch, RewardConfigPayload } from "../../rewards/config.js";
 import { reply } from "../reply.js";
 
@@ -140,13 +134,20 @@ export function rulesTest(db: Db): Composer<Context> {
     await ctx.answerCallbackQuery();
     if (ctx.chat?.type !== "private") return;
     const data = parseRulesData(ctx.callbackQuery.data);
-    const test = data && rulesTestById(data.testId);
     const community =
       data &&
-      test &&
-      answersFit(test, data.answers) &&
       (await db.query.communities.findFirst({ where: eq(communities.id, data.communityId) }));
-    if (!data || !test || !community) return ctx.editMessageText(STALE);
+    // Only the test for the community's current rules: a pass of another test is not evidence.
+    const test = community && (await currentTest(db, community.id));
+    if (
+      !data ||
+      !community ||
+      !test ||
+      test.id !== data.testId ||
+      !answersFit(test, data.answers)
+    ) {
+      return ctx.editMessageText(STALE);
+    }
 
     if (data.answers.length < test.questions.length) {
       const next = question(test, community.id, data.answers);
