@@ -59,9 +59,10 @@ Scores are computed off-chain. At each close, the epoch's full score set is comm
 | First live scoring: 3 contributions, 6 scoring runs across rubric versions 1.0.0, 1.1.0 and 1.2.0; credited 85, 0 and 0; 5–11 s per score; $0.084 total spend | Historical | Build log, 2026-09-17 |
 | Exact reward-point arithmetic (R1) | Locally tested, merged | PR #1 |
 | Pinned configuration, cooldown and admission (R2) | Locally tested, merged, not deployed | PR #2 |
-| Effort slots, `/effort`, dispatch that never pays twice (R3); 198 tests plus a real-Postgres race suite | Locally tested, merged, not deployed | PR #6; four review findings being fixed |
+| Effort slots, `/effort`, dispatch that never pays twice (R3); 198 tests plus a real-Postgres race suite | Locally tested, merged, not deployed; database tables applied to Neon on 2026-09-23 | PRs #6, #9 and #10; all four review findings fixed |
 | Rubric 1.3.0 (grounded price talk allowed, criticism graded like praise) | Candidate, not applied | `docs/rubrics/CHANGELOG.md` |
-| Epoch-scoped `/me` and corrections (R4), frozen close snapshot (R5) | Planned | Scope approved 2026-09-23 |
+| Epoch-scoped `/me` and corrections (R4) | Locally tested, merged, not deployed; migration 0006 not applied | PR #12 |
+| Strict close with a frozen snapshot, and re-entry of expired work (R5) | Locally tested, in review, not deployed; migration 0007 not applied | PR #13 |
 | Public audit page, on-chain root and claim, devnet run, mainnet payout, verified wallet linking | Planned | Target: before 2026-10-12 |
 
 ## 7. Limits
