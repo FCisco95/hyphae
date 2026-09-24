@@ -1,19 +1,22 @@
 import { Bot } from "grammy";
 import { env } from "../env.js";
 import { effort } from "./commands/effort.js";
-import { link } from "./commands/link.js";
+import { linkInGroup, linkStart } from "./commands/link.js";
 import { me } from "./commands/me.js";
 import { raid } from "./commands/raid.js";
 import { submit } from "./commands/submit.js";
 
 export const bot = new Bot(env.TELEGRAM_BOT_TOKEN);
 
-bot.command("start", (ctx) =>
-  ctx.reply(
-    "Hyphae scores real work for token communities. In a community chat: /link <wallet>, then /submit.",
-  ),
+bot.command("start", async (ctx) => {
+  if (ctx.chat.type === "private" && (await linkStart(ctx))) return;
+  return ctx.reply(
+    "Hyphae scores real work for token communities. In a community chat: /link, then /submit.",
+  );
+});
+bot.command("link", (ctx) =>
+  ctx.chat.type === "private" ? ctx.reply("Send /link in your community chat.") : linkInGroup(ctx),
 );
-bot.command("link", link);
 bot.command("me", me);
 bot.command("submit", submit);
 bot.command("effort", effort);

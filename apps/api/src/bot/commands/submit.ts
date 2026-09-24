@@ -35,7 +35,7 @@ export async function communityAndMember(
       eq(members.telegramUserId, BigInt(ctx.from?.id ?? 0)),
     ),
   });
-  if (!member) return "Link a wallet first: /link <wallet>";
+  if (!member) return "Link a wallet first: send /link.";
   return { community, member };
 }
 

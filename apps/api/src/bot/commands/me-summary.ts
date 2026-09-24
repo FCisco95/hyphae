@@ -6,6 +6,17 @@ import { effectiveResults } from "../../rewards/effective.js";
 
 const DECIMALS = POINT_UNITS_PER_POINT.toString().length - 1;
 
+// Only a signed wallet is payable (D1); a pasted one keeps scoring but is marked.
+export function walletLines(member: {
+  wallet: string;
+  linkMethod: "paste" | "signature";
+}): string[] {
+  const short = `Wallet ${member.wallet.slice(0, 4)}…${member.wallet.slice(-4)}`;
+  return member.linkMethod === "signature"
+    ? [`${short} (verified)`]
+    : [short, "Wallet not verified. Send /link to verify it (needed before any payout)."];
+}
+
 export function formatPointUnits(units: bigint): string {
   const whole = units / POINT_UNITS_PER_POINT;
   const fraction = (units % POINT_UNITS_PER_POINT).toString().padStart(DECIMALS, "0");

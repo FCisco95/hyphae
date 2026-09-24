@@ -4,7 +4,7 @@ import type { CommandContext, Context } from "grammy";
 import { db } from "../../db.js";
 import { env } from "../../env.js";
 import { reply } from "../reply.js";
-import { meSummary } from "./me-summary.js";
+import { meSummary, walletLines } from "./me-summary.js";
 
 export async function me(ctx: CommandContext<Context>) {
   const from = ctx.from;
@@ -16,12 +16,12 @@ export async function me(ctx: CommandContext<Context>) {
   const member = await db.query.members.findFirst({
     where: and(eq(members.communityId, community.id), eq(members.telegramUserId, BigInt(from.id))),
   });
-  if (!member) return reply(ctx, "Not linked yet. /link <wallet> first.");
+  if (!member) return reply(ctx, "Not linked yet. Send /link.");
 
   return reply(
     ctx,
     [
-      `Wallet ${member.wallet.slice(0, 4)}…${member.wallet.slice(-4)}`,
+      ...walletLines(member),
       ...(await meSummary(db, { communityId: community.id, memberId: member.id })),
       `${env.PUBLIC_WEB_URL}/w/${member.wallet}`,
     ].join("\n"),

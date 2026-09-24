@@ -3,7 +3,7 @@ import { contributions, epochs, scoringRuns } from "@hyphae/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { beginDispatch, completeDispatch, runEvaluation } from "../../rewards/evaluation.js";
 import { createTestDb, later, seedCommunity, seedRewardLane, T0 } from "../../rewards/test-db.js";
-import { formatPointUnits, meSummary } from "./me-summary.js";
+import { formatPointUnits, meSummary, walletLines } from "./me-summary.js";
 
 const MIN = 60_000;
 const WEEK_MS = 7 * 86_400_000;
@@ -190,5 +190,22 @@ describe("meSummary", () => {
         { clock: later(10 * MIN) },
       ),
     ).toEqual(["Scored contributions: 1"]);
+  });
+});
+
+describe("walletLines", () => {
+  const wallet = "AbCd1111111111111111111111111111WxYz";
+
+  it("marks a pasted wallet as unverified and unpayable", () => {
+    expect(walletLines({ wallet, linkMethod: "paste" })).toEqual([
+      "Wallet AbCd…WxYz",
+      "Wallet not verified. Send /link to verify it (needed before any payout).",
+    ]);
+  });
+
+  it("shows a signed wallet as verified", () => {
+    expect(walletLines({ wallet, linkMethod: "signature" })).toEqual([
+      "Wallet AbCd…WxYz (verified)",
+    ]);
   });
 });
