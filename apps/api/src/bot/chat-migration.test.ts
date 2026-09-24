@@ -37,6 +37,23 @@ describe("migrateCommunityChat", () => {
     expect(await chatOf(community.id)).toBe(to);
   });
 
+  it("leaves both rows and reports a conflict when the new id already has a community", async () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { community } = await seedCommunity(t.db);
+    const { community: holder } = await seedCommunity(t.db);
+
+    expect(
+      await migrateCommunityChat(t.db, community.telegramChatId, holder.telegramChatId),
+    ).toBeUndefined();
+    expect(await chatOf(community.id)).toBe(community.telegramChatId);
+    expect(await chatOf(holder.id)).toBe(holder.telegramChatId);
+    expect(err).toHaveBeenCalledWith(
+      "community chat migration conflict",
+      expect.objectContaining({ community: community.id, holder: holder.id }),
+    );
+    err.mockRestore();
+  });
+
   it("ignores a chat that is not a community", async () => {
     expect(await migrateCommunityChat(t.db, -1n, -1_009_000_000_003n)).toBeUndefined();
   });
