@@ -20,7 +20,11 @@ export interface CorrectionInput {
   // The revision the operator reviewed; any other latest revision means someone got there first.
   expectedRevision: number;
   // Underlying classifications only. Credit and points are always re-derived, never typed.
-  changes: { rawQuality?: number; flags?: RewardFlag[]; effort?: "eligible" | "ineligible" };
+  changes: {
+    rawQuality?: number | undefined;
+    flags?: RewardFlag[] | undefined;
+    effort?: "eligible" | "ineligible" | undefined;
+  };
   reason: string;
   evidenceRefs: string[];
   actor: string;
