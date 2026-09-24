@@ -36,7 +36,7 @@ summary: R5 built test-first on feat/r5-close-snapshot. Strict close under the c
    - `reentry_blocked` while any of its dispatches is `dispatched` or `pending_reconciliation`;
    - `paused` if intake is paused;
    - otherwise a new contribution and a new intake in the current epoch with `reentry_of` pointing at the original intake, then an ordinary new-work reservation. The reservation runs in a savepoint: if the slot refuses, the new intake is rolled back, so the sweep never scores an orphan.
-   - The captured artifact is reused (O7: past evidence must not change on refetch); retrieval rounds count fresh for the new contribution. The task is kept, and timing counts from the original submission (O3), so a re-entry is neither penalized nor backdated in points.
+   - The artifact is captured again when it is nominated (O3: the new attempt uses the new epoch's evidence); the earlier intake keeps its own capture (O7). Retrieval rounds count fresh for the new contribution. The task is kept, and timing counts from the original submission (O3), so a re-entry is neither penalized nor backdated in points. *Changed after review; the first version reused the old capture (finding C1 below).*
    - `/submit` of the artifact still answers `duplicate_artifact` with the original intake.
 7. **Decision hashes** are not in the snapshot yet. Entries keep the selected decision id and revision; the O7 hash waits for H-CONTRACT and R6, as in R4.
 8. **`/me` unchanged.** It reads the effective result at `closesAt`, which selects exactly what the snapshot froze; it does not show the snapshot's reasons.
@@ -50,6 +50,20 @@ summary: R5 built test-first on feat/r5-close-snapshot. Strict close under the c
 - Test-first notes, stated plainly: every close and re-entry unit test was watched failing before its code, except two. The "intake exactly at close" test passed on the existing admission code, which already handled it. The "`/submit` after re-entry returns the original" test passed by row order before `isNull(reentry_of)` pinned it. The `test:pg` race was written after the close code, so it has no red run.
 - 0 migrations applied, deployments, bootstraps, model calls, roots, claims or payments.
 
+## Review (cross-model, replaces the PR)
+
+Two Codex passes on `origin/main...feat/r5-close-snapshot`: the Codex GitHub review of PR #13 (commit `5b27b71`, one inline comment) and a local Codex adversarial review focused on the interpretations above. Adversarial verdict: **needs-attention**, two medium findings. It raised nothing against interpretations 1–6 or 8.
+
+| # | Finding | Disposition |
+|---|---|---|
+| C1 | P2 (PR #13, `slots.ts:355`): re-entry copied the original text and capture, so an edited or deleted post was judged on stale evidence, against O3's "new epoch's evidence". | **Fixed** test-first in `6015c91`. `nominate` answers `needs_evidence` for an eligible re-entry without a fresh capture; `/effort` fetches the post (or takes the text) and nominates again. An unreadable post is refused like `/submit` ("Could not read that post. Is it public?"). `/submit` and re-entry now share `capturedEvidence()`. Tests: 2 re-entry, 2 `capturedEvidence`, each watched failing. |
+| C2 | Medium (`schema.ts`, snapshot members): the database accepted whole points that disagree with the exact units (149,000,000 units as 2 points). | **Fixed** test-first in `22779c3`: check `whole_points = (point_units + 50000000) / 100000000`, O5's half-up at 10^8 units per point. Folded into the unapplied 0007. |
+| C3 | Medium (`schema.ts`, snapshot entries): entries keep the selected decision id and revision but no decision hash, which O6 asks the frozen manifest to retain. | **Deferred to R6, as interpretation 7 already states.** O7 makes concrete hash field schemas and cross-language vectors a contract gate ("not permission to invent consumer fields today"), so a hash cannot be added before H-CONTRACT. Until R6 adds it, the snapshot is an internal close record, not the auditable allocation record: nothing publishes a root or claim from it. R6 must add the versioned decision hash before any root. |
+
+Fresh gate after the fixes (on `22779c3`): `pnpm -r test` exit 0 (core 54, api 213); `pnpm -r typecheck` exit 0; `pnpm exec biome check .` exit 0 (112 files); `drizzle-kit check` exit 0; `test:pg` 7/7 exit 0; `git diff --check` exit 0.
+
+`/effort`'s re-entry glue (fetch, second `nominate`) is bot wiring with no unit test, like the rest of the command handlers; the logic it calls is tested.
+
 ## Next
 
-Independent review of the R5 PR; merge on Cisco's yes. Migration 0007 joins 0006 on the cutover apply list; `main` must not deploy before both are applied.
+Land R5 on `main` (trunk-based, working agreement adopted 2026-09-24). Migration 0007 joins 0006 on the cutover apply list; `main` must not deploy before both are applied.
