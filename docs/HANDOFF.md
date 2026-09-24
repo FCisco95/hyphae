@@ -23,6 +23,7 @@ Make epoch 2 (2026-10-02T00:00Z → 2026-10-09T00:00Z) the first paid epoch. Tha
 
 ## Current State
 
+- **Deploy candidate = `86ff258`, needs 0009 first.** Gate re-run on it 2026-09-25 (the tree of `d12e951`, which adds docs only): `pnpm -r test` exit 0 (core 67, web 14, api 372), `pnpm -r typecheck` exit 0, Biome on tracked files exit 0 (179 files), `drizzle-kit check` exit 0, `test:pg` 15/15 on Postgres 17 in Docker, `git diff --check` exit 0. From here on every commit on `main` keeps it deployable: the Anchor program and R6 have no production caller until Cisco turns them on.
 - Fly `hyphae-api`: api + worker on `b7bfe55`. Rollback image `deployment-01M2R8W6Z6NAAWYM6KT2ZDYA2H` (logs the bot token on handler errors, so a rollback means a rotation too).
 - Neon: migrations 0000–0008. **0009 exists on `main` and is not applied.**
 - `main` is ahead of production by the read API v1 and `apps/web` (previous session), and by this session's gates.
