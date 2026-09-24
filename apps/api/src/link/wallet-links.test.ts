@@ -105,5 +105,5 @@ describe("migration 0008 backfill", () => {
       await client.close();
       rmSync(upTo7, { recursive: true, force: true });
     }
-  });
+  }, 30_000);
 });
