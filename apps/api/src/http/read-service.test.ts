@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { beginDispatch, completeDispatch, runEvaluation } from "../rewards/evaluation.js";
 import { createTestDb, seedRewardLane, T0 } from "../rewards/test-db.js";
 import { type AuditDemo, seedAuditDemo } from "./demo-seed.js";
 import {
@@ -171,11 +172,78 @@ describe("readContributions", () => {
     ]);
   });
 
-  it("while closing, a late-only row reads as excluded before the snapshot says so", async () => {
+  it("while closing, rows already read as what the close will write", async () => {
     const after = new Date((await epochClose(2)).getTime() + 60_000);
     const r = await readContributions(t.db, demo.mint, 2, { offset: 0, limit: 50 }, after);
     expect(r?.epoch).toEqual({ index: 2, closed: true, final: false });
-    expect(r?.contributions.map((x) => x.state)).toEqual(["counted", "pending"]);
+    expect(r?.contributions.map((x) => x.state)).toEqual(["counted", "pending_at_close"]);
+  });
+
+  it("while closing, an unresolved model call reads as pending_reconciliation, and a late-only decision as excluded", async () => {
+    const lane = await seedRewardLane(t.db);
+    const fails = await lane.admitOne();
+    const late = await lane.admitOne();
+    const clock = async () => new Date(T0.getTime() + 2 * 60_000);
+    await runEvaluation(
+      t.db,
+      { communityId: lane.community.id, target: { contributionId: fails.contributionId } },
+      {
+        model: "m",
+        call: async () => {
+          throw new Error("timeout");
+        },
+        horizonMs: 300_000,
+        clock,
+      },
+    );
+    const [epoch] = await t.db
+      .select()
+      .from(epochs)
+      .where(eq(epochs.communityId, lane.community.id));
+    if (!epoch) throw new Error("epoch");
+    const begun = await beginDispatch(
+      t.db,
+      {
+        communityId: lane.community.id,
+        target: { contributionId: late.contributionId },
+        model: "m",
+      },
+      { clock },
+    );
+    if (begun.status !== "begun") throw new Error(begun.status);
+    const done = await completeDispatch(
+      t.db,
+      {
+        communityId: lane.community.id,
+        dispatchId: begun.dispatch.id,
+        fence: begun.dispatch.fence,
+        output: {
+          score: 80,
+          rubricHits: [{ key: "context_fit", met: true, note: "specific" }],
+          flags: [],
+          aiSlop: { patterns: [], templateRhythm: false },
+          reasoning: "Specific to the post and its claim.",
+        },
+        latencyMs: 1,
+        costMicroUsd: 1,
+      },
+      { clock: async () => new Date(epoch.closesAt.getTime() + 1_000) },
+    );
+    expect(done.status).toBe("completed");
+    const after = new Date(epoch.closesAt.getTime() + 60_000);
+    const r = await readContributions(
+      t.db,
+      lane.community.mint,
+      1,
+      { offset: 0, limit: 50 },
+      after,
+    );
+    expect(r?.contributions.map((x) => [x.id, x.state])).toEqual([
+      [fails.contributionId, "pending_reconciliation"],
+      [late.contributionId, "excluded"],
+    ]);
+    const e = await readEpoch(t.db, lane.community.mint, 1, after);
+    expect(e?.counts).toMatchObject({ pending: 0, pending_reconciliation: 1, excluded: 1 });
   });
 });
 

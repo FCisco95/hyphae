@@ -143,26 +143,32 @@ interface Entry {
   taskId: string | null;
 }
 
-// Every admitted contribution of the epoch, in intake order, with its state: the snapshot's once
-// final, otherwise R4's selection at closes_at.
-async function epochEntries(tx: Db, epoch: EpochView, member?: string): Promise<Entry[]> {
-  const intakes = await tx
-    .select({
-      contributionId: rewardIntakes.contributionId,
-      memberId: rewardIntakes.memberId,
-      acceptedAt: isoUs(rewardIntakes.acceptedAt),
-      taskId: rewardIntakes.taskId,
-    })
-    .from(rewardIntakes)
-    .where(
-      and(
-        eq(rewardIntakes.epochId, epoch.row.id),
-        member ? eq(rewardIntakes.memberId, member) : undefined,
-      ),
-    )
-    .orderBy(asc(rewardIntakes.acceptedAt), asc(rewardIntakes.contributionId));
+const intakeColumns = {
+  contributionId: rewardIntakes.contributionId,
+  memberId: rewardIntakes.memberId,
+  acceptedAt: isoUs(rewardIntakes.acceptedAt),
+  taskId: rewardIntakes.taskId,
+};
+const intakeOrder = [asc(rewardIntakes.acceptedAt), asc(rewardIntakes.contributionId)];
+const intakeScope = (epoch: EpochView, member?: string) =>
+  and(
+    eq(rewardIntakes.epochId, epoch.row.id),
+    member ? eq(rewardIntakes.memberId, member) : undefined,
+  );
 
-  const states = new Map<string, { state: State; decisionId: string | null }>();
+type EntryState = { state: State; decisionId: string | null };
+
+// The state of each named contribution: the snapshot's once final; otherwise the O6 selection at
+// closes_at, and once closes_at has passed, the reason close.ts will freeze (an unresolved model
+// call outranks a late decision, which outranks nothing at all).
+async function statesFor(
+  tx: Db,
+  epoch: EpochView,
+  ids: string[],
+  now: Date,
+): Promise<Map<string, EntryState>> {
+  const states = new Map<string, EntryState>();
+  if (ids.length === 0) return states;
   if (epoch.snapshot) {
     const rows = await tx
       .select({
@@ -171,24 +177,126 @@ async function epochEntries(tx: Db, epoch: EpochView, member?: string): Promise<
         reason: rewardSnapshotEntries.reason,
       })
       .from(rewardSnapshotEntries)
-      .where(eq(rewardSnapshotEntries.snapshotId, epoch.snapshot.id));
+      .where(
+        and(
+          eq(rewardSnapshotEntries.snapshotId, epoch.snapshot.id),
+          inArray(rewardSnapshotEntries.contributionId, ids),
+        ),
+      );
     for (const r of rows) {
       states.set(r.contributionId, { state: r.reason ?? "counted", decisionId: r.decisionId });
     }
-  } else {
-    const { entries } = await selectEffective(tx, epoch.row.id, epoch.row.closesAt, member);
-    for (const e of entries) {
-      states.set(e.contributionId, {
-        state: e.state === "scored" ? "counted" : e.state === "late" ? "excluded" : "pending",
-        decisionId: e.decisionId,
-      });
-    }
+    return states;
   }
+
+  const cutoff = epoch.row.closesAt.getTime();
+  const decisions = await tx
+    .select({
+      id: rewardDecisions.id,
+      contributionId: rewardDecisions.contributionId,
+      acceptedAt: rewardDecisions.acceptedAt,
+    })
+    .from(rewardDecisions)
+    .where(inArray(rewardDecisions.contributionId, ids))
+    .orderBy(asc(rewardDecisions.revision));
+  const lineages = new Map<string, typeof decisions>();
+  for (const d of decisions) {
+    lineages.set(d.contributionId, [...(lineages.get(d.contributionId) ?? []), d]);
+  }
+  const selected = new Map(
+    ids.map((id) => [
+      id,
+      (lineages.get(id) ?? []).findLast((d) => d.acceptedAt.getTime() < cutoff)?.id ?? null,
+    ]),
+  );
+  const closing = isClosed(epoch.row, now);
+  const undecided = ids.filter((id) => !selected.get(id));
+  const uncertain = new Set(
+    closing && undecided.length
+      ? (
+          await tx
+            .select({ contributionId: rewardDispatches.contributionId })
+            .from(rewardDispatches)
+            .where(
+              and(
+                inArray(rewardDispatches.contributionId, undecided),
+                inArray(rewardDispatches.state, ["dispatched", "pending_reconciliation"]),
+              ),
+            )
+        ).map((d) => d.contributionId)
+      : [],
+  );
+  for (const id of ids) {
+    const decisionId = selected.get(id) ?? null;
+    const state: State = decisionId
+      ? "counted"
+      : !closing
+        ? "pending"
+        : uncertain.has(id)
+          ? "pending_reconciliation"
+          : lineages.has(id)
+            ? "excluded"
+            : "pending_at_close";
+    states.set(id, { state, decisionId });
+  }
+  return states;
+}
+
+function withStates(
+  intakes: Omit<Entry, "state" | "decisionId">[],
+  states: Map<string, EntryState>,
+): Entry[] {
   return intakes.map((i) => {
     const s = states.get(i.contributionId);
     if (!s) throw new Error(`read: contribution ${i.contributionId} has no state`);
     return { ...i, ...s };
   });
+}
+
+// Every admitted contribution of the epoch, in intake order. Epoch counts and the leaderboard need
+// all of them; a list page uses pageEntries instead.
+async function epochEntries(tx: Db, epoch: EpochView, now: Date): Promise<Entry[]> {
+  const intakes = await tx
+    .select(intakeColumns)
+    .from(rewardIntakes)
+    .where(intakeScope(epoch))
+    .orderBy(...intakeOrder);
+  return withStates(
+    intakes,
+    await statesFor(
+      tx,
+      epoch,
+      intakes.map((i) => i.contributionId),
+      now,
+    ),
+  );
+}
+
+// One page, paged in SQL, with states computed for that page only.
+async function pageEntries(
+  tx: Db,
+  epoch: EpochView,
+  page: Page,
+  now: Date,
+): Promise<{ total: number; entries: Entry[] }> {
+  const [count] = await tx
+    .select({ n: sql<number>`count(*)::int` })
+    .from(rewardIntakes)
+    .where(intakeScope(epoch, page.member));
+  const intakes = await tx
+    .select(intakeColumns)
+    .from(rewardIntakes)
+    .where(intakeScope(epoch, page.member))
+    .orderBy(...intakeOrder)
+    .limit(page.limit)
+    .offset(page.offset);
+  const states = await statesFor(
+    tx,
+    epoch,
+    intakes.map((i) => i.contributionId),
+    now,
+  );
+  return { total: Number(count?.n ?? 0), entries: withStates(intakes, states) };
 }
 
 type Wallet = Pick<ContributionRowV1, "wallet" | "wallet_status">;
@@ -348,7 +456,7 @@ export async function readEpoch(
     if (!config) throw new Error(`read: config of epoch ${epoch.row.id} missing`);
     const payload = RewardConfigPayload.parse(config.payload);
 
-    const entries = await epochEntries(tx, epoch);
+    const entries = await epochEntries(tx, epoch, now);
     const count = (s: State) => entries.filter((e) => e.state === s).length;
     const decisions = await decisionsById(
       tx,
@@ -407,8 +515,7 @@ export async function readContributions(
     const found = await findEpoch(tx, mint, index);
     if (!found) return null;
     const { community, epoch } = found;
-    const entries = await epochEntries(tx, epoch, page.member);
-    const slice = entries.slice(page.offset, page.offset + page.limit);
+    const { total, entries } = await pageEntries(tx, epoch, page, now);
     return {
       community: { mint: community.mint },
       epoch: {
@@ -417,10 +524,10 @@ export async function readContributions(
         final: epoch.snapshot !== null,
       },
       as_of: dateUs(now),
-      total_contributions: entries.length,
+      total_contributions: total,
       offset: page.offset,
       limit: page.limit,
-      contributions: await rows(tx, epoch, slice, now),
+      contributions: await rows(tx, epoch, entries, now),
     };
   });
 }
@@ -436,7 +543,7 @@ export async function readLeaderboard(
     const found = await findEpoch(tx, mint, index);
     if (!found) return null;
     const { community, epoch } = found;
-    const entries = await epochEntries(tx, epoch);
+    const entries = await epochEntries(tx, epoch, now);
 
     let totals: { memberId: string; units: bigint; whole: bigint }[];
     if (epoch.snapshot) {
@@ -548,9 +655,13 @@ export async function readContribution(
     const [epoch] = await findEpochs(tx, intake.communityId, epochRow.index);
     if (!epoch) return null;
 
-    const [entry] = (await epochEntries(tx, epoch, intake.memberId)).filter(
-      (e) => e.contributionId === contributionId,
-    );
+    const [intakeRow] = await tx
+      .select(intakeColumns)
+      .from(rewardIntakes)
+      .where(eq(rewardIntakes.contributionId, contributionId));
+    const [entry] = intakeRow
+      ? withStates([intakeRow], await statesFor(tx, epoch, [contributionId], now))
+      : [];
     if (!entry) throw new Error(`read: contribution ${contributionId} missing from its epoch`);
     const [row] = await rows(tx, epoch, [entry], now);
     if (!row) throw new Error("read: row");
