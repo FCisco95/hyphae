@@ -87,7 +87,18 @@ describe("migration 0008 backfill", () => {
     try {
       const db = drizzle(client, { schema });
       await migrate(db, { migrationsFolder: upTo7 });
-      const { member } = await seedCommunity(db);
+      // Raw SQL: today's schema has columns that later migrations add.
+      const {
+        rows: [member],
+      } = await client.query<{ id: string; wallet: string; linkedAt: Date }>(
+        `with c as (
+           insert into communities (mint, name, telegram_chat_id, admin_telegram_user_id, rubric_version, rubric)
+           values ('Mint0007', 'Community 0007', -7007, 7, '1.2.0', '{}') returning id)
+         insert into members (community_id, telegram_user_id, wallet, link_method)
+         select id, 42, 'Wallet0007', 'paste' from c
+         returning id, wallet, linked_at as "linkedAt"`,
+      );
+      if (!member) throw new Error("seed: member");
 
       await migrate(db, { migrationsFolder: full });
       const rows = await db.select().from(memberWalletLinks);

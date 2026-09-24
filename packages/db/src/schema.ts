@@ -7,6 +7,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   text,
@@ -18,20 +19,31 @@ import {
 const id = () => uuid("id").primaryKey().defaultRandom();
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
-export const communities = pgTable("communities", {
-  id: id(),
-  mint: text("mint").notNull().unique(),
-  name: text("name").notNull(),
-  telegramChatId: bigint("telegram_chat_id", { mode: "bigint" }).notNull().unique(),
-  adminTelegramUserId: bigint("admin_telegram_user_id", { mode: "bigint" }).notNull(),
-  rubricVersion: text("rubric_version").notNull(),
-  rubric: jsonb("rubric").notNull(),
-  publisherPubkey: text("publisher_pubkey"),
-  chainAddress: text("chain_address"),
-  // Explicit reward intake pause (O4): null means intake is allowed. Epochs keep their schedule.
-  rewardIntakePausedAt: timestamp("reward_intake_paused_at", { withTimezone: true }),
-  createdAt: createdAt(),
-});
+export const communities = pgTable(
+  "communities",
+  {
+    id: id(),
+    mint: text("mint").notNull().unique(),
+    name: text("name").notNull(),
+    telegramChatId: bigint("telegram_chat_id", { mode: "bigint" }).notNull().unique(),
+    adminTelegramUserId: bigint("admin_telegram_user_id", { mode: "bigint" }).notNull(),
+    rubricVersion: text("rubric_version").notNull(),
+    rubric: jsonb("rubric").notNull(),
+    publisherPubkey: text("publisher_pubkey"),
+    chainAddress: text("chain_address"),
+    // Explicit reward intake pause (O4): null means intake is allowed. Epochs keep their schedule.
+    rewardIntakePausedAt: timestamp("reward_intake_paused_at", { withTimezone: true }),
+    // P12: set by the operator after the go/no-go. Null means no epoch of this community is payable.
+    firstPaidEpoch: integer("first_paid_epoch"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    check(
+      "communities_first_paid_epoch_positive",
+      sql`${t.firstPaidEpoch} is null or ${t.firstPaidEpoch} >= 1`,
+    ),
+  ],
+);
 
 export const linkMethod = pgEnum("link_method", ["paste", "signature"]);
 
@@ -644,6 +656,71 @@ export const memberWalletLinks = pgTable(
     check(
       "member_wallet_links_interval",
       sql`${t.validTo} is null or ${t.validTo} > ${t.validFrom}`,
+    ),
+  ],
+);
+
+// Insert-only. The first 6/6 pass of one rules test by one member (P9); failed attempts are not kept.
+export const rulesTestPasses = pgTable(
+  "rules_test_passes",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    testId: text("test_id").notNull(),
+    passedAt: timestamp("passed_at", { withTimezone: true, precision: 3 }).notNull(),
+  },
+  (t) => [uniqueIndex("rules_test_passes_member_test").on(t.memberId, t.testId)],
+);
+
+export const holdCheckStatus = pgEnum("hold_check_status", [
+  "pending",
+  "holder",
+  "below",
+  "uncertain",
+]);
+
+// One logical hold check per member and paid epoch (P16). checkRound is reused on every retry;
+// holder and below are final, pending and uncertain are retried. Token amounts and slots are u64.
+export const holdChecks = pgTable(
+  "hold_checks",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    epochId: uuid("epoch_id")
+      .notNull()
+      .references(() => epochs.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    wallet: text("wallet").notNull(),
+    mint: text("mint").notNull(),
+    thresholdRaw: numeric("threshold_raw", { precision: 20, scale: 0 }).notNull(),
+    checkRound: uuid("check_round").notNull(),
+    status: holdCheckStatus("status").notNull().default("pending"),
+    reason: text("reason"),
+    attempts: integer("attempts").notNull().default(0),
+    rawAmount: numeric("raw_amount", { precision: 20, scale: 0 }),
+    decimals: integer("decimals"),
+    provider: text("provider"),
+    slot: numeric("slot", { precision: 20, scale: 0 }),
+    observedAt: timestamp("observed_at", { withTimezone: true, precision: 3 }),
+    checkedAt: timestamp("checked_at", { withTimezone: true, precision: 3 }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("hold_checks_epoch_member").on(t.epochId, t.memberId),
+    check("hold_checks_threshold_positive", sql`${t.thresholdRaw} > 0`),
+    // A confirmed result carries its whole observation; nothing else does.
+    check(
+      "hold_checks_observation",
+      sql`(${t.status} in ('holder', 'below')) = (${t.rawAmount} is not null and ${t.decimals} is not null and ${t.provider} is not null and ${t.slot} is not null and ${t.observedAt} is not null)`,
     ),
   ],
 );
