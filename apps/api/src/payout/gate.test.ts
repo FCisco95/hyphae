@@ -333,79 +333,78 @@ describe("member checks (P9)", () => {
     expect(gate).toMatchObject({ status: "blocked", blockers: ["no_payable_members"] });
   });
 
-  it("counts a balance only if it was read within 24 hours after closes_at", async () => {
-    const cases: [string, number, string][] = [
-      ["read before the close", -1, "held"],
-      ["read at the close", 0, "payable"],
-      ["read 24 hours after", 24 * 60 * MIN, "payable"],
-      ["read later than 24 hours after", 24 * 60 * MIN + 1, "held"],
-    ];
-    for (const [label, offset, status] of cases) {
+  // One seeded epoch per case, so each case keeps its own time budget.
+  it.each([
+    ["read before the close", -1, "held"],
+    ["read at the close", 0, "payable"],
+    ["read 24 hours after", 24 * 60 * MIN, "payable"],
+    ["read later than 24 hours after", 24 * 60 * MIN + 1, "held"],
+  ] as const)(
+    "counts a balance only if read within 24 h of closes_at: %s",
+    async (_label, offset, status) => {
       const { demo, e1, ref } = await cleanDemo();
       await t.db
         .update(holdChecks)
         .set({ observedAt: new Date(e1.closesAt.getTime() + offset) })
         .where(eq(holdChecks.memberId, demo.members.signed));
       const { verdict } = await signedVerdict(ref, demo.members.signed);
-      expect(verdict?.status, label).toBe(status);
-    }
-  });
+      expect(verdict?.status).toBe(status);
+    },
+  );
 
-  it("holds a candidate whose hold result is missing, pending, uncertain or for other terms", async () => {
-    const cases: [string, (memberId: string) => Promise<unknown>][] = [
-      ["missing", (m) => t.db.delete(holdChecks).where(eq(holdChecks.memberId, m))],
-      [
-        "pending",
-        (m) =>
-          t.db
-            .update(holdChecks)
-            .set({
-              status: "pending",
-              rawAmount: null,
-              decimals: null,
-              provider: null,
-              slot: null,
-              observedAt: null,
-            })
-            .where(eq(holdChecks.memberId, m)),
-      ],
-      [
-        "uncertain",
-        (m) =>
-          t.db
-            .update(holdChecks)
-            .set({
-              status: "uncertain",
-              reason: "outage",
-              rawAmount: null,
-              decimals: null,
-              provider: null,
-              slot: null,
-              observedAt: null,
-            })
-            .where(eq(holdChecks.memberId, m)),
-      ],
-      [
-        "another wallet",
-        (m) =>
-          t.db.update(holdChecks).set({ wallet: "SomeoneElse" }).where(eq(holdChecks.memberId, m)),
-      ],
-      [
-        "another threshold",
-        (m) => t.db.update(holdChecks).set({ thresholdRaw: "1" }).where(eq(holdChecks.memberId, m)),
-      ],
-      [
-        "another mint",
-        (m) => t.db.update(holdChecks).set({ mint: "OtherMint" }).where(eq(holdChecks.memberId, m)),
-      ],
-    ];
-    for (const [label, change] of cases) {
-      const { demo, ref } = await cleanDemo();
-      await change(demo.members.signed);
-      const { gate, verdict } = await signedVerdict(ref, demo.members.signed);
-      expect(verdict, label).toMatchObject({ status: "held", reasons: ["hold_pending"] });
-      expect(gate, label).toMatchObject({ status: "blocked", blockers: ["hold_checks_pending"] });
-    }
+  const heldCases: [string, (memberId: string) => Promise<unknown>][] = [
+    ["missing", (m) => t.db.delete(holdChecks).where(eq(holdChecks.memberId, m))],
+    [
+      "pending",
+      (m) =>
+        t.db
+          .update(holdChecks)
+          .set({
+            status: "pending",
+            rawAmount: null,
+            decimals: null,
+            provider: null,
+            slot: null,
+            observedAt: null,
+          })
+          .where(eq(holdChecks.memberId, m)),
+    ],
+    [
+      "uncertain",
+      (m) =>
+        t.db
+          .update(holdChecks)
+          .set({
+            status: "uncertain",
+            reason: "outage",
+            rawAmount: null,
+            decimals: null,
+            provider: null,
+            slot: null,
+            observedAt: null,
+          })
+          .where(eq(holdChecks.memberId, m)),
+    ],
+    [
+      "another wallet",
+      (m) =>
+        t.db.update(holdChecks).set({ wallet: "SomeoneElse" }).where(eq(holdChecks.memberId, m)),
+    ],
+    [
+      "another threshold",
+      (m) => t.db.update(holdChecks).set({ thresholdRaw: "1" }).where(eq(holdChecks.memberId, m)),
+    ],
+    [
+      "another mint",
+      (m) => t.db.update(holdChecks).set({ mint: "OtherMint" }).where(eq(holdChecks.memberId, m)),
+    ],
+  ];
+  it.each(heldCases)("holds a candidate whose hold result is %s", async (_label, change) => {
+    const { demo, ref } = await cleanDemo();
+    await change(demo.members.signed);
+    const { gate, verdict } = await signedVerdict(ref, demo.members.signed);
+    expect(verdict).toMatchObject({ status: "held", reasons: ["hold_pending"] });
+    expect(gate).toMatchObject({ status: "blocked", blockers: ["hold_checks_pending"] });
   });
 });
 
