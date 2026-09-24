@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import type { RewardPurpose } from "@hyphae/core";
 import {
   createDb,
+  epochs,
   members,
   rewardDecisions,
   rewardDispatches,
@@ -11,9 +12,10 @@ import {
 import { eq, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { closeEpoch } from "./close.js";
 import { withCommunityLock } from "./config.js";
 import { appendCorrection } from "./decisions.js";
-import { beginDispatch, runEvaluation } from "./evaluation.js";
+import { beginDispatch, completeDispatch, runEvaluation } from "./evaluation.js";
 import { admitContribution } from "./intake.js";
 import { nominate } from "./slots.js";
 import { later, seedRewardLane, T0 } from "./test-db.js";
@@ -251,5 +253,78 @@ describe("races on one decision lineage (O6)", () => {
       expect(created).toEqual([false, true]);
       expect(await lineage()).toHaveLength(2);
     }
+  });
+});
+
+describe("completion versus close (P2)", () => {
+  it(`a decision is selected exactly when accepted before closesAt (${ROUNDS} rounds)`, async () => {
+    const seen = { selected: 0, excluded: 0, pending_reconciliation: 0 };
+    for (let i = 0; i < ROUNDS; i += 1) {
+      const lane = await seedRewardLane(a);
+      const intake = await lane.admitOne();
+      // Move epoch 1 onto the real database clock so the race uses real acceptance times.
+      const [{ ms } = { ms: 0 }] = await a.execute<{ ms: number }>(
+        sql`select floor(extract(epoch from clock_timestamp()) * 1000)::double precision as ms`,
+      );
+      const closesAt = new Date(Number(ms) + 300);
+      await a
+        .update(epochs)
+        .set({ opensAt: new Date(Number(ms) - 3_600_000), closesAt })
+        .where(eq(epochs.id, intake.epochId));
+      const begun = await beginDispatch(a, {
+        communityId: lane.community.id,
+        target: { contributionId: intake.contributionId },
+        model: "test:fake",
+      });
+      if (begun.status !== "begun") throw new Error(begun.status);
+
+      const completion = (async () => {
+        await new Promise((r) => setTimeout(r, Math.random() * 600));
+        return completeDispatch(a, {
+          communityId: lane.community.id,
+          dispatchId: begun.dispatch.id,
+          fence: begun.dispatch.fence,
+          output: {
+            score: 85,
+            rubricHits: [{ key: "context_fit", met: true, note: "specific" }],
+            flags: [],
+            aiSlop: { patterns: [], templateRhythm: false },
+            reasoning: "Specific to the post and checked.",
+          },
+          latencyMs: 5,
+          costMicroUsd: 100,
+        });
+      })();
+      const close = (async () => {
+        for (;;) {
+          const result = await closeEpoch(b, {
+            communityId: lane.community.id,
+            epochId: intake.epochId,
+          });
+          if (result.status === "closed") return result;
+          await new Promise((r) => setTimeout(r, 5));
+        }
+      })();
+      const [completed, closed] = await Promise.all([completion, close]);
+
+      if (completed.status !== "completed") throw new Error(completed.status);
+      const { decision } = completed;
+      const selected = decision.acceptedAt.getTime() < closesAt.getTime();
+      // Lock order is commit order: the one that read the earlier clock committed first.
+      const completedFirst = decision.acceptedAt.getTime() < closed.snapshot.closedAt.getTime();
+      const reason = selected ? null : completedFirst ? "excluded" : "pending_reconciliation";
+      seen[reason ?? "selected"] += 1;
+      expect(decision.affectsAllocation).toBe(selected);
+      expect(closed.entries).toEqual([
+        expect.objectContaining({
+          contributionId: intake.contributionId,
+          decisionId: selected ? decision.id : null,
+          reason,
+        }),
+      ]);
+    }
+    // Both sides of the boundary must actually have been raced.
+    expect(seen.selected).toBeGreaterThan(0);
+    expect(seen.excluded + seen.pending_reconciliation).toBeGreaterThan(0);
   });
 });

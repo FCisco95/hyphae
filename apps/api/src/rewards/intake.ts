@@ -1,6 +1,6 @@
 import { sha256Hex } from "@hyphae/core";
 import { contributions, type Db, members, rewardIntakes, tasks } from "@hyphae/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { ensureEpochAt, latestEpoch, type RewardDeps, withCommunityLock } from "./config.js";
 
 export type RewardIntake = typeof rewardIntakes.$inferSelect;
@@ -93,6 +93,7 @@ export async function admitContribution(
         and(
           eq(rewardIntakes.communityId, input.communityId),
           eq(rewardIntakes.artifactKey, input.artifactKey),
+          isNull(rewardIntakes.reentryOf),
         ),
       );
     if (duplicate) return { status: "duplicate_artifact", intake: duplicate };

@@ -22,6 +22,9 @@ const REFUSAL: Record<Exclude<NominateResult["status"], "nominated">, string> = 
   candidates_exhausted: "You have used all three nominations for your effort slot this epoch.",
   slot_in_use: "Your effort slot is held by another nomination this epoch.",
   already_nominated: "That work is already nominated.",
+  reentry_blocked:
+    "That work's earlier evaluation request is still unresolved; it can't be nominated again yet.",
+  paused: "Reward intake is paused in this community.",
 };
 
 // Explicit nomination (O2). Already admitted work is nominated as it is; new work goes through

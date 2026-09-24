@@ -322,6 +322,8 @@ export async function ensureEpochAt(
         .set({
           status: "activated",
           activatedEpochIndex: index,
+          // The materialization instant, which a late close or intake puts after the boundary.
+          // The activation itself takes effect at the activated epoch's opensAt.
           resolvedAt: now,
           resolvedReason: `activated at epoch ${index}`,
         })

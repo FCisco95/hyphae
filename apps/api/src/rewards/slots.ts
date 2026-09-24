@@ -1,4 +1,5 @@
 import {
+  contributions,
   type Db,
   epochs,
   rewardConfigs,
@@ -10,7 +11,13 @@ import {
   rewardSlots,
 } from "@hyphae/db";
 import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
-import { RewardConfigPayload, type RewardDeps, withCommunityLock } from "./config.js";
+import {
+  type Community,
+  ensureEpochAt,
+  RewardConfigPayload,
+  type RewardDeps,
+  withCommunityLock,
+} from "./config.js";
 import type { Capture } from "./intake.js";
 
 export type Nomination = typeof rewardNominations.$inferSelect;
@@ -21,7 +28,7 @@ const ESSENTIAL_GAPS = ["post_unavailable", "media_not_captured"] as const;
 export const essentialGap = (limitations: readonly string[]): string | null =>
   ESSENTIAL_GAPS.find((g) => limitations.includes(g)) ?? null;
 
-const LIVE_STATES = [
+export const LIVE_STATES = [
   "pending_evidence",
   "ready",
   "evaluating",
@@ -44,7 +51,9 @@ export type NominateResult =
         | "already_effort"
         | "quality_pending"
         | "slot_used"
-        | "candidates_exhausted";
+        | "candidates_exhausted"
+        | "reentry_blocked"
+        | "paused";
     };
 
 export interface NominateInput {
@@ -62,7 +71,7 @@ export async function nominate(
   input: NominateInput,
   deps: RewardDeps = {},
 ): Promise<NominateResult> {
-  return withCommunityLock(db, input.communityId, deps, async (tx, _community, now) => {
+  return withCommunityLock(db, input.communityId, deps, async (tx, community, now) => {
     const [repeat] = await tx
       .select()
       .from(rewardNominations)
@@ -76,7 +85,7 @@ export async function nominate(
       return { status: "nominated", nomination: repeat, created: false, nextRetrievalRound: null };
     }
 
-    const [intake] = await tx
+    const [named] = await tx
       .select()
       .from(rewardIntakes)
       .where(
@@ -85,166 +94,288 @@ export async function nominate(
           eq(rewardIntakes.contributionId, input.contributionId),
         ),
       );
-    if (!intake) return { status: "not_admitted" };
-    if (intake.memberId !== input.memberId) return { status: "not_yours" };
-    const [epoch] = await tx.select().from(epochs).where(eq(epochs.id, intake.epochId));
-    if (!epoch) throw new Error(`reward: epoch ${intake.epochId} missing`);
-    if (now.getTime() >= epoch.closesAt.getTime()) return { status: "epoch_closed" };
-
-    const [live] = await tx
+    if (!named) return { status: "not_admitted" };
+    if (named.memberId !== input.memberId) return { status: "not_yours" };
+    // An artifact re-entered in a later epoch is nominated through its newest intake.
+    const history = await tx
       .select()
-      .from(rewardNominations)
+      .from(rewardIntakes)
       .where(
         and(
-          eq(rewardNominations.contributionId, input.contributionId),
-          ne(rewardNominations.state, "withdrawn"),
-        ),
-      );
-    if (live) return { status: "already_nominated", nomination: live };
-
-    const [latest] = await tx
-      .select({ effort: rewardDecisions.effort })
-      .from(rewardDecisions)
-      .where(eq(rewardDecisions.contributionId, input.contributionId))
-      .orderBy(desc(rewardDecisions.revision))
-      .limit(1);
-    if (latest && latest.effort !== "not_nominated") return { status: "already_effort" };
-    if (!latest) {
-      const [quality] = await tx
-        .select({ id: rewardDispatches.id })
-        .from(rewardDispatches)
-        .where(
-          and(
-            eq(rewardDispatches.contributionId, input.contributionId),
-            eq(rewardDispatches.purpose, "quality"),
-            ne(rewardDispatches.state, "not_sent_proven"),
-          ),
-        );
-      if (quality) return { status: "quality_pending" };
-    }
-
-    const [config] = await tx
-      .select({ payload: rewardConfigs.payload })
-      .from(rewardConfigs)
-      .where(eq(rewardConfigs.id, intake.configId));
-    if (!config) throw new Error(`reward: config ${intake.configId} missing`);
-    const { slotLimit, candidatesPerSlot, retrievalRounds } = RewardConfigPayload.parse(
-      config.payload,
-    ).effort;
-
-    const slots = await tx
-      .select()
-      .from(rewardSlots)
-      .where(and(eq(rewardSlots.epochId, intake.epochId), eq(rewardSlots.memberId, input.memberId)))
-      .orderBy(asc(rewardSlots.ordinal));
-    const spent = new Set(
-      slots.length === 0
-        ? []
-        : (
-            await tx
-              .select({ slotId: rewardDispatches.slotId })
-              .from(rewardDispatches)
-              .where(
-                and(
-                  inArray(
-                    rewardDispatches.slotId,
-                    slots.map((s) => s.id),
-                  ),
-                  ne(rewardDispatches.state, "not_sent_proven"),
-                ),
-              )
-          ).map((d) => d.slotId),
-    );
-    let slot = slots.find(
-      (s) => s.state === "open" && s.candidatesUsed < candidatesPerSlot && !spent.has(s.id),
-    );
-    if (!slot && slots.length < slotLimit) {
-      [slot] = await tx
-        .insert(rewardSlots)
-        .values({
-          communityId: input.communityId,
-          memberId: input.memberId,
-          epochId: intake.epochId,
-          ordinal: slots.length + 1,
-        })
-        .returning();
-    }
-    if (!slot) {
-      const reserved = slots.find((s) => s.state === "reserved");
-      if (reserved) {
-        const [holder] = await tx
-          .select()
-          .from(rewardNominations)
-          .where(
-            and(
-              eq(rewardNominations.slotId, reserved.id),
-              inArray(rewardNominations.state, LIVE_STATES),
-            ),
-          );
-        if (holder) return { status: "slot_in_use", nomination: holder };
-      }
-      const exhausted = slots.some(
-        (s) => s.state === "open" && s.candidatesUsed >= candidatesPerSlot,
-      );
-      return { status: exhausted ? "candidates_exhausted" : "slot_used" };
-    }
-
-    const rounds = await tx
-      .select()
-      .from(rewardRetrievals)
-      .where(
-        and(
-          eq(rewardRetrievals.contributionId, input.contributionId),
-          eq(rewardRetrievals.epochId, intake.epochId),
+          eq(rewardIntakes.communityId, input.communityId),
+          eq(rewardIntakes.artifactKey, named.artifactKey),
         ),
       )
-      .orderBy(desc(rewardRetrievals.round));
-    let lastRound = rounds[0];
-    if (!lastRound) {
-      const limitations = (intake.capture as Capture).limitations;
-      [lastRound] = await tx
-        .insert(rewardRetrievals)
-        .values({
-          contributionId: input.contributionId,
-          epochId: intake.epochId,
-          round: 1,
-          outcome: essentialGap(limitations) ?? "complete",
-          limitations,
-          attemptedAt: now,
-        })
-        .returning();
-      if (!lastRound) throw new Error("reward: retrieval insert returned nothing");
-    }
-    const gap = lastRound.outcome === "complete" ? null : lastRound.outcome;
+      .orderBy(desc(rewardIntakes.acceptedAt));
+    const intake = history[0] ?? named;
+    const [epoch] = await tx.select().from(epochs).where(eq(epochs.id, intake.epochId));
+    if (!epoch) throw new Error(`reward: epoch ${intake.epochId} missing`);
+    if (now.getTime() < epoch.closesAt.getTime()) return reserve(tx, input, intake, now);
 
-    const candidateOrdinal = slot.candidatesUsed + 1;
-    await tx
-      .update(rewardSlots)
-      .set({ state: "reserved", candidatesUsed: candidateOrdinal })
-      .where(eq(rewardSlots.id, slot.id));
-    const [nomination] = await tx
-      .insert(rewardNominations)
+    // A re-entry is admitted only together with its reservation: a refused nomination rolls
+    // the new intake back, so nothing is left for the recovery sweep to score.
+    let refusal: NominateResult | undefined;
+    try {
+      return await tx.transaction(async (sp) => {
+        const reentry = await reenter(sp, { community, epoch, history, intake, now, input });
+        if (reentry.status !== "reentered") return reentry;
+        const result = await reserve(sp, input, reentry.intake, now);
+        if (result.status !== "nominated") {
+          refusal = result;
+          sp.rollback();
+        }
+        return result;
+      });
+    } catch (err) {
+      if (refusal) return refusal;
+      throw err;
+    }
+  });
+}
+
+// Reserves a slot of the intake's epoch for its contribution. Callers hold the community lock.
+async function reserve(
+  tx: Db,
+  input: NominateInput,
+  intake: typeof rewardIntakes.$inferSelect,
+  now: Date,
+): Promise<NominateResult> {
+  const contributionId = intake.contributionId;
+
+  const [live] = await tx
+    .select()
+    .from(rewardNominations)
+    .where(
+      and(
+        eq(rewardNominations.contributionId, contributionId),
+        ne(rewardNominations.state, "withdrawn"),
+      ),
+    );
+  if (live) return { status: "already_nominated", nomination: live };
+
+  const [latest] = await tx
+    .select({ effort: rewardDecisions.effort })
+    .from(rewardDecisions)
+    .where(eq(rewardDecisions.contributionId, contributionId))
+    .orderBy(desc(rewardDecisions.revision))
+    .limit(1);
+  if (latest && latest.effort !== "not_nominated") return { status: "already_effort" };
+  if (!latest) {
+    const [quality] = await tx
+      .select({ id: rewardDispatches.id })
+      .from(rewardDispatches)
+      .where(
+        and(
+          eq(rewardDispatches.contributionId, contributionId),
+          eq(rewardDispatches.purpose, "quality"),
+          ne(rewardDispatches.state, "not_sent_proven"),
+        ),
+      );
+    if (quality) return { status: "quality_pending" };
+  }
+
+  const [config] = await tx
+    .select({ payload: rewardConfigs.payload })
+    .from(rewardConfigs)
+    .where(eq(rewardConfigs.id, intake.configId));
+  if (!config) throw new Error(`reward: config ${intake.configId} missing`);
+  const { slotLimit, candidatesPerSlot, retrievalRounds } = RewardConfigPayload.parse(
+    config.payload,
+  ).effort;
+
+  const slots = await tx
+    .select()
+    .from(rewardSlots)
+    .where(and(eq(rewardSlots.epochId, intake.epochId), eq(rewardSlots.memberId, input.memberId)))
+    .orderBy(asc(rewardSlots.ordinal));
+  const spent = new Set(
+    slots.length === 0
+      ? []
+      : (
+          await tx
+            .select({ slotId: rewardDispatches.slotId })
+            .from(rewardDispatches)
+            .where(
+              and(
+                inArray(
+                  rewardDispatches.slotId,
+                  slots.map((s) => s.id),
+                ),
+                ne(rewardDispatches.state, "not_sent_proven"),
+              ),
+            )
+        ).map((d) => d.slotId),
+  );
+  let slot = slots.find(
+    (s) => s.state === "open" && s.candidatesUsed < candidatesPerSlot && !spent.has(s.id),
+  );
+  if (!slot && slots.length < slotLimit) {
+    [slot] = await tx
+      .insert(rewardSlots)
       .values({
         communityId: input.communityId,
         memberId: input.memberId,
         epochId: intake.epochId,
-        slotId: slot.id,
-        candidateOrdinal,
-        contributionId: input.contributionId,
-        intakeId: intake.id,
-        kind: latest ? "upgrade" : "new_work",
-        state: gap ? "pending_evidence" : "ready",
-        pendingReason: gap,
-        idempotencyKey: input.idempotencyKey,
-        acceptedAt: now,
-        updatedAt: now,
+        ordinal: slots.length + 1,
       })
       .returning();
-    if (!nomination) throw new Error("reward: nomination insert returned nothing");
-    const nextRetrievalRound =
-      gap && lastRound.round < retrievalRounds ? lastRound.round + 1 : null;
-    return { status: "nominated", nomination, created: true, nextRetrievalRound };
-  });
+  }
+  if (!slot) {
+    const reserved = slots.find((s) => s.state === "reserved");
+    if (reserved) {
+      const [holder] = await tx
+        .select()
+        .from(rewardNominations)
+        .where(
+          and(
+            eq(rewardNominations.slotId, reserved.id),
+            inArray(rewardNominations.state, LIVE_STATES),
+          ),
+        );
+      if (holder) return { status: "slot_in_use", nomination: holder };
+    }
+    const exhausted = slots.some(
+      (s) => s.state === "open" && s.candidatesUsed >= candidatesPerSlot,
+    );
+    return { status: exhausted ? "candidates_exhausted" : "slot_used" };
+  }
+
+  const rounds = await tx
+    .select()
+    .from(rewardRetrievals)
+    .where(
+      and(
+        eq(rewardRetrievals.contributionId, contributionId),
+        eq(rewardRetrievals.epochId, intake.epochId),
+      ),
+    )
+    .orderBy(desc(rewardRetrievals.round));
+  let lastRound = rounds[0];
+  if (!lastRound) {
+    const limitations = (intake.capture as Capture).limitations;
+    [lastRound] = await tx
+      .insert(rewardRetrievals)
+      .values({
+        contributionId: contributionId,
+        epochId: intake.epochId,
+        round: 1,
+        outcome: essentialGap(limitations) ?? "complete",
+        limitations,
+        attemptedAt: now,
+      })
+      .returning();
+    if (!lastRound) throw new Error("reward: retrieval insert returned nothing");
+  }
+  const gap = lastRound.outcome === "complete" ? null : lastRound.outcome;
+
+  const candidateOrdinal = slot.candidatesUsed + 1;
+  await tx
+    .update(rewardSlots)
+    .set({ state: "reserved", candidatesUsed: candidateOrdinal })
+    .where(eq(rewardSlots.id, slot.id));
+  const [nomination] = await tx
+    .insert(rewardNominations)
+    .values({
+      communityId: input.communityId,
+      memberId: input.memberId,
+      epochId: intake.epochId,
+      slotId: slot.id,
+      candidateOrdinal,
+      contributionId: contributionId,
+      intakeId: intake.id,
+      kind: latest ? "upgrade" : "new_work",
+      state: gap ? "pending_evidence" : "ready",
+      pendingReason: gap,
+      idempotencyKey: input.idempotencyKey,
+      acceptedAt: now,
+      updatedAt: now,
+    })
+    .returning();
+  if (!nomination) throw new Error("reward: nomination insert returned nothing");
+  const nextRetrievalRound = gap && lastRound.round < retrievalRounds ? lastRound.round + 1 : null;
+  return { status: "nominated", nomination, created: true, nextRetrievalRound };
+}
+
+type ReentryResult =
+  | { status: "reentered"; intake: typeof rewardIntakes.$inferSelect }
+  | { status: "epoch_closed" | "reentry_blocked" | "paused" };
+
+// O3 re-entry: an artifact whose epoch closed with no evaluation ever completed, and no model
+// request still in flight or unknown, may be admitted again into the current epoch as new work.
+// The frozen exclusion stays; the new intake links the original and takes the current config.
+async function reenter(
+  tx: Db,
+  ctx: {
+    community: Community;
+    epoch: typeof epochs.$inferSelect;
+    history: (typeof rewardIntakes.$inferSelect)[];
+    intake: typeof rewardIntakes.$inferSelect;
+    now: Date;
+    input: NominateInput;
+  },
+): Promise<ReentryResult> {
+  const { community, epoch, history, intake, now, input } = ctx;
+  if (epoch.status === "open") return { status: "epoch_closed" };
+  const contributionIds = history.map((h) => h.contributionId);
+  const [decided] = await tx
+    .select({ id: rewardDecisions.id })
+    .from(rewardDecisions)
+    .where(inArray(rewardDecisions.contributionId, contributionIds))
+    .limit(1);
+  if (decided) return { status: "epoch_closed" };
+  const [unresolved] = await tx
+    .select({ id: rewardDispatches.id })
+    .from(rewardDispatches)
+    .where(
+      and(
+        inArray(rewardDispatches.contributionId, contributionIds),
+        inArray(rewardDispatches.state, ["dispatched", "pending_reconciliation"]),
+      ),
+    )
+    .limit(1);
+  if (unresolved) return { status: "reentry_blocked" };
+  if (community.rewardIntakePausedAt) return { status: "paused" };
+  const current = await ensureEpochAt(tx, input.communityId, now, now);
+  if (!current?.rewardConfigId) return { status: "epoch_closed" };
+
+  const [source] = await tx
+    .select()
+    .from(contributions)
+    .where(eq(contributions.id, intake.contributionId));
+  if (!source) throw new Error(`reward: contribution ${intake.contributionId} missing`);
+  const [contribution] = await tx
+    .insert(contributions)
+    .values({
+      communityId: source.communityId,
+      memberId: source.memberId,
+      taskId: source.taskId,
+      kind: source.kind,
+      url: source.url,
+      text: source.text,
+      oembed: source.oembed,
+      telegramMessageId: source.telegramMessageId,
+      submittedAt: now,
+    })
+    .returning({ id: contributions.id });
+  if (!contribution) throw new Error("reward: contribution insert returned nothing");
+  const [created] = await tx
+    .insert(rewardIntakes)
+    .values({
+      communityId: input.communityId,
+      memberId: input.memberId,
+      epochId: current.id,
+      configId: current.rewardConfigId,
+      contributionId: contribution.id,
+      taskId: intake.taskId,
+      artifactKey: intake.artifactKey,
+      idempotencyKey: `reentry:${input.idempotencyKey}`,
+      acceptedAt: now,
+      capture: intake.capture,
+      reentryOf: intake.reentryOf ?? intake.id,
+    })
+    .returning();
+  if (!created) throw new Error("reward: intake insert returned nothing");
+  return { status: "reentered", intake: created };
 }
 
 export type WithdrawResult =

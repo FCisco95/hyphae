@@ -220,7 +220,8 @@ export const rewardConfigProposals = pgTable(
   ],
 );
 
-// Immutable reward intake (O2/O3): one row per admitted contribution. Insert-only.
+// Immutable reward intake (O2/O3): one row per admitted contribution. Insert-only. A re-entry
+// (O3) is a new row in a later epoch for the same artifact, pointing at the original intake.
 export const rewardIntakes = pgTable(
   "reward_intakes",
   {
@@ -245,10 +246,14 @@ export const rewardIntakes = pgTable(
     idempotencyKey: text("idempotency_key").notNull(), // "tg:<chat_id>:<message_id>"
     acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
     capture: jsonb("capture").notNull(),
+    reentryOf: uuid("reentry_of").references((): AnyPgColumn => rewardIntakes.id),
   },
   (t) => [
     uniqueIndex("reward_intakes_contribution").on(t.contributionId),
-    uniqueIndex("reward_intakes_community_artifact").on(t.communityId, t.artifactKey),
+    uniqueIndex("reward_intakes_community_artifact")
+      .on(t.communityId, t.artifactKey)
+      .where(sql`${t.reentryOf} is null`),
+    uniqueIndex("reward_intakes_epoch_artifact").on(t.epochId, t.artifactKey),
     uniqueIndex("reward_intakes_community_idempotency").on(t.communityId, t.idempotencyKey),
     index("reward_intakes_epoch_member").on(t.epochId, t.memberId),
   ],
@@ -296,6 +301,8 @@ export const rewardNominationState = pgEnum("reward_nomination_state", [
   "completed_eligible",
   "completed_ineligible",
   "withdrawn",
+  "expired_at_close",
+  "completed_after_cutoff",
 ]);
 
 // Explicit effort nominations (O2): the candidates of a slot.
@@ -478,6 +485,81 @@ export const rewardDecisions = pgTable(
     check(
       "reward_decisions_correction_shape",
       sql`${t.correctionActor} is null or (${t.predecessorId} is not null and ${t.dispatchId} is null)`,
+    ),
+  ],
+);
+
+// The frozen close of one epoch (O3/O6). Insert-only; written once, under the community lock.
+export const rewardEpochSnapshots = pgTable("reward_epoch_snapshots", {
+  id: id(),
+  communityId: uuid("community_id")
+    .notNull()
+    .references(() => communities.id),
+  epochId: uuid("epoch_id")
+    .notNull()
+    .unique()
+    .references(() => epochs.id),
+  // The scheduled cutoff; the close itself may run later.
+  closesAt: timestamp("closes_at", { withTimezone: true }).notNull(),
+  closedAt: timestamp("closed_at", { withTimezone: true }).notNull(),
+  cutoffAssumption: text("cutoff_assumption").notNull(),
+});
+
+export const rewardSnapshotReason = pgEnum("reward_snapshot_reason", [
+  "pending_at_close",
+  "pending_reconciliation",
+  "excluded",
+]);
+
+// Every admitted contribution of the epoch: its selected decision, or why it has none.
+export const rewardSnapshotEntries = pgTable(
+  "reward_snapshot_entries",
+  {
+    id: id(),
+    snapshotId: uuid("snapshot_id")
+      .notNull()
+      .references(() => rewardEpochSnapshots.id),
+    contributionId: uuid("contribution_id")
+      .notNull()
+      .references(() => contributions.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    decisionId: uuid("decision_id").references(() => rewardDecisions.id),
+    revision: integer("revision"),
+    reason: rewardSnapshotReason("reason"),
+    pointUnits: bigint("point_units", { mode: "bigint" }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("reward_snapshot_entries_snapshot_contribution").on(t.snapshotId, t.contributionId),
+    index("reward_snapshot_entries_contribution").on(t.contributionId),
+    check(
+      "reward_snapshot_entries_selected_or_reason",
+      sql`(${t.decisionId} is null) = (${t.revision} is null) and (${t.decisionId} is null) <> (${t.reason} is null) and (${t.reason} is null or ${t.pointUnits} = 0)`,
+    ),
+  ],
+);
+
+// Per-member totals (O5): exact units summed, whole points rounded once after aggregation.
+export const rewardSnapshotMembers = pgTable(
+  "reward_snapshot_members",
+  {
+    id: id(),
+    snapshotId: uuid("snapshot_id")
+      .notNull()
+      .references(() => rewardEpochSnapshots.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    pointUnits: bigint("point_units", { mode: "bigint" }).notNull(),
+    wholePoints: bigint("whole_points", { mode: "bigint" }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("reward_snapshot_members_snapshot_member").on(t.snapshotId, t.memberId),
+    index("reward_snapshot_members_member").on(t.memberId),
+    check(
+      "reward_snapshot_members_nonnegative",
+      sql`${t.pointUnits} >= 0 and ${t.wholePoints} >= 0`,
     ),
   ],
 );

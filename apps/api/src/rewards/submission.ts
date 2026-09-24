@@ -1,5 +1,5 @@
 import { type Db, rewardIntakes } from "@hyphae/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { latestEpoch, type RewardDeps } from "./config.js";
 import {
   type AdmitInput,
@@ -50,7 +50,8 @@ export async function submitEffort(
   return { admit, nominate: result };
 }
 
-// Lets /effort nominate already admitted work without repeating the submission preflight.
+// Lets /effort nominate already admitted work without repeating the submission preflight. The
+// original intake stands for the artifact; nominate() follows it to any later re-entry.
 export async function admittedIntake(
   db: Db,
   communityId: string,
@@ -60,7 +61,11 @@ export async function admittedIntake(
     .select()
     .from(rewardIntakes)
     .where(
-      and(eq(rewardIntakes.communityId, communityId), eq(rewardIntakes.artifactKey, artifactKey)),
+      and(
+        eq(rewardIntakes.communityId, communityId),
+        eq(rewardIntakes.artifactKey, artifactKey),
+        isNull(rewardIntakes.reentryOf),
+      ),
     );
   return row;
 }

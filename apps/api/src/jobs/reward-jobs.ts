@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { bot } from "../bot/index.js";
 import { db } from "../db.js";
 import { env } from "../env.js";
+import { closeEpoch, dueCloses } from "../rewards/close.js";
 import { type EvaluationTarget, type RunResult, runEvaluation } from "../rewards/evaluation.js";
 import { decisionNotified, markNotified, strandedWork } from "../rewards/recovery.js";
 import { recordRetrieval } from "../rewards/slots.js";
@@ -20,6 +21,10 @@ export interface RewardRetrievalJob {
   communityId: string;
   nominationId: string;
   round: number;
+}
+export interface RewardCloseJob {
+  communityId: string;
+  epochId: string;
 }
 export interface RewardNotifyJob {
   communityId: string;
@@ -110,7 +115,10 @@ const RECOVERY_GRACE_MS = 10 * 60_000;
 // Scheduled sweep: re-queues work whose queue insert was lost after its commit (F1–F3). The
 // jobs it sends are sent without delay; each one re-checks its state under the community lock.
 export async function recoverRewardWork(): Promise<void> {
-  const work = await strandedWork(db, { now: new Date(), graceMs: RECOVERY_GRACE_MS });
+  const now = new Date();
+  const closes = await dueCloses(db, now);
+  for (const job of closes) await boss.send(QUEUES.rewardClose, job satisfies RewardCloseJob);
+  const work = await strandedWork(db, { now, graceMs: RECOVERY_GRACE_MS });
   for (const job of work.evaluations) await sendEvaluation(job);
   for (const job of work.retrievals) await boss.send(QUEUES.rewardRetrieval, job);
   for (const { communityId, contributionId, decision } of work.notifications) {
@@ -130,6 +138,23 @@ export async function recoverRewardWork(): Promise<void> {
       evaluations: work.evaluations.length,
       retrievals: work.retrievals.length,
       notifications: work.notifications.length,
+      closes: closes.length,
+    }),
+  );
+}
+
+// The cutoff is the scheduled closesAt whenever this runs; a job that fires early is a no-op.
+export async function closeRewardEpoch(job: RewardCloseJob): Promise<void> {
+  const result = await closeEpoch(db, job);
+  console.log(
+    JSON.stringify({
+      job: "reward-close",
+      ...job,
+      status: result.status,
+      ...(result.status === "closed" && {
+        created: result.created,
+        entries: result.entries.length,
+      }),
     }),
   );
 }

@@ -61,6 +61,17 @@ async function loadContext(tx: Tx, intake: RewardIntake) {
   return { epoch, payload: RewardConfigPayload.parse(config.payload), task };
 }
 
+// Timing measures the original submission (O3); a re-entry's own intake time is not it.
+async function originalAcceptance(tx: Tx, intake: RewardIntake): Promise<Date> {
+  if (!intake.reentryOf) return intake.acceptedAt;
+  const [origin] = await tx
+    .select({ acceptedAt: rewardIntakes.acceptedAt })
+    .from(rewardIntakes)
+    .where(eq(rewardIntakes.id, intake.reentryOf));
+  if (!origin) throw new Error(`reward: intake ${intake.reentryOf} missing`);
+  return origin.acceptedAt;
+}
+
 async function latestDecision(tx: Tx, contributionId: string): Promise<Decision | undefined> {
   const [row] = await tx
     .select()
@@ -350,7 +361,12 @@ export async function completeDispatch(
             pendingReason: effort.missingEssentialEvidence,
             updatedAt: now,
           })
-          .where(eq(rewardNominations.id, nomination.id));
+          .where(
+            and(
+              eq(rewardNominations.id, nomination.id),
+              ne(rewardNominations.state, "expired_at_close"),
+            ),
+          );
       }
       return { status: "pending_evidence", reason: effort.missingEssentialEvidence };
     }
@@ -381,7 +397,7 @@ export async function completeDispatch(
         },
         timing: {
           ...(task ? { taskOpensAtMs: BigInt(task.opensAt.getTime()) } : {}),
-          submittedAtMs: BigInt(intake.acceptedAt.getTime()),
+          submittedAtMs: BigInt((await originalAcceptance(tx, intake)).getTime()),
           fullCreditUntilMs: BigInt(payload.timing.fullCreditUntilMs),
           zeroCreditAtMs: BigInt(payload.timing.zeroCreditAtMs),
         },
@@ -409,6 +425,7 @@ export async function completeDispatch(
       .filter(Boolean)
       .join("\n\n");
 
+    const affectsAllocation = now.getTime() < epoch.closesAt.getTime();
     const [decision] = await tx
       .insert(rewardDecisions)
       .values({
@@ -432,7 +449,7 @@ export async function completeDispatch(
         multiplierBps,
         explanation,
         acceptedAt: now,
-        affectsAllocation: now.getTime() < epoch.closesAt.getTime(),
+        affectsAllocation,
       })
       .returning();
     if (!decision) throw new Error("reward: decision insert returned nothing");
@@ -440,7 +457,15 @@ export async function completeDispatch(
     if (nomination) {
       await tx
         .update(rewardNominations)
-        .set({ state: eligible ? "completed_eligible" : "completed_ineligible", updatedAt: now })
+        .set({
+          // O3: a late answer still used the origin epoch's one evaluation of this artifact.
+          state: !affectsAllocation
+            ? "completed_after_cutoff"
+            : eligible
+              ? "completed_eligible"
+              : "completed_ineligible",
+          updatedAt: now,
+        })
         .where(eq(rewardNominations.id, nomination.id));
       await tx
         .update(rewardSlots)
@@ -514,7 +539,12 @@ export async function recordNotSentProven(
       await tx
         .update(rewardNominations)
         .set({ state: "ready", pendingReason: null, updatedAt: now })
-        .where(eq(rewardNominations.id, dispatch.nominationId));
+        .where(
+          and(
+            eq(rewardNominations.id, dispatch.nominationId),
+            eq(rewardNominations.state, "pending_reconciliation"),
+          ),
+        );
       const [slot] = await tx.select().from(rewardSlots).where(eq(rewardSlots.id, dispatch.slotId));
       if (!slot) throw new Error(`reward: slot ${dispatch.slotId} missing`);
       await tx

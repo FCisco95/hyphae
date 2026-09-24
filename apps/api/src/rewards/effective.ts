@@ -60,65 +60,7 @@ export async function effectiveResults(
     }
     const cutoff = query.cutoff ?? epoch.closesAt;
 
-    const intakes = await tx
-      .select({ contributionId: rewardIntakes.contributionId, memberId: rewardIntakes.memberId })
-      .from(rewardIntakes)
-      .where(
-        and(
-          eq(rewardIntakes.epochId, epoch.id),
-          query.memberId ? eq(rewardIntakes.memberId, query.memberId) : undefined,
-        ),
-      )
-      .orderBy(asc(rewardIntakes.acceptedAt), asc(rewardIntakes.contributionId));
-    const decisions = intakes.length
-      ? await tx
-          .select({
-            id: rewardDecisions.id,
-            contributionId: rewardDecisions.contributionId,
-            revision: rewardDecisions.revision,
-            pointUnits: rewardDecisions.pointUnits,
-            acceptedAt: rewardDecisions.acceptedAt,
-          })
-          .from(rewardDecisions)
-          .where(
-            inArray(
-              rewardDecisions.contributionId,
-              intakes.map((i) => i.contributionId),
-            ),
-          )
-          .orderBy(asc(rewardDecisions.revision))
-      : [];
-
-    const byContribution = new Map<string, typeof decisions>();
-    for (const d of decisions) {
-      byContribution.set(d.contributionId, [...(byContribution.get(d.contributionId) ?? []), d]);
-    }
-    const units = new Map<string, PointUnits[]>();
-    const entries = intakes.map((intake): EffectiveEntry => {
-      const lineage = byContribution.get(intake.contributionId) ?? [];
-      const selected = lineage.findLast((d) => d.acceptedAt.getTime() < cutoff.getTime());
-      const memberUnits = units.get(intake.memberId) ?? [];
-      units.set(intake.memberId, memberUnits);
-      if (selected) memberUnits.push(selected.pointUnits as PointUnits);
-      return {
-        ...intake,
-        state: selected ? "scored" : lineage.length ? "late" : "pending",
-        decisionId: selected?.id ?? null,
-        revision: selected?.revision ?? null,
-        pointUnits: (selected?.pointUnits ?? 0n).toString(),
-      };
-    });
-    const totals = [...units]
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      .map(([memberId, values]) => {
-        const total = aggregatePointUnits(values);
-        return {
-          memberId,
-          pointUnits: total.toString(),
-          wholePoints: wholePoints(total).toString(),
-        };
-      });
-
+    const { entries, totals } = await selectEffective(tx, epoch.id, cutoff, query.memberId);
     return {
       epochId: epoch.id,
       closesAt: epoch.closesAt,
@@ -129,4 +71,73 @@ export async function effectiveResults(
       totals,
     };
   });
+}
+
+// The O6 selection, inside the caller's transaction. Close runs it under the community lock.
+export async function selectEffective(
+  tx: Db,
+  epochId: string,
+  cutoff: Date,
+  memberId?: string,
+): Promise<Pick<EffectiveResults, "entries" | "totals">> {
+  const intakes = await tx
+    .select({ contributionId: rewardIntakes.contributionId, memberId: rewardIntakes.memberId })
+    .from(rewardIntakes)
+    .where(
+      and(
+        eq(rewardIntakes.epochId, epochId),
+        memberId ? eq(rewardIntakes.memberId, memberId) : undefined,
+      ),
+    )
+    .orderBy(asc(rewardIntakes.acceptedAt), asc(rewardIntakes.contributionId));
+  const decisions = intakes.length
+    ? await tx
+        .select({
+          id: rewardDecisions.id,
+          contributionId: rewardDecisions.contributionId,
+          revision: rewardDecisions.revision,
+          pointUnits: rewardDecisions.pointUnits,
+          acceptedAt: rewardDecisions.acceptedAt,
+        })
+        .from(rewardDecisions)
+        .where(
+          inArray(
+            rewardDecisions.contributionId,
+            intakes.map((i) => i.contributionId),
+          ),
+        )
+        .orderBy(asc(rewardDecisions.revision))
+    : [];
+
+  const byContribution = new Map<string, typeof decisions>();
+  for (const d of decisions) {
+    byContribution.set(d.contributionId, [...(byContribution.get(d.contributionId) ?? []), d]);
+  }
+  const units = new Map<string, PointUnits[]>();
+  const entries = intakes.map((intake): EffectiveEntry => {
+    const lineage = byContribution.get(intake.contributionId) ?? [];
+    const selected = lineage.findLast((d) => d.acceptedAt.getTime() < cutoff.getTime());
+    const memberUnits = units.get(intake.memberId) ?? [];
+    units.set(intake.memberId, memberUnits);
+    if (selected) memberUnits.push(selected.pointUnits as PointUnits);
+    return {
+      ...intake,
+      state: selected ? "scored" : lineage.length ? "late" : "pending",
+      decisionId: selected?.id ?? null,
+      revision: selected?.revision ?? null,
+      pointUnits: (selected?.pointUnits ?? 0n).toString(),
+    };
+  });
+  const totals = [...units]
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .map(([memberId, values]) => {
+      const total = aggregatePointUnits(values);
+      return {
+        memberId,
+        pointUnits: total.toString(),
+        wholePoints: wholePoints(total).toString(),
+      };
+    });
+
+  return { entries, totals };
 }
