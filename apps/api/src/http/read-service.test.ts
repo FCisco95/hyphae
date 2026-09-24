@@ -238,10 +238,13 @@ describe("readContributions", () => {
       { offset: 0, limit: 50 },
       after,
     );
-    expect(r?.contributions.map((x) => [x.id, x.state])).toEqual([
-      [fails.contributionId, "pending_reconciliation"],
-      [late.contributionId, "excluded"],
-    ]);
+    // Both were admitted at the same instant, so intake order falls back to the random ids.
+    expect(new Map(r?.contributions.map((x) => [x.id, x.state]))).toEqual(
+      new Map([
+        [fails.contributionId, "pending_reconciliation"],
+        [late.contributionId, "excluded"],
+      ]),
+    );
     const e = await readEpoch(t.db, lane.community.mint, 1, after);
     expect(e?.counts).toMatchObject({ pending: 0, pending_reconciliation: 1, excluded: 1 });
   });
