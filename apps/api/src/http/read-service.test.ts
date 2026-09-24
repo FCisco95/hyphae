@@ -1,12 +1,12 @@
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { ReadApiV1 } from "@hyphae/core";
-import { epochs, schema } from "@hyphae/db";
+import { epochs, members, schema } from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createTestDb, seedRewardLane } from "../rewards/test-db.js";
+import { createTestDb, seedRewardLane, T0 } from "../rewards/test-db.js";
 import { type AuditDemo, seedAuditDemo } from "./demo-seed.js";
 import {
   readCommunity,
@@ -203,6 +203,29 @@ describe("readLeaderboard", () => {
     );
     expect([r.final, r.total_entries, r.entries.length]).toEqual([false, 2, 1]);
     expect(r.entries[0]).toMatchObject({ rank: 1, points: "70", whole_points: "70", pending: 0 });
+  });
+});
+
+describe("readLeaderboard ties", () => {
+  it("members with equal points share a rank, across pages", async () => {
+    const lane = await seedRewardLane(t.db);
+    const [second] = await t.db
+      .insert(members)
+      .values({
+        communityId: lane.community.id,
+        telegramUserId: 777_001n,
+        wallet: "TieWallet2",
+        linkMethod: "paste",
+      })
+      .returning();
+    if (!second) throw new Error("member");
+    await lane.admitOne();
+    await lane.admitOne(undefined, second.id);
+    const at = new Date(T0.getTime() + 5 * 60_000);
+    const first = await readLeaderboard(t.db, lane.community.mint, 1, { offset: 0, limit: 1 }, at);
+    const next = await readLeaderboard(t.db, lane.community.mint, 1, { offset: 1, limit: 1 }, at);
+    expect([first?.entries[0]?.rank, next?.entries[0]?.rank]).toEqual([1, 1]);
+    expect(next?.entries[0]?.pending).toBe(1);
   });
 });
 

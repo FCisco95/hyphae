@@ -461,6 +461,23 @@ export async function readLeaderboard(
     totals.sort((a, b) =>
       a.units !== b.units ? (a.units > b.units ? -1 : 1) : a.memberId < b.memberId ? -1 : 1,
     );
+    // Competition ranking over the sorted list: ties share the rank of their first position.
+    const ranks: number[] = [];
+    totals.forEach((m, i) => {
+      const prev = totals[i - 1];
+      ranks.push(prev && prev.units === m.units ? (ranks[i - 1] ?? i + 1) : i + 1);
+    });
+    const perMember = new Map<
+      string,
+      { contributions: number; counted: number; pending: number }
+    >();
+    for (const e of entries) {
+      const c = perMember.get(e.memberId) ?? { contributions: 0, counted: 0, pending: 0 };
+      c.contributions += 1;
+      if (e.state === "counted") c.counted += 1;
+      if (e.state === "pending") c.pending += 1;
+      perMember.set(e.memberId, c);
+    }
     const slice = totals.slice(page.offset, page.offset + page.limit);
     const wallets = await publicWallets(
       tx,
@@ -477,21 +494,19 @@ export async function readLeaderboard(
       total_contributions: entries.length,
       offset: page.offset,
       limit: page.limit,
-      entries: slice.map((m) => {
-        const mine = entries.filter((e) => e.memberId === m.memberId);
+      entries: slice.map((m, i) => {
+        const mine = perMember.get(m.memberId) ?? { contributions: 0, counted: 0, pending: 0 };
         if (m.whole !== wholePoints(m.units as PointUnits)) {
           throw new Error(`read: member ${m.memberId} whole points disagree with their units`);
         }
         return {
-          rank: 1 + totals.filter((o) => o.units > m.units).length,
+          rank: ranks[page.offset + i] ?? page.offset + i + 1,
           member_id: m.memberId,
           ...(wallets.get(m.memberId) ?? { wallet: null, wallet_status: "none" as const }),
           point_units: m.units.toString(),
           points: exactPoints(m.units),
           whole_points: m.whole.toString(),
-          contributions: mine.length,
-          counted: mine.filter((e) => e.state === "counted").length,
-          pending: mine.filter((e) => e.state === "pending").length,
+          ...mine,
         };
       }),
     };
@@ -514,6 +529,7 @@ export async function readContribution(
         id: rewardIntakes.id,
         epochId: rewardIntakes.epochId,
         communityId: rewardIntakes.communityId,
+        memberId: rewardIntakes.memberId,
         capture: rewardIntakes.capture,
         reentryOf: rewardIntakes.reentryOf,
       })
@@ -532,7 +548,7 @@ export async function readContribution(
     const [epoch] = await findEpochs(tx, intake.communityId, epochRow.index);
     if (!epoch) return null;
 
-    const [entry] = (await epochEntries(tx, epoch)).filter(
+    const [entry] = (await epochEntries(tx, epoch, intake.memberId)).filter(
       (e) => e.contributionId === contributionId,
     );
     if (!entry) throw new Error(`read: contribution ${contributionId} missing from its epoch`);
