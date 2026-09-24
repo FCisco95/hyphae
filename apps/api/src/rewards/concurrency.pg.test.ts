@@ -1,10 +1,19 @@
 import { fileURLToPath } from "node:url";
-import { createDb, members, rewardDispatches, rewardNominations, rewardSlots } from "@hyphae/db";
+import type { RewardPurpose } from "@hyphae/core";
+import {
+  createDb,
+  members,
+  rewardDecisions,
+  rewardDispatches,
+  rewardNominations,
+  rewardSlots,
+} from "@hyphae/db";
 import { eq, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { withCommunityLock } from "./config.js";
-import { beginDispatch } from "./evaluation.js";
+import { appendCorrection } from "./decisions.js";
+import { beginDispatch, runEvaluation } from "./evaluation.js";
 import { admitContribution } from "./intake.js";
 import { nominate } from "./slots.js";
 import { later, seedRewardLane, T0 } from "./test-db.js";
@@ -172,6 +181,75 @@ describe("races on one member's effort slot", () => {
       );
       const created = results.map((r) => (r.status === "admitted" ? r.created : null)).sort();
       expect(created).toEqual([false, true]);
+    }
+  });
+});
+
+describe("races on one decision lineage (O6)", () => {
+  const decided = async () => {
+    const lane = await seedRewardLane(a);
+    const intake = await lane.admitOne();
+    const result = await runEvaluation(
+      a,
+      { communityId: lane.community.id, target: { contributionId: intake.contributionId } },
+      {
+        model: "test:fake",
+        horizonMs: 300_000,
+        clock: later(120_000),
+        call: async (_prompt: unknown, _purpose: RewardPurpose) => ({
+          output: {
+            score: 85,
+            rubricHits: [{ key: "context_fit", met: true, note: "specific" }],
+            flags: [],
+            aiSlop: { patterns: [], templateRhythm: false },
+            reasoning: "Specific to the post and checked.",
+          },
+          latencyMs: 5,
+          costMicroUsd: 100,
+        }),
+      },
+    );
+    if (result.status !== "completed") throw new Error(result.status);
+    const correct = (db: typeof a, rawQuality: number, idempotencyKey: string) =>
+      appendCorrection(
+        db,
+        {
+          communityId: lane.community.id,
+          contributionId: intake.contributionId,
+          expectedRevision: 1,
+          changes: { rawQuality },
+          reason: "Operator review of the thread.",
+          evidenceRefs: ["https://x.com/a/status/1"],
+          actor: "script:reward-correct",
+          idempotencyKey,
+        },
+        { clock: later(180_000) },
+      );
+    const lineage = () =>
+      a
+        .select()
+        .from(rewardDecisions)
+        .where(eq(rewardDecisions.contributionId, intake.contributionId));
+    return { correct, lineage };
+  };
+
+  it(`two corrections of one revision yield one successor (${ROUNDS} rounds)`, async () => {
+    for (let i = 0; i < ROUNDS; i += 1) {
+      const { correct, lineage } = await decided();
+      const results = await Promise.all([correct(a, 70, "op-a"), correct(b, 90, "op-b")]);
+      expect(results.map((r) => r.status).sort()).toEqual(["appended", "stale_revision"]);
+      const rows = await lineage();
+      expect(rows.map((r) => r.revision).sort()).toEqual([1, 2]);
+    }
+  });
+
+  it(`one correction retried on two connections is appended once (${ROUNDS} rounds)`, async () => {
+    for (let i = 0; i < ROUNDS; i += 1) {
+      const { correct, lineage } = await decided();
+      const results = await Promise.all([correct(a, 70, "op"), correct(b, 70, "op")]);
+      const created = results.map((r) => (r.status === "appended" ? r.created : null)).sort();
+      expect(created).toEqual([false, true]);
+      expect(await lineage()).toHaveLength(2);
     }
   });
 });
