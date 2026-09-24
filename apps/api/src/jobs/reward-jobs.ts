@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { bot } from "../bot/index.js";
 import { db } from "../db.js";
 import { env } from "../env.js";
+import { dueHoldChecks, holdCheckerFromEnv, runHoldChecks } from "../payout/hold-gate.js";
 import { closeEpoch, dueCloses } from "../rewards/close.js";
 import { type EvaluationTarget, type RunResult, runEvaluation } from "../rewards/evaluation.js";
 import { decisionNotified, markNotified, strandedWork } from "../rewards/recovery.js";
@@ -23,6 +24,10 @@ export interface RewardRetrievalJob {
   round: number;
 }
 export interface RewardCloseJob {
+  communityId: string;
+  epochId: string;
+}
+export interface HoldCheckJob {
   communityId: string;
   epochId: string;
 }
@@ -118,6 +123,8 @@ export async function recoverRewardWork(): Promise<void> {
   const now = new Date();
   const closes = await dueCloses(db, now);
   for (const job of closes) await boss.send(QUEUES.rewardClose, job satisfies RewardCloseJob);
+  const holds = await dueHoldChecks(db, now);
+  for (const job of holds) await boss.send(QUEUES.holdCheck, job satisfies HoldCheckJob);
   const work = await strandedWork(db, { now, graceMs: RECOVERY_GRACE_MS });
   for (const job of work.evaluations) await sendEvaluation(job);
   for (const job of work.retrievals) await boss.send(QUEUES.rewardRetrieval, job);
@@ -139,6 +146,7 @@ export async function recoverRewardWork(): Promise<void> {
       retrievals: work.retrievals.length,
       notifications: work.notifications.length,
       closes: closes.length,
+      holdChecks: holds.length,
     }),
   );
 }
@@ -157,6 +165,15 @@ export async function closeRewardEpoch(job: RewardCloseJob): Promise<void> {
       }),
     }),
   );
+  // The hold gate decides whether this epoch is a paid one; for any other it does nothing.
+  if (result.status === "closed") await boss.send(QUEUES.holdCheck, job satisfies HoldCheckJob);
+}
+
+const holdChecker = holdCheckerFromEnv(env);
+
+export async function checkEpochHolds(job: HoldCheckJob): Promise<void> {
+  const result = await runHoldChecks(db, job, { check: holdChecker });
+  console.log(JSON.stringify({ job: "hold-check", ...job, ...result }));
 }
 
 // At least once: a crash between Telegram's accept and the mark sends the message again.

@@ -8,6 +8,7 @@ export const QUEUES = {
   rewardNotify: "reward-notify",
   rewardRecovery: "reward-recovery",
   rewardClose: "reward-close",
+  holdCheck: "hold-check",
 } as const;
 
 export const boss = new PgBoss({
@@ -51,6 +52,13 @@ export async function startQueue() {
     retryDelay: 30,
     retryBackoff: true,
     expireInSeconds: 120,
+  });
+  // One job checks every candidate of an epoch, each read bounded by the SDK's 4 s deadline per
+  // provider; failed or uncertain checks are retried by the sweep, not by piling up jobs.
+  await boss.createQueue(QUEUES.holdCheck, {
+    retryLimit: 2,
+    retryDelay: 60,
+    expireInSeconds: 600,
   });
   return boss;
 }

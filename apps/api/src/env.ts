@@ -14,6 +14,10 @@ const Env = z.object({
     message: "LINK_ORIGIN must be a bare https origin",
   }),
   LINK_CHAIN: z.enum(["solana:mainnet", "solana:devnet"]).default("solana:mainnet"),
+  // Hold gate readers (P16): Helius and an independent non-Helius mainnet provider, keys in the URL.
+  // Missing or invalid values hold every candidate instead of failing the process.
+  HOLD_RPC_HELIUS_URL: z.string().min(1).optional(),
+  HOLD_RPC_FALLBACK_URL: z.string().min(1).optional(),
 });
 
 export const env = Env.parse(process.env);

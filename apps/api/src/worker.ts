@@ -1,7 +1,9 @@
 import { QUEUES, startQueue } from "./jobs/queue.js";
 import {
+  checkEpochHolds,
   closeRewardEpoch,
   evaluateReward,
+  type HoldCheckJob,
   notifyReward,
   type RewardCloseJob,
   type RewardEvaluationJob,
@@ -39,6 +41,9 @@ await boss.work<RewardNotifyJob>(QUEUES.rewardNotify, { batchSize: 1 }, async ([
 });
 await boss.work<RewardCloseJob>(QUEUES.rewardClose, { batchSize: 1 }, async ([job]) => {
   if (job) await closeRewardEpoch(job.data);
+});
+await boss.work<HoldCheckJob>(QUEUES.holdCheck, { batchSize: 1 }, async ([job]) => {
+  if (job) await checkEpochHolds(job.data);
 });
 await boss.work(QUEUES.rewardRecovery, { batchSize: 1 }, recoverRewardWork);
 await boss.schedule(QUEUES.rewardRecovery, "*/5 * * * *");
