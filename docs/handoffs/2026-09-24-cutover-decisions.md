@@ -43,6 +43,8 @@ Record the result in `docs/BUILDLOG.md`, with each check passed or failed.
 
 ## Runbook B — cutover window (each step on Cisco's yes; Cisco runs Fly commands in his own terminal)
 
+Ran on 2026-09-24; the exact commands that worked (deploy from the repo root, `--depot=false`, migrate from Cisco's terminal) are in `2026-09-24-cutover.md`.
+
 0. Preconditions: Runbook A passed; the full local gate is green on the `main` commit being deployed.
 1. Read-only Neon checks: the migration journal has exactly 6 rows (0000–0005) whose hashes match the files; `reward_epoch_snapshots`, `link_sessions` and `member_wallet_links` do not exist; record `select count(*) from members` (the size of the 0008 backfill).
 2. Stage the secret without restarting: `fly secrets set LINK_ORIGIN=https://hyphae-api.fly.dev --stage --app hyphae-api`.

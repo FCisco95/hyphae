@@ -2,6 +2,15 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-09-24 (evening) · Day 11 of 28 — the cutover: verified wallets are live and epoch 1 is set
+
+**Shipped:** everything built since September 17 is now in production. The three new database migrations went onto Neon and were checked before and after. The new build is deployed on Fly, which also retires the image that logged the bot's token when a command failed. Then a real test in Hyphae Lab: `/link` answered with a private link, Phantom signed, and `/me` shows the wallet as verified. The database shows the old pasted wallet closing and the signed one opening 23 milliseconds later, with its proof attached. The MYCEL community is bootstrapped: reward epoch 1 opens tonight at midnight UTC and closes a week later, pinned to rubric 1.2.0. The bot's command menu now lists `/effort` and drops two commands that were never built.
+**Decision:** epoch 1 uses rubric 1.2.0, the one already scoring live, not the 1.3.0 candidate, because 1.3.0 hasn't been run against the model yet. It opens at midnight UTC so the two weekly closes land on October 2 and 9, leaving three days before the October 12 deadline to show a real close.
+**Numbers:** 324 tests, typecheck, Biome, drizzle-kit check, `git diff --check` all exit 0 · `test:pg` 11/11 three runs in a row, after fixing one flaky test (a 300 ms setup budget that a cold database could spend; reproduced every time with a 400 ms delay, fixed in the test only) · migration journal 6 → 9 rows, every hash matching its file · 1 existing member backfilled into wallet history · `/health`, `/link` page and worker all up · 0 model calls or payments.
+**Commits:** `b7bfe55` (deployed); record `docs/handoffs/2026-09-24-cutover.md`.
+**Also:** the runbook had two wrong commands: the deploy must run from the repo root, and Fly's default builder hung. Both corrections are in the record.
+**Next:** Friday's weekly video. Then the hold-gate plan, and the scoring-evaluation session that decides when rubric 1.3.0 is proposed.
+
 ## 2026-09-24 (afternoon) · Day 11 of 28 — the first real wallet found the bug the tests couldn't
 
 **Shipped:** the hands-on wallet check ran end to end: a test bot, a test supergroup, a local database and the built server behind a public HTTPS tunnel. The first real wallet, Phantom, failed to sign. The page was calling the wallet's sign function with the wrong argument shape. The Wallet Standard takes each request as its own argument, and the page passed one list, so the wallet never got the message. Every automated test passed because the fake wallet in them made the same mistake. After the fix, Phantom and Solflare both linked, `/me` showed the wallet as verified, a used link was refused, and switching wallets closed the old link at the exact instant the new one opened. The check also caught a leak: when a bot command failed, the whole error was logged, including the bot's token, and Telegram was told to retry. Handler errors are now contained and logged by named fields only.
