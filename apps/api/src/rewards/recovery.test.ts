@@ -372,4 +372,25 @@ describe("strandedWork: decisions whose message was never sent (F3)", () => {
     const past = new Date(AFTER_GRACE.getTime() + MIN);
     expect((await s.sweep(past)).notifications).toEqual([]);
   });
+
+  it("drops a lost message once a correction supersedes its decision", async () => {
+    const { s, decision } = await decided();
+    const corrected = await appendCorrection(
+      t.db,
+      {
+        communityId: s.communityId,
+        contributionId: decision.contributionId,
+        expectedRevision: 1,
+        changes: { rawQuality: 50 },
+        reason: "Restates the post.",
+        evidenceRefs: ["https://x.com/a/status/1"],
+        actor: "script:reward-correct",
+        idempotencyKey: "c2",
+      },
+      { clock: later(3 * MIN) },
+    );
+    expect(corrected.status).toBe("appended");
+    // The revision-1 text would announce points the effective read no longer counts.
+    expect((await s.sweep()).notifications).toEqual([]);
+  });
 });
