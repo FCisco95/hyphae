@@ -58,7 +58,14 @@ A `/code-review` pass on `14ab993` returned 10 unverified findings. The top thre
 - **Blank `--raw-quality` became 0 (valid).** `z.coerce.number()` accepted `""` and whitespace (reproduced), so an unset shell variable would append a zero-quality correction. Fixed test-first in `b3e5872`: digits only.
 - **Effort correction "records disagree" (kept as is, Cisco's call).** The nomination state records how its dispatch completed; rewriting it would break append-only (O6), and its only reader is the correction's own eligibility check. No code reads `reward_decisions.nomination_id`; a correction reaches its origin through `predecessor_id`. The copied `effort_criteria` is the model's record, and the correction reason carries the operator's override. Nothing reads it today.
 
-Gate re-run on `b3e5872`: core 54, api 189, typecheck, Biome (108 files), drizzle-kit check, `git diff --check`, `test:pg` 6/6, all exit 0. Findings 4–10 (closed-epoch "pending" wording, unpinned newer epoch in `/me`, unbounded `inArray`, `FOR SHARE` on every `/me`, duplicated point formula, `--flags` parsing, lineage-map copying) are not addressed yet.
+Gate re-run on `b3e5872`: core 54, api 189, typecheck, Biome (108 files), drizzle-kit check, `git diff --check`, `test:pg` 6/6, all exit 0.
+
+Two more findings, on Cisco's call:
+
+- **Closed epoch still said "pending" (valid).** `/me` printed "N pending" beside "these points no longer change", though a decision accepted after close is late. Fixed test-first in `eacb402`: after close, pending and late entries read "not scored before close".
+- **Newer unpinned epoch hides behind a pinned one (not reachable).** Every epoch insert pins a config, `ensureEpochAt` refuses to extend an unpinned epoch, and bootstrap refuses when any epoch exists, so an unpinned epoch never follows a pinned one. No change. Related, by design: epochs materialize lazily under the lock, so `/me` shows the last materialized epoch until the next intake opens the next one.
+
+Gate re-run on `eacb402`: core 54, api 190, typecheck, Biome (108 files), drizzle-kit check, `git diff --check`, `test:pg` 6/6, all exit 0. Findings 6–10 (unbounded `inArray`, `FOR SHARE` on every `/me`, duplicated point formula, `--flags` parsing, lineage-map copying) are deferred: none changes what members see.
 
 ## Preconditions added to the cutover
 
@@ -66,5 +73,5 @@ Migration 0006 joins the apply list: `main` after R4 must not be deployed before
 
 ## Next
 
-1. Decide which of review findings 4–10 to take before merge.
+1. Merge on Cisco's yes; review findings 6–10 are deferred.
 2. Merge only on Cisco's yes. R5 after that.
