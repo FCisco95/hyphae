@@ -154,13 +154,44 @@ export const proofConfig = (): TenantProofConfig => ({
   origin: env.LINK_ORIGIN,
   chain: env.LINK_CHAIN,
   productName: "Hyphae",
-  statement: "Link this wallet to your Hyphae member account. Signing is free and moves no funds.",
+  statement: "Link this wallet to your Hyphae member account.",
 });
 ```
 
 `.env.example`: add `LINK_ORIGIN=https://api.hyphae.fun` and `LINK_CHAIN=solana:mainnet`.
 
-- [ ] **Step 6: Run the test.** Same command. Expected: PASS. If the formatter throws on `statement` (length or characters), shorten the statement until it passes, keeping "moves no funds".
+The SDK appends "This does not authorize a transaction or token approval." to every statement itself, and caps the statement at 200 characters (spike, 2026-09-24). So Hyphae's statement stays short.
+
+A bad config (non-https origin, over-long statement) makes the SDK throw a plain `Error("invalid wallet proof")` on **every** request. Task 5 would then report that to users as `proof_rejected`, which hides the misconfiguration. To make it fail at boot instead, add to `proof-config.ts`:
+
+```ts
+import { formatWalletMessage } from "@organichub/verify";
+
+// Fails the process at startup instead of rejecting every member's proof at runtime.
+export function assertProofConfig(cfg: TenantProofConfig = proofConfig()) {
+  const issuedAt = new Date(0);
+  formatWalletMessage(
+    { walletAddress: "11111111111111111111111111111111", origin: cfg.origin, chain: cfg.chain,
+      requestId: "00000000-0000-4000-8000-000000000000", nonce: Buffer.alloc(32).toString("base64url"),
+      issuedAt, expiresAt: new Date(issuedAt.getTime() + 5 * 60_000) },
+    cfg,
+  );
+}
+```
+
+and add to `proof-config.test.ts`:
+
+```ts
+  it("assertProofConfig throws on a statement over 200 characters", async () => {
+    const { assertProofConfig, proofConfig } = await import("./proof-config.js");
+    expect(() => assertProofConfig()).not.toThrow();
+    expect(() => assertProofConfig({ ...proofConfig(), statement: "a".repeat(201) })).toThrow();
+  });
+```
+
+In `server.ts` (Task 5), call `assertProofConfig()` before `serve(...)`.
+
+- [ ] **Step 6: Run the test.** Same command. Expected: PASS (both tests).
 
 - [ ] **Step 7: Commit**
 
@@ -510,7 +541,7 @@ import { createLinkStore } from "./store.js";
 import { testWallet } from "./test-wallet.js";
 
 const tenant = { origin: "https://api.hyphae.test", chain: "solana:mainnet", productName: "Hyphae",
-  statement: "Link this wallet to your Hyphae member account. Signing is free and moves no funds." } as const;
+  statement: "Link this wallet to your Hyphae member account." } as const;
 
 let db: TestDb;
 let close: () => Promise<void>;
@@ -834,7 +865,7 @@ if (!url) throw new Error("HYPHAE_TEST_PG_URL is not set; run `pnpm test:pg`");
 const pools = Array.from({ length: 6 }, () => createDb(url));
 const a = pools[0]!;
 const tenant = { origin: "https://api.hyphae.test", chain: "solana:mainnet", productName: "Hyphae",
-  statement: "Link this wallet to your Hyphae member account. Signing is free and moves no funds." } as const;
+  statement: "Link this wallet to your Hyphae member account." } as const;
 
 beforeAll(async () => {
   await migrate(a, { migrationsFolder: fileURLToPath(new URL("../../../../packages/db/drizzle", import.meta.url)) });
@@ -949,7 +980,7 @@ import { createLinkStore } from "./store.js";
 import { testWallet } from "./test-wallet.js";
 
 const tenant = { origin: "https://api.hyphae.test", chain: "solana:mainnet", productName: "Hyphae",
-  statement: "Link this wallet to your Hyphae member account. Signing is free and moves no funds." } as const;
+  statement: "Link this wallet to your Hyphae member account." } as const;
 let db: TestDb;
 let close: () => Promise<void>;
 beforeAll(async () => ({ db, close } = await createTestDb()));
@@ -1155,7 +1186,7 @@ export function linkRoutes(deps: { db: Db; tenant: TenantProofConfig; storeFacto
 }
 ```
 
-`server.ts`: `app.route("/link", linkRoutes({ db, tenant: proofConfig() }));`
+`server.ts`: `assertProofConfig();` before `serve(...)`, and `app.route("/link", linkRoutes({ db, tenant: proofConfig() }));`
 
 - [ ] **Step 4: Run the tests.** Expected: PASS. Then run the whole api suite with `pnpm --filter @hyphae/api exec vitest run`. If the non-base58 test returns 503, the SDK threw an error that carries a `code`. In that case, narrow `isDbError` to the SQLSTATE shape (`/^[0-9A-Z]{5}$/`) and re-run.
 
@@ -1586,6 +1617,17 @@ git push -u origin feat/verified-link-sdk
 Open a PR. Merge only on Cisco's yes, after an independent review (Hyphae's per-stage review rule).
 
 ---
+
+## Spike evidence (2026-09-24, scratch install, no repo change)
+
+`@organichub/verify@0.1.0` was installed from the registry into a scratch project: 50 packages with verified registry signatures, 45 with verified attestations, and all 21 exports present. The plan's flow ran against it with an in-memory store and a WebCrypto Ed25519 key:
+
+- `parseProjectId(randomUUID())` accepts Postgres-style v4 UUIDs.
+- `createVerificationRequest` returns `{ requestId, nonce, message }`. It calls `insert()` with a string `telegramUserId`, a 32-byte `Buffer` `nonceHash` and a lifetime of exactly 300000 ms.
+- `verifySignature()` receives `requestId, telegramUserId, walletAddress, nonceHash, issuedAt, expiresAt`, and its `nonceHash` equals the stored one. This matches the Task 4 store.
+- Happy path returns `{ status: "signature_verified" }`. These all throw `WalletProofError`: replay, a message with an added trailing newline, a wrong key, a wrong user, and the store returning `false`.
+- These throw a plain `Error("invalid wallet proof")` with no `code`: a non-base58 wallet, a malformed nonce, a non-https origin, and a statement over 200 characters. Task 5's `isDbError` split (only database errors carry `code`) therefore holds. The misconfiguration cases are covered at boot by `assertProofConfig`.
+- The message begins `Hyphae wallet verification`, shows `Domain: <host>`, and the SDK appends "This does not authorize a transaction or token approval." to the statement.
 
 ## Out of scope (separate authorization each)
 
