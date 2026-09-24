@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { type Db, memberWalletLinks, walletProofRequests } from "@hyphae/db";
 import {
   consumeWalletProof,
@@ -31,6 +32,14 @@ const fail = (code: Code, op: string): { error: Code } => {
   return { error: code };
 };
 
+const CSP =
+  "default-src 'none'; script-src 'self'; connect-src 'self'; img-src data:; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+// Built: dist/server.js serves dist/public/*. Tests and tsx run from src/link, next to page/.
+const asset = (name: string) =>
+  readFile(new URL(`./public/${name}`, import.meta.url)).catch(() =>
+    readFile(new URL(`./page/${name}`, import.meta.url)),
+  );
+
 type Found = NonNullable<Awaited<ReturnType<typeof resolveLinkSession>>>;
 
 // The session behind the token decides who is linking to which community; the body never does.
@@ -50,6 +59,17 @@ export function linkRoutes(deps: {
     await next();
     c.header("Cache-Control", "no-store");
     c.header("Referrer-Policy", "no-referrer");
+  });
+
+  app.get("/", async (c) => {
+    c.header("Content-Security-Policy", CSP);
+    return c.html((await asset("index.html")).toString());
+  });
+  app.get("/app.js", async (c) => {
+    c.header("Content-Security-Policy", CSP);
+    return c.body((await asset("app.js")).toString(), 200, {
+      "content-type": "text/javascript; charset=utf-8",
+    });
   });
 
   const context = (found: Found) => ({

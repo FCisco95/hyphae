@@ -1,5 +1,16 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "noEmit": true, "types": ["node"] },
-  "include": ["src", "scripts", "tsup.config.ts", "vitest.config.ts", "vitest.pg.config.ts"]
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src",
+    "scripts",
+    "tsup.config.ts",
+    "vitest.config.ts",
+    "vitest.pg.config.ts",
+    "tsup.page.config.ts"
+  ],
+  "exclude": ["src/link/page"]
 }

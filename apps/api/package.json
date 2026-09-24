@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "dev:worker": "tsx watch src/worker.ts",
-    "build": "tsup",
+    "build": "tsup && pnpm build:page",
+    "build:page": "tsup --config tsup.page.config.ts && node -e \"require('node:fs').copyFileSync('src/link/page/index.html', 'dist/public/index.html')\"",
     "start": "node dist/server.js",
     "start:worker": "node dist/worker.js",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p src/link/page",
     "test": "vitest run --passWithNoTests",
     "eval:scoring": "node --import tsx scripts/eval-scoring.ts",
     "test:pg": "bash scripts/test-pg.sh"
