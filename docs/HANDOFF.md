@@ -14,7 +14,7 @@ summary: Cutover done. Neon has migrations 0000-0008, LINK_ORIGIN is set, main b
 - Last Updated: 2026-09-24 (evening). Session record: `docs/handoffs/2026-09-24-cutover.md` (every step, numbers, the flaky-test fix, runbook corrections). Earlier: `2026-09-24-manual-wallet-check.md`, `2026-09-24-cutover-decisions.md`, `2026-09-24-afternoon-session-end.md`.
 - Branches: only `main` (= `origin/main`).
 - Runner: Claude Code, Opus 5.5 (`claude-opus-5-5`), Windows, 2026-09-24.
-- Authority: cutover order and `LINK_ORIGIN` (`2026-09-24-cutover-decisions.md`); each hard stop got Cisco's yes this session; epoch 1 rubric 1.2.0 and open time 2026-09-25T00:00:00Z chosen by Cisco this session.
+- Authority: schedule rulings of 2026-09-24 ("do your recommendation", `2026-09-24-founder-rulings.md`): H-CONTRACT Part A by Sep 27 with the audit-page build starting on that ruling; Part B and the fee, funding and payment definitions by Sep 30; cutover Mon Sep 28, which ran early on Sep 24 on Cisco's in-session yes. Cutover order and `LINK_ORIGIN` (`2026-09-24-cutover-decisions.md`); each hard stop got Cisco's yes; epoch 1 rubric 1.2.0 and open time 2026-09-25T00:00:00Z chosen by Cisco.
 - Canonical private plan: not read or edited this session.
 
 ## Current Objective
@@ -55,9 +55,10 @@ Review: the only code change is a test fix, so no cross-family review was needed
 
 1. Weekly video #2 on Friday per `docs/demo/2026-09-25-weekly-video-2.md` (the cutover and a live `/link` are new material).
 2. After 2026-09-25T00:00Z: one real `/submit` in Hyphae Lab; confirm the reward path (intake row, evaluation, decision, notification) and record it.
-3. Hold gate (`checkHold`, guide §6): its own plan.
-4. Scoring-evaluation session (founder-labelled set) → decide whether to propose rubric 1.3.0 for a later epoch.
-5. `/me` private-chat UX fix (test-first, ships with the next deploy).
+3. H-CONTRACT Part A ruling (due Sep 27; the audit-page build starts on it). Part B and the fee, funding and payment definitions by Sep 30.
+4. Hold gate (`checkHold`, guide §6): its own plan.
+5. Scoring-evaluation session (founder-labelled set) → decide whether to propose rubric 1.3.0 for a later epoch.
+6. `/me` private-chat UX fix (test-first, ships with the next deploy).
 
 ## Quick Reference
 
