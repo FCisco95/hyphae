@@ -48,19 +48,17 @@ export async function meSummary(
     { communityId: input.communityId, epochId: epoch.id, memberId: input.memberId },
     deps,
   );
-  const count = (state: string) => r.entries.filter((e) => e.state === state).length;
-  const open = [
-    [count("pending"), "pending"],
-    [count("late"), "late"],
-  ]
-    .filter(([n]) => n)
-    .map(([n, label]) => `${n} ${label}`);
+  // After close, a decision still to come is late too: neither kind can add points.
+  const unscored = r.entries.filter((e) => e.state !== "scored").length;
+  const unscoredNote = unscored
+    ? ` (${unscored} ${r.closed ? "not scored before close" : "pending"})`
+    : "";
   const total = r.totals[0] ?? { pointUnits: "0", wholePoints: "0" };
   return [
     r.closed
       ? `Epoch ${epoch.index} closed at ${utc(r.closesAt)}; these points no longer change.`
       : `Epoch ${epoch.index}, open until ${utc(r.closesAt)}`,
-    `Entries: ${r.totalEntries}${open.length ? ` (${open.join(", ")})` : ""}`,
+    `Entries: ${r.totalEntries}${unscoredNote}`,
     `Points: ${formatPointUnits(BigInt(total.pointUnits))} (${total.wholePoints} whole)`,
   ];
 }

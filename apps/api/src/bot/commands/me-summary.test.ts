@@ -112,7 +112,31 @@ describe("meSummary", () => {
     );
     expect(lines).toEqual([
       "Epoch 1 closed at 2026-10-08 00:00 UTC; these points no longer change.",
-      "Entries: 1 (1 late)",
+      "Entries: 1 (1 not scored before close)",
+      "Points: 0 (0 whole)",
+    ]);
+  });
+
+  it("stops calling undecided work pending once the epoch has closed", async () => {
+    const l = await seedRewardLane(t.db);
+    await l.admitOne();
+    expect(
+      await meSummary(
+        t.db,
+        { communityId: l.community.id, memberId: l.member.id },
+        { clock: later(2 * MIN) },
+      ),
+    ).toContain("Entries: 1 (1 pending)");
+    // Any decision accepted from now on is late, so the entry can no longer add points.
+    expect(
+      await meSummary(
+        t.db,
+        { communityId: l.community.id, memberId: l.member.id },
+        { clock: later(WEEK_MS) },
+      ),
+    ).toEqual([
+      "Epoch 1 closed at 2026-10-08 00:00 UTC; these points no longer change.",
+      "Entries: 1 (1 not scored before close)",
       "Points: 0 (0 whole)",
     ]);
   });
