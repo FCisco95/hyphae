@@ -1,6 +1,6 @@
 ---
 date: 2026-09-24
-summary: R5 and verified wallet linking are both on main, each after a Codex review with its findings fixed test-first. Hyphae works trunk-based under the solo-founder working agreement. Migrations 0006, 0007 and 0008 are not applied to Neon; nothing is deployed; LINK_ORIGIN is not set on Fly. Next: a hands-on wallet check with Cisco, then the cutover on separate authorization.
+summary: R5 and verified wallet linking are both on main, each after a Codex review with its findings fixed test-first. Hyphae works trunk-based under the solo-founder working agreement. Migrations 0006, 0007 and 0008 are not applied to Neon; nothing is deployed; LINK_ORIGIN is not set on Fly. Cisco chose the cutover order and LINK_ORIGIN=https://hyphae-api.fly.dev; next is the manual wallet check (Runbook A), then the cutover window (Runbook B), each hard step on its own yes.
 ---
 
 # Hyphae handoff
@@ -11,7 +11,7 @@ summary: R5 and verified wallet linking are both on main, each after a Codex rev
 
 ## Metadata
 
-- Last Updated: 2026-09-24 (night, session end). Snapshot: `docs/handoffs/2026-09-24-session-end.md`. Records: `docs/handoffs/2026-09-24-verified-link-implemented.md` (acceptance matrix, review, evidence), `docs/handoffs/2026-09-24-r5-implemented.md` (R5 review C1–C3).
+- Last Updated: 2026-09-24 (night, after Cisco's cutover decisions). Snapshots: `docs/handoffs/2026-09-24-session-end.md`, `docs/handoffs/2026-09-24-cutover-decisions.md`. Records: `docs/handoffs/2026-09-24-verified-link-implemented.md` (acceptance matrix, review, evidence), `docs/handoffs/2026-09-24-r5-implemented.md` (R5 review C1–C3).
 - Branches: only `main` (= `origin/main` = `dc2b27f`). `feat/r5-close-snapshot` and `feat/verified-link-sdk` are merged and deleted locally and on origin. The `hyphae-verified-link` worktree is deregistered, but its empty folder (`DEVELOPMENTS/hyphae-verified-link`) could not be deleted because another process holds it; delete it once that process closes. It contains nothing.
 - Runner: Claude Code, Opus 5.5 (`claude-opus-5-5`, as reported by the session environment), Windows, 2026-09-24. Effort is not observable in-session.
 - Authority: O1–O7; R3–R5 approval (build yes, apply no); 0005; 0006; R5 shape; working agreement adopted 2026-09-24 (`0d11a81`); verified-link plan D1–D6 decided 2026-09-24, build started on the session prompt's yes.
@@ -49,12 +49,13 @@ Fresh on the verified-link tip `3e00174` and again on `main` after the fast-forw
 
 ## Next Actions
 
-1. Get Cisco's answers to the three open questions in the snapshot (cutover order, `LINK_ORIGIN` value, hold-gate plan timing).
-2. Manual wallet check with Cisco (test bot, test group, HTTPS tunnel, `LINK_ORIGIN` = tunnel origin).
-3. Cutover on separate yeses: apply 0006–0008 to Neon, set `LINK_ORIGIN` on Fly, deploy, bootstrap MYCEL's reward config and first epoch, BotFather menu (`/effort`, new `/link` text).
-4. Hold gate (`checkHold`, guide §6) as its own plan.
-5. Weekly video #2 on Friday per `docs/demo/2026-09-25-weekly-video-2.md`.
-6. Pending Cisco decisions: cutover timing (decision 1) and calendar (decision 3).
+Cisco accepted the three recommendations (`docs/handoffs/2026-09-24-cutover-decisions.md`): wallet check first, then one cutover window; `LINK_ORIGIN=https://hyphae-api.fly.dev` (`api.hyphae.fun` does not exist); hold gate planned after the cutover.
+
+1. Manual wallet check with Cisco: Runbook A in the decisions record (test bot, local Docker Postgres, Tailscale Funnel, built server).
+2. Cutover window, each step on Cisco's yes: Runbook B (read-only Neon checks, stage `LINK_ORIGIN`, apply 0006–0008 in one run, post-checks, deploy, verify, bootstrap, BotFather menu).
+3. Hold gate (`checkHold`, guide §6): its own plan after the cutover.
+4. Weekly video #2 on Friday per `docs/demo/2026-09-25-weekly-video-2.md`.
+5. Pending Cisco decisions: the cutover date (order is decided, timing is not) and the calendar (decisions 1 and 3 of `2026-09-24-plan.md`).
 
 ## Quick Reference
 
