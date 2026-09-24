@@ -31,9 +31,12 @@ const SPL_TOKEN = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const HELIUS = "https://mainnet.helius-rpc.com/?api-key=secret-key";
 const FALLBACK = "https://rpc.fallback.test/secret-key";
 const THRESHOLD = 100_000_000_000n;
+const MAINNET_GENESIS = "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d";
+const DEVNET_GENESIS = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
 
 // One JSON-RPC provider as the SDK reads it: the mint, the owner's token accounts, the block time.
 interface Provider {
+  genesis?: string;
   amount?: string;
   status?: number;
   staleSeconds?: number;
@@ -45,9 +48,14 @@ function rpc(providers: Record<string, Provider>) {
     const url = new URL(String(input));
     calls.push(url.host);
     const p = providers[url.host] ?? {};
+    const { id, method } = JSON.parse(String(init?.body)) as { id: number; method: string };
+    if (method === "getGenesisHash") {
+      const result = p.genesis ?? MAINNET_GENESIS;
+      return new Response(JSON.stringify({ jsonrpc: "2.0", id, result }), { status: 200 });
+    }
+    // Faults apply to the balance reads, which the SDK classifies.
     if (p.status) return new Response("unavailable", { status: p.status });
     if (p.malformed) return new Response("{not json", { status: 200 });
-    const { id, method } = JSON.parse(String(init?.body)) as { id: number; method: string };
     const parsed = (type: string, info: object) => ({
       executable: false,
       owner: SPL_TOKEN,
@@ -153,6 +161,34 @@ describe("holdCheckerFromEnv, through the real SDK (consumer guide §7, hold gat
         await holdCheckerFromEnv({ ...env, HOLD_RPC_FALLBACK_URL: fallback }, impl)(input()),
       ).toEqual({ kind: "uncertain", reason: "invalid-response" });
     }
+  });
+
+  it("a provider on another network: uncertain, whatever the balances say", async () => {
+    for (const [a, b] of [
+      [{ genesis: DEVNET_GENESIS }, {}],
+      [{}, { genesis: DEVNET_GENESIS }],
+      [{ genesis: DEVNET_GENESIS }, { genesis: DEVNET_GENESIS }],
+    ] as [Provider, Provider][]) {
+      const { impl } = hosts(a, b);
+      expect(await holdCheckerFromEnv(env, impl)(input())).toEqual({
+        kind: "uncertain",
+        reason: "wrong_network",
+      });
+    }
+  });
+
+  it("a network it cannot confirm is an outage, and is asked again next time", async () => {
+    let down = true;
+    const { impl } = hosts({ amount: "150000000000" }, { amount: "150000000000" });
+    const flaky = (async (url: string | URL | Request, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body)) as { method: string };
+      if (down && body.method === "getGenesisHash") return new Response("no", { status: 503 });
+      return impl(url, init);
+    }) as typeof fetch;
+    const check = holdCheckerFromEnv(env, flaky);
+    expect(await check(input())).toEqual({ kind: "uncertain", reason: "outage" });
+    down = false;
+    expect(await check(input())).toMatchObject({ kind: "holder" });
   });
 
   it("an owner or mint that is not a Solana address: uncertain, not an exception", async () => {

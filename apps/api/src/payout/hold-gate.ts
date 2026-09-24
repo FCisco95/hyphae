@@ -16,7 +16,7 @@ import type { RulesTest } from "./rules-test.js";
 // same checkRound and is never treated as below.
 export type HoldResult =
   | Awaited<ReturnType<typeof checkHold>>
-  | { kind: "uncertain"; reason: "not_configured" };
+  | { kind: "uncertain"; reason: "not_configured" | "wrong_network" };
 
 export type HoldChecker = (input: {
   projectId: string;
@@ -26,15 +26,41 @@ export type HoldChecker = (input: {
   checkRound: string;
 }) => Promise<HoldResult>;
 
+// MYCEL is a mainnet token. checkHold takes no chain and does not attest one (guide §6), so each
+// provider must prove it serves mainnet before any balance it reads is believed.
+const MAINNET_GENESIS = "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d";
+
+// true: mainnet; false: another network; undefined: no usable answer.
+async function servesMainnet(
+  rpcUrl: string,
+  fetchImpl: typeof fetch,
+): Promise<boolean | undefined> {
+  try {
+    const response = await fetchImpl(rpcUrl, {
+      method: "POST",
+      redirect: "error",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "getGenesisHash" }),
+      signal: AbortSignal.timeout(4_000),
+    });
+    if (!response.ok) return undefined;
+    const { result } = (await response.json()) as { result?: unknown };
+    return typeof result === "string" ? result === MAINNET_GENESIS : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // Built once per process. Without both providers, or with one the SDK refuses to construct, every
 // check is uncertain and makes no request. Nothing here logs or returns a provider URL.
 export function holdCheckerFromEnv(
   env: { HOLD_RPC_HELIUS_URL?: string | undefined; HOLD_RPC_FALLBACK_URL?: string | undefined },
-  fetchImpl?: typeof fetch,
+  fetchImpl: typeof fetch = fetch,
 ): HoldChecker {
+  const urls = [env.HOLD_RPC_HELIUS_URL, env.HOLD_RPC_FALLBACK_URL];
   let readers: { primary: HeliusBalanceReader; fallback: FallbackBalanceReader } | undefined;
   if (env.HOLD_RPC_HELIUS_URL && env.HOLD_RPC_FALLBACK_URL) {
-    const options = (rpcUrl: string) => ({ rpcUrl, ...(fetchImpl && { fetch: fetchImpl }) });
+    const options = (rpcUrl: string) => ({ rpcUrl, fetch: fetchImpl });
     try {
       readers = {
         primary: new HeliusBalanceReader(options(env.HOLD_RPC_HELIUS_URL)),
@@ -44,8 +70,16 @@ export function holdCheckerFromEnv(
       readers = undefined;
     }
   }
+  // The endpoints are fixed for the process, so one confirmation holds; a failure is asked again.
+  let onMainnet = false;
   return async (input) => {
     if (!readers) return { kind: "uncertain", reason: "not_configured" };
+    if (!onMainnet) {
+      const networks = await Promise.all(urls.map((url) => servesMainnet(url ?? "", fetchImpl)));
+      if (networks.includes(false)) return { kind: "uncertain", reason: "wrong_network" };
+      if (networks.includes(undefined)) return { kind: "uncertain", reason: "outage" };
+      onMainnet = true;
+    }
     try {
       return await checkHold({
         projectId: parseProjectId(input.projectId),
