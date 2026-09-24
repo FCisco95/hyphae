@@ -9,6 +9,8 @@ import { meSummary, walletLines } from "./me-summary.js";
 export async function me(ctx: CommandContext<Context>) {
   const from = ctx.from;
   if (!from) return;
+  // /me is per community, so a private chat has nothing to look up.
+  if (ctx.chat.type === "private") return reply(ctx, "Send /me in your community chat.");
   const community = await db.query.communities.findFirst({
     where: eq(communities.telegramChatId, BigInt(ctx.chat.id)),
   });
