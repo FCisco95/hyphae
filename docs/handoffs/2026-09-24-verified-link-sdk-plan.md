@@ -1,6 +1,6 @@
 ---
 date: 2026-09-24
-summary: Implementation plan for verified wallet linking in Hyphae through the published `@organichub/verify@0.1.0` SDK (the Sentinel adoption route). The bot hands each member a private, single-use link; a small page on the api origin asks the wallet to sign a readable message; one database transaction verifies the proof, consumes it and links the wallet. Wallet history is append-only so a relink never retargets a frozen epoch. Hold gating is a separate plan. Plan only; nothing implemented. Six owner decisions listed before execution.
+summary: Implementation plan for verified wallet linking in Hyphae through the published `@organichub/verify@0.1.0` SDK (the Sentinel adoption route). The bot hands each member a private, single-use link; a small page on the api origin asks the wallet to sign a readable message; one database transaction verifies the proof, consumes it and links the wallet. Wallet history is append-only so a relink never retargets a frozen epoch. Hold gating is a separate plan. Plan only; nothing implemented. Owner decisions D1-D6 taken as recommended on 2026-09-24; execution waits for R5 and a separate yes.
 ---
 
 # Verified wallet linking (Sentinel SDK) Implementation Plan
@@ -15,9 +15,11 @@ summary: Implementation plan for verified wallet linking in Hyphae through the p
 
 **Spec:** the consumer contract `docs/guides/hyphae-verify-sdk-consumer.md` in `FCisco95/mycel-sentinel` (sections 1–5, 7 and 8 apply; section 6, the hold gate, is out of scope here). The schedule rulings (`docs/handoffs/2026-09-23-schedule-rulings.md`) require verified linking before any real mainnet payment to testers, and require that a wallet change cannot retarget a frozen epoch manifest (O2).
 
-## Owner decisions (answer before Task 1)
+## Owner decisions
 
-Each item has a recommendation. The tasks below are written for the recommended option.
+**Decided 2026-09-24 by Cisco: all six as recommended.** D6 still gates execution: building starts only after R5 merges and on a separate explicit yes.
+
+The tasks below are written for the recommended option.
 
 | # | Decision | Recommended | Alternative |
 |---|---|---|---|
