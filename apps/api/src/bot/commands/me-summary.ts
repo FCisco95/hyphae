@@ -1,6 +1,6 @@
 import { POINT_UNITS_PER_POINT } from "@hyphae/core";
 import { contributions, type Db, epochs, scoringRuns } from "@hyphae/db";
-import { and, desc, eq, lte, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { dbClock, type RewardDeps } from "../../rewards/config.js";
 import { effectiveResults } from "../../rewards/effective.js";
 
@@ -22,11 +22,9 @@ export async function meSummary(
   input: { communityId: string; memberId: string },
   deps: RewardDeps = {},
 ): Promise<string[]> {
-  const [any] = await db
-    .select({ id: epochs.id })
-    .from(epochs)
-    .where(eq(epochs.communityId, input.communityId))
-    .limit(1);
+  // Unpinned legacy epochs never admit reward intake, so they don't count as reward epochs.
+  const pinned = and(eq(epochs.communityId, input.communityId), isNotNull(epochs.rewardConfigId));
+  const [any] = await db.select({ id: epochs.id }).from(epochs).where(pinned).limit(1);
   if (!any) {
     const [row] = await db
       .select({ count: sql<number>`count(distinct ${scoringRuns.contributionId})::int` })
@@ -40,7 +38,7 @@ export async function meSummary(
   const [epoch] = await db
     .select()
     .from(epochs)
-    .where(and(eq(epochs.communityId, input.communityId), lte(epochs.opensAt, now)))
+    .where(and(pinned, lte(epochs.opensAt, now)))
     .orderBy(desc(epochs.index))
     .limit(1);
   if (!epoch) return ["No reward epoch has opened yet."];

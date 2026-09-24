@@ -1,8 +1,8 @@
 import type { RewardPurpose } from "@hyphae/core";
-import { contributions, scoringRuns } from "@hyphae/db";
+import { contributions, epochs, scoringRuns } from "@hyphae/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { beginDispatch, completeDispatch, runEvaluation } from "../../rewards/evaluation.js";
-import { createTestDb, later, seedCommunity, seedRewardLane } from "../../rewards/test-db.js";
+import { createTestDb, later, seedCommunity, seedRewardLane, T0 } from "../../rewards/test-db.js";
 import { formatPointUnits, meSummary } from "./me-summary.js";
 
 const MIN = 60_000;
@@ -136,5 +136,35 @@ describe("meSummary", () => {
     expect(await meSummary(t.db, { communityId: community.id, memberId: member.id })).toEqual([
       "Scored contributions: 1",
     ]);
+  });
+
+  it("treats a community whose only epochs are legacy (unpinned) as legacy", async () => {
+    const { community, member } = await seedCommunity(t.db);
+    await t.db.insert(epochs).values({
+      communityId: community.id,
+      index: 1,
+      opensAt: T0,
+      closesAt: new Date(T0.getTime() + WEEK_MS),
+    });
+    const [c] = await t.db
+      .insert(contributions)
+      .values({
+        communityId: community.id,
+        memberId: member.id,
+        kind: "text",
+        text: "legacy",
+        telegramMessageId: 1,
+      })
+      .returning();
+    if (!c) throw new Error("no contribution");
+    await legacyRun(c.id, 1);
+
+    expect(
+      await meSummary(
+        t.db,
+        { communityId: community.id, memberId: member.id },
+        { clock: later(10 * MIN) },
+      ),
+    ).toEqual(["Scored contributions: 1"]);
   });
 });
