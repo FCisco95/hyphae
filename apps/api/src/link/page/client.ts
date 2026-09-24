@@ -1,3 +1,4 @@
+import { type Post, verifyAndReconcile } from "./flow.js";
 import { connect, type MessageWallet, messageWallets, onWalletRegister, sign } from "./wallet.js";
 
 const token = location.hash.slice(1);
@@ -19,41 +20,37 @@ const failed = (code: unknown) =>
 const linkedText = (wallet: string) =>
   `Linked ${wallet.slice(0, 4)}…${wallet.slice(-4)}. You can close this page.`;
 
-async function post(path: string, body: unknown) {
+const post: Post = async (path, body) => {
   const r = await fetch(`/link/${path}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
   return { ok: r.ok, data: await r.json().catch(() => ({ error: "link_unavailable" })) };
-}
+};
 
 async function run(w: MessageWallet) {
   list.replaceChildren();
+  let proof: { requestId: string; nonce: string; message: string; signature: string };
   try {
     const account = await connect(w);
     say("Preparing message…");
     const req = await post("request", { token, wallet: account.address });
     if (!req.ok) return failed(req.data.error);
+    const { requestId, nonce, message } = req.data as {
+      requestId: string;
+      nonce: string;
+      message: string;
+    };
     say("Check your wallet and sign the message.");
-    const signature = await sign(w, account, req.data.message);
-    const done = await post("verify", {
-      token,
-      requestId: req.data.requestId,
-      nonce: req.data.nonce,
-      message: req.data.message,
-      signature,
-    });
-    if (done.ok) return say(linkedText(done.data.wallet));
-    // The link may have committed before the answer was lost: ask, never retry the proof.
-    if (done.data.error === "link_unavailable") {
-      const s = await post("status", { token });
-      if (s.ok && s.data.linked) return say(linkedText(s.data.wallet));
-    }
-    failed(done.data.error);
+    proof = { requestId, nonce, message, signature: await sign(w, account, message) };
   } catch {
-    failed("proof_rejected");
+    // Nothing was submitted yet: a refused connection or signature, or an unreachable server.
+    return failed("proof_rejected");
   }
+  const outcome = await verifyAndReconcile(post, token, proof);
+  if ("linked" in outcome) return say(linkedText(outcome.linked));
+  failed(outcome.error);
 }
 
 function render() {
