@@ -11,8 +11,8 @@ summary: R5 and verified wallet linking are both on main, each after a Codex rev
 
 ## Metadata
 
-- Last Updated: 2026-09-24 (night). Records: `docs/handoffs/2026-09-24-verified-link-implemented.md` (acceptance matrix, review, evidence), `docs/handoffs/2026-09-24-r5-implemented.md` (R5 review C1–C3).
-- Branches: only `main` (= `origin/main`). `feat/r5-close-snapshot` and `feat/verified-link-sdk` are merged and deleted, and the `hyphae-verified-link` worktree is removed.
+- Last Updated: 2026-09-24 (night, session end). Snapshot: `docs/handoffs/2026-09-24-session-end.md`. Records: `docs/handoffs/2026-09-24-verified-link-implemented.md` (acceptance matrix, review, evidence), `docs/handoffs/2026-09-24-r5-implemented.md` (R5 review C1–C3).
+- Branches: only `main` (= `origin/main` = `dc2b27f`). `feat/r5-close-snapshot` and `feat/verified-link-sdk` are merged and deleted locally and on origin. The `hyphae-verified-link` worktree is deregistered, but its empty folder (`DEVELOPMENTS/hyphae-verified-link`) could not be deleted because another process holds it; delete it once that process closes. It contains nothing.
 - Runner: Claude Code, Opus 5.5 (`claude-opus-5-5`, as reported by the session environment), Windows, 2026-09-24. Effort is not observable in-session.
 - Authority: O1–O7; R3–R5 approval (build yes, apply no); 0005; 0006; R5 shape; working agreement adopted 2026-09-24 (`0d11a81`); verified-link plan D1–D6 decided 2026-09-24, build started on the session prompt's yes.
 - Canonical private plan: not read or edited this session.
@@ -49,11 +49,12 @@ Fresh on the verified-link tip `3e00174` and again on `main` after the fast-forw
 
 ## Next Actions
 
-1. Manual wallet check with Cisco (test bot, test group, HTTPS tunnel, `LINK_ORIGIN` = tunnel origin).
-2. Cutover on separate yeses: apply 0006–0008 to Neon, set `LINK_ORIGIN` on Fly, deploy, bootstrap MYCEL's reward config and first epoch, BotFather menu (`/effort`, new `/link` text).
-3. Hold gate (`checkHold`, guide §6) as its own plan.
-4. Weekly video #2 on Friday per `docs/demo/2026-09-25-weekly-video-2.md`.
-5. Pending Cisco decisions: cutover timing (decision 1) and calendar (decision 3).
+1. Get Cisco's answers to the three open questions in the snapshot (cutover order, `LINK_ORIGIN` value, hold-gate plan timing).
+2. Manual wallet check with Cisco (test bot, test group, HTTPS tunnel, `LINK_ORIGIN` = tunnel origin).
+3. Cutover on separate yeses: apply 0006–0008 to Neon, set `LINK_ORIGIN` on Fly, deploy, bootstrap MYCEL's reward config and first epoch, BotFather menu (`/effort`, new `/link` text).
+4. Hold gate (`checkHold`, guide §6) as its own plan.
+5. Weekly video #2 on Friday per `docs/demo/2026-09-25-weekly-video-2.md`.
+6. Pending Cisco decisions: cutover timing (decision 1) and calendar (decision 3).
 
 ## Quick Reference
 
