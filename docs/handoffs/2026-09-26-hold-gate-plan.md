@@ -1,6 +1,6 @@
 ---
 date: 2026-09-26
-summary: Hold-gate plan and the build order for both payout gates. After a paid epoch closes, the worker runs the Sentinel SDK's checkHold once for every candidate payable member (points, a signed wallet at close, a rules-test pass). It records the result in hold_checks under a stable checkRound. holder releases the member, below excludes them with below_hold, and uncertain (outage, conflict, stale, invalid response, or missing provider configuration) holds them, which blocks the epoch's publish. The recovery sweep retries every five minutes with the same checkRound until the result is confirmed. A confirmed result never changes. A held member is never shown as paid and never dropped. Before publish the whole allocation section is unavailable (P14), and publish cannot run while anyone is held. Seven test-first tasks follow, with migration 0009 written and tested locally only.
+summary: Hold-gate plan and the build order for both payout gates. After a paid epoch closes, the worker runs the Sentinel SDK's checkHold once for every candidate payable member (points, a signed wallet at close, a rules-test pass). It records the result in hold_checks under a stable checkRound. holder releases the member, below excludes them with below_hold, and uncertain (outage, conflict, stale, invalid response, or missing provider configuration) holds them, which blocks the epoch's publish. The recovery sweep retries every five minutes with the same checkRound until the result is confirmed, for at most 24 hours after the close; only a balance read in that window counts, and both providers must prove they serve mainnet. A confirmed result never changes. A held member is never shown as paid and never dropped. Before publish the whole allocation section is unavailable (P14), and publish cannot run while anyone is held. Seven test-first tasks follow, with migration 0009 written and tested locally only.
 ---
 
 # Hold-gate plan, and the build order for both gates
@@ -20,7 +20,8 @@ Runner: Claude Code, Opus 5.5 (`claude-opus-5-5`), effort xhigh, written 2026-09
 ## Global constraints
 
 - `checkHold` is evidence only. `uncertain` is never turned into `below` (guide §6).
-- Both readers use HTTPS, on different hosts, and the fallback is not Helius. The SDK enforces this and answers `uncertain` (`invalid-response`) otherwise. Hyphae adds only "not configured".
+- Both readers use HTTPS, on different hosts, and the fallback is not Helius. The SDK enforces this and answers `uncertain` (`invalid-response`) otherwise. Hyphae adds "not configured", and checks that both providers serve mainnet (their genesis hash) before believing any balance: another network is `uncertain` (`wrong_network`). The SDK does not attest the network (guide §6).
+- A balance counts only if it was observed between `closes_at` and 24 hours after it (PG10). No balance is read after that.
 - The threshold is the epoch's **pinned** `rubric.minHoldUnits` (`reward_configs.payload`), never `communities.rubric`. A zero threshold means no hold check and no hold condition (guide §6: "A zero threshold skips the hold check").
 - The wallet checked is `walletAt(member, closes_at)` with `method = 'signature'`: the wallet the payout would pay (D3).
 - No RPC URL, API key, provider response body or raw error is logged or stored. Logs carry fixed codes and counts only.
@@ -48,10 +49,12 @@ The five failure modes most likely to bite, each pinned by a test in the task th
 | The recovery sweep | Every 5 minutes (existing `reward-recovery` schedule) | Sends a `hold-check` job for every epoch that `dueHoldChecks` returns |
 | The payout gate | Never | It only reads hold results |
 
-`dueHoldChecks(db, now)` returns the epochs that are closed (snapshot exists, `status = 'closed'`), whose community has `first_paid_epoch` set with `index >= first_paid_epoch`, and that either:
+`dueHoldChecks(db, now)` returns the epochs that are closed (snapshot exists, `status = 'closed'`), whose community has `first_paid_epoch` set with `index >= first_paid_epoch`, whose `closes_at` is less than 24 hours ago, and that either:
 
-- have a `hold_checks` row still `pending` or `uncertain` (retried until confirmed), or
-- have no `hold_checks` row yet and a snapshot `closed_at` within the last 7 days. This catches a lost close-hook send, and a `first_paid_epoch` set shortly after a close. An epoch with no candidate is then re-evaluated every 5 minutes for at most 7 days, at a cost of a few indexed reads.
+- have a `hold_checks` row still `pending` or `uncertain` (retried every 5 minutes), or
+- have no `hold_checks` row yet. This catches a lost close-hook send, and a `first_paid_epoch` set shortly after a close. An epoch with no candidate is re-evaluated every 5 minutes until its window ends, at a cost of a few indexed reads.
+
+A job that runs after the window returns `window_closed` without reading a balance.
 
 A hold-check job for an epoch whose gate stops before the member stage (not final, before the first paid epoch, published, no rules test defined, snapshot mismatch) does nothing and logs the blocker.
 
@@ -78,7 +81,7 @@ Rows are checked one at a time, so a slow provider costs time, not parallel RPC 
 | `holder` | Both providers agree on a balance ≥ threshold | member `payable` (if M1–M3 still hold) | **never** |
 | `below` | Both providers agree on a balance < threshold | member `not_payable`, reason `below_hold` | **never** |
 
-"Cleared" means the row reached `holder` (released into the payable set) or `below` (excluded, with the reason shown at publish). There is no deadline. A member stays held, and the epoch stays blocked, until a check confirms. The trade-off: a check that confirms long after the close reads a later balance. `observed_at` and `slot` are stored and go into the member-epoch manifest at publish (P16, B7), so anyone can see how long after `closes_at` the balance was read. Cisco can fix the provider configuration, but cannot mark a held member `below` (guide §6).
+"Cleared" means the row reached `holder` (released into the payable set) or `below` (excluded, with the reason shown at publish). The deadline is 24 hours after `closes_at` (PG10). The gate only accepts a confirmed result observed inside that window, because a later read would let a member who bought or sold after the close change the outcome. A member still unconfirmed when the window ends stays held, and the epoch stays blocked, until Cisco rules. He can fix the provider configuration, but nobody can mark a held member `below` (guide §6). `observed_at` and `slot` are stored and go into the member-epoch manifest at publish (P16, B7), so anyone can see how soon after `closes_at` the balance was read.
 
 ## What a held claim shows
 
@@ -95,6 +98,7 @@ So a held member is **never "paid"** (publish is blocked) and **never silently d
 
 - New optional env: `HOLD_RPC_HELIUS_URL` (Helius mainnet, key in the URL) and `HOLD_RPC_FALLBACK_URL` (a non-Helius mainnet provider). Both are secrets, so Cisco sets them on Fly (`fly secrets set`, attended, his step). Recommended fallback: a keyed Alchemy or QuickNode Solana mainnet endpoint. The public `api.mainnet-beta.solana.com` rate-limits `getTokenAccountsByOwner`.
 - `holdCheckerFromEnv(env)` builds the two readers once per worker. If either URL is missing, or a reader constructor throws `Invalid RPC configuration`, it returns a checker that answers `{ kind: "uncertain", reason: "not_configured" }` without any network call.
+- Before its first balance read, the checker asks both endpoints for `getGenesisHash`. Mainnet (`5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d`) on both is remembered for the process. Another network on either answers `uncertain` (`wrong_network`). No usable answer is `uncertain` (`outage`) and is asked again on the next check.
 - An owner or mint that is not a valid base58 key (possible only for test and demo data) makes the SDK answer `uncertain` (`invalid-response`). The checker catches the parse error and returns that.
 
 ## Deviation from guide §6, on purpose
@@ -114,12 +118,12 @@ Seven tasks. Tasks 1–4 are the rules test and payout gate (step 3 of the arc),
 | File | Responsibility |
 |---|---|
 | `packages/db/src/schema.ts`, `packages/db/drizzle/0009_payout_gates.sql` (+ meta) | `communities.first_paid_epoch`, `rules_test_passes`, `hold_check_status`, `hold_checks` |
-| `docs/rubrics/mycel-rules-test-1.json` | The six public questions (RT2) |
-| `apps/api/src/payout/rules-test.ts` (+ test) | Test registry and lookup, grading, pass insert, qualifying passes |
+| `apps/api/src/payout/rules-test.ts` (+ test) | The six public questions (RT2), test registry and lookup, grading, pass insert, qualifying passes. The questions are code, not a `docs/rubrics` JSON file: `docs/` is excluded from the api's Docker build context. |
 | `apps/api/src/bot/commands/rules.ts` (+ test), `apps/api/src/bot/index.ts` | `/rules`, `/start rules_<id>`, answer buttons |
 | `apps/api/src/payout/gate.ts` (+ test) | `evaluatePayoutGate` |
 | `apps/api/src/payout/hold-gate.ts` (+ test) | `holdCheckerFromEnv`, `runHoldChecks`, `dueHoldChecks` |
-| `apps/api/src/jobs/{queue,reward-jobs}.ts`, `apps/api/src/worker.ts`, `apps/api/src/env.ts` | `hold-check` queue, close hook, sweep, env |
+| `apps/api/src/jobs/{queue,reward-jobs}.ts` (+ `hold-jobs.test.ts`), `apps/api/src/worker.ts`, `apps/api/src/env.ts` | `hold-check` queue, close hook, sweep, env |
+| `apps/api/src/payout/gates.pg.test.ts` | The gates on Postgres 17 through postgres-js, with concurrent hold-check runs and passes (`test:pg`) |
 
 ## Task 1: migration 0009
 
@@ -169,7 +173,7 @@ Token amounts and slots are u64, beyond `bigint`, so they are `numeric(20,0)`, r
 
 ## Task 2: rules test definition, grading and passes
 
-**Files:** `docs/rubrics/mycel-rules-test-1.json`, `apps/api/src/payout/rules-test.ts`, `rules-test.test.ts`.
+**Files:** `apps/api/src/payout/rules-test.ts`, `rules-test.test.ts`.
 
 **Interfaces (produces):**
 
@@ -187,7 +191,7 @@ export async function recordPass(db: Db, input: { communityId: string; memberId:
 export async function passesBefore(db: Db, input: { memberIds: string[]; testId: string; before: Date }): Promise<Set<string>>;
 ```
 
-The JSON is validated with zod at import: 1–8 questions, 2–4 options each, `answer` in range, non-empty `why`, `covers` non-empty. A malformed file fails at start-up, not in a member's chat.
+A test asserts every registered test is well formed: 1–8 questions, 2–4 options each, `answer` in range, non-empty `why`, non-empty `covers`, and an id of at most 13 characters (the button payload budget).
 
 Tests, written first:
 - the MYCEL test covers `MYCEL@1.2.0` only, has 6 questions and 3 options each; `rulesTestFor({community:"MYCEL",version:"1.3.0"})` and `…"DEMO"…` are undefined
@@ -260,18 +264,18 @@ Commit: `feat(payout): payout gate over a closed epoch (P9, P12, O6)`.
 **Interfaces (produces):**
 
 ```ts
-export type HoldResult = Awaited<ReturnType<typeof checkHold>> | { kind: "uncertain"; reason: "not_configured" };
+export type HoldResult = Awaited<ReturnType<typeof checkHold>> | { kind: "uncertain"; reason: "not_configured" | "wrong_network" };
 export type HoldChecker = (input: { projectId: string; owner: string; mint: string; thresholdRaw: bigint; checkRound: string }) => Promise<HoldResult>;
 export function holdCheckerFromEnv(env: { HOLD_RPC_HELIUS_URL?: string | undefined; HOLD_RPC_FALLBACK_URL?: string | undefined }, fetchImpl?: typeof fetch): HoldChecker;
-export async function runHoldChecks(db: Db, ref: { communityId: string; epochId: string }, deps: { check: HoldChecker; tests?: readonly RulesTest[] }):
-  Promise<{ status: "skipped"; blockers: Blocker[] } | { status: "checked"; holder: number; below: number; uncertain: number }>;
+export async function runHoldChecks(db: Db, ref: { communityId: string; epochId: string }, deps: { check: HoldChecker; tests?: readonly RulesTest[]; clock?: () => Date }):
+  Promise<{ status: "skipped"; blockers: Blocker[] } | { status: "window_closed" } | { status: "checked"; holder: number; below: number; uncertain: number }>;
 export async function dueHoldChecks(db: Db, now: Date): Promise<{ communityId: string; epochId: string }[]>;
 ```
 
 Tests, written first. The first group runs the **real SDK** through `holdCheckerFromEnv` with a fake `fetch` that answers JSON-RPC `getAccountInfo` (a parsed SPL mint, 6 decimals), `getTokenAccountsByOwner` and `getBlockTime` (now). These are guide §7's hold-gate cases:
 - both providers ≥ threshold → `holder`; both below → `below`; exactly the threshold → `holder`
 - providers disagree → `uncertain` `conflict`; either provider 503 → `uncertain` `outage`; block time 10 minutes old → `stale`; malformed JSON → `invalid-response`
-- a missing URL → `not_configured`, with no fetch call; an `http:` URL → `not_configured`; both URLs on one host, or a Helius host as the fallback → `uncertain` (`invalid-response`)
+- a missing URL → `not_configured`, with no fetch call; an `http:` URL → `not_configured`; both URLs on one host, or a Helius host as the fallback → `uncertain` (`invalid-response`); a devnet genesis hash on either provider → `uncertain` (`wrong_network`); a genesis call that fails → `uncertain` (`outage`), asked again next time
 
 The runner (PGlite, with a scripted `HoldChecker`):
 - candidates only: the demo's pasted member (no points, no wallet, no pass) gets no row
@@ -280,7 +284,8 @@ The runner (PGlite, with a scripted `HoldChecker`):
 - `below` → gate `not_payable` `below_hold`; a later run whose checker would answer `holder` makes no call for that row and leaves `below` (confirmed results are final)
 - a duplicate run racing a confirmed write (the checker answers `uncertain` after another run stored `holder`) → the conditional update leaves `holder`
 - epoch before the first paid epoch, or open → `skipped`, no rows, no checker call
-- `dueHoldChecks`: returns an epoch with an `uncertain` row; an epoch closed 1 hour ago with no rows; not one closed 8 days ago with no rows; not an epoch before `first_paid_epoch`; not an open epoch
+- a run more than 24 hours after `closes_at` → `window_closed`, no call, no row; the gate ignores a result observed before `closes_at` or more than 24 hours after it
+- `dueHoldChecks`: returns an epoch with an `uncertain` row, or with no rows, 1–2 hours after its close; neither 25 hours after; not an epoch before `first_paid_epoch`; not an open epoch
 
 Commit: `feat(payout): hold checks through the Sentinel SDK, recorded per member and epoch`.
 
@@ -302,4 +307,4 @@ Commit: `feat(worker): run hold checks after a paid epoch closes and retry them 
 2. Apply 0009 to Neon **before** deploying any `main` that contains Tasks 2–6. It is additive, so the running `b7bfe55` ignores it.
 3. `fly secrets set HOLD_RPC_HELIUS_URL=… HOLD_RPC_FALLBACK_URL=…` (without them every candidate stays held).
 4. Deploy.
-5. After the Oct 1 go/no-go: `update communities set first_paid_epoch = 2 where mint = '<MYCEL mint>' and first_paid_epoch is null;` Until then no epoch is payable and no balance is read.
+5. After the Oct 1 go/no-go, and before epoch 2 closes (a first paid epoch recorded more than 24 hours after its close can never read a balance): `update communities set first_paid_epoch = 2 where mint = '<MYCEL mint>' and first_paid_epoch is null;` Until then no epoch is payable and no balance is read.
