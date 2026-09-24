@@ -6,10 +6,11 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 
 **Shipped:** the hands-on wallet check ran end to end: a test bot, a test supergroup, a local database and the built server behind a public HTTPS tunnel. The first real wallet, Phantom, failed to sign. The page was calling the wallet's sign function with the wrong argument shape. The Wallet Standard takes each request as its own argument, and the page passed one list, so the wallet never got the message. Every automated test passed because the fake wallet in them made the same mistake. After the fix, Phantom and Solflare both linked, `/me` showed the wallet as verified, a used link was refused, and switching wallets closed the old link at the exact instant the new one opened. The check also caught a leak: when a bot command failed, the whole error was logged, including the bot's token, and Telegram was told to retry. Handler errors are now contained and logged by named fields only.
 **Decision:** fix both test-first before the cutover, not after. A signing bug would have made every `/link` fail in production, and the token leak affects the image that's live today. Codex reviewed both fixes twice; its findings (redact the token from every logged field, tell the member when a command may not have finished) are fixed test-first.
-**Numbers:** 318 tests (54 core, 264 api; 12 new) · typecheck, Biome, `git diff --check` exit 0 · checks passed by hand: 6 of 7 (the two-member check needs a second Telegram account; `test:pg` covers it) · 0 deployments, Neon changes or payments.
-**Commits:** `0589e88`, `dbe8b7e`, `131ee85`, `ade2d2f`; record `docs/handoffs/2026-09-24-manual-wallet-check.md`.
+**Numbers:** 324 tests (54 core, 270 api; 18 new) · typecheck, Biome, `git diff --check` exit 0 · checks passed by hand: 6 of 7 (the two-member check needs a second Telegram account; `test:pg` covers it) · 0 deployments, Neon changes or payments.
+**Commits:** `0589e88`, `dbe8b7e`, `131ee85`, `ade2d2f`, `e03e7eb`, `36d1251`; record `docs/handoffs/2026-09-24-manual-wallet-check.md`.
 **Also:** the production bot token was rotated as a precaution, because the live image has the logging bug and Fly no longer keeps the past week of logs. Revoking a token also clears the bot's webhook, so it was set again; `/me` answers in Hyphae Lab.
-**Next:** the cutover window (Runbook B), each step on its own yes. That deploy is what takes the logging fix live.
+**Also:** the bot now follows a group that is upgraded to a supergroup. Telegram gives the group a new id, which used to orphan the community; the row now moves with it, and a clash with another community is logged for a human instead of guessed at.
+**Next:** the cutover window (Runbook B), each step on its own yes. That deploy is what takes these fixes live.
 
 ## 2026-09-24 (night) · Day 11 of 28 — a wallet has to sign before it can be paid
 

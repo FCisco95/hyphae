@@ -29,7 +29,7 @@ Prepare the cutover: token hygiene after the wallet check's findings, then (each
 
 ## Recent Changes
 
-2026-09-24 (afternoon): Runbook A run with Cisco (test bot, test supergroup, local Postgres, Tailscale Funnel). Fixed test-first: `0589e88` (page `signMessage` call shape), `dbe8b7e` (bot error boundary, no token in logs, no 500 redelivery), then Codex review findings in `131ee85` and `ade2d2f` (token redacted from every logged field; the member is told a failed command may not have finished).
+2026-09-24 (afternoon): Runbook A run with Cisco (test bot, test supergroup, local Postgres, Tailscale Funnel). Fixed test-first: `0589e88` (page `signMessage` call shape), `dbe8b7e` (bot error boundary, no token in logs, no 500 redelivery), then Codex review findings in `131ee85` and `ade2d2f` (token redacted from every logged field; the member is told a failed command may not have finished). Production bot token rotated. Group-upgrade handling `e03e7eb` + Codex finding `36d1251`.
 
 2026-09-24 (night): verified linking built test-first (Tasks 1–7 of the plan), Codex review (one medium finding, fixed in `3e00174`), guide §7 acceptance tests added, landed on `main`.
 
@@ -45,7 +45,7 @@ Fresh on `ade2d2f` (2026-09-24 afternoon): `pnpm -r test` exit 0 (core 54, api 2
 - 0008 backfills one open `paste` history row per existing member (tested on a migrate-to-0007-then-0008 run).
 - Manual wallet check done (`docs/handoffs/2026-09-24-manual-wallet-check.md`): 6 of 7 checks pass by hand; the two-member `wallet_taken` check and the non-member refusal were not run (no second Telegram account). It found two defects, both fixed test-first: signing never worked with a real wallet (`0589e88`), and handler errors logged the bot token and answered 500 (`dbe8b7e`).
 - **The production image still logs the bot token on any handler error** until `main` is deployed (the Sep 17 image predates `dbe8b7e`). As a precaution the production bot token was rotated on 2026-09-24 (Fly log retention could not show the past week), the Fly secret updated (machines restarted, same image), and the webhook re-set, since revoking a token clears it. Verified: `/me` answers in Hyphae Lab. The test bot token is revoked.
-- **Upgrading a basic group to a supergroup changes its chat id**, and nothing updates `communities.telegram_chat_id`. Hyphae Lab is a basic group. Handle `migrate_to_chat_id` before testers join a group that might be upgraded.
+- Group upgrades are followed (`e03e7eb`, `36d1251`): `migrate_to_chat_id` / `migrate_from_chat_id` move `communities.telegram_chat_id`; a collision with another community moves nothing and logs `community chat migration conflict`. Live only after the cutover deploy, so keep Hyphae Lab a basic group until then.
 - `/me` in a private chat answers "not a registered Hyphae community"; it should point to the community chat like `/link` does.
 - Membership is checked when the link session opens, not at signing (Review Focus 5, accepted).
 - R6 must add the decision hash to snapshot entries before any root (R5 review C3), and must pay only `walletAt(..., closesAt)` wallets with `method = 'signature'`.
@@ -56,11 +56,10 @@ Fresh on `ade2d2f` (2026-09-24 afternoon): `pnpm -r test` exit 0 (core 54, api 2
 
 Cisco accepted the three recommendations (`docs/handoffs/2026-09-24-cutover-decisions.md`): wallet check first, then one cutover window; `LINK_ORIGIN=https://hyphae-api.fly.dev` (`api.hyphae.fun` does not exist); hold gate planned after the cutover.
 
-1. `migrate_to_chat_id` handling, test-first (small; before testers).
-2. Cutover window, each step on Cisco's yes: Runbook B (read-only Neon checks, stage `LINK_ORIGIN`, apply 0006–0008 in one run, post-checks, deploy, verify, bootstrap, BotFather menu).
-3. Hold gate (`checkHold`, guide §6): its own plan after the cutover.
-4. Weekly video #2 on Friday per `docs/demo/2026-09-25-weekly-video-2.md`.
-5. Pending Cisco decisions: the cutover date (order is decided, timing is not) and the calendar (decisions 1 and 3 of `2026-09-24-plan.md`).
+1. Cutover window, each step on Cisco's yes: Runbook B (read-only Neon checks, stage `LINK_ORIGIN`, apply 0006–0008 in one run, post-checks, deploy, verify, bootstrap, BotFather menu).
+2. Hold gate (`checkHold`, guide §6): its own plan after the cutover.
+3. Weekly video #2 on Friday per `docs/demo/2026-09-25-weekly-video-2.md`.
+4. Pending Cisco decisions: the cutover date (order is decided, timing is not) and the calendar (decisions 1 and 3 of `2026-09-24-plan.md`).
 
 ## Quick Reference
 

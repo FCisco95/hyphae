@@ -47,3 +47,7 @@ Codex adversarial review of `b52abd7..dbe8b7e` (diff passed inline; its sandbox 
 - F4 (medium) the exact `signedMessage` check refuses wallets that prefix the message. Accepted limitation: the server verifies the exact bytes, so a prefixing wallet would fail verification anyway, and supporting it needs a different verification contract. Phantom and Solflare verified by hand.
 
 Follow-up review of `dbe8b7e..131ee85`: F1 closed, F3 and F4 responses accepted; two new findings, both fixed test-first in `ade2d2f`: `Error.name` was unredacted (high), and "Try again" invited duplicating a partly finished command (medium; the notice now says to check first). `ade2d2f` itself was not re-reviewed; it changes one field and one string, each covered by a test.
+
+## Group upgrade handling (same day, on Cisco's yes)
+
+`e03e7eb`: `migrate_to_chat_id` (old chat) and `migrate_from_chat_id` (new supergroup) move `communities.telegram_chat_id`; the second message is a no-op; neither handler replies. Codex review: no spoofing path (service fields cannot be user-supplied, the webhook is secret-checked, an unrelated group has no row), atomic update, no stale idempotency keys, ordering fine; one medium finding, fixed test-first in `36d1251`: a target id already owned by another community moves nothing and logs `community chat migration conflict` with both ids. Not live until the cutover deploy.
