@@ -70,7 +70,7 @@ Only **candidates**: members of the snapshot whose only open requirement is the 
 4. For each row it calls `checkHold({ projectId: community id, owner: wallet, mint, thresholdRaw, checkRound, primary, fallback })`.
 5. It records the outcome with a conditional update: `… where id = $row and status in ('pending', 'uncertain')`. `holder` and `below` store `raw_amount`, `decimals`, `provider`, `slot` and `observed_at`. `uncertain` stores `reason`. Every attempt increments `attempts` and sets `checked_at = clock_timestamp()`.
 
-Rows are checked one at a time, so a slow provider costs time, not parallel RPC load. Duplicate jobs are harmless: the conditional update lets the first confirmed result win, and a later `uncertain` cannot overwrite it.
+Rows are checked one at a time, so a slow provider costs time, not parallel RPC load. Each read and its write happen in one transaction that claims the row with `FOR UPDATE SKIP LOCKED`. A concurrent run (the close hook and the sweep together) skips the row, so each balance is read once, and a crashed run's claim ends with its transaction. A run never starts before `closes_at` (`too_early`), and the window is checked again before every read. An answer observed before `closes_at` is recorded as `uncertain` (`before_close`). An answer that lands after the window is recorded as `uncertain` (`window_closed`), never as `holder` or `below`. The genesis answer counts only as a clean JSON-RPC 2.0 reply to its own request id, without an error. Duplicate jobs are harmless: the row claim lets one run read and write, and a final row is never selected again.
 
 ## How a hold clears
 

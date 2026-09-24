@@ -68,7 +68,8 @@ Scores are computed off-chain. At each close, the epoch's full score set is comm
 | Verified wallet linking: private single-use link, signed message checked by `@organichub/verify` 0.1.0, append-only wallet history | Deployed 2026-09-24; a live link with Phantom verified | `docs/handoffs/2026-09-24-verified-link-implemented.md`, `2026-09-24-cutover.md` |
 | MYCEL reward epoch 1 (2026-09-25 → 2026-10-02, rubric 1.2.0) | Deployed; not a paid epoch | `docs/handoffs/2026-09-24-cutover.md` |
 | Public read API v1 and audit page | Locally tested on a seeded epoch, not deployed | `docs/handoffs/2026-09-25-audit-page-plan.md` |
-| Rules test, token-hold gate, on-chain root and claim, devnet run, mainnet payout (epoch 2 at the earliest) | Planned | `docs/handoffs/2026-09-25-plan.md` |
+| Rules test (`/rules`, six questions, 6/6), payout gate and token-hold gate (100,000 MYCEL, read within 24 hours of the close by two independent mainnet providers) | Locally tested on PGlite and Postgres 17, not deployed; migration 0009 not applied | `docs/handoffs/2026-09-24-payout-gates-built.md` |
+| On-chain root and claim, devnet run, mainnet payout (epoch 2 at the earliest) | Planned | `docs/handoffs/2026-09-25-plan.md` |
 
 ## 7. Limits
 

@@ -157,6 +157,8 @@ Writing this migration goes beyond the session prompt's writable paths (`docs/**
 4. **PG6, nobody payable.** Publish nothing, take no fee. **Recommended: yes.**
 5. **PG8, first paid epoch.** Record it in `communities.first_paid_epoch`, set by you after the Oct 1 go/no-go with one attended SQL statement (`update communities set first_paid_epoch = 2 where mint = '<MYCEL mint>' and first_paid_epoch is null`). **Recommended: yes.**
 
+6. **P9's "when the snapshot is taken".** No Solana RPC, and not the ruled `checkHold`, can read a token balance at a past moment. So the hold gate counts the first confirmed two-provider read after the close: normally within minutes, at most 24 hours later (PG10). A member who buys right after the close and is read inside the window counts as a holder, and one who sells counts as below. **Recommended: accept this reading of P9.** A perfect point-in-time snapshot is gamed the same way (buy just before, sell just after), and the hold's purpose, capital at risk, is served equally. A read shortly before the close as well (bracketing), or time-weighted holding, can harden it after the hackathon. Refusing every payout for lack of a past balance is the only strict alternative. Raised by the Codex follow-up review (H1).
+
 ## Noted, not in this arc
 
 - Rubric 1.2.0's text promises strikes; strikes are not built (A15). The rules test does not repeat the claim. Fixing the rubric text is a rubric proposal (parked with 1.3.0).
