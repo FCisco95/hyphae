@@ -8,7 +8,8 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 **Decision:** Cisco approved migration 0006 in writing ("Add 0006"): four nullable columns so each correction keeps its reason, evidence, actor and a replay key, with database checks that a correction always has a predecessor and never a model call. Two operators correcting the same revision can't both win: the second is told the revision moved and has to look again. It isn't applied to Neon yet; that belongs to the cutover.
 **Numbers:** 241 tests (54 core, 187 api; 24 new) · typecheck, Biome (108 files), drizzle-kit check, `git diff --check` all exit 0 · `test:pg` on Postgres 17: 6/6, two new races × 50 rounds, one successor every time · 3 of 3 mutation probes killed · 0 migrations applied, deployments, model calls or payments.
 **Commits:** `5a2aa91` (effective read), `d00824c` (`/me`), `67673ea` (corrections + 0006), `5b7083d` (sweep ignores corrections), `a6e98b1` (race), `457aaa0` (operator script); record `docs/handoffs/2026-09-24-r4-implemented.md`.
-**Next:** R4 PR: Codex's inline comments, an independent review, merge on Cisco's yes. Then R5, the frozen close snapshot.
+Codex's automated review found one real gap: a community with only old-style epochs would have seen an empty points summary instead of its scored count. It's fixed test-first in `564d3c3`, and the gate is green again with 242 tests.
+**Next:** R4 PR: an independent review, merge on Cisco's yes. Then R5, the frozen close snapshot.
 
 ## 2026-09-23 (midnight) · Day 10 of 28 — the reward tables are on Neon
 

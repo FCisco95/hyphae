@@ -29,13 +29,13 @@ Get R4 reviewed and merged (PR #12). R5 (strict close, unfunded snapshot) starts
 
 ## Recent Changes
 
-2026-09-24: R4 built test-first (commits `5a2aa91`, `d00824c`, `67673ea`, `5b7083d`, `a6e98b1`, `457aaa0`), records and PR #12.
+2026-09-24: R4 built test-first (commits `5a2aa91`, `d00824c`, `67673ea`, `5b7083d`, `a6e98b1`, `457aaa0`), records and PR #12. Codex's one P2 finding (legacy epochs in `/me`) fixed test-first in `564d3c3` and answered in its thread.
 
 2026-09-23 (midnight): PR #10 merged; migrations 0003–0005 applied to Neon and verified.
 
 ## Validation
 
-Fresh on `457aaa0`: `pnpm -r test` exit 0 (core 54, api 187); `pnpm -r typecheck` exit 0; `pnpm exec biome check .` exit 0 (108 files); `drizzle-kit check` exit 0; `test:pg` 6/6 exit 0; `git diff --check origin/main...HEAD` exit 0.
+Fresh on `564d3c3` (after the Codex fix): `pnpm -r test` exit 0 (core 54, api 188); `pnpm -r typecheck` exit 0; `pnpm exec biome check .` exit 0 (108 files); `drizzle-kit check` exit 0; `test:pg` 6/6 exit 0; `git diff --check origin/main...HEAD` exit 0.
 
 ## Known Issues / Watch List
 
@@ -47,7 +47,7 @@ Fresh on `457aaa0`: `pnpm -r test` exit 0 (core 54, api 187); `pnpm -r typecheck
 
 ## Next Actions
 
-1. PR #12: read Codex's inline comments and handle them per `superpowers:receiving-code-review`; independent review in a fresh session.
+1. PR #12: Codex's one inline finding is fixed (`564d3c3`). Remaining: independent review in a fresh session.
 2. Merge on Cisco's yes. Then R5 on `feat/r5-close-snapshot`, test-first.
 3. Weekly video #2 on Friday per `docs/demo/2026-09-25-weekly-video-2.md`.
 4. Pending Cisco decisions from `2026-09-24-plan.md`: cutover timing, wallet-linking route, calendar.

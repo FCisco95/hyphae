@@ -44,6 +44,12 @@ summary: R4 built test-first on feat/r4-effective-reads. One effective-decision 
 - Mutation probes, each reverted: removing the late count from `/me`, inverting the idempotency-key ownership guard, and removing the expected-revision check (the `test:pg` race failed) were all killed.
 - Not unit-tested: the `/me` Telegram handler and the `reward-correct.ts` entry point, consistent with the other handlers and scripts. The logic they call is tested.
 
+## Codex review on PR #12
+
+One P2 inline finding on `2ac0c3e`: `/me` treated any epoch row as a reward epoch, so a community whose only epochs are unpinned legacy epochs would show an empty reward summary instead of its legacy scored count. Verified valid (legacy epochs never admit reward intake). Fixed test-first in `564d3c3`: both epoch lookups in `me-summary.ts` require `reward_config_id`. The new test failed on the reported behavior first. Gate re-run on `564d3c3`: core 54, api 188, typecheck, Biome (108 files), drizzle-kit check, `git diff --check`, `test:pg` 6/6, all exit 0.
+
+Not changed: `/submit` and `/effort` still route such a community into admission, which refuses with `legacy_epoch` (R3 observation 3). The cutover precondition "MYCEL `epochs` is empty before bootstrap" covers it, and Neon has zero epochs.
+
 ## Preconditions added to the cutover
 
 Migration 0006 joins the apply list: `main` after R4 must not be deployed before 0006 is applied to Neon. The apply needs its own authorization, like 0003–0005.
