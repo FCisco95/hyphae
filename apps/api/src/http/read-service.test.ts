@@ -344,6 +344,7 @@ describe("readContribution", () => {
 });
 
 describe("public reads and the community lock", () => {
+  // Migrates a fresh database inside the test, so it gets the 0008 backfill test's timeout.
   it("never lock a row", async () => {
     const client = new PGlite();
     const queries: string[] = [];
@@ -366,5 +367,5 @@ describe("public reads and the community lock", () => {
       queries.filter((q) => /\bfor (update|share|no key update|key share)\b/i.test(q)),
     ).toEqual([]);
     await client.close();
-  });
+  }, 30_000);
 });
