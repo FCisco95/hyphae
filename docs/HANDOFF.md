@@ -7,7 +7,7 @@ summary: Production still runs main b7bfe55 (MYCEL epoch 1 2026-09-25T00:00Z to 
 
 ## TL;DR
 
-**Both payout gates exist, locally.** `main` now has `/rules` (the quiz), the payout gate and the hold gate, gate-green, Codex-reviewed in five rounds (eleven fixes; one policy question parked). Nothing new is deployed and Neon is unchanged. **Next, all Cisco:** answer six questions (below; the quiz text first), then apply 0009, set `HOLD_RPC_HELIUS_URL` and `HOLD_RPC_FALLBACK_URL`, and deploy, before 2026-10-02T00:00Z. After the Oct 1 go/no-go, set `first_paid_epoch = 2`. The earlier steps still stand: token re-rotation, and the Vercel project for the audit site.
+**Both payout gates exist, locally.** `main` now has `/rules` (the quiz), the payout gate and the hold gate, gate-green, Codex-reviewed in five rounds (eleven fixes; one policy question parked). Nothing new is deployed and Neon is unchanged. **Cisco ruled the six questions "all yes" (2026-09-24 ~22:40Z) and authorized R6 + Anchor for local and devnet.** **Next, Cisco:** apply 0009, set `HOLD_RPC_HELIUS_URL` and `HOLD_RPC_FALLBACK_URL`, and deploy, before 2026-10-02T00:00Z. After the Oct 1 go/no-go, set `first_paid_epoch = 2`. The earlier steps still stand: token re-rotation, and the Vercel project for the audit site.
 
 ## Metadata
 
@@ -69,27 +69,29 @@ Review, all fresh Codex sessions, read-only, diff passed as a prompt file:
 
 ## Next Actions
 
-1. **Cisco:** answer the six questions below (10 minutes). Q1, the quiz text, has to come before the deploy.
+1. ~~Cisco: answer the six questions~~ Ruled 2026-09-24 ~22:40Z, all yes (see below).
 2. **Cisco:** Runbook B step 9, token re-rotation (still open), one step per message.
 3. **Cisco:** apply 0009 on Neon, then `fly secrets set HOLD_RPC_HELIUS_URL=… HOLD_RPC_FALLBACK_URL=…`. The fallback must be a non-Helius mainnet provider, for example Alchemy or QuickNode. Then deploy `main` (repo root, `--depot=false`). The agent verifies read-only: `/health`, `/v1/communities/<MYCEL mint>`, and `/rules` in Hyphae Lab.
 4. **Cisco:** the Vercel project for `apps/web`, then `PUBLIC_WEB_URL` on Fly.
 5. **Cisco, Oct 1 go/no-go, before epoch 2 closes:** `update communities set first_paid_epoch = 2 where mint = '<MYCEL mint>' and first_paid_epoch is null;`
 6. **Agent:** R6 (manifests, exact allocation from `evaluatePayoutGate`, P14's allocation section with reason `awaiting_hold_checks`) and the Anchor vault, publish and claim, per `2026-09-25-plan.md` (Oct 1–8).
 
-## Open questions (each with a recommendation)
+## Rulings recorded (2026-09-24 ~22:40Z, "all yes")
 
-1. **RT2, quiz text:** approve the six questions, with Q2 naming the coin, Q3 saying "count" and Q5 without "a strike"? **Recommended: yes.** Every answer is then true under rubric 1.2.0 and today's code.
-2. **RT3:** the rules test gates payment only, not `/submit`. **Recommended: yes.** That is what P10 and `docs/TESTING.md` already say.
-3. **PG5 + PG10:** an undecided hold holds the whole epoch, and only a read within 24 h of the close counts. A member still undecided after that keeps the epoch blocked until you rule. **Recommended: yes.** Nothing in P1–P16 says how to pay the others around a held member.
-4. **PG6:** nobody payable means publish nothing and take no fee. **Recommended: yes.**
-5. **PG8:** the first paid epoch lives in `communities.first_paid_epoch`, set by you after the go/no-go. **Recommended: yes.** Nothing is payable until you set it.
-6. **P9 reading (Codex H1):** "held at the close" means the first confirmed two-provider read after the close, within 24 h. **Recommended: accept.** A perfect snapshot is gamed the same way (buy before, sell after); bracketing or time-weighted holding can come after the hackathon. The only strict alternative is paying nobody.
+Cisco accepted all six questions exactly as recommended (`docs/handoffs/2026-09-25-gate-and-r6-rulings.md`):
 
-Parked, not asked: the fee address (P8) is still yours to name before the mainnet publish.
+1. RT2 quiz text: yes, with Q2 naming the coin, Q3 "count", Q5 without "a strike".
+2. RT3: the rules test gates payment only.
+3. PG5 + PG10: an undecided hold holds the whole epoch; only a read within 24 h of the close counts.
+4. PG6: nobody payable means publish nothing and take no fee.
+5. PG8: `first_paid_epoch` is set by Cisco after the Oct 1 go/no-go.
+6. P9: "held at the close" is the first confirmed two-provider read after the close, within 24 h.
+
+No gate code changes were needed. The same ruling authorizes **R6 and the Anchor program now, local and devnet only**; mainnet stays a hard stop. The P8 fee address is still Cisco's to name before Oct 1 and stays a parameter.
 
 ## Epoch 2 deadline
 
-**Still reachable, not yet secured.** Nothing agent-side blocks 2026-10-02T00:00Z. What remains is Cisco's: Q1, 0009 on Neon, two provider keys (a fallback account may need creating) and one deploy. That is about an hour attended, due by Thu Oct 1. If the deploy misses Oct 2, P12 means no epoch can be paid before Oct 12 unless Cisco changes the policy on Oct 1.
+**Still reachable, not yet secured.** Nothing agent-side blocks 2026-10-02T00:00Z. What remains is Cisco's: 0009 on Neon, two provider keys (a fallback account may need creating) and one deploy. That is about an hour attended, due by Thu Oct 1. If the deploy misses Oct 2, P12 means no epoch can be paid before Oct 12 unless Cisco changes the policy on Oct 1.
 
 ## Quick Reference
 
