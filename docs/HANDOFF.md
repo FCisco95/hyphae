@@ -1,6 +1,6 @@
 ---
 date: 2026-09-24
-summary: R5 and verified wallet linking are both on main, each after a Codex review with its findings fixed test-first. Hyphae works trunk-based under the solo-founder working agreement. Migrations 0006, 0007 and 0008 are not applied to Neon; nothing is deployed; LINK_ORIGIN is not set on Fly. Cisco chose the cutover order and LINK_ORIGIN=https://hyphae-api.fly.dev; next is the manual wallet check (Runbook A), then the cutover window (Runbook B), each hard step on its own yes.
+summary: R5 and verified wallet linking are both on main, each after a Codex review with its findings fixed test-first. Hyphae works trunk-based under the solo-founder working agreement. Migrations 0006, 0007 and 0008 are not applied to Neon; nothing is deployed; LINK_ORIGIN is not set on Fly. Cisco chose the cutover order and LINK_ORIGIN=https://hyphae-api.fly.dev. The manual wallet check (Runbook A) ran on 2026-09-24 and found two defects, both fixed test-first (0589e88 signing, dbe8b7e token in logs); next is token hygiene, then the cutover window (Runbook B), each hard step on its own yes.
 ---
 
 # Hyphae handoff
@@ -11,15 +11,15 @@ summary: R5 and verified wallet linking are both on main, each after a Codex rev
 
 ## Metadata
 
-- Last Updated: 2026-09-24 (night, after Cisco's cutover decisions). Snapshots: `docs/handoffs/2026-09-24-session-end.md`, `docs/handoffs/2026-09-24-cutover-decisions.md`. Records: `docs/handoffs/2026-09-24-verified-link-implemented.md` (acceptance matrix, review, evidence), `docs/handoffs/2026-09-24-r5-implemented.md` (R5 review C1–C3).
-- Branches: only `main` (= `origin/main` = `dc2b27f`). `feat/r5-close-snapshot` and `feat/verified-link-sdk` are merged and deleted locally and on origin. The `hyphae-verified-link` worktree is deregistered, but its empty folder (`DEVELOPMENTS/hyphae-verified-link`) could not be deleted because another process holds it; delete it once that process closes. It contains nothing.
+- Last Updated: 2026-09-24 (afternoon, after the manual wallet check). Record: `docs/handoffs/2026-09-24-manual-wallet-check.md`. Snapshots: `docs/handoffs/2026-09-24-session-end.md`, `docs/handoffs/2026-09-24-cutover-decisions.md`. Records: `docs/handoffs/2026-09-24-verified-link-implemented.md` (acceptance matrix, review, evidence), `docs/handoffs/2026-09-24-r5-implemented.md` (R5 review C1–C3).
+- Branches: only `main`. `feat/r5-close-snapshot` and `feat/verified-link-sdk` are merged and deleted locally and on origin. The `hyphae-verified-link` worktree is deregistered, but its empty folder (`DEVELOPMENTS/hyphae-verified-link`) could not be deleted because another process holds it; delete it once that process closes. It contains nothing.
 - Runner: Claude Code, Opus 5.5 (`claude-opus-5-5`, as reported by the session environment), Windows, 2026-09-24. Effort is not observable in-session.
 - Authority: O1–O7; R3–R5 approval (build yes, apply no); 0005; 0006; R5 shape; working agreement adopted 2026-09-24 (`0d11a81`); verified-link plan D1–D6 decided 2026-09-24, build started on the session prompt's yes.
 - Canonical private plan: not read or edited this session.
 
 ## Current Objective
 
-Prepare the cutover: a hands-on wallet check, then (each on its own yes) Neon apply of 0006–0008, `LINK_ORIGIN` on Fly, deploy, bootstrap.
+Prepare the cutover: token hygiene after the wallet check's findings, then (each on its own yes) Neon apply of 0006–0008, `LINK_ORIGIN` on Fly, deploy, bootstrap.
 
 ## Current State
 
@@ -29,19 +29,24 @@ Prepare the cutover: a hands-on wallet check, then (each on its own yes) Neon ap
 
 ## Recent Changes
 
+2026-09-24 (afternoon): Runbook A run with Cisco (test bot, test supergroup, local Postgres, Tailscale Funnel). Fixed test-first: `0589e88` (page `signMessage` call shape), `dbe8b7e` (bot error boundary, no token in logs, no 500 redelivery), then Codex review findings in `131ee85` and `ade2d2f` (token redacted from every logged field; the member is told a failed command may not have finished).
+
 2026-09-24 (night): verified linking built test-first (Tasks 1–7 of the plan), Codex review (one medium finding, fixed in `3e00174`), guide §7 acceptance tests added, landed on `main`.
 
 2026-09-24 (evening): working agreement adopted; R5 reviewed by Codex (C1, C2 fixed; C3 deferred to R6) and landed on `main`.
 
 ## Validation
 
-Fresh on the verified-link tip `3e00174` and again on `main` after the fast-forward: `pnpm -r test` exit 0 (core 54, api 252); `pnpm -r typecheck` exit 0; `pnpm exec biome check .` exit 0 (134 files); `drizzle-kit check` exit 0; `test:pg` 11/11 exit 0; `git diff --check` exit 0.
+Fresh on `ade2d2f` (2026-09-24 afternoon): `pnpm -r test` exit 0 (core 54, api 264); `pnpm -r typecheck` exit 0; Biome on tracked files exit 0; `git diff --check` exit 0. `drizzle-kit check` and `test:pg` not rerun (no schema or reward-job change). Earlier, on the verified-link tip `3e00174`: `pnpm -r test` exit 0 (core 54, api 252); `pnpm -r typecheck` exit 0; `pnpm exec biome check .` exit 0 (134 files); `drizzle-kit check` exit 0; `test:pg` 11/11 exit 0; `git diff --check` exit 0.
 
 ## Known Issues / Watch List
 
 - Do not deploy `main` before 0006, 0007 and 0008 are applied and `LINK_ORIGIN` is set on Fly (the env schema requires it; api and worker both parse it).
 - 0008 backfills one open `paste` history row per existing member (tested on a migrate-to-0007-then-0008 run).
-- The manual wallet check (plan Task 8 step 3) has not been run: Phantom and Solflare prompts, `getChatMember` in a supergroup where the bot is not an admin. Needs Cisco, a test bot token, a test group and an HTTPS tunnel; never `@hyphaeprotocol_bot`.
+- Manual wallet check done (`docs/handoffs/2026-09-24-manual-wallet-check.md`): 6 of 7 checks pass by hand; the two-member `wallet_taken` check and the non-member refusal were not run (no second Telegram account). It found two defects, both fixed test-first: signing never worked with a real wallet (`0589e88`), and handler errors logged the bot token and answered 500 (`dbe8b7e`).
+- **The production image logs the bot token on any handler error.** Fly runs the Sep 17 image, which has the same defect as `dbe8b7e` fixes. Check the Fly logs for `@hyphaeprotocol_bot`'s token; if it appears, rotate it (BotFather) and update the Fly secret. The test bot token is also exposed (local log, deleted; session transcript): revoke it.
+- **Upgrading a basic group to a supergroup changes its chat id**, and nothing updates `communities.telegram_chat_id`. Hyphae Lab is a basic group. Handle `migrate_to_chat_id` before testers join a group that might be upgraded.
+- `/me` in a private chat answers "not a registered Hyphae community"; it should point to the community chat like `/link` does.
 - Membership is checked when the link session opens, not at signing (Review Focus 5, accepted).
 - R6 must add the decision hash to snapshot entries before any root (R5 review C3), and must pay only `walletAt(..., closesAt)` wallets with `method = 'signature'`.
 - No log-capture test for "no secrets in logs"; it holds by construction (`fail()` logs `{ link, code }` only).
@@ -51,11 +56,12 @@ Fresh on the verified-link tip `3e00174` and again on `main` after the fast-forw
 
 Cisco accepted the three recommendations (`docs/handoffs/2026-09-24-cutover-decisions.md`): wallet check first, then one cutover window; `LINK_ORIGIN=https://hyphae-api.fly.dev` (`api.hyphae.fun` does not exist); hold gate planned after the cutover.
 
-1. Manual wallet check with Cisco: Runbook A in the decisions record (test bot, local Docker Postgres, Tailscale Funnel, built server).
-2. Cutover window, each step on Cisco's yes: Runbook B (read-only Neon checks, stage `LINK_ORIGIN`, apply 0006–0008 in one run, post-checks, deploy, verify, bootstrap, BotFather menu).
-3. Hold gate (`checkHold`, guide §6): its own plan after the cutover.
-4. Weekly video #2 on Friday per `docs/demo/2026-09-25-weekly-video-2.md`.
-5. Pending Cisco decisions: the cutover date (order is decided, timing is not) and the calendar (decisions 1 and 3 of `2026-09-24-plan.md`).
+1. Cisco: revoke the test bot token; check Fly logs for the production token and rotate it if present.
+2. `migrate_to_chat_id` handling, test-first (small; before testers).
+3. Cutover window, each step on Cisco's yes: Runbook B (read-only Neon checks, stage `LINK_ORIGIN`, apply 0006–0008 in one run, post-checks, deploy, verify, bootstrap, BotFather menu).
+4. Hold gate (`checkHold`, guide §6): its own plan after the cutover.
+5. Weekly video #2 on Friday per `docs/demo/2026-09-25-weekly-video-2.md`.
+6. Pending Cisco decisions: the cutover date (order is decided, timing is not) and the calendar (decisions 1 and 3 of `2026-09-24-plan.md`).
 
 ## Quick Reference
 
