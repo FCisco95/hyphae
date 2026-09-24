@@ -1,6 +1,6 @@
 # Hyphae
 
-A proof-of-contribution layer for token communities. Short version, 2026-09-24.
+A proof-of-contribution layer for token communities. Short version, updated 2026-09-24 (after the cutover).
 
 ## 1. The problem
 
@@ -36,9 +36,11 @@ Every score records:
 | Rubric version | Which rules the work was judged by |
 | Prompt version and template hash | Exactly what the model was asked |
 | Evidence hash | Changes whenever the model, rubric version or output changes |
-| Full input and output, latency, cost | Anyone can re-check the reasoning and the spend |
+| Full input and output, latency, cost | Recorded for every call. The public audit shows the input and output hashes, which pin exactly what was sent and returned, plus latency and cost |
 
 Corrections are appended, never written over. At the close of an epoch, one snapshot is frozen and never changes afterwards.
+
+The public audit reads all of this through a read-only API: every contribution with its raw and credited score and the rule between them, which decision counted at the close, the member totals, and whether anything has been allocated (nothing yet). It never serves a Telegram identity or a wallet that was not linked by signing.
 
 ## 5. On-chain plan
 
@@ -55,20 +57,22 @@ Scores are computed off-chain. At each close, the epoch's full score set is comm
 
 | What | Label | Evidence |
 |---|---|---|
-| Bot in the Hyphae Lab test group: `/link`, `/raid`, `/submit`, `/me`, scored replies with reasoning | Deployed (last recorded 2026-09-17) | Build log, 2026-09-17 |
+| Bot in the Hyphae Lab test group: `/link`, `/raid`, `/submit`, `/effort`, `/me`, scored replies with reasoning | Deployed (production `b7bfe55`, 2026-09-24) | `docs/handoffs/2026-09-24-cutover.md` |
 | First live scoring: 3 contributions, 6 scoring runs across rubric versions 1.0.0, 1.1.0 and 1.2.0; credited 85, 0 and 0; 5–11 s per score; $0.084 total spend | Historical | Build log, 2026-09-17 |
 | Exact reward-point arithmetic (R1) | Locally tested, merged | PR #1 |
-| Pinned configuration, cooldown and admission (R2) | Locally tested, merged, not deployed | PR #2 |
-| Effort slots, `/effort`, dispatch that never pays twice (R3); 198 tests plus a real-Postgres race suite | Locally tested, merged, not deployed; database tables applied to Neon on 2026-09-23 | PRs #6, #9 and #10; all four review findings fixed |
+| Pinned configuration, cooldown and admission (R2) | Deployed 2026-09-24 | PR #2 |
+| Effort slots, `/effort`, dispatch that never pays twice (R3), with a real-Postgres race suite | Deployed 2026-09-24 | PRs #6, #9 and #10; all four review findings fixed |
 | Rubric 1.3.0 (grounded price talk allowed, criticism graded like praise) | Candidate, not applied | `docs/rubrics/CHANGELOG.md` |
-| Epoch-scoped `/me` and corrections (R4) | Locally tested, merged, not deployed; migration 0006 not applied | PR #12 |
-| Strict close with a frozen snapshot, and re-entry of expired work (R5) | Locally tested, on `main`, not deployed; migration 0007 not applied | PR #13; Codex review, two findings fixed |
-| Verified wallet linking: private single-use link, signed message checked by `@organichub/verify` 0.1.0, append-only wallet history | Locally tested, on `main`, not deployed; migration 0008 not applied | `docs/handoffs/2026-09-24-verified-link-implemented.md` |
-| Public audit page, on-chain root and claim, devnet run, mainnet payout, token-hold gate | Planned | Target: before 2026-10-12 |
+| Epoch-scoped `/me` and corrections (R4) | Deployed 2026-09-24 | PR #12 |
+| Strict close with a frozen snapshot, and re-entry of expired work (R5) | Deployed 2026-09-24; first real close 2026-10-02 00:00 UTC | PR #13; Codex review, two findings fixed |
+| Verified wallet linking: private single-use link, signed message checked by `@organichub/verify` 0.1.0, append-only wallet history | Deployed 2026-09-24; a live link with Phantom verified | `docs/handoffs/2026-09-24-verified-link-implemented.md`, `2026-09-24-cutover.md` |
+| MYCEL reward epoch 1 (2026-09-25 → 2026-10-02, rubric 1.2.0) | Deployed; not a paid epoch | `docs/handoffs/2026-09-24-cutover.md` |
+| Public read API v1 and audit page | Locally tested on a seeded epoch, not deployed | `docs/handoffs/2026-09-25-audit-page-plan.md` |
+| Rules test, token-hold gate, on-chain root and claim, devnet run, mainnet payout (epoch 2 at the earliest) | Planned | `docs/handoffs/2026-09-25-plan.md` |
 
 ## 7. Limits
 
 - **Text only.** The scorer reads a post's text through X's public oEmbed. It can't see images or video. Work that depends on media it can't capture waits for evidence instead of being judged blind.
-- **Wallets in the deployed bot are pasted, not verified.** The deployed `/link` accepts an address without a signature. Verified linking is built and tested locally but not deployed, so until it is, no wallet is payable. Once it ships, a closed epoch pays the wallet that was verified at its close, and a pasted wallet is never paid.
+- **Only signed wallets can ever be paid.** `/link` links a wallet by signing. A wallet pasted before the cutover keeps scoring but is marked not verified and is never paid. A closed epoch pays the wallet that was verified at its close.
 - **No payout yet.** Points are not money. No root has been published, no claim exists and nothing has been paid.
 - **The model can disagree with the founder.** Scores are a model's reading of the rubric. When it disagrees, the answer is a public correction: a human score recorded as a new row beside the model's, with its reason.
