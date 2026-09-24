@@ -1,91 +1,94 @@
 ---
 date: 2026-09-24
-summary: Cutover done. Neon has migrations 0000-0008, LINK_ORIGIN is set, main b7bfe55 is deployed on Fly (the token-logging image is gone), a live /link with Phantom produced a signed wallet link, MYCEL epoch 1 is bootstrapped (2026-09-25T00:00Z to 2026-10-02T00:00Z, rubric 1.2.0) and the BotFather menu matches the bot. Next: Friday's weekly video, check the first reward intake after epoch 1 opens, then the hold-gate plan.
+summary: Production still runs main b7bfe55 (cutover done Sep 24; MYCEL epoch 1 2026-09-25T00:00Z to 2026-10-02T00:00Z). This session recorded the schedule rulings and wrote the H-CONTRACT proposal (Part A yes/no list for Friday), the payment-definitions proposal, the calendar to Oct 12, the audit-page build plan and a complete Runbook B with a pending token re-rotation, and fixed /me in private chats (not deployed). Blocked: the audit-page build waits for Cisco's Part A ruling. Payout target moved to epoch 2 (closes Oct 9) because the approved policy needs the rules test live before the first paid epoch opens.
 ---
 
 # Hyphae handoff
 
 ## TL;DR
 
-**Production now runs `main` `b7bfe55`.** Runbook B ran end to end on Cisco's yes at each hard stop: migrations 0006–0008 applied and verified, `LINK_ORIGIN` deployed, new image live, worker consuming all reward queues, live `/link` with Phantom linked a signed wallet, MYCEL epoch 1 bootstrapped, BotFather menu updated. **Next: Friday's weekly video, then confirm the first reward-path submission after epoch 1 opens at 2026-09-25T00:00Z.**
+**Next: Cisco rules H-CONTRACT Part A** (15 yes/no lines in `docs/handoffs/2026-09-25-h-contract-proposal.md`; ruling proposed for Fri Sep 25, due Sep 27). The audit-page build (`docs/handoffs/2026-09-25-audit-page-plan.md`) starts once his words are recorded in `docs/handoffs/`. Also open: the bot token re-rotation (Runbook B step 9), and early rulings on payment items P9 and P12. **The payout target is now epoch 2 (closes 2026-10-09T00:00Z)**, which needs the rules test and the hold gate live before 2026-10-02T00:00Z.
 
 ## Metadata
 
-- Last Updated: 2026-09-24 (evening). Session record: `docs/handoffs/2026-09-24-cutover.md` (every step, numbers, the flaky-test fix, runbook corrections). Earlier: `2026-09-24-manual-wallet-check.md`, `2026-09-24-cutover-decisions.md`, `2026-09-24-afternoon-session-end.md`.
+- Last Updated: 2026-09-24 (night). Snapshot: `docs/handoffs/2026-09-24-proposals-session-end.md`. This session's documents: `2026-09-24-founder-rulings.md`, `2026-09-25-h-contract-proposal.md`, `2026-09-25-payment-definitions-proposal.md`, `2026-09-25-plan.md` (supersedes `2026-09-24-plan.md`), `2026-09-25-audit-page-plan.md`, and Runbook B in `2026-09-24-cutover-decisions.md`. Cutover record: `2026-09-24-cutover.md`.
 - Branches: only `main` (= `origin/main`).
-- Runner: Claude Code, Opus 5.5 (`claude-opus-5-5`), Windows, 2026-09-24.
-- Authority: schedule rulings of 2026-09-24 ("do your recommendation", `2026-09-24-founder-rulings.md`): H-CONTRACT Part A by Sep 27 with the audit-page build starting on that ruling; Part B and the fee, funding and payment definitions by Sep 30; cutover Mon Sep 28, which ran early on Sep 24 on Cisco's in-session yes. Cutover order and `LINK_ORIGIN` (`2026-09-24-cutover-decisions.md`); each hard stop got Cisco's yes; epoch 1 rubric 1.2.0 and open time 2026-09-25T00:00:00Z chosen by Cisco.
-- Canonical private plan: not read or edited this session.
+- Runner: Claude Code, Opus 5.5 (`claude-opus-5-5`), effort xhigh (set by `/effort` at session start), Windows, 2026-09-24. The session prompt preferred Fable 5.1; this session ran on Opus 5.5.
+- Authority: schedule rulings of 2026-09-24 ("do your recommendation", `2026-09-24-founder-rulings.md`): H-CONTRACT Part A by Sep 27 with the audit-page build starting on that ruling; Part B and the fee, funding and payment definitions by Sep 30; cutover Mon Sep 28, which ran early on Sep 24 on Cisco's in-session yes. Session prompt (organic-sync board, 2026-09-24) for steps 1–7 of this arc.
+- Canonical private plan: read-only this session (board rulings, integration contract); not edited.
 
 ## Current Objective
 
-Run the first reward epoch in Hyphae Lab and get the hackathon demo material from it. Epoch 1 closes 2026-10-02T00:00Z; epoch 2 closes 2026-10-09T00:00Z; the deadline is 2026-10-12.
+Get H-CONTRACT Part A ruled and build the public audit page on it. Then get the rules test and hold gate live before epoch 2 opens (2026-10-02T00:00Z), so that epoch 2 can be the first paid epoch.
 
 ## Current State
 
-- Fly `hyphae-api`: api + worker on image `deployment-01M3A6PDECR4D9AP1TSJYDBSP3` (`b7bfe55`). Rollback image: `deployment-01M2R8W6Z6NAAWYM6KT2ZDYA2H` (Sep 17; its schema expectations still hold because the migrations only add). Webhook `https://hyphae-api.fly.dev/telegram`.
-- Neon: journal 9 rows (0000–0008), hashes match. 1 community (Hyphae Lab, MYCEL mint), 1 member with a signed wallet (`MAoR…VhAB`) and its closed pasted predecessor in `member_wallet_links`.
-- Rewards: epoch 1 2026-09-25T00:00Z → 2026-10-02T00:00Z, config `1c822678…40a` (rubric 1.2.0, 7-day epochs, effort 3×, 1 slot). No decisions yet. Points only; no payouts exist until R6.
-- BotFather menu: `link`, `submit`, `effort`, `raid`, `me`.
-- Local `.env` (gitignored) now includes `LINK_ORIGIN`, which every script that imports `src/db.ts` needs.
+- Fly `hyphae-api`: api + worker on `b7bfe55` (image `deployment-01M3A6PDECR4D9AP1TSJYDBSP3`). Rollback image `deployment-01M2R8W6Z6NAAWYM6KT2ZDYA2H` (Sep 17; **it logs the bot token on handler errors**, so a rollback means a rotation too).
+- Neon: 0000–0008. 1 community (Hyphae Lab, MYCEL), 1 member with a signed wallet.
+- Rewards: epoch 1 2026-09-25T00:00Z → 2026-10-02T00:00Z, config `1c822678…40a` (rubric 1.2.0). Points only; epoch 1 is not payable under the approved policy (no rules test when it opened).
+- `main` is ahead of production by one bot fix (`5ee7a8b`, `/me` private-chat reply) and docs. The fix ships with the next deploy.
+- Anchor program: still the `initialize` stub. `apps/web`: does not exist yet.
 
 ## Recent Changes (this session)
 
-- `b7bfe55` test(rewards): the completion-versus-close race set its 300 ms boundary before `beginDispatch`, so a slow setup closed the epoch first; the boundary is now set after the dispatch exists. Test-only.
-- Docs: cutover record, build log entry, Runbook B pointer to the corrected commands, this handoff.
-- Out of repo (Cisco, on his yes): Neon migrate, `fly secrets set LINK_ORIGIN --stage`, `fly deploy --depot=false`, `set-rubric` bootstrap, BotFather `/setcommands`.
+- `0723674` docs: 2026-09-24 schedule rulings recorded; handoff authority updated.
+- `b7afc9c` docs: H-CONTRACT proposal. Part A: five public GET routes (`/v1/communities/:mint`, `…/epochs/:index`, `…/epochs/:index/contributions`, `…/leaderboard?epoch=`, `/v1/contributions/:id`), wire conventions, privacy boundary, states, honest unavailable, lock-free reads, admin actor `admin:<handle>` with corrections script-only. Part B: RFC 8785 profile, tag-prefixed SHA-256, config/evidence/decision hashes with predecessor chain, member-epoch manifest as the existing 89-byte leaf's evidence hash, anchored epoch audit hash, a shared TS/Rust vector file.
+- `3698a7d` docs: payment definitions P1–P16 (Lab-funded SOL vault, 3% of gross floored at publish, exact-unit allocation, 25% cap, retained shown separately, claim receipts as proof).
+- `b6952e8` docs: calendar Sep 25 → Oct 12, with owners and dependencies; go/no-go Oct 1.
+- `21aecdb` docs: audit-page build plan (15 test-first tasks). It lives in `docs/handoffs/`, not the prompt's `docs/plans/`, because `docs/plans/` is gitignored.
+- `e880eb8` docs: Runbook B complete on its own, with step 9 (token re-rotation) and the rollback note.
+- `5ee7a8b` fix(bot): `/me` in a private chat answers "Send /me in your community chat."
 
 ## Validation
 
-On `b7bfe55`: `pnpm -r test` exit 0 (core 54, api 270); typecheck, Biome (138 tracked files), `drizzle-kit check`, `git diff --check` exit 0; `test:pg` 11/11 on three consecutive runs. Production: `/health` 200, `/link` page and `/link/app.js` 200, `reward-recovery` logged at 17:20:16Z with zeros, live `/link` + `/me` verified, bootstrap rows read back.
+On `5ee7a8b`: `pnpm -r test` exit 0 (core 54, api 271); `pnpm -r typecheck` exit 0; Biome on tracked files exit 0 (138 files) and on the two changed files exit 0; `drizzle-kit check` exit 0; `test:pg` 11/11 exit 0; `git diff --check` exit 0. The new `/me` test failed on the old reply ("This chat is not a registered Hyphae community.") before the fix.
 
-Review: the only code change is a test fix, so no cross-family review was needed; the deployed code was reviewed in earlier sessions (records above).
+Review: the only code change is a one-line bot reply (no money, rewards, auth, wallet or migration path), so no cross-family review. The read API build requires a Codex data-exposure review (plan Task 15).
 
 ## Known Issues / Watch List
 
-- **First reward-path traffic is untested in production.** After 2026-09-25T00:00Z, a `/submit` in Hyphae Lab should go through reward intake and evaluation (model call). Watch the worker log for `reward-evaluation` and errors.
-- The worker's reward jobs have only run in tests and one idle `reward-recovery`; the first real `reward-close` is at 2026-10-02T00:00Z.
-- `/me` in a private chat answers "not a registered Hyphae community"; should point to the community chat like `/link` does (small UX fix, parked).
-- Scripts (`set-rubric`, `reward-correct`, …) parse the full app env through `src/db.ts`; a missing bot-only variable stops a DB-only script. Works now that `.env` has `LINK_ORIGIN`; a narrower env for scripts is optional cleanup.
-- Manual check gaps from Runbook A (two-member `wallet_taken`, non-member refusal) remain covered only by tests.
-- R6 must add the decision hash to snapshot entries before any root (R5 review C3), and pay only `walletAt(..., closesAt)` wallets with `method = 'signature'`.
+- **Bot token re-rotation is open** (Runbook B step 9). The token set on Sep 24 ran on the Sep 17 image until the 17:17Z deploy, and that image logged the token on handler errors.
+- **First reward-path traffic is untested in production.** After 2026-09-25T00:00Z, one real `/submit`; watch `reward-evaluation` in the worker log.
+- **The payout depends on two unbuilt gates:** the rules test and the hold gate, both needed before 2026-10-02T00:00Z (payment proposal P9, P12). Neither has a plan yet.
+- Organic's adapter defaults absent fields to zero or empty (`open_raids`, `rules_test_passed`, `strikes`) and expects `pot_lamports`; see the proposal's "Downstream: Organic".
+- `/me` prints `${PUBLIC_WEB_URL}/w/<wallet>`, which can show a pasted wallet and points to a page that won't exist. Plan Task 12 replaces it.
+- R6 must add the decision hash before any root (R5 C3); Part B B5–B6 propose how.
 - No CI; the local gate is the only gate.
 
 ## Next Actions
 
-1. Weekly video #2 on Friday per `docs/demo/2026-09-25-weekly-video-2.md` (the cutover and a live `/link` are new material).
-2. After 2026-09-25T00:00Z: one real `/submit` in Hyphae Lab; confirm the reward path (intake row, evaluation, decision, notification) and record it.
-3. H-CONTRACT Part A ruling (due Sep 27; the audit-page build starts on it). Part B and the fee, funding and payment definitions by Sep 30.
-4. Hold gate (`checkHold`, guide §6): its own plan.
-5. Scoring-evaluation session (founder-labelled set) → decide whether to propose rubric 1.3.0 for a later epoch.
-6. `/me` private-chat UX fix (test-first, ships with the next deploy).
+1. **Cisco:** rule Part A (A1–A15) and, if possible, payment P9 and P12 on Fri Sep 25. Record his exact words in `docs/handoffs/`.
+2. **Cisco:** Runbook B step 9 (token re-rotation), one step per message.
+3. After 2026-09-25T00:00Z: one real `/submit` in Hyphae Lab; verify the reward path read-only.
+4. On the Part A ruling: build per `docs/handoffs/2026-09-25-audit-page-plan.md`; Codex review of the read API before pushing.
+5. Rules-test scope proposal and hold-gate plan (Sep 26–27), per `2026-09-25-plan.md`.
 
 ## Quick Reference
 
-- Cutover commands that work: `docs/handoffs/2026-09-24-cutover.md` § Runbook corrections. Deploy: from the repo root, `fly deploy . --config apps/api/fly.toml --dockerfile apps/api/Dockerfile --app hyphae-api --depot=false`.
-- Read-only Neon checks from the agent: `node --env-file=.env <script>` with `postgres` resolved from `packages/db` and `sql.begin("read only", …)`.
+- Runbook B (complete, incl. step 9 and rollback): `docs/handoffs/2026-09-24-cutover-decisions.md`.
+- Calendar: `docs/handoffs/2026-09-25-plan.md`. Proposals: `2026-09-25-h-contract-proposal.md`, `2026-09-25-payment-definitions-proposal.md`.
 - Payout wallet: `walletAt(db, memberId, epoch.closesAt)` in `apps/api/src/link/wallet-links.ts`; payable only if `method === "signature"`.
-- Bot wiring: `apps/api/src/bot/index.ts`; `/me` body: `bot/commands/me-summary.ts`.
+- Bot wiring: `apps/api/src/bot/index.ts`; `/me`: `bot/commands/me.ts`, `me-summary.ts`.
 - Local gate: `pnpm -r test; pnpm -r typecheck; git ls-files -z '*.ts' '*.json' '*.js' | xargs -0 pnpm exec biome check; pnpm --filter @hyphae/db exec drizzle-kit check; pnpm --filter @hyphae/api test:pg` (Docker); `git diff --check`.
 
 ## Suggested skills
 
 - `handoff-memory` (resume this handoff).
-- `superpowers:systematic-debugging` (first real reward-path run, if anything fails).
-- `superpowers:writing-plans` (hold-gate plan).
-- `superpowers:test-driven-development` (`/me` UX fix).
+- `superpowers:test-driven-development` (audit-page build; rules test; hold gate).
+- `superpowers:writing-plans` (rules-test scope, hold-gate plan).
+- `superpowers:verification-before-completion` (end-to-end seeded epoch render).
 - `handoff` (session end).
 
 ## Resume Checklist
 
 - `git fetch --prune && git status -sb` (expect `main` = `origin/main`).
+- Check `docs/handoffs/` for a recorded Part A ruling before starting the build.
 - Docker Desktop running before `test:pg`.
-- No deploy, Neon change, Fly secret, rubric proposal, package publish, public post or mainnet transaction without Cisco's separate yes. Cisco runs Fly and Neon-write commands in his own terminal.
-- Cisco prefers **one manual step per message**, then wait for the result.
+- No deploy, Neon change, Fly secret, token change, rubric proposal, package publish, public post or mainnet transaction without Cisco's separate yes. Cisco runs Fly and Neon-write commands in his own terminal, **one manual step per message**.
 
 ## Next-session prompt
 
 ```text
-Resume Hyphae. Read CLAUDE.md, AGENTS.md and docs/HANDOFF.md. Production runs main b7bfe55 since the 2026-09-24 cutover; Neon has 0000-0008; MYCEL epoch 1 runs 2026-09-25T00:00Z to 2026-10-02T00:00Z on rubric 1.2.0. First: if epoch 1 is open, ask Cisco to send one real /submit in Hyphae Lab and verify the reward path read-only (intake, evaluation, decision, notification) and in the worker log. Then the hold-gate plan. Give Cisco ONE manual step per message.
-Hard stops (each needs Cisco's explicit yes): Neon writes, fly secrets, fly deploy, rubric proposals, BotFather changes, mainnet transactions, package publishes, public posts, writes outside this repo.
+Resume Hyphae. Read CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-09-25-h-contract-proposal.md, 2026-09-25-audit-page-plan.md and 2026-09-25-plan.md. Production runs b7bfe55; main carries one undeployed /me fix (5ee7a8b) plus docs. If docs/handoffs records Cisco's Part A ruling, build the read API v1 and apps/web test-first per the audit-page plan (adjust any task a "no" line touches), get a Codex review of the read API for data exposure, and finish when a locally seeded epoch renders end to end and the full gate passes. If it is not recorded, present Part A's 15 lines to Cisco and record his exact words first. Separately, walk Cisco through Runbook B step 9 (token re-rotation), ONE step per message.
+Stops: a read route that would expose Telegram ids, unverified wallets or unpublished decisions; any deploy, Fly secret, token change, Neon write or mainnet action without Cisco's yes.
 ```
