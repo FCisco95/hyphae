@@ -18,7 +18,7 @@ import {
   proposeRewardConfig,
   setRewardIntakePaused,
 } from "./config.js";
-import { type AdmitInput, admitContribution, artifactKeyFor } from "./intake.js";
+import { type AdmitInput, admitContribution, artifactKeyFor, capturedEvidence } from "./intake.js";
 import { at, createTestDb, rubric, seedCommunity, seedTask } from "./test-db.js";
 
 const T0 = new Date("2026-10-01T00:00:00.000Z");
@@ -66,6 +66,29 @@ describe("artifactKeyFor", () => {
     expect(artifactKeyFor({ text: "hello" })).toBe(
       "text:sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
     );
+  });
+});
+
+describe("capturedEvidence", () => {
+  const at = new Date("2026-10-02T00:00:00.000Z");
+
+  it("records free text as the work itself", () => {
+    expect(capturedEvidence({ text: "my thread" }, 7, at)).toEqual({
+      contribution: { url: null, text: "my thread", oembed: null, telegramMessageId: 7 },
+      capture: { source: "telegram_text", capturedAt: at.toISOString(), limitations: [] },
+    });
+  });
+
+  it("records a post as oEmbed shows it, with what the capture could not include", () => {
+    const post = { id: "9", handle: "a", text: "see pic.x.com/x", url: "https://x.com/a/status/9" };
+    expect(capturedEvidence({ post }, 7, at)).toEqual({
+      contribution: { url: post.url, text: post.text, oembed: post, telegramMessageId: 7 },
+      capture: {
+        source: "x_oembed",
+        capturedAt: at.toISOString(),
+        limitations: ["text_only", "media_not_captured"],
+      },
+    });
   });
 });
 

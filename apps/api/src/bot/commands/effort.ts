@@ -1,10 +1,10 @@
 import type { CommandContext, Context } from "grammy";
 import { db } from "../../db.js";
 import { sendEvaluation, sendRetrieval } from "../../jobs/reward-jobs.js";
-import { artifactKeyFor } from "../../rewards/intake.js";
+import { artifactKeyFor, capturedEvidence } from "../../rewards/intake.js";
 import { type NominateResult, nominate } from "../../rewards/slots.js";
 import { admittedIntake, hasRewardLane, submitEffort } from "../../rewards/submission.js";
-import { parsePostUrl } from "../../x/oembed.js";
+import { fetchPost, parsePostUrl, type XPost } from "../../x/oembed.js";
 import { reply } from "../reply.js";
 import { parseSubmitArgs } from "./args.js";
 import { ADMIT_REFUSAL, communityAndMember, preflight } from "./submit.js";
@@ -22,6 +22,7 @@ const REFUSAL: Record<Exclude<NominateResult["status"], "nominated">, string> = 
   candidates_exhausted: "You have used all three nominations for your effort slot this epoch.",
   slot_in_use: "Your effort slot is held by another nomination this epoch.",
   already_nominated: "That work is already nominated.",
+  needs_evidence: "That work could not be captured again; try /effort once more.",
   reentry_blocked:
     "That work's earlier evaluation request is still unresolved; it can't be nominated again yet.",
   paused: "Reward intake is paused in this community.",
@@ -53,12 +54,26 @@ export async function effort(ctx: CommandContext<Context>) {
   let result: NominateResult;
   const existing = await admittedIntake(db, community.id, key);
   if (existing) {
-    result = await nominate(db, {
+    const again = {
       communityId: community.id,
       memberId: member.id,
       contributionId: existing.contributionId,
       idempotencyKey: nominationKey,
-    });
+    };
+    result = await nominate(db, again);
+    // Re-entry into a later epoch is judged on the artifact as it reads now (O3).
+    if (result.status === "needs_evidence") {
+      let source: { text: string } | { post: XPost };
+      if (args.kind === "text") {
+        source = args;
+      } else {
+        const post = await fetchPost(args.url);
+        if (!post) return reply(ctx, "Could not read that post. Is it public?");
+        source = { post };
+      }
+      const evidence = capturedEvidence(source, ctx.msg.message_id, new Date());
+      result = await nominate(db, { ...again, evidence });
+    }
   } else {
     const input = await preflight(ctx, args, community, member);
     if (typeof input === "string") return reply(ctx, input);

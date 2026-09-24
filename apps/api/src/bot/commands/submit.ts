@@ -4,9 +4,14 @@ import type { CommandContext, Context } from "grammy";
 import { db } from "../../db.js";
 import { boss, QUEUES } from "../../jobs/queue.js";
 import { sendEvaluation } from "../../jobs/reward-jobs.js";
-import { type AdmitInput, type AdmitResult, artifactKeyFor } from "../../rewards/intake.js";
+import {
+  type AdmitInput,
+  type AdmitResult,
+  artifactKeyFor,
+  capturedEvidence,
+} from "../../rewards/intake.js";
 import { routeSubmission } from "../../rewards/submission.js";
-import { captureLimitations, fetchPost, parsePostUrl } from "../../x/oembed.js";
+import { fetchPost, parsePostUrl } from "../../x/oembed.js";
 import { reply } from "../reply.js";
 import { parseSubmitArgs, type SubmitArgs } from "./args.js";
 import { bindHandle, MAX_HANDLES } from "./handles.js";
@@ -50,18 +55,13 @@ export async function preflight(
   };
   if (args.kind === "text") {
     // Free-form work is scored on its own; it never attaches to a raid.
+    const { contribution, capture } = capturedEvidence(args, messageId, new Date());
     return {
       ...base,
       taskId: null,
-      contribution: {
-        kind: "text",
-        url: null,
-        text: args.text,
-        oembed: null,
-        telegramMessageId: messageId,
-      },
+      contribution: { kind: "text", ...contribution },
       artifactKey: artifactKeyFor({ text: args.text }),
-      capture: { source: "telegram_text", capturedAt: new Date().toISOString(), limitations: [] },
+      capture,
     };
   }
   const openTask = await db.query.tasks.findFirst({
@@ -103,22 +103,13 @@ export async function preflight(
   if (bind.bound) {
     await db.update(members).set({ xHandles: bind.handles }).where(eq(members.id, member.id));
   }
+  const { contribution, capture } = capturedEvidence({ post }, messageId, new Date());
   return {
     ...base,
     taskId: openTask?.id ?? null,
-    contribution: {
-      kind: args.kind,
-      url: post.url,
-      text: post.text,
-      oembed: post,
-      telegramMessageId: messageId,
-    },
+    contribution: { kind: args.kind, ...contribution },
     artifactKey: artifactKeyFor({ statusId: post.id }),
-    capture: {
-      source: "x_oembed",
-      capturedAt: new Date().toISOString(),
-      limitations: captureLimitations(post),
-    },
+    capture,
   };
 }
 

@@ -1,10 +1,10 @@
 import type { RewardPurpose } from "@hyphae/core";
-import { epochs, rewardIntakes, rewardSnapshotEntries } from "@hyphae/db";
+import { contributions, epochs, rewardIntakes, rewardSnapshotEntries } from "@hyphae/db";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeEpoch } from "./close.js";
 import { beginDispatch, markReconciliation, runEvaluation } from "./evaluation.js";
-import { admitContribution } from "./intake.js";
+import { admitContribution, type CapturedEvidence } from "./intake.js";
 import { nominate } from "./slots.js";
 import { createTestDb, later, seedRewardLane, seedTask, T0 } from "./test-db.js";
 
@@ -50,7 +50,7 @@ async function lane() {
   const [epoch] = await t.db.select().from(epochs).where(eq(epochs.communityId, s.community.id));
   if (!epoch) throw new Error("no epoch");
   let key = 0;
-  const nom = (contributionId: string, clockMs: number) => {
+  const nom = (contributionId: string, clockMs: number, evidence?: CapturedEvidence) => {
     key += 1;
     return nominate(
       t.db,
@@ -59,6 +59,7 @@ async function lane() {
         memberId: s.member.id,
         contributionId,
         idempotencyKey: `n${key}`,
+        ...(evidence ? { evidence } : {}),
       },
       { clock: later(clockMs) },
     );
@@ -74,6 +75,15 @@ async function lane() {
   return { ...s, epoch, nom, close, intakesOf };
 }
 
+// The post as it reads when it is nominated again.
+const recaptured = (
+  text = "edited after close",
+  limitations: string[] = ["text_only"],
+): CapturedEvidence => ({
+  contribution: { url: "https://x.com/a/status/now", text, oembed: null, telegramMessageId: 42 },
+  capture: { source: "x_oembed", capturedAt: T0.toISOString(), limitations },
+});
+
 describe("re-entry of an expired artifact (O3)", () => {
   it("nominates it in the next epoch as new linked work, leaving the frozen entry alone", async () => {
     const l = await lane();
@@ -82,7 +92,7 @@ describe("re-entry of an expired artifact (O3)", () => {
     if (first.status !== "nominated") throw new Error(first.status);
     const closed = await l.close();
 
-    const again = await l.nom(original.contributionId, IN_EPOCH_2);
+    const again = await l.nom(original.contributionId, IN_EPOCH_2, recaptured());
     if (again.status !== "nominated") throw new Error(again.status);
     const [, reentry] = await l.intakesOf(original.artifactKey);
     expect(reentry).toMatchObject({ reentryOf: original.id, taskId: original.taskId });
@@ -104,15 +114,48 @@ describe("re-entry of an expired artifact (O3)", () => {
     expect(frozen).toEqual(closed.entries);
   });
 
+  it("asks for evidence captured now and admits nothing without it", async () => {
+    const l = await lane();
+    const original = await l.admitOne();
+    await l.nom(original.contributionId, 3 * MIN);
+    await l.close();
+
+    expect((await l.nom(original.contributionId, IN_EPOCH_2)).status).toBe("needs_evidence");
+    expect(await l.intakesOf(original.artifactKey)).toHaveLength(1);
+  });
+
+  it("judges the post as it reads now, not the capture frozen with the old epoch", async () => {
+    const l = await lane();
+    const original = await l.admitOne();
+    await l.nom(original.contributionId, 3 * MIN);
+    await l.close();
+    const now = recaptured("pic.x.com/abc added", ["text_only", "media_not_captured"]);
+
+    const again = await l.nom(original.contributionId, IN_EPOCH_2, now);
+    if (again.status !== "nominated") throw new Error(again.status);
+    const [kept, reentry] = await l.intakesOf(original.artifactKey);
+    expect(kept?.capture).toEqual(original.capture);
+    expect(reentry?.capture).toEqual(now.capture);
+    const [work] = await t.db
+      .select()
+      .from(contributions)
+      .where(eq(contributions.id, again.nomination.contributionId));
+    expect(work).toMatchObject({ text: "pic.x.com/abc added", url: "https://x.com/a/status/now" });
+    expect(again.nomination).toMatchObject({
+      state: "pending_evidence",
+      pendingReason: "media_not_captured",
+    });
+  });
+
   it("names the new work when the same artifact is nominated again", async () => {
     const l = await lane();
     const original = await l.admitOne();
     await l.nom(original.contributionId, 3 * MIN);
     await l.close();
-    const again = await l.nom(original.contributionId, IN_EPOCH_2);
+    const again = await l.nom(original.contributionId, IN_EPOCH_2, recaptured());
     if (again.status !== "nominated") throw new Error(again.status);
 
-    const third = await l.nom(original.contributionId, IN_EPOCH_2 + MIN);
+    const third = await l.nom(original.contributionId, IN_EPOCH_2 + MIN, recaptured());
     expect(third).toMatchObject({
       status: "already_nominated",
       nomination: { id: again.nomination.id },
@@ -169,7 +212,9 @@ describe("re-entry of an expired artifact (O3)", () => {
     if (other.status !== "admitted") throw new Error(other.status);
     expect((await l.nom(other.intake.contributionId, IN_EPOCH_2)).status).toBe("nominated");
 
-    expect((await l.nom(original.contributionId, IN_EPOCH_2 + MIN)).status).toBe("slot_in_use");
+    expect((await l.nom(original.contributionId, IN_EPOCH_2 + MIN, recaptured())).status).toBe(
+      "slot_in_use",
+    );
     expect(await l.intakesOf(original.artifactKey)).toHaveLength(1);
   });
 
@@ -178,7 +223,9 @@ describe("re-entry of an expired artifact (O3)", () => {
     const original = await l.admitOne();
     await l.nom(original.contributionId, 3 * MIN);
 
-    expect((await l.nom(original.contributionId, IN_EPOCH_2)).status).toBe("epoch_closed");
+    expect((await l.nom(original.contributionId, IN_EPOCH_2, recaptured())).status).toBe(
+      "epoch_closed",
+    );
   });
 
   it("stays blocked while an earlier model request is unresolved", async () => {
@@ -199,7 +246,9 @@ describe("re-entry of an expired artifact (O3)", () => {
     );
     await l.close();
 
-    expect((await l.nom(original.contributionId, IN_EPOCH_2)).status).toBe("reentry_blocked");
+    expect((await l.nom(original.contributionId, IN_EPOCH_2, recaptured())).status).toBe(
+      "reentry_blocked",
+    );
   });
 
   it("is refused once any evaluation of the artifact completed", async () => {
@@ -213,7 +262,9 @@ describe("re-entry of an expired artifact (O3)", () => {
     await l.nom(original.contributionId, 3 * MIN); // an upgrade left pending at close
     await l.close();
 
-    expect((await l.nom(original.contributionId, IN_EPOCH_2)).status).toBe("epoch_closed");
+    expect((await l.nom(original.contributionId, IN_EPOCH_2, recaptured())).status).toBe(
+      "epoch_closed",
+    );
   });
 
   it("times the new attempt from the original submission, not the re-entry", async () => {
@@ -241,7 +292,7 @@ describe("re-entry of an expired artifact (O3)", () => {
     if (admitted.status !== "admitted") throw new Error(admitted.status);
     await l.nom(admitted.intake.contributionId, 3 * MIN);
     await l.close();
-    const again = await l.nom(admitted.intake.contributionId, IN_EPOCH_2);
+    const again = await l.nom(admitted.intake.contributionId, IN_EPOCH_2, recaptured());
     if (again.status !== "nominated") throw new Error(again.status);
 
     const result = await runEvaluation(

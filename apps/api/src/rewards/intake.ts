@@ -1,6 +1,7 @@
 import { sha256Hex } from "@hyphae/core";
 import { contributions, type Db, members, rewardIntakes, tasks } from "@hyphae/db";
 import { and, eq, isNull } from "drizzle-orm";
+import { captureLimitations, type XPost } from "../x/oembed.js";
 import { ensureEpochAt, latestEpoch, type RewardDeps, withCommunityLock } from "./config.js";
 
 export type RewardIntake = typeof rewardIntakes.$inferSelect;
@@ -9,6 +10,35 @@ export interface Capture {
   source: "x_oembed" | "telegram_text";
   capturedAt: string;
   limitations: string[];
+}
+
+// An artifact as it reads when it is captured: free text is the work itself, a post is what
+// oEmbed shows at that moment.
+export interface CapturedEvidence {
+  contribution: Pick<
+    typeof contributions.$inferInsert,
+    "url" | "text" | "oembed" | "telegramMessageId"
+  >;
+  capture: Capture;
+}
+
+export function capturedEvidence(
+  source: { text: string } | { post: XPost },
+  telegramMessageId: number,
+  at: Date,
+): CapturedEvidence {
+  const capturedAt = at.toISOString();
+  if ("text" in source) {
+    return {
+      contribution: { url: null, text: source.text, oembed: null, telegramMessageId },
+      capture: { source: "telegram_text", capturedAt, limitations: [] },
+    };
+  }
+  const { post } = source;
+  return {
+    contribution: { url: post.url, text: post.text, oembed: post, telegramMessageId },
+    capture: { source: "x_oembed", capturedAt, limitations: captureLimitations(post) },
+  };
 }
 
 export interface AdmitInput {

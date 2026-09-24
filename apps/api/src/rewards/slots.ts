@@ -18,7 +18,7 @@ import {
   type RewardDeps,
   withCommunityLock,
 } from "./config.js";
-import type { Capture } from "./intake.js";
+import type { Capture, CapturedEvidence } from "./intake.js";
 
 export type Nomination = typeof rewardNominations.$inferSelect;
 export type Slot = typeof rewardSlots.$inferSelect;
@@ -53,6 +53,7 @@ export type NominateResult =
         | "slot_used"
         | "candidates_exhausted"
         | "reentry_blocked"
+        | "needs_evidence"
         | "paused";
     };
 
@@ -61,6 +62,9 @@ export interface NominateInput {
   memberId: string;
   contributionId: string;
   idempotencyKey: string;
+  // The artifact as it reads now. A re-entry is judged on the new epoch's evidence (O3); the
+  // earlier intake keeps its own capture.
+  evidence?: CapturedEvidence;
 }
 
 // Explicit effort nomination (O2). Under the community lock: the member's slots in the
@@ -298,7 +302,7 @@ async function reserve(
 
 type ReentryResult =
   | { status: "reentered"; intake: typeof rewardIntakes.$inferSelect }
-  | { status: "epoch_closed" | "reentry_blocked" | "paused" };
+  | { status: "epoch_closed" | "reentry_blocked" | "needs_evidence" | "paused" };
 
 // O3 re-entry: an artifact whose epoch closed with no evaluation ever completed, and no model
 // request still in flight or unknown, may be admitted again into the current epoch as new work.
@@ -337,6 +341,8 @@ async function reenter(
   if (community.rewardIntakePausedAt) return { status: "paused" };
   const current = await ensureEpochAt(tx, input.communityId, now, now);
   if (!current?.rewardConfigId) return { status: "epoch_closed" };
+  if (!input.evidence) return { status: "needs_evidence" };
+  const { evidence } = input;
 
   const [source] = await tx
     .select()
@@ -350,10 +356,7 @@ async function reenter(
       memberId: source.memberId,
       taskId: source.taskId,
       kind: source.kind,
-      url: source.url,
-      text: source.text,
-      oembed: source.oembed,
-      telegramMessageId: source.telegramMessageId,
+      ...evidence.contribution,
       submittedAt: now,
     })
     .returning({ id: contributions.id });
@@ -370,7 +373,7 @@ async function reenter(
       artifactKey: intake.artifactKey,
       idempotencyKey: `reentry:${input.idempotencyKey}`,
       acceptedAt: now,
-      capture: intake.capture,
+      capture: evidence.capture,
       reentryOf: intake.reentryOf ?? intake.id,
     })
     .returning();
