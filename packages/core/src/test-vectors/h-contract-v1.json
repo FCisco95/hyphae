@@ -1,0 +1,308 @@
+{
+  "version": "h-contract-v1",
+  "merkle": {
+    "leaves": [
+      {
+        "name": "a",
+        "seed": "0101010101010101010101010101010101010101010101010101010101010101",
+        "wallet": "8a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c",
+        "epoch_index": "2",
+        "score": "255",
+        "amount": "121250000",
+        "evidence_hash": "72b14f73d2de203b79f9ca0491a4e2f1d7479301008504c3c2505961929c755f",
+        "encoded": "008a88e3dd7409f195fd52db2d3cba5d72ca6709bf1d94121bf3748801b40f6f5c0200000000000000ff00000000000000d0203a070000000072b14f73d2de203b79f9ca0491a4e2f1d7479301008504c3c2505961929c755f",
+        "hash": "c569fcd93ee3b5e0e008b97b5d1df21f18480eb6ed934e1cc149cf6f80734266"
+      },
+      {
+        "name": "b",
+        "seed": "0202020202020202020202020202020202020202020202020202020202020202",
+        "wallet": "8139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b394",
+        "epoch_index": "2",
+        "score": "85",
+        "amount": "108486842",
+        "evidence_hash": "93f5031fab3ca4c770d492b76057f363721f3f2b43d101ee1298341e3a9c50dc",
+        "encoded": "008139770ea87d175f56a35466c34c7ecccb8d8a91b4ee37a25df60f5b8fc9b39402000000000000005500000000000000ba6077060000000093f5031fab3ca4c770d492b76057f363721f3f2b43d101ee1298341e3a9c50dc",
+        "hash": "5c03523aefb56d9f796535633a65247e35a390d033061955ad733c439d733671"
+      },
+      {
+        "name": "c",
+        "seed": "0303030303030303030303030303030303030303030303030303030303030303",
+        "wallet": "ed4928c628d1c2c6eae90338905995612959273a5c63f93636c14614ac8737d1",
+        "epoch_index": "2",
+        "score": "40",
+        "amount": "51052631",
+        "evidence_hash": "60fa8f31469b7033a7ca72c7b9f1144f1c8b6f0bc948db1bff572ca8e94c830f",
+        "encoded": "00ed4928c628d1c2c6eae90338905995612959273a5c63f93636c14614ac8737d10200000000000000280000000000000057000b030000000060fa8f31469b7033a7ca72c7b9f1144f1c8b6f0bc948db1bff572ca8e94c830f",
+        "hash": "461de256686b05d5c70c3c44cf1ea785c0b3341ea39d2410a5a20699d1359497"
+      },
+      {
+        "name": "d",
+        "seed": "0404040404040404040404040404040404040404040404040404040404040404",
+        "wallet": "ca93ac1705187071d67b83c7ff0efe8108e8ec4530575d7726879333dbdabe7c",
+        "epoch_index": "2",
+        "score": "0",
+        "amount": "1",
+        "evidence_hash": "ca78ca0337a3e2aa01e75e52cffdbb128ab2a632fee9959f0881b2292e8df1b3",
+        "encoded": "00ca93ac1705187071d67b83c7ff0efe8108e8ec4530575d7726879333dbdabe7c020000000000000000000000000000000100000000000000ca78ca0337a3e2aa01e75e52cffdbb128ab2a632fee9959f0881b2292e8df1b3",
+        "hash": "b4704ea271f5f14215cb82a655e50cdc15fe3bd9ef1eb7675e02ba0d3d3e484c"
+      },
+      {
+        "name": "e",
+        "seed": "0505050505050505050505050505050505050505050505050505050505050505",
+        "wallet": "6e7a1cdd29b0b78fd13af4c5598feff4ef2a97166e3ca6f2e4fbfccd80505bf1",
+        "epoch_index": "2",
+        "score": "18446744073709551615",
+        "amount": "7",
+        "evidence_hash": "090b1e1ffddfbcb77b71a8375018b815c4bba66037dc0203c484a1ce02b8de8a",
+        "encoded": "006e7a1cdd29b0b78fd13af4c5598feff4ef2a97166e3ca6f2e4fbfccd80505bf10200000000000000ffffffffffffffff0700000000000000090b1e1ffddfbcb77b71a8375018b815c4bba66037dc0203c484a1ce02b8de8a",
+        "hash": "731adde09e3cab7feb431632853b94de3d69c8178c100a9d081ef5834df1946c"
+      }
+    ],
+    "trees": [
+      {
+        "leaves": ["a"],
+        "root": "c569fcd93ee3b5e0e008b97b5d1df21f18480eb6ed934e1cc149cf6f80734266",
+        "proofs": {
+          "a": []
+        }
+      },
+      {
+        "leaves": ["b", "a"],
+        "root": "a74dda5c9080732866713fa0552c6aa9c9586a9dfcf0004660dea2e9865c5276",
+        "proofs": {
+          "b": ["c569fcd93ee3b5e0e008b97b5d1df21f18480eb6ed934e1cc149cf6f80734266"],
+          "a": ["5c03523aefb56d9f796535633a65247e35a390d033061955ad733c439d733671"]
+        }
+      },
+      {
+        "leaves": ["c", "b", "a"],
+        "root": "9de0043556b9d36ada504e27d2924c1f197447c44f2b2235948b530087257d70",
+        "proofs": {
+          "c": [
+            "5c03523aefb56d9f796535633a65247e35a390d033061955ad733c439d733671",
+            "c569fcd93ee3b5e0e008b97b5d1df21f18480eb6ed934e1cc149cf6f80734266"
+          ],
+          "b": [
+            "461de256686b05d5c70c3c44cf1ea785c0b3341ea39d2410a5a20699d1359497",
+            "c569fcd93ee3b5e0e008b97b5d1df21f18480eb6ed934e1cc149cf6f80734266"
+          ],
+          "a": ["39f1e0f0a7c9d78e83be493cc0240f7591cac5677203b534c182f5fa50e1612f"]
+        }
+      },
+      {
+        "leaves": ["c", "b", "e", "d", "a"],
+        "root": "59fa80cc481818be7c23ecf4b6a6c99b961d98a322797458621fd4b21fe025e4",
+        "proofs": {
+          "c": [
+            "5c03523aefb56d9f796535633a65247e35a390d033061955ad733c439d733671",
+            "c993f3ab7c5b338634a5a325f1510f0e8058188e576a1a6ee877547a970aed98",
+            "c569fcd93ee3b5e0e008b97b5d1df21f18480eb6ed934e1cc149cf6f80734266"
+          ],
+          "b": [
+            "461de256686b05d5c70c3c44cf1ea785c0b3341ea39d2410a5a20699d1359497",
+            "c993f3ab7c5b338634a5a325f1510f0e8058188e576a1a6ee877547a970aed98",
+            "c569fcd93ee3b5e0e008b97b5d1df21f18480eb6ed934e1cc149cf6f80734266"
+          ],
+          "e": [
+            "b4704ea271f5f14215cb82a655e50cdc15fe3bd9ef1eb7675e02ba0d3d3e484c",
+            "39f1e0f0a7c9d78e83be493cc0240f7591cac5677203b534c182f5fa50e1612f",
+            "c569fcd93ee3b5e0e008b97b5d1df21f18480eb6ed934e1cc149cf6f80734266"
+          ],
+          "d": [
+            "731adde09e3cab7feb431632853b94de3d69c8178c100a9d081ef5834df1946c",
+            "39f1e0f0a7c9d78e83be493cc0240f7591cac5677203b534c182f5fa50e1612f",
+            "c569fcd93ee3b5e0e008b97b5d1df21f18480eb6ed934e1cc149cf6f80734266"
+          ],
+          "a": ["6aa79beff2bcc02eedfa850101bdad038a1d7baca9f5b4440563092bd6888b27"]
+        }
+      }
+    ],
+    "tampered": [
+      {
+        "tree": 3,
+        "leaf": "b",
+        "proof": [
+          "461de256686b05d5c70c3c44cf1ea785c0b3341ea39d2410a5a20699d1359496",
+          "c569fcd93ee3b5e0e008b97b5d1df21f18480eb6ed934e1cc149cf6f80734266"
+        ],
+        "valid": false
+      }
+    ]
+  },
+  "program": {
+    "instructions": {
+      "initialize_community": {
+        "discriminator": "c833842cc0567d29",
+        "accounts": [
+          {
+            "name": "admin",
+            "writable": true,
+            "signer": true
+          },
+          {
+            "name": "mint",
+            "writable": false,
+            "signer": false
+          },
+          {
+            "name": "community",
+            "writable": true,
+            "signer": false
+          },
+          {
+            "name": "vault",
+            "writable": true,
+            "signer": false
+          },
+          {
+            "name": "system_program",
+            "writable": false,
+            "signer": false
+          }
+        ],
+        "args": {
+          "fee_recipient": "22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6"
+        },
+        "data": "c833842cc0567d2922fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6"
+      },
+      "publish_epoch": {
+        "discriminator": "de06885236f6f578",
+        "accounts": [
+          {
+            "name": "admin",
+            "writable": true,
+            "signer": true
+          },
+          {
+            "name": "community",
+            "writable": true,
+            "signer": false
+          },
+          {
+            "name": "vault",
+            "writable": true,
+            "signer": false
+          },
+          {
+            "name": "fee_recipient",
+            "writable": true,
+            "signer": false
+          },
+          {
+            "name": "epoch",
+            "writable": true,
+            "signer": false
+          },
+          {
+            "name": "system_program",
+            "writable": false,
+            "signer": false
+          }
+        ],
+        "args": {
+          "index": "2",
+          "root": "4813494d137e1631bba301d5acab6e7bb7aa74ce1185d456565ef51d737677b2",
+          "audit_hash": "b81f37a043a6f767e7c94d105f4bd31282f3ecc20680bb9d09bd93461cf4c863",
+          "gross_lamports": "500000000",
+          "allocated_lamports": "280789473"
+        },
+        "data": "de06885236f6f57802000000000000004813494d137e1631bba301d5acab6e7bb7aa74ce1185d456565ef51d737677b2b81f37a043a6f767e7c94d105f4bd31282f3ecc20680bb9d09bd93461cf4c8630065cd1d00000000e181bc1000000000"
+      },
+      "claim": {
+        "discriminator": "3ec6d6c1d59f6cd2",
+        "accounts": [
+          {
+            "name": "claimant",
+            "writable": true,
+            "signer": true
+          },
+          {
+            "name": "community",
+            "writable": true,
+            "signer": false
+          },
+          {
+            "name": "vault",
+            "writable": true,
+            "signer": false
+          },
+          {
+            "name": "epoch",
+            "writable": true,
+            "signer": false
+          },
+          {
+            "name": "receipt",
+            "writable": true,
+            "signer": false
+          },
+          {
+            "name": "system_program",
+            "writable": false,
+            "signer": false
+          }
+        ],
+        "args": {
+          "score": "255",
+          "amount": "121250000",
+          "evidence_hash": "72b14f73d2de203b79f9ca0491a4e2f1d7479301008504c3c2505961929c755f",
+          "proof": [
+            "f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a",
+            "3946ca64ff78d93ca61090a437cbb6b3d2ca0d488f5f9ccf3059608368b27693"
+          ]
+        },
+        "data": "3ec6d6c1d59f6cd2ff00000000000000d0203a070000000072b14f73d2de203b79f9ca0491a4e2f1d7479301008504c3c2505961929c755f02000000f64551fcd6f07823cb87971cfb91446425da18286b3ab1ef935e0cbd7a69f68a3946ca64ff78d93ca61090a437cbb6b3d2ca0d488f5f9ccf3059608368b27693"
+      }
+    },
+    "accounts": {
+      "community": {
+        "discriminator": "c049d39eb2511370",
+        "fields": {
+          "mint": "db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+          "admin": "2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+          "fee_recipient": "22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6",
+          "outstanding_lamports": "280789473",
+          "bump": 254,
+          "vault_bump": 253
+        },
+        "data": "c049d39eb2511370db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db1222fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6e181bc1000000000fefd"
+      },
+      "vault": {
+        "discriminator": "d308e82b02987577",
+        "fields": {
+          "bump": 252
+        },
+        "data": "d308e82b02987577fc"
+      },
+      "epoch": {
+        "discriminator": "5d537859978a986c",
+        "fields": {
+          "community": "d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+          "index": "2",
+          "root": "4813494d137e1631bba301d5acab6e7bb7aa74ce1185d456565ef51d737677b2",
+          "audit_hash": "b81f37a043a6f767e7c94d105f4bd31282f3ecc20680bb9d09bd93461cf4c863",
+          "gross_lamports": "500000000",
+          "fee_lamports": "15000000",
+          "allocated_lamports": "280789473",
+          "claimed_lamports": "121250000",
+          "published_at": "1791518400",
+          "bump": 251
+        },
+        "data": "5d537859978a986cd759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c4802000000000000004813494d137e1631bba301d5acab6e7bb7aa74ce1185d456565ef51d737677b2b81f37a043a6f767e7c94d105f4bd31282f3ecc20680bb9d09bd93461cf4c8630065cd1d00000000c0e1e40000000000e181bc1000000000d0203a0700000000c066c86a00000000fb"
+      },
+      "claim_receipt": {
+        "discriminator": "dfe90be57ca5cf1c",
+        "fields": {
+          "epoch": "6355691c178a8ff91007a7478afb955ef7352c63e7b25703984cf78b26e21a56",
+          "wallet": "ee93a4f66f8d16b819bb9beb9ffccdfcdc1412e87fee6a324c2a99a1e0e67148",
+          "score": "255",
+          "amount": "121250000",
+          "evidence_hash": "72b14f73d2de203b79f9ca0491a4e2f1d7479301008504c3c2505961929c755f",
+          "claimed_at": "1791522000",
+          "bump": 250
+        },
+        "data": "dfe90be57ca5cf1c6355691c178a8ff91007a7478afb955ef7352c63e7b25703984cf78b26e21a56ee93a4f66f8d16b819bb9beb9ffccdfcdc1412e87fee6a324c2a99a1e0e67148ff00000000000000d0203a070000000072b14f73d2de203b79f9ca0491a4e2f1d7479301008504c3c2505961929c755fd074c86a00000000fa"
+      }
+    }
+  }
+}
