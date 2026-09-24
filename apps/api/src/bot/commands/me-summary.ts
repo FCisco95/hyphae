@@ -1,10 +1,8 @@
-import { POINT_UNITS_PER_POINT } from "@hyphae/core";
+import { exactPoints } from "@hyphae/core";
 import { contributions, type Db, epochs, scoringRuns } from "@hyphae/db";
 import { and, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { dbClock, type RewardDeps } from "../../rewards/config.js";
 import { effectiveResults } from "../../rewards/effective.js";
-
-const DECIMALS = POINT_UNITS_PER_POINT.toString().length - 1;
 
 // Only a signed wallet is payable (D1); a pasted one keeps scoring but is marked.
 export function walletLines(member: {
@@ -15,13 +13,6 @@ export function walletLines(member: {
   return member.linkMethod === "signature"
     ? [`${short} (verified)`]
     : [short, "Wallet not verified. Send /link to verify it (needed before any payout)."];
-}
-
-export function formatPointUnits(units: bigint): string {
-  const whole = units / POINT_UNITS_PER_POINT;
-  const fraction = (units % POINT_UNITS_PER_POINT).toString().padStart(DECIMALS, "0");
-  const trimmed = fraction.replace(/0+$/, "");
-  return trimmed ? `${whole}.${trimmed}` : whole.toString();
 }
 
 const utc = (d: Date) => `${d.toISOString().slice(0, 16).replace("T", " ")} UTC`;
@@ -70,6 +61,6 @@ export async function meSummary(
       ? `Epoch ${epoch.index} closed at ${utc(r.closesAt)}; these points no longer change.`
       : `Epoch ${epoch.index}, open until ${utc(r.closesAt)}`,
     `Entries: ${r.totalEntries}${unscoredNote}`,
-    `Points: ${formatPointUnits(BigInt(total.pointUnits))} (${total.wholePoints} whole)`,
+    `Points: ${exactPoints(BigInt(total.pointUnits))} (${total.wholePoints} whole)`,
   ];
 }

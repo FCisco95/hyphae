@@ -3,7 +3,7 @@ import { contributions, epochs, scoringRuns } from "@hyphae/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { beginDispatch, completeDispatch, runEvaluation } from "../../rewards/evaluation.js";
 import { createTestDb, later, seedCommunity, seedRewardLane, T0 } from "../../rewards/test-db.js";
-import { formatPointUnits, meSummary, walletLines } from "./me-summary.js";
+import { meSummary, walletLines } from "./me-summary.js";
 
 const MIN = 60_000;
 const WEEK_MS = 7 * 86_400_000;
@@ -44,15 +44,6 @@ const legacyRun = (contributionId: string, n: number) =>
     costMicroUsd: 1,
     evidenceHash: `legacy-${contributionId}-${n}`,
   });
-
-describe("formatPointUnits", () => {
-  it("prints exact points without trailing zeros", () => {
-    expect(formatPointUnits(25_500_000_000n)).toBe("255");
-    expect(formatPointUnits(8_364_850_000n)).toBe("83.6485");
-    expect(formatPointUnits(1n)).toBe("0.00000001");
-    expect(formatPointUnits(0n)).toBe("0");
-  });
-});
 
 describe("meSummary", () => {
   it("shows the current epoch through the effective read, ignoring legacy runs", async () => {

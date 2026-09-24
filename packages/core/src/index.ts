@@ -1,5 +1,6 @@
 export * from "./canonical.js";
 export * from "./merkle.js";
+export * from "./read-api.js";
 export * from "./reward-eval.js";
 export * from "./reward-points.js";
 export * from "./rubric.js";
