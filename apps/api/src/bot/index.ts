@@ -5,11 +5,11 @@ import { linkInGroup, linkStart } from "./commands/link.js";
 import { me } from "./commands/me.js";
 import { raid } from "./commands/raid.js";
 import { submit } from "./commands/submit.js";
-import { logBotError } from "./errors.js";
+import { containBotError } from "./errors.js";
 
 export const bot = new Bot(env.TELEGRAM_BOT_TOKEN);
 
-const commands = bot.errorBoundary(logBotError);
+const commands = bot.errorBoundary(containBotError);
 
 commands.command("start", async (ctx) => {
   if (ctx.chat.type === "private" && (await linkStart(ctx))) return;
