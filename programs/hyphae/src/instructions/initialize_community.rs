@@ -4,16 +4,34 @@ use crate::constants::*;
 use crate::error::HyphaeError;
 use crate::state::{Community, Vault};
 
+// SPL Token mints are 82 bytes. Token-2022 mints are 82 bytes without extensions; with them, the
+// base layout is padded to 165 bytes and byte 165 is the account type (1 = mint).
+const MINT_LEN: usize = 82;
+const ACCOUNT_TYPE_OFFSET: usize = 165;
+const ACCOUNT_TYPE_MINT: u8 = 1;
+
+fn is_mint(info: &AccountInfo) -> bool {
+    let len = info.data_len();
+    if *info.owner == TOKEN_PROGRAM_ID {
+        return len == MINT_LEN;
+    }
+    if *info.owner == TOKEN_2022_PROGRAM_ID {
+        return len == MINT_LEN
+            || (len > ACCOUNT_TYPE_OFFSET
+                && info
+                    .try_borrow_data()
+                    .is_ok_and(|d| d[ACCOUNT_TYPE_OFFSET] == ACCOUNT_TYPE_MINT));
+    }
+    false
+}
+
 #[derive(Accounts)]
 pub struct InitializeCommunity<'info> {
     #[account(mut)]
     pub admin: Signer<'info>,
-    /// CHECK: only its address is used, as a seed; the constraint checks it is a token mint's
-    /// account, so a wallet address cannot be registered by mistake.
-    #[account(
-        constraint = *mint.owner == TOKEN_PROGRAM_ID || *mint.owner == TOKEN_2022_PROGRAM_ID
-            @ HyphaeError::NotAMint
-    )]
+    /// CHECK: only its address is used, as a seed; the constraint checks it is a mint, so a
+    /// wallet or token account address cannot be registered by mistake.
+    #[account(constraint = is_mint(&mint) @ HyphaeError::NotAMint)]
     pub mint: UncheckedAccount<'info>,
     #[account(
         init,

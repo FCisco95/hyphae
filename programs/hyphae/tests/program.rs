@@ -16,6 +16,8 @@ use solana_transaction_error::TransactionError;
 
 const SOL: u64 = 1_000_000_000;
 const TOKEN_PROGRAM: Pubkey = Pubkey::from_str_const("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+const TOKEN_2022_PROGRAM: Pubkey =
+    Pubkey::from_str_const("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 const TX_FEE: u64 = 5_000;
 
 // Anchor error codes: framework constraints and this program's errors (6000 + variant index).
@@ -85,20 +87,32 @@ fn funded(svm: &mut LiteSVM, lamports: u64) -> Keypair {
     k
 }
 
-fn mint_account(svm: &mut LiteSVM, owner: Pubkey) -> Pubkey {
-    let mint = Pubkey::new_unique();
+fn owned_account(svm: &mut LiteSVM, owner: Pubkey, data: Vec<u8>) -> Pubkey {
+    let key = Pubkey::new_unique();
     svm.set_account(
-        mint,
+        key,
         Account {
             lamports: SOL,
-            data: vec![0; 82],
+            data,
             owner,
             executable: false,
             rent_epoch: 0,
         },
     )
     .unwrap();
-    mint
+    key
+}
+
+fn mint_account(svm: &mut LiteSVM, owner: Pubkey) -> Pubkey {
+    owned_account(svm, owner, vec![0; 82])
+}
+
+// Token-2022 accounts with extensions: base layout padded to 165 bytes, then the account type
+// (1 = mint, 2 = token account), then the extensions.
+fn token_2022_with_extensions(svm: &mut LiteSVM, account_type: u8) -> Pubkey {
+    let mut data = vec![0; 170];
+    data[165] = account_type;
+    owned_account(svm, TOKEN_2022_PROGRAM, data)
 }
 
 fn initialize_ix(admin: &Pubkey, mint: &Pubkey, fee_recipient: Pubkey) -> Instruction {
@@ -345,12 +359,29 @@ fn initialize_refuses_an_account_that_is_not_a_token_mint() {
     .unwrap();
     let admin = funded(&mut svm, SOL);
     let wallet = funded(&mut svm, SOL).pubkey();
-    let outcome = send(
-        &mut svm,
-        initialize_ix(&admin.pubkey(), &wallet, Pubkey::new_unique()),
-        &[&admin],
-    );
-    assert_eq!(custom(&outcome), Some(NOT_A_MINT));
+    // A token account is owned by the token program too, but it is not a mint.
+    let token_account = owned_account(&mut svm, TOKEN_PROGRAM, vec![0; 165]);
+    let token_2022_account = token_2022_with_extensions(&mut svm, 2);
+    for not_a_mint in [wallet, token_account, token_2022_account] {
+        let outcome = send(
+            &mut svm,
+            initialize_ix(&admin.pubkey(), &not_a_mint, Pubkey::new_unique()),
+            &[&admin],
+        );
+        assert_eq!(custom(&outcome), Some(NOT_A_MINT));
+    }
+    // Token-2022 mints, with and without extensions, are mints.
+    for mint in [
+        mint_account(&mut svm, TOKEN_2022_PROGRAM),
+        token_2022_with_extensions(&mut svm, 1),
+    ] {
+        send(
+            &mut svm,
+            initialize_ix(&admin.pubkey(), &mint, Pubkey::new_unique()),
+            &[&admin],
+        )
+        .unwrap();
+    }
 }
 
 #[test]
