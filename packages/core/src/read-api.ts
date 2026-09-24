@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { POINT_UNITS_PER_POINT } from "./reward-points.js";
 
 const DECIMALS = POINT_UNITS_PER_POINT.toString().length - 1;
@@ -30,3 +31,222 @@ export function creditRule(raw: number, flags: readonly string[], credited: numb
   if (credited === 0 && raw < FLOOR) return "below_floor";
   throw new Error(`read-api: no credit gate turns raw ${raw} into credited ${credited}`);
 }
+
+// Public read API v1 response schemas (H-CONTRACT Part A, ruled 2026-09-24). The api checks its
+// own output against the strict set; consumers parse with the loose set, which ignores fields
+// added later inside v1 (A4) but keeps every rule about the fields it knows.
+function readApiSchemas(strict: boolean) {
+  const obj = <T extends z.ZodRawShape>(shape: T) =>
+    strict ? z.strictObject(shape) : z.object(shape);
+
+  const iso = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/);
+  const uint = z.string().regex(/^(0|[1-9]\d*)$/);
+  const decimal = z.string().regex(/^(0|[1-9]\d*)(\.\d*[1-9])?$/);
+  const uuid = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+  const hex64 = z.string().regex(/^[0-9a-f]{64}$/);
+  const count = z.number().int().nonnegative();
+  const quality = z.number().int().min(0).max(100);
+  const bps = z.number().int().nonnegative();
+
+  const walletShape = {
+    wallet: z.string().min(1).nullable(),
+    wallet_status: z.enum(["verified", "unverified", "none"]),
+  };
+  // Only a signed wallet is ever served (A5).
+  const walletRule = (o: { wallet: string | null; wallet_status: string }) =>
+    (o.wallet_status === "verified") === (o.wallet !== null);
+
+  const epochStatus = z.enum(["open", "closing", "closed"]);
+  const state = z.enum([
+    "counted",
+    "pending",
+    "pending_at_close",
+    "pending_reconciliation",
+    "excluded",
+  ]);
+  const unavailable = obj({ status: z.literal("unavailable"), reason: z.string().min(1) });
+  const effort = z.enum(["eligible", "ineligible", "not_nominated"]);
+  const creditRules = z.enum(["none", "hard_zero", "ai_cap_mild", "ai_cap_strong", "below_floor"]);
+
+  const selected = obj({
+    revision: z.number().int().positive(),
+    raw_quality: quality,
+    credited_quality: quality,
+    credit_rule: creditRules,
+    flags: z.array(z.string()),
+    effort,
+    timing_bps: bps,
+    multiplier_bps: bps,
+    point_units: uint,
+    points: decimal,
+    explanation: z.string(),
+    corrected: z.boolean(),
+  });
+
+  const rowShape = {
+    id: uuid,
+    epoch: obj({ index: count, closes_at: iso, closed: z.boolean(), final: z.boolean() }),
+    member_id: uuid,
+    ...walletShape,
+    kind: z.enum(["reply", "quote", "post", "text"]),
+    url: z.string().nullable(),
+    raid_id: uuid.nullable(),
+    accepted_at: iso,
+    state,
+    selected: selected.nullable(),
+  };
+  const rowRule = (o: { state: string; selected: unknown }) =>
+    (o.state === "counted") === (o.selected !== null);
+  const row = obj(rowShape).refine(walletRule).refine(rowRule);
+
+  const criterion = obj({ met: z.boolean(), note: z.string() });
+  const revision = obj({
+    revision: z.number().int().positive(),
+    status: z.enum(["selected", "superseded", "late"]),
+    accepted_at: iso,
+    affects_allocation: z.boolean(),
+    source: z.enum(["model", "correction"]),
+    raw_quality: quality,
+    credited_quality: quality,
+    credit_rule: creditRules,
+    flags: z.array(z.string()),
+    effort,
+    effort_criteria: obj({
+      original_substance: criterion,
+      inspectable_work: criterion,
+      community_contribution: criterion,
+    }).nullable(),
+    timing_bps: bps,
+    multiplier_bps: bps,
+    point_units: uint,
+    points: decimal,
+    explanation: z.string(),
+    model: obj({
+      model: z.string(),
+      prompt_version: z.string(),
+      prompt_hash: hex64,
+      input_hash: hex64,
+      output_hash: hex64,
+      latency_ms: count.nullable(),
+      cost_micro_usd: count.nullable(),
+    }).nullable(),
+    correction: obj({
+      actor: z.string().min(1),
+      authority: z.enum(["community_admin", "operator_script"]),
+      reason: z.string(),
+      evidence_refs: z.array(z.string()),
+    }).nullable(),
+  }).refine(
+    (r) =>
+      (r.source === "model") === (r.model !== null) &&
+      (r.source === "correction") === (r.correction !== null),
+  );
+
+  return {
+    community: obj({
+      mint: z.string().min(1),
+      name: z.string(),
+      reward_intake: z.enum(["open", "paused"]),
+      current_epoch: count.nullable(),
+      epochs: z.array(obj({ index: count, opens_at: iso, closes_at: iso, status: epochStatus })),
+      as_of: iso,
+    }),
+    epoch: obj({
+      community: obj({ mint: z.string().min(1), name: z.string() }),
+      index: count,
+      opens_at: iso,
+      closes_at: iso,
+      status: epochStatus,
+      closed: z.boolean(),
+      final: z.boolean(),
+      as_of: iso,
+      config: obj({
+        id: uuid,
+        rubric_version: z.string(),
+        prompt_version: z.string(),
+        effort_multiplier_bps: bps,
+        slot_limit: z.number().int().positive(),
+        payload: z.record(z.string(), z.unknown()),
+      }),
+      counts: obj({
+        contributions: count,
+        members: count,
+        counted: count,
+        pending: count,
+        pending_at_close: count,
+        pending_reconciliation: count,
+        excluded: count,
+      }),
+      totals: obj({ point_units: uint, points: decimal }),
+      snapshot: z.union([
+        obj({ status: z.literal("frozen"), closed_at: iso, cutoff_assumption: z.string() }),
+        obj({ status: z.literal("not_frozen") }),
+      ]),
+      allocation: unavailable,
+      payment: unavailable,
+    }),
+    contributions: obj({
+      community: obj({ mint: z.string().min(1) }),
+      epoch: obj({ index: count, closed: z.boolean(), final: z.boolean() }),
+      as_of: iso,
+      total_contributions: count,
+      offset: count,
+      limit: z.number().int().min(1).max(100),
+      contributions: z.array(row),
+    }),
+    leaderboard: obj({
+      community: obj({ mint: z.string().min(1) }),
+      epoch: obj({ index: count, opens_at: iso, closes_at: iso }),
+      closed: z.boolean(),
+      final: z.boolean(),
+      as_of: iso,
+      total_entries: count,
+      total_contributions: count,
+      offset: count,
+      limit: z.number().int().min(1).max(100),
+      entries: z.array(
+        obj({
+          rank: z.number().int().positive(),
+          member_id: uuid,
+          ...walletShape,
+          point_units: uint,
+          points: decimal,
+          whole_points: uint,
+          contributions: count,
+          counted: count,
+          pending: count,
+        }).refine(walletRule),
+      ),
+    }),
+    contribution: obj({
+      ...rowShape,
+      community: obj({ mint: z.string().min(1) }),
+      text: z.string(),
+      capture: obj({
+        source: z.enum(["x_oembed", "telegram_text"]),
+        captured_at: iso,
+        limitations: z.array(z.string()),
+      }),
+      reentry_of: uuid.nullable(),
+      reentered_as: uuid.nullable(),
+      nomination: obj({ kind: z.enum(["new_work", "upgrade"]), state: z.string() }).nullable(),
+      revisions: z.array(revision),
+    })
+      .refine(walletRule)
+      .refine(rowRule),
+    error: obj({ error: z.enum(["not_found", "bad_request", "unavailable"]) }),
+  };
+}
+
+export const ReadApiV1 = readApiSchemas(true);
+export const ReadApiV1Loose = readApiSchemas(false);
+
+export type CommunityV1 = z.infer<typeof ReadApiV1.community>;
+export type EpochV1 = z.infer<typeof ReadApiV1.epoch>;
+export type ContributionsV1 = z.infer<typeof ReadApiV1.contributions>;
+export type ContributionRowV1 = ContributionsV1["contributions"][number];
+export type LeaderboardV1 = z.infer<typeof ReadApiV1.leaderboard>;
+export type LeaderboardEntryV1 = LeaderboardV1["entries"][number];
+export type ContributionV1 = z.infer<typeof ReadApiV1.contribution>;
+export type RevisionV1 = ContributionV1["revisions"][number];
+export type SelectedV1 = NonNullable<ContributionRowV1["selected"]>;
