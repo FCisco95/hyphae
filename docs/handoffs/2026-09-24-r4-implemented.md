@@ -50,11 +50,21 @@ One P2 inline finding on `2ac0c3e`: `/me` treated any epoch row as a reward epoc
 
 Not changed: `/submit` and `/effort` still route such a community into admission, which refuses with `legacy_epoch` (R3 observation 3). The cutover precondition "MYCEL `epochs` is empty before bootstrap" covers it, and Neon has zero epochs.
 
+## Independent review on PR #12
+
+A `/code-review` pass on `14ab993` returned 10 unverified findings. The top three were checked against the code:
+
+- **Stale message after a correction (valid).** The notify sweep re-sent any unnotified dispatch decision inside the 24 h window, including one a correction or effort upgrade had replaced, so a member could be told points the effective read no longer counts. Fixed test-first in `3085ebf`: the sweep skips decisions that have a successor.
+- **Blank `--raw-quality` became 0 (valid).** `z.coerce.number()` accepted `""` and whitespace (reproduced), so an unset shell variable would append a zero-quality correction. Fixed test-first in `b3e5872`: digits only.
+- **Effort correction "records disagree" (kept as is, Cisco's call).** The nomination state records how its dispatch completed; rewriting it would break append-only (O6), and its only reader is the correction's own eligibility check. No code reads `reward_decisions.nomination_id`; a correction reaches its origin through `predecessor_id`. The copied `effort_criteria` is the model's record, and the correction reason carries the operator's override. Nothing reads it today.
+
+Gate re-run on `b3e5872`: core 54, api 189, typecheck, Biome (108 files), drizzle-kit check, `git diff --check`, `test:pg` 6/6, all exit 0. Findings 4–10 (closed-epoch "pending" wording, unpinned newer epoch in `/me`, unbounded `inArray`, `FOR SHARE` on every `/me`, duplicated point formula, `--flags` parsing, lineage-map copying) are not addressed yet.
+
 ## Preconditions added to the cutover
 
 Migration 0006 joins the apply list: `main` after R4 must not be deployed before 0006 is applied to Neon. The apply needs its own authorization, like 0003–0005.
 
 ## Next
 
-1. Open the R4 PR, read Codex's inline comments, independent review in a fresh session.
+1. Decide which of review findings 4–10 to take before merge.
 2. Merge only on Cisco's yes. R5 after that.

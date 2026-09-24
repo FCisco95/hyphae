@@ -1,6 +1,6 @@
 ---
 date: 2026-09-24
-summary: R4 is built test-first on feat/r4-effective-reads and open as PR #12 (effective read, /me for the current epoch, append-only corrections, migration 0006 approved but not applied). Full gate green including test:pg 6/6. Nothing deployed or bootstrapped. Next: Codex's inline comments, an independent review, merge on Cisco's yes; then R5.
+summary: R4 is built test-first on feat/r4-effective-reads and open as PR #12 (effective read, /me for the current epoch, append-only corrections, migration 0006 approved but not applied). Full gate green including test:pg 6/6. Nothing deployed or bootstrapped. Codex and an independent review handled (findings 4–10 open). Next: decide 4–10, merge on Cisco's yes; then R5.
 ---
 
 # Hyphae handoff
@@ -29,13 +29,13 @@ Get R4 reviewed and merged (PR #12). R5 (strict close, unfunded snapshot) starts
 
 ## Recent Changes
 
-2026-09-24: R4 built test-first (commits `5a2aa91`, `d00824c`, `67673ea`, `5b7083d`, `a6e98b1`, `457aaa0`), records and PR #12. Codex's one P2 finding (legacy epochs in `/me`) fixed test-first in `564d3c3` and answered in its thread.
+2026-09-24: R4 built test-first (commits `5a2aa91`, `d00824c`, `67673ea`, `5b7083d`, `a6e98b1`, `457aaa0`), records and PR #12. Codex's one P2 finding (legacy epochs in `/me`) fixed test-first in `564d3c3` and answered in its thread. Independent `/code-review`: two valid findings fixed test-first (`3085ebf` sweep drops superseded messages, `b3e5872` blank `--raw-quality`); effort-correction consistency kept as is on Cisco's call; findings 4–10 open.
 
 2026-09-23 (midnight): PR #10 merged; migrations 0003–0005 applied to Neon and verified.
 
 ## Validation
 
-Fresh on `564d3c3` (after the Codex fix): `pnpm -r test` exit 0 (core 54, api 188); `pnpm -r typecheck` exit 0; `pnpm exec biome check .` exit 0 (108 files); `drizzle-kit check` exit 0; `test:pg` 6/6 exit 0; `git diff --check origin/main...HEAD` exit 0.
+Fresh on `b3e5872` (after the review fixes): `pnpm -r test` exit 0 (core 54, api 189); `pnpm -r typecheck` exit 0; `pnpm exec biome check .` exit 0 (108 files); `drizzle-kit check` exit 0; `test:pg` 6/6 exit 0; `git diff --check` exit 0.
 
 ## Known Issues / Watch List
 
@@ -47,7 +47,7 @@ Fresh on `564d3c3` (after the Codex fix): `pnpm -r test` exit 0 (core 54, api 18
 
 ## Next Actions
 
-1. PR #12: Codex's one inline finding is fixed (`564d3c3`). Remaining: independent review in a fresh session.
+1. PR #12: Codex finding and top 3 review findings handled (see the record's "Independent review"). Remaining: decide on findings 4–10, push.
 2. Merge on Cisco's yes. Then R5 on `feat/r5-close-snapshot`, test-first.
 3. Weekly video #2 on Friday per `docs/demo/2026-09-25-weekly-video-2.md`.
 4. Pending Cisco decisions from `2026-09-24-plan.md`: cutover timing, wallet-linking route, calendar.
