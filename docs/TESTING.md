@@ -46,4 +46,4 @@ These are built or scoped but not running in the group. Nothing here works until
 - **Seven-day epochs** with rules pinned at the start of each week. A rubric change can't touch a week that's already open.
 - **`/me` for the current epoch only**, showing each contribution's current decision.
 - **A frozen snapshot at each weekly close**, followed by a public audit page with every score, its reasoning and its rubric version.
-- **Verified wallet linking** before any real payout.
+- **Verified wallet linking** before any real payout. `/link` in the group will answer with a private link to the bot. The bot checks you're in the group and sends a one-time page link that expires in 15 minutes. On that page your wallet signs a readable message: free, and it moves no funds. `/link <address>` stops working; a wallet linked the old way keeps scoring but is marked not verified in `/me` and can't be paid until you sign. A wallet another member already holds is refused.

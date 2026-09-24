@@ -62,12 +62,13 @@ Scores are computed off-chain. At each close, the epoch's full score set is comm
 | Effort slots, `/effort`, dispatch that never pays twice (R3); 198 tests plus a real-Postgres race suite | Locally tested, merged, not deployed; database tables applied to Neon on 2026-09-23 | PRs #6, #9 and #10; all four review findings fixed |
 | Rubric 1.3.0 (grounded price talk allowed, criticism graded like praise) | Candidate, not applied | `docs/rubrics/CHANGELOG.md` |
 | Epoch-scoped `/me` and corrections (R4) | Locally tested, merged, not deployed; migration 0006 not applied | PR #12 |
-| Strict close with a frozen snapshot, and re-entry of expired work (R5) | Locally tested, in review, not deployed; migration 0007 not applied | PR #13 |
-| Public audit page, on-chain root and claim, devnet run, mainnet payout, verified wallet linking | Planned | Target: before 2026-10-12 |
+| Strict close with a frozen snapshot, and re-entry of expired work (R5) | Locally tested, on `main`, not deployed; migration 0007 not applied | PR #13; Codex review, two findings fixed |
+| Verified wallet linking: private single-use link, signed message checked by `@organichub/verify` 0.1.0, append-only wallet history | Locally tested, on `main`, not deployed; migration 0008 not applied | `docs/handoffs/2026-09-24-verified-link-implemented.md` |
+| Public audit page, on-chain root and claim, devnet run, mainnet payout, token-hold gate | Planned | Target: before 2026-10-12 |
 
 ## 7. Limits
 
 - **Text only.** The scorer reads a post's text through X's public oEmbed. It can't see images or video. Work that depends on media it can't capture waits for evidence instead of being judged blind.
-- **Wallets are pasted, not verified.** `/link` accepts an address without a signature and lets a member change it. That's fine for a test group with no payouts, but not for paying real people, so verified linking is a precondition for any real payout.
+- **Wallets in the deployed bot are pasted, not verified.** The deployed `/link` accepts an address without a signature. Verified linking is built and tested locally but not deployed, so until it is, no wallet is payable. Once it ships, a closed epoch pays the wallet that was verified at its close, and a pasted wallet is never paid.
 - **No payout yet.** Points are not money. No root has been published, no claim exists and nothing has been paid.
 - **The model can disagree with the founder.** Scores are a model's reading of the rubric. When it disagrees, the answer is a public correction: a human score recorded as a new row beside the model's, with its reason.
