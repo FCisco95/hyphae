@@ -8,7 +8,13 @@ export const USAGE =
   'usage: reward-correct <contribution-id> --expected-revision <n> --reason "<text>" --evidence <ref> [--evidence <ref>…] [--raw-quality <0-100>] [--flags <a,b>|none] [--effort eligible|ineligible]';
 
 const Changes = z.object({
-  rawQuality: z.coerce.number().int().min(0).max(100).optional(),
+  // Digits only: coercing "" (an unset shell variable) would yield 0.
+  rawQuality: z
+    .string()
+    .regex(/^\d+$/)
+    .transform(Number)
+    .pipe(z.number().int().min(0).max(100))
+    .optional(),
   flags: z.array(ScoreFlag).optional(),
   effort: z.enum(["eligible", "ineligible"]).optional(),
 });

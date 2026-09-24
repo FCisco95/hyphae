@@ -63,6 +63,9 @@ describe("parseCorrectionArgs", () => {
     expect(() => parseCorrectionArgs([...base, "--flags", "great"])).toThrow();
     expect(() => parseCorrectionArgs([...base, "--raw-quality", "101"])).toThrow();
     expect(() => parseCorrectionArgs([...base, "--raw-quality", "7.5"])).toThrow();
+    // An unset shell variable must not become a zero score on an append-only row.
+    expect(() => parseCorrectionArgs([...base, "--raw-quality", ""])).toThrow();
+    expect(() => parseCorrectionArgs([...base, "--raw-quality", " "])).toThrow();
     expect(() => parseCorrectionArgs([...base, "--effort", "maybe"])).toThrow();
     expect(() =>
       parseCorrectionArgs([
