@@ -8,7 +8,8 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 **Decision:** fix both test-first before the cutover, not after. A signing bug would have made every `/link` fail in production, and the token leak affects the image that's live today. Codex reviewed both fixes twice; its findings (redact the token from every logged field, tell the member when a command may not have finished) are fixed test-first.
 **Numbers:** 318 tests (54 core, 264 api; 12 new) · typecheck, Biome, `git diff --check` exit 0 · checks passed by hand: 6 of 7 (the two-member check needs a second Telegram account; `test:pg` covers it) · 0 deployments, Neon changes or payments.
 **Commits:** `0589e88`, `dbe8b7e`, `131ee85`, `ade2d2f`; record `docs/handoffs/2026-09-24-manual-wallet-check.md`.
-**Next:** revoke the test bot token and check the production logs for the real one. Then the cutover window (Runbook B), each step on its own yes.
+**Also:** the production bot token was rotated as a precaution, because the live image has the logging bug and Fly no longer keeps the past week of logs. Revoking a token also clears the bot's webhook, so it was set again; `/me` answers in Hyphae Lab.
+**Next:** the cutover window (Runbook B), each step on its own yes. That deploy is what takes the logging fix live.
 
 ## 2026-09-24 (night) · Day 11 of 28 — a wallet has to sign before it can be paid
 
