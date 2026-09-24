@@ -163,7 +163,11 @@ describe("publication of a ready epoch", () => {
 
   it("gives no leaf and no lamports to a signed member who is not payable", async () => {
     const seed = await seedReadyEpoch(t.db, { now: NOW });
-    await t.db.delete(rulesTestPasses).where(eq(rulesTestPasses.memberId, seed.members.floor));
+    // Passed, but only after the close: that pass does not count and is not shown as one.
+    await t.db
+      .update(rulesTestPasses)
+      .set({ passedAt: new Date(seed.closesAt.getTime() + 60_000) })
+      .where(eq(rulesTestPasses.memberId, seed.members.floor));
     const publication = await buildPublication(
       t.db,
       { communityId: seed.communityId, epochId: seed.epochId },
@@ -173,7 +177,12 @@ describe("publication of a ready epoch", () => {
     const floor = publication.members.find((m) => m.member_id === seed.members.floor);
     expect(floor).toMatchObject({
       wallet: seed.wallets.floor,
-      settlement: { status: "not_payable", reasons: ["no_rules_test"], amount_lamports: "0" },
+      settlement: {
+        status: "not_payable",
+        reasons: ["no_rules_test"],
+        rules_test: { passed_at: null },
+        amount_lamports: "0",
+      },
     });
     expect(publication.leaves.map((l) => l.memberId).sort()).toEqual(
       [seed.members.effort, seed.members.ordinary].sort(),

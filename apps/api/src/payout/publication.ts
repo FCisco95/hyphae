@@ -20,7 +20,7 @@ import {
   rulesTestPasses,
 } from "@hyphae/db";
 import { getAddressEncoder } from "@solana/kit";
-import { and, eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import { epochCommitments, isoUs } from "./commitments.js";
 import { type Blocker, evaluatePayoutGate, type MemberVerdict } from "./gate.js";
 import type { RulesTest } from "./rules-test.js";
@@ -113,6 +113,8 @@ export async function buildPublication(
               and(
                 eq(rulesTestPasses.communityId, ref.communityId),
                 eq(rulesTestPasses.testId, gate.testId),
+                // P9: only a pass before closes_at counts, so only such a pass is shown.
+                lt(rulesTestPasses.passedAt, row.epoch.closesAt),
               ),
             )
         ).map((p) => [p.memberId, p.passedAt]),
