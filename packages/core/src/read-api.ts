@@ -56,7 +56,8 @@ function readApiSchemas(strict: boolean) {
   const walletRule = (o: { wallet: string | null; wallet_status: string }) =>
     (o.wallet_status === "verified") === (o.wallet !== null);
 
-  const epochStatus = z.enum(["open", "closing", "closed"]);
+  // scheduled: materialized ahead of its opens_at (a bootstrap creates epoch 1 before it opens).
+  const epochStatus = z.enum(["scheduled", "open", "closing", "closed"]);
   const state = z.enum([
     "counted",
     "pending",

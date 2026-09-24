@@ -1,0 +1,675 @@
+import {
+  type CommunityV1,
+  type ContributionRowV1,
+  type ContributionsV1,
+  type ContributionV1,
+  creditRule,
+  type EpochV1,
+  exactPoints,
+  type LeaderboardV1,
+  type PointUnits,
+  type RevisionV1,
+  type SelectedV1,
+  wholePoints,
+} from "@hyphae/core";
+import {
+  communities,
+  contributions,
+  type Db,
+  epochs,
+  memberWalletLinks,
+  rewardConfigs,
+  rewardDecisions,
+  rewardDispatches,
+  rewardEpochSnapshots,
+  rewardIntakes,
+  rewardNominations,
+  rewardSnapshotEntries,
+  rewardSnapshotMembers,
+} from "@hyphae/db";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import { RewardConfigPayload } from "../rewards/config.js";
+import { selectEffective } from "../rewards/effective.js";
+
+// The public read API v1 (H-CONTRACT Part A). Every function selects named columns only, so no
+// Telegram id, username, session, proof or idempotency key can reach a response (A5), and none
+// takes a row lock (A12): an open epoch is provisional anyway, and final numbers come from the
+// snapshot that close wrote under the lock.
+
+type State = ContributionRowV1["state"];
+type EpochRow = typeof epochs.$inferSelect;
+
+export interface Page {
+  offset: number;
+  limit: number;
+  member?: string | undefined;
+}
+
+// Postgres keeps microseconds; a JS Date would drop them (A3).
+const isoUs = (column: AnyPgColumn | SQL) =>
+  sql<string>`to_char(${column} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+const dateUs = (d: Date) => d.toISOString().replace("Z", "000Z");
+
+const readOnly = <T>(db: Db, fn: (tx: Db) => Promise<T>) =>
+  db.transaction(fn, { isolationLevel: "repeatable read", accessMode: "read only" });
+
+async function findCommunity(tx: Db, mint: string) {
+  const [row] = await tx
+    .select({
+      id: communities.id,
+      mint: communities.mint,
+      name: communities.name,
+      pausedAt: communities.rewardIntakePausedAt,
+    })
+    .from(communities)
+    .where(eq(communities.mint, mint));
+  return row;
+}
+
+interface EpochView {
+  row: EpochRow;
+  opensAt: string;
+  closesAt: string;
+  snapshot: { id: string; closedAt: string; cutoffAssumption: string } | null;
+}
+
+async function findEpochs(tx: Db, communityId: string, index?: number): Promise<EpochView[]> {
+  const rows = await tx
+    .select({
+      row: epochs,
+      opensAt: isoUs(epochs.opensAt),
+      closesAt: isoUs(epochs.closesAt),
+      snapshotId: rewardEpochSnapshots.id,
+      closedAt: isoUs(rewardEpochSnapshots.closedAt),
+      cutoffAssumption: rewardEpochSnapshots.cutoffAssumption,
+    })
+    .from(epochs)
+    .leftJoin(rewardEpochSnapshots, eq(rewardEpochSnapshots.epochId, epochs.id))
+    .where(
+      and(
+        eq(epochs.communityId, communityId),
+        // Legacy epochs have no reward configuration and are never served.
+        isNotNull(epochs.rewardConfigId),
+        index === undefined ? undefined : eq(epochs.index, index),
+      ),
+    )
+    .orderBy(desc(epochs.index));
+  return rows.map((r) => ({
+    row: r.row,
+    opensAt: r.opensAt,
+    closesAt: r.closesAt,
+    snapshot:
+      r.snapshotId && r.cutoffAssumption !== null
+        ? { id: r.snapshotId, closedAt: r.closedAt, cutoffAssumption: r.cutoffAssumption }
+        : null,
+  }));
+}
+
+const isClosed = (e: EpochRow, now: Date) => now.getTime() >= e.closesAt.getTime();
+
+function epochStatus(e: EpochView, now: Date): EpochV1["status"] {
+  if (e.snapshot) return "closed";
+  if (isClosed(e.row, now)) return "closing";
+  return now.getTime() < e.row.opensAt.getTime() ? "scheduled" : "open";
+}
+
+async function findEpoch(tx: Db, mint: string, index: number) {
+  const community = await findCommunity(tx, mint);
+  if (!community) return undefined;
+  const [epoch] = await findEpochs(tx, community.id, index);
+  return epoch ? { community, epoch } : undefined;
+}
+
+interface Entry {
+  contributionId: string;
+  memberId: string;
+  state: State;
+  decisionId: string | null;
+  acceptedAt: string;
+  taskId: string | null;
+}
+
+// Every admitted contribution of the epoch, in intake order, with its state: the snapshot's once
+// final, otherwise R4's selection at closes_at.
+async function epochEntries(tx: Db, epoch: EpochView, member?: string): Promise<Entry[]> {
+  const intakes = await tx
+    .select({
+      contributionId: rewardIntakes.contributionId,
+      memberId: rewardIntakes.memberId,
+      acceptedAt: isoUs(rewardIntakes.acceptedAt),
+      taskId: rewardIntakes.taskId,
+    })
+    .from(rewardIntakes)
+    .where(
+      and(
+        eq(rewardIntakes.epochId, epoch.row.id),
+        member ? eq(rewardIntakes.memberId, member) : undefined,
+      ),
+    )
+    .orderBy(asc(rewardIntakes.acceptedAt), asc(rewardIntakes.contributionId));
+
+  const states = new Map<string, { state: State; decisionId: string | null }>();
+  if (epoch.snapshot) {
+    const rows = await tx
+      .select({
+        contributionId: rewardSnapshotEntries.contributionId,
+        decisionId: rewardSnapshotEntries.decisionId,
+        reason: rewardSnapshotEntries.reason,
+      })
+      .from(rewardSnapshotEntries)
+      .where(eq(rewardSnapshotEntries.snapshotId, epoch.snapshot.id));
+    for (const r of rows) {
+      states.set(r.contributionId, { state: r.reason ?? "counted", decisionId: r.decisionId });
+    }
+  } else {
+    const { entries } = await selectEffective(tx, epoch.row.id, epoch.row.closesAt, member);
+    for (const e of entries) {
+      states.set(e.contributionId, {
+        state: e.state === "scored" ? "counted" : e.state === "late" ? "excluded" : "pending",
+        decisionId: e.decisionId,
+      });
+    }
+  }
+  return intakes.map((i) => {
+    const s = states.get(i.contributionId);
+    if (!s) throw new Error(`read: contribution ${i.contributionId} has no state`);
+    return { ...i, ...s };
+  });
+}
+
+type Wallet = Pick<ContributionRowV1, "wallet" | "wallet_status">;
+
+// A wallet is served only if the link valid at `at` was signed (A5, D3).
+async function publicWallets(tx: Db, memberIds: string[], at: Date): Promise<Map<string, Wallet>> {
+  const out = new Map<string, Wallet>(
+    memberIds.map((m) => [m, { wallet: null, wallet_status: "none" }]),
+  );
+  if (memberIds.length === 0) return out;
+  const rows = await tx
+    .select({
+      memberId: memberWalletLinks.memberId,
+      wallet: memberWalletLinks.wallet,
+      method: memberWalletLinks.method,
+    })
+    .from(memberWalletLinks)
+    .where(
+      and(
+        inArray(memberWalletLinks.memberId, memberIds),
+        lte(memberWalletLinks.validFrom, at),
+        or(isNull(memberWalletLinks.validTo), gt(memberWalletLinks.validTo, at)),
+      ),
+    );
+  for (const r of rows) {
+    out.set(
+      r.memberId,
+      r.method === "signature"
+        ? { wallet: r.wallet, wallet_status: "verified" }
+        : { wallet: null, wallet_status: "unverified" },
+    );
+  }
+  return out;
+}
+
+const walletTime = (e: EpochRow, now: Date) => (isClosed(e, now) ? e.closesAt : now);
+
+type Decision = typeof rewardDecisions.$inferSelect & { acceptedAtUs: string };
+
+async function decisionsById(tx: Db, ids: string[]): Promise<Map<string, Decision>> {
+  if (ids.length === 0) return new Map();
+  const rows = await tx
+    .select({ d: rewardDecisions, acceptedAtUs: isoUs(rewardDecisions.acceptedAt) })
+    .from(rewardDecisions)
+    .where(inArray(rewardDecisions.id, ids));
+  return new Map(rows.map((r) => [r.d.id, { ...r.d, acceptedAtUs: r.acceptedAtUs }]));
+}
+
+const flagsOf = (d: Decision) => (d.flags as string[]).slice();
+
+function selectedView(d: Decision): SelectedV1 {
+  const flags = flagsOf(d);
+  return {
+    revision: d.revision,
+    raw_quality: d.rawQuality,
+    credited_quality: d.creditedQuality,
+    credit_rule: creditRule(d.rawQuality, flags, d.creditedQuality),
+    flags,
+    effort: d.effort,
+    timing_bps: d.timingBps,
+    multiplier_bps: d.multiplierBps,
+    point_units: d.pointUnits.toString(),
+    points: exactPoints(d.pointUnits),
+    explanation: d.explanation,
+    corrected: d.correctionActor !== null,
+  };
+}
+
+async function rows(
+  tx: Db,
+  epoch: EpochView,
+  entries: Entry[],
+  now: Date,
+): Promise<ContributionRowV1[]> {
+  const ids = entries.map((e) => e.contributionId);
+  const contribs = ids.length
+    ? await tx
+        .select({ id: contributions.id, kind: contributions.kind, url: contributions.url })
+        .from(contributions)
+        .where(inArray(contributions.id, ids))
+    : [];
+  const byId = new Map(contribs.map((c) => [c.id, c]));
+  const decisions = await decisionsById(
+    tx,
+    entries.flatMap((e) => (e.decisionId ? [e.decisionId] : [])),
+  );
+  const wallets = await publicWallets(
+    tx,
+    [...new Set(entries.map((e) => e.memberId))],
+    walletTime(epoch.row, now),
+  );
+  const closed = isClosed(epoch.row, now);
+  return entries.map((e) => {
+    const c = byId.get(e.contributionId);
+    if (!c) throw new Error(`read: contribution ${e.contributionId} missing`);
+    const d = e.state === "counted" && e.decisionId ? decisions.get(e.decisionId) : undefined;
+    if (e.state === "counted" && !d) throw new Error(`read: decision ${e.decisionId} missing`);
+    const wallet = wallets.get(e.memberId) ?? { wallet: null, wallet_status: "none" as const };
+    return {
+      id: e.contributionId,
+      epoch: {
+        index: epoch.row.index,
+        closes_at: epoch.closesAt,
+        closed,
+        final: epoch.snapshot !== null,
+      },
+      member_id: e.memberId,
+      ...wallet,
+      kind: c.kind,
+      url: c.url,
+      raid_id: e.taskId,
+      accepted_at: e.acceptedAt,
+      state: e.state,
+      selected: d ? selectedView(d) : null,
+    };
+  });
+}
+
+export async function readCommunity(db: Db, mint: string, now: Date): Promise<CommunityV1 | null> {
+  return readOnly(db, async (tx) => {
+    const community = await findCommunity(tx, mint);
+    if (!community) return null;
+    const list = await findEpochs(tx, community.id);
+    const current = list.find(
+      (e) => e.row.opensAt.getTime() <= now.getTime() && !isClosed(e.row, now),
+    );
+    return {
+      mint: community.mint,
+      name: community.name,
+      reward_intake: community.pausedAt ? "paused" : "open",
+      current_epoch: current?.row.index ?? null,
+      epochs: list.map((e) => ({
+        index: e.row.index,
+        opens_at: e.opensAt,
+        closes_at: e.closesAt,
+        status: epochStatus(e, now),
+      })),
+      as_of: dateUs(now),
+    };
+  });
+}
+
+export async function readEpoch(
+  db: Db,
+  mint: string,
+  index: number,
+  now: Date,
+): Promise<EpochV1 | null> {
+  return readOnly(db, async (tx) => {
+    const found = await findEpoch(tx, mint, index);
+    if (!found) return null;
+    const { community, epoch } = found;
+    const [config] = await tx
+      .select({ id: rewardConfigs.id, payload: rewardConfigs.payload })
+      .from(rewardConfigs)
+      .where(eq(rewardConfigs.id, epoch.row.rewardConfigId ?? ""));
+    if (!config) throw new Error(`read: config of epoch ${epoch.row.id} missing`);
+    const payload = RewardConfigPayload.parse(config.payload);
+
+    const entries = await epochEntries(tx, epoch);
+    const count = (s: State) => entries.filter((e) => e.state === s).length;
+    const decisions = await decisionsById(
+      tx,
+      entries.flatMap((e) => (e.state === "counted" && e.decisionId ? [e.decisionId] : [])),
+    );
+    const total = [...decisions.values()].reduce((sum, d) => sum + d.pointUnits, 0n);
+
+    return {
+      community: { mint: community.mint, name: community.name },
+      index: epoch.row.index,
+      opens_at: epoch.opensAt,
+      closes_at: epoch.closesAt,
+      status: epochStatus(epoch, now),
+      closed: isClosed(epoch.row, now),
+      final: epoch.snapshot !== null,
+      as_of: dateUs(now),
+      config: {
+        id: config.id,
+        rubric_version: payload.rubric.version,
+        prompt_version: payload.scoring.promptVersion,
+        effort_multiplier_bps: payload.effort.multiplierBps,
+        slot_limit: payload.effort.slotLimit,
+        payload: config.payload as Record<string, unknown>,
+      },
+      counts: {
+        contributions: entries.length,
+        members: new Set(entries.map((e) => e.memberId)).size,
+        counted: count("counted"),
+        pending: count("pending"),
+        pending_at_close: count("pending_at_close"),
+        pending_reconciliation: count("pending_reconciliation"),
+        excluded: count("excluded"),
+      },
+      totals: { point_units: total.toString(), points: exactPoints(total) },
+      snapshot: epoch.snapshot
+        ? {
+            status: "frozen",
+            closed_at: epoch.snapshot.closedAt,
+            cutoff_assumption: epoch.snapshot.cutoffAssumption,
+          }
+        : { status: "not_frozen" },
+      allocation: { status: "unavailable", reason: "no_settlement" },
+      payment: { status: "unavailable", reason: "no_settlement" },
+    };
+  });
+}
+
+export async function readContributions(
+  db: Db,
+  mint: string,
+  index: number,
+  page: Page,
+  now: Date,
+): Promise<ContributionsV1 | null> {
+  return readOnly(db, async (tx) => {
+    const found = await findEpoch(tx, mint, index);
+    if (!found) return null;
+    const { community, epoch } = found;
+    const entries = await epochEntries(tx, epoch, page.member);
+    const slice = entries.slice(page.offset, page.offset + page.limit);
+    return {
+      community: { mint: community.mint },
+      epoch: {
+        index: epoch.row.index,
+        closed: isClosed(epoch.row, now),
+        final: epoch.snapshot !== null,
+      },
+      as_of: dateUs(now),
+      total_contributions: entries.length,
+      offset: page.offset,
+      limit: page.limit,
+      contributions: await rows(tx, epoch, slice, now),
+    };
+  });
+}
+
+export async function readLeaderboard(
+  db: Db,
+  mint: string,
+  index: number,
+  page: Page,
+  now: Date,
+): Promise<LeaderboardV1 | null> {
+  return readOnly(db, async (tx) => {
+    const found = await findEpoch(tx, mint, index);
+    if (!found) return null;
+    const { community, epoch } = found;
+    const entries = await epochEntries(tx, epoch);
+
+    let totals: { memberId: string; units: bigint; whole: bigint }[];
+    if (epoch.snapshot) {
+      totals = (
+        await tx
+          .select({
+            memberId: rewardSnapshotMembers.memberId,
+            units: rewardSnapshotMembers.pointUnits,
+            whole: rewardSnapshotMembers.wholePoints,
+          })
+          .from(rewardSnapshotMembers)
+          .where(eq(rewardSnapshotMembers.snapshotId, epoch.snapshot.id))
+      ).map((m) => ({ ...m }));
+    } else {
+      const { totals: live } = await selectEffective(tx, epoch.row.id, epoch.row.closesAt);
+      totals = live.map((m) => ({
+        memberId: m.memberId,
+        units: BigInt(m.pointUnits),
+        whole: BigInt(m.wholePoints),
+      }));
+    }
+    totals.sort((a, b) =>
+      a.units !== b.units ? (a.units > b.units ? -1 : 1) : a.memberId < b.memberId ? -1 : 1,
+    );
+    const slice = totals.slice(page.offset, page.offset + page.limit);
+    const wallets = await publicWallets(
+      tx,
+      slice.map((m) => m.memberId),
+      walletTime(epoch.row, now),
+    );
+    return {
+      community: { mint: community.mint },
+      epoch: { index: epoch.row.index, opens_at: epoch.opensAt, closes_at: epoch.closesAt },
+      closed: isClosed(epoch.row, now),
+      final: epoch.snapshot !== null,
+      as_of: dateUs(now),
+      total_entries: totals.length,
+      total_contributions: entries.length,
+      offset: page.offset,
+      limit: page.limit,
+      entries: slice.map((m) => {
+        const mine = entries.filter((e) => e.memberId === m.memberId);
+        if (m.whole !== wholePoints(m.units as PointUnits)) {
+          throw new Error(`read: member ${m.memberId} whole points disagree with their units`);
+        }
+        return {
+          rank: 1 + totals.filter((o) => o.units > m.units).length,
+          member_id: m.memberId,
+          ...(wallets.get(m.memberId) ?? { wallet: null, wallet_status: "none" as const }),
+          point_units: m.units.toString(),
+          points: exactPoints(m.units),
+          whole_points: m.whole.toString(),
+          contributions: mine.length,
+          counted: mine.filter((e) => e.state === "counted").length,
+          pending: mine.filter((e) => e.state === "pending").length,
+        };
+      }),
+    };
+  });
+}
+
+type Criteria = Record<
+  "originalSubstance" | "inspectableWork" | "communityContribution",
+  { met: boolean; note: string }
+>;
+
+export async function readContribution(
+  db: Db,
+  contributionId: string,
+  now: Date,
+): Promise<ContributionV1 | null> {
+  return readOnly(db, async (tx) => {
+    const [intake] = await tx
+      .select({
+        id: rewardIntakes.id,
+        epochId: rewardIntakes.epochId,
+        communityId: rewardIntakes.communityId,
+        capture: rewardIntakes.capture,
+        reentryOf: rewardIntakes.reentryOf,
+      })
+      .from(rewardIntakes)
+      .where(eq(rewardIntakes.contributionId, contributionId));
+    if (!intake) return null;
+    const [community] = await tx
+      .select({ mint: communities.mint })
+      .from(communities)
+      .where(eq(communities.id, intake.communityId));
+    const [epochRow] = await tx
+      .select({ index: epochs.index })
+      .from(epochs)
+      .where(and(eq(epochs.id, intake.epochId), isNotNull(epochs.rewardConfigId)));
+    if (!community || !epochRow) return null;
+    const [epoch] = await findEpochs(tx, intake.communityId, epochRow.index);
+    if (!epoch) return null;
+
+    const [entry] = (await epochEntries(tx, epoch)).filter(
+      (e) => e.contributionId === contributionId,
+    );
+    if (!entry) throw new Error(`read: contribution ${contributionId} missing from its epoch`);
+    const [row] = await rows(tx, epoch, [entry], now);
+    if (!row) throw new Error("read: row");
+
+    const [content] = await tx
+      .select({ text: contributions.text })
+      .from(contributions)
+      .where(eq(contributions.id, contributionId));
+
+    const lineage = (
+      await tx
+        .select({ d: rewardDecisions, acceptedAtUs: isoUs(rewardDecisions.acceptedAt) })
+        .from(rewardDecisions)
+        .where(eq(rewardDecisions.contributionId, contributionId))
+        .orderBy(asc(rewardDecisions.revision))
+    ).map((r): Decision => ({ ...r.d, acceptedAtUs: r.acceptedAtUs }));
+    const cutoff = epoch.row.closesAt.getTime();
+    const selected = lineage.findLast((d) => d.acceptedAt.getTime() < cutoff);
+    if (epoch.snapshot && (row.selected?.revision ?? null) !== (selected?.revision ?? null)) {
+      throw new Error(`read: contribution ${contributionId} disagrees with its snapshot`);
+    }
+
+    const dispatchIds = lineage.flatMap((d) => (d.dispatchId ? [d.dispatchId] : []));
+    const dispatches = dispatchIds.length
+      ? await tx
+          .select({
+            id: rewardDispatches.id,
+            model: rewardDispatches.model,
+            promptVersion: rewardDispatches.promptVersion,
+            promptHash: rewardDispatches.promptHash,
+            inputHash: rewardDispatches.inputHash,
+            outputHash: rewardDispatches.outputHash,
+            latencyMs: rewardDispatches.latencyMs,
+            costMicroUsd: rewardDispatches.costMicroUsd,
+          })
+          .from(rewardDispatches)
+          .where(inArray(rewardDispatches.id, dispatchIds))
+      : [];
+    const dispatchById = new Map(dispatches.map((d) => [d.id, d]));
+
+    const revisions = lineage.map((d): RevisionV1 => {
+      const flags = flagsOf(d);
+      const dispatch = d.dispatchId ? dispatchById.get(d.dispatchId) : undefined;
+      if (d.dispatchId && !dispatch?.outputHash) {
+        throw new Error(`read: decision ${d.id} has no completed dispatch`);
+      }
+      const criteria = d.effortCriteria as Criteria | null;
+      return {
+        revision: d.revision,
+        status:
+          d.acceptedAt.getTime() >= cutoff
+            ? "late"
+            : d.id === selected?.id
+              ? "selected"
+              : "superseded",
+        accepted_at: d.acceptedAtUs,
+        affects_allocation: d.affectsAllocation,
+        source: d.correctionActor ? "correction" : "model",
+        raw_quality: d.rawQuality,
+        credited_quality: d.creditedQuality,
+        credit_rule: creditRule(d.rawQuality, flags, d.creditedQuality),
+        flags,
+        effort: d.effort,
+        effort_criteria: criteria
+          ? {
+              original_substance: criteria.originalSubstance,
+              inspectable_work: criteria.inspectableWork,
+              community_contribution: criteria.communityContribution,
+            }
+          : null,
+        timing_bps: d.timingBps,
+        multiplier_bps: d.multiplierBps,
+        point_units: d.pointUnits.toString(),
+        points: exactPoints(d.pointUnits),
+        explanation: d.explanation,
+        model:
+          dispatch && !d.correctionActor
+            ? {
+                model: dispatch.model,
+                prompt_version: dispatch.promptVersion,
+                prompt_hash: dispatch.promptHash,
+                input_hash: dispatch.inputHash,
+                output_hash: dispatch.outputHash ?? "",
+                latency_ms: dispatch.latencyMs,
+                cost_micro_usd: dispatch.costMicroUsd,
+              }
+            : null,
+        correction: d.correctionActor
+          ? {
+              actor: d.correctionActor,
+              // A14: the admin prefix is the only authority in v1.
+              authority: d.correctionActor.startsWith("admin:")
+                ? "community_admin"
+                : "operator_script",
+              reason: d.correctionReason ?? "",
+              evidence_refs: d.correctionEvidence ?? [],
+            }
+          : null,
+      };
+    });
+
+    const linkedContribution = async (where: SQL | undefined) => {
+      const [r] = await tx
+        .select({ contributionId: rewardIntakes.contributionId })
+        .from(rewardIntakes)
+        .where(where);
+      return r?.contributionId ?? null;
+    };
+    const [nomination] = await tx
+      .select({ kind: rewardNominations.kind, state: rewardNominations.state })
+      .from(rewardNominations)
+      .where(eq(rewardNominations.contributionId, contributionId))
+      .orderBy(desc(rewardNominations.acceptedAt))
+      .limit(1);
+    const capture = intake.capture as {
+      source: "x_oembed" | "telegram_text";
+      capturedAt: string;
+      limitations: string[];
+    };
+
+    return {
+      ...row,
+      community: { mint: community.mint },
+      text: content?.text ?? "",
+      capture: {
+        source: capture.source,
+        captured_at: dateUs(new Date(capture.capturedAt)),
+        limitations: capture.limitations,
+      },
+      reentry_of: intake.reentryOf
+        ? await linkedContribution(eq(rewardIntakes.id, intake.reentryOf))
+        : null,
+      reentered_as: await linkedContribution(eq(rewardIntakes.reentryOf, intake.id)),
+      nomination: nomination ?? null,
+      revisions,
+    };
+  });
+}
