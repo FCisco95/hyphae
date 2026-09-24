@@ -2372,6 +2372,10 @@
         "reward_snapshot_members_nonnegative": {
           "name": "reward_snapshot_members_nonnegative",
           "value": "\"reward_snapshot_members\".\"point_units\" >= 0 and \"reward_snapshot_members\".\"whole_points\" >= 0"
+        },
+        "reward_snapshot_members_whole_points": {
+          "name": "reward_snapshot_members_whole_points",
+          "value": "\"reward_snapshot_members\".\"whole_points\" = (\"reward_snapshot_members\".\"point_units\" + 50000000) / 100000000"
         }
       },
       "isRLSEnabled": false

@@ -29,7 +29,8 @@ CREATE TABLE "reward_snapshot_members" (
 	"member_id" uuid NOT NULL,
 	"point_units" bigint NOT NULL,
 	"whole_points" bigint NOT NULL,
-	CONSTRAINT "reward_snapshot_members_nonnegative" CHECK ("reward_snapshot_members"."point_units" >= 0 and "reward_snapshot_members"."whole_points" >= 0)
+	CONSTRAINT "reward_snapshot_members_nonnegative" CHECK ("reward_snapshot_members"."point_units" >= 0 and "reward_snapshot_members"."whole_points" >= 0),
+	CONSTRAINT "reward_snapshot_members_whole_points" CHECK ("reward_snapshot_members"."whole_points" = ("reward_snapshot_members"."point_units" + 50000000) / 100000000)
 );
 --> statement-breakpoint
 DROP INDEX "reward_intakes_community_artifact";--> statement-breakpoint

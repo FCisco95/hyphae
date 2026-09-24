@@ -561,5 +561,10 @@ export const rewardSnapshotMembers = pgTable(
       "reward_snapshot_members_nonnegative",
       sql`${t.pointUnits} >= 0 and ${t.wholePoints} >= 0`,
     ),
+    // O5 half-up rounding at 10^8 units per point, as wholePoints() computes it.
+    check(
+      "reward_snapshot_members_whole_points",
+      sql`${t.wholePoints} = (${t.pointUnits} + 50000000) / 100000000`,
+    ),
   ],
 );

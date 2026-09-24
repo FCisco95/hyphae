@@ -1,5 +1,5 @@
 import type { RewardPurpose } from "@hyphae/core";
-import { epochs, members, rewardNominations } from "@hyphae/db";
+import { epochs, members, rewardNominations, rewardSnapshotMembers } from "@hyphae/db";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeEpoch, dueCloses } from "./close.js";
@@ -310,6 +310,23 @@ describe("closeEpoch", () => {
       [2, "open"],
     ]);
     expect(rows[1]?.opensAt).toEqual(l.epoch.closesAt);
+  });
+
+  it("the database refuses whole points that are not the half-up rounding of the exact units", async () => {
+    const l = await lane();
+    const closed = await l.close();
+    if (closed.status !== "closed") throw new Error(closed.status);
+    const row = (pointUnits: bigint, wholePoints: bigint) =>
+      t.db.insert(rewardSnapshotMembers).values({
+        snapshotId: closed.snapshot.id,
+        memberId: l.member.id,
+        pointUnits,
+        wholePoints,
+      });
+
+    await expect(row(149_000_000n, 2n)).rejects.toThrow();
+    await expect(row(150_000_000n, 1n)).rejects.toThrow();
+    await row(150_000_000n, 2n);
   });
 
   it("an intake exactly at closesAt belongs to the next epoch", async () => {
