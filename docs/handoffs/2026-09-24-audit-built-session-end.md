@@ -48,6 +48,7 @@ Review: Codex, fresh session, diff inline: **needs-attention** (C1 per-request w
 
 - **Bot token re-rotation still open** (Runbook B step 9).
 - **First reward-path traffic is untested in production** (epoch 1 opens 2026-09-25T00:00Z).
+- **Unverified outside this machine:** `/v1` has only run against local Postgres 17 (not the Neon pooler), and `apps/web` has only built with local `next build`, not on Vercel (pnpm workspace root, `nodenext` tsconfig). Check both on the first deploy.
 - **Rules test and hold gate are unbuilt** and gate the first payout (P9, P12). Both need plans on Sep 26–27.
 - `PUBLIC_WEB_URL` on Fly defaults to `https://hyphae.fun`, which does not resolve. After the site is on Vercel, set it to the site's URL so `/me`'s link works.
 - The public api is not rate-limited; epoch and leaderboard reads cost O(epoch size). Fine at hackathon scale; add a limit or edge cache if the api URL is published beyond the site.
