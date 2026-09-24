@@ -19,7 +19,13 @@ export function botErrorFields(err: BotError) {
   }
   if (e instanceof HttpError) return { update, kind: "network", message: clean(e.message) };
   if (e instanceof Error) {
-    return { update, kind: "app", name: e.name, message: clean(e.message), stack: clean(e.stack) };
+    return {
+      update,
+      kind: "app",
+      name: clean(e.name),
+      message: clean(e.message),
+      stack: clean(e.stack),
+    };
   }
   return { update, kind: "app", message: clean(String(e)) };
 }
@@ -27,11 +33,13 @@ export function botErrorFields(err: BotError) {
 // The bot's error boundary. Under a webhook grammY never calls bot.catch: an uncontained error
 // reaches the web framework, which logs the whole BotError and answers 500, so Telegram
 // redelivers the update to handlers that are not idempotent. Contained, the update is not
-// redelivered, so the member is told to try again.
+// redelivered, so the member is told it may not have finished.
 export async function containBotError(err: BotError) {
   console.error("bot error", botErrorFields(err));
   try {
-    await err.ctx.reply("Something went wrong. Try again.");
+    await err.ctx.reply(
+      "Something went wrong and it may not have finished. Check before trying again.",
+    );
   } catch {
     // The notice is best-effort; the failure is already logged.
   }

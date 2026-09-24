@@ -65,6 +65,14 @@ describe("botErrorFields", () => {
     );
   });
 
+  it("redacts the token from an application error's name", () => {
+    const e = new Error("boom");
+    e.name = `Failed(${TOKEN})`;
+    const fields = botErrorFields(botError(e));
+    expect(JSON.stringify(fields)).not.toContain(TOKEN);
+    expect(fields).toMatchObject({ name: "Failed(<redacted>)" });
+  });
+
   it("redacts the token from a thrown non-Error", () => {
     const fields = botErrorFields(botError(`bad ${TOKEN}`));
     expect(fields).toEqual({ update: 42, kind: "app", message: "bad <redacted>" });
@@ -99,7 +107,7 @@ describe("containBotError", () => {
     log.mockRestore();
   });
 
-  it("tells the member to try again, since Telegram will not redeliver the update", async () => {
+  it("tells the member it may not have finished, since Telegram will not redeliver the update", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const { bot, calls } = recordingBot();
     bot.errorBoundary(containBotError).command("boom", () => {
@@ -112,7 +120,7 @@ describe("containBotError", () => {
         method: "sendMessage",
         payload: expect.objectContaining({
           chat_id: -100,
-          text: "Something went wrong. Try again.",
+          text: "Something went wrong and it may not have finished. Check before trying again.",
         }),
       },
     ]);
