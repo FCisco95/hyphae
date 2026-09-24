@@ -672,7 +672,8 @@ export const rulesTestPasses = pgTable(
       .notNull()
       .references(() => members.id),
     testId: text("test_id").notNull(),
-    passedAt: timestamp("passed_at", { withTimezone: true, precision: 3 }).notNull(),
+    // Microseconds: a millisecond column would round a pass just before closes_at up onto it.
+    passedAt: timestamp("passed_at", { withTimezone: true }).notNull(),
   },
   (t) => [uniqueIndex("rules_test_passes_member_test").on(t.memberId, t.testId)],
 );

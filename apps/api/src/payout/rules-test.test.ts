@@ -1,4 +1,5 @@
 import { rulesTestPasses } from "@hyphae/db";
+import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb, seedCommunity } from "../rewards/test-db.js";
 import {
@@ -145,5 +146,19 @@ describe("passesBefore", () => {
     expect(
       await passesBefore(t.db, { memberIds: [], testId: "mycel-rules-1", before: cutoff }),
     ).toEqual(new Set());
+  });
+
+  it("keeps microseconds, so a pass a fraction of a millisecond early still counts", async () => {
+    const cutoff = new Date("2026-10-09T00:00:00.000Z");
+    const { community, member } = await seedCommunity(t.db);
+    await t.db.insert(rulesTestPasses).values({
+      communityId: community.id,
+      memberId: member.id,
+      testId: "mycel-rules-1",
+      passedAt: sql`'2026-10-08T23:59:59.9997Z'::timestamptz`,
+    });
+    expect(
+      await passesBefore(t.db, { memberIds: [member.id], testId: "mycel-rules-1", before: cutoff }),
+    ).toEqual(new Set([member.id]));
   });
 });

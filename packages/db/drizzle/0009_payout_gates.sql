@@ -27,7 +27,7 @@ CREATE TABLE "rules_test_passes" (
 	"community_id" uuid NOT NULL,
 	"member_id" uuid NOT NULL,
 	"test_id" text NOT NULL,
-	"passed_at" timestamp (3) with time zone NOT NULL
+	"passed_at" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
 ALTER TABLE "communities" ADD COLUMN "first_paid_epoch" integer;--> statement-breakpoint

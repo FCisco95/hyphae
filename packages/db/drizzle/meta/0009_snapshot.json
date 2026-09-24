@@ -1,5 +1,5 @@
 {
-  "id": "0eee2d1d-fd2d-4d89-a6ba-07d1dc11954d",
+  "id": "ee4e8134-be68-4ad0-88af-bd32ca9c2db9",
   "prevId": "fa61f1cf-68ec-4bad-9a60-ceea6a1d595b",
   "version": "7",
   "dialect": "postgresql",
@@ -2846,7 +2846,7 @@
         },
         "passed_at": {
           "name": "passed_at",
-          "type": "timestamp (3) with time zone",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         }
