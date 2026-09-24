@@ -5,7 +5,7 @@ import {
   parseProjectId,
   WalletProofError,
 } from "@organichub/verify";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb, seedCommunity } from "../rewards/test-db.js";
 import { openLinkSession, resolveLinkSession } from "./session.js";
@@ -262,5 +262,42 @@ describe("tenant-bound store through the SDK", () => {
       ["paste", false],
       ["signature", true],
     ]);
+  });
+
+  it("a link session that expired before signing leaves proof pending and links nothing", async () => {
+    const { ctx, identity } = await session();
+    const w = await testWallet();
+    const { store } = createLinkStore(t.db, ctx);
+    const req = await createVerificationRequest(store, identity, w.address, tenant);
+    await t.db
+      .update(linkSessions)
+      .set({ expiresAt: sql`clock_timestamp() - interval '1 millisecond'` })
+      .where(eq(linkSessions.id, ctx.linkSessionId));
+
+    await expect(
+      consumeWalletProof(store, identity, { ...req, signature: await w.sign(req.message) }, tenant),
+    ).rejects.toBeInstanceOf(WalletProofError);
+    expect((await proofRow(req.requestId))?.status).toBe("pending");
+    expect(await holders(w.address)).toHaveLength(0);
+  });
+
+  it("a proof checked against another origin or chain is rejected with no mutation", async () => {
+    const { ctx, identity } = await session();
+    const w = await testWallet();
+    const { store } = createLinkStore(t.db, ctx);
+    const req = await createVerificationRequest(store, identity, w.address, tenant);
+    const proof = { ...req, signature: await w.sign(req.message) };
+
+    for (const other of [
+      { ...tenant, origin: "https://evil.hyphae.test" },
+      { ...tenant, chain: "solana:devnet" as const },
+    ]) {
+      await expect(consumeWalletProof(store, identity, proof, other)).rejects.toBeInstanceOf(
+        WalletProofError,
+      );
+    }
+    expect((await proofRow(req.requestId))?.status).toBe("pending");
+    expect((await sessionRow(ctx.linkSessionId))?.usedAt).toBeNull();
+    expect(await holders(w.address)).toHaveLength(0);
   });
 });

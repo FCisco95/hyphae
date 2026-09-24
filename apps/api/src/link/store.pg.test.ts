@@ -157,4 +157,31 @@ describe("proof consumption races", () => {
       expect((await Promise.all(runs)).sort()).toEqual(["linked", "wallet_taken"]);
     }
   });
+
+  it("two different valid proofs in one session: exactly one links", async () => {
+    for (let round = 0; round < ROUNDS; round++) {
+      const { id } = await community();
+      const { ctx, identity } = await session(id, 4000n);
+      const proofs = await Promise.all(
+        [0, 1].map(async () => {
+          const w = await testWallet();
+          const req = await createVerificationRequest(
+            createLinkStore(a, ctx).store,
+            identity,
+            w.address,
+            tenant,
+          );
+          return { ...req, signature: await w.sign(req.message) };
+        }),
+      );
+
+      const results = await Promise.allSettled(
+        proofs.map((proof, i) =>
+          consumeWalletProof(createLinkStore(i === 0 ? b : c, ctx).store, identity, proof, tenant),
+        ),
+      );
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      expect(await a.select().from(members).where(eq(members.communityId, id))).toHaveLength(1);
+    }
+  });
 });
