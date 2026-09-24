@@ -117,6 +117,7 @@ export async function runHoldChecks(
   deps: { check: HoldChecker; tests?: readonly RulesTest[]; clock?: () => Date },
 ): Promise<
   | { status: "skipped"; blockers: Blocker[] }
+  | { status: "too_early" }
   | { status: "window_closed" }
   | { status: "checked"; holder: number; below: number; uncertain: number }
 > {
@@ -124,10 +125,13 @@ export async function runHoldChecks(
   if (gate.status === "blocked" && gate.blockers.some((b) => STRUCTURAL.has(b))) {
     return { status: "skipped", blockers: gate.blockers };
   }
-  // A balance read after the window could not count, so none is read.
+  // A balance read outside [closesAt, closesAt + window] could not count, so none is read.
   const clock = deps.clock ?? (() => new Date());
-  const deadline = gate.closesAt.getTime() + HOLD_WINDOW_MS;
-  if (clock().getTime() > deadline) return { status: "window_closed" };
+  const closesAt = gate.closesAt.getTime();
+  const deadline = closesAt + HOLD_WINDOW_MS;
+  const started = clock().getTime();
+  if (started < closesAt) return { status: "too_early" };
+  if (started > deadline) return { status: "window_closed" };
   const counts = { holder: 0, below: 0, uncertain: 0 };
   const held = gate.members.filter((m) => m.status === "held");
   if (held.length === 0 || !gate.hold) return { status: "checked", ...counts };
@@ -175,44 +179,54 @@ export async function runHoldChecks(
 
   for (const row of rows.filter((r) => r.status === "pending" || r.status === "uncertain")) {
     if (clock().getTime() > deadline) break;
-    const answer = await deps.check({
-      projectId: ref.communityId,
-      owner: row.wallet,
-      mint: row.mint,
-      thresholdRaw,
-      checkRound: row.checkRound,
+    // One run reads a balance at a time: the row stays claimed for the read and its write, a
+    // concurrent run skips it, and a crashed run's claim ends with its transaction.
+    const recorded = await db.transaction(async (tx) => {
+      const [claimed] = await tx
+        .select({ id: holdChecks.id })
+        .from(holdChecks)
+        .where(and(eq(holdChecks.id, row.id), inArray(holdChecks.status, ["pending", "uncertain"])))
+        .for("update", { skipLocked: true });
+      if (!claimed) return undefined;
+      const answer = await deps.check({
+        projectId: ref.communityId,
+        owner: row.wallet,
+        mint: row.mint,
+        thresholdRaw,
+        checkRound: row.checkRound,
+      });
+      // An answer from outside the window cannot count, so it is kept undecided, never final.
+      const observed = answer.kind === "uncertain" ? undefined : answer.observedAt.getTime();
+      const result: HoldResult | { kind: "uncertain"; reason: "window_closed" | "before_close" } =
+        clock().getTime() > deadline || (observed !== undefined && observed > deadline)
+          ? { kind: "uncertain", reason: "window_closed" }
+          : observed !== undefined && observed < closesAt
+            ? { kind: "uncertain", reason: "before_close" }
+            : answer;
+      const attempt = {
+        attempts: sql`${holdChecks.attempts} + 1`,
+        checkedAt: sql`clock_timestamp()`,
+      };
+      await tx
+        .update(holdChecks)
+        .set(
+          result.kind === "uncertain"
+            ? { ...attempt, status: "uncertain", reason: result.reason }
+            : {
+                ...attempt,
+                status: result.kind,
+                reason: null,
+                rawAmount: result.rawAmount.toString(),
+                decimals: result.decimals,
+                provider: result.provider,
+                slot: result.slot.toString(),
+                observedAt: result.observedAt,
+              },
+        )
+        .where(eq(holdChecks.id, row.id));
+      return result.kind;
     });
-    // An answer that lands after the window cannot count, so it is kept undecided, never final.
-    const late =
-      clock().getTime() > deadline ||
-      (answer.kind !== "uncertain" && answer.observedAt.getTime() > deadline);
-    const result: HoldResult | { kind: "uncertain"; reason: "window_closed" } = late
-      ? { kind: "uncertain", reason: "window_closed" }
-      : answer;
-    const attempt = {
-      attempts: sql`${holdChecks.attempts} + 1`,
-      checkedAt: sql`clock_timestamp()`,
-    };
-    // Only an open row changes, so a confirmed result from a racing run is never overwritten.
-    const applied = await db
-      .update(holdChecks)
-      .set(
-        result.kind === "uncertain"
-          ? { ...attempt, status: "uncertain", reason: result.reason }
-          : {
-              ...attempt,
-              status: result.kind,
-              reason: null,
-              rawAmount: result.rawAmount.toString(),
-              decimals: result.decimals,
-              provider: result.provider,
-              slot: result.slot.toString(),
-              observedAt: result.observedAt,
-            },
-      )
-      .where(and(eq(holdChecks.id, row.id), inArray(holdChecks.status, ["pending", "uncertain"])))
-      .returning({ id: holdChecks.id });
-    if (applied.length > 0) counts[result.kind] += 1;
+    if (recorded) counts[recorded] += 1;
   }
   return { status: "checked", ...counts };
 }

@@ -63,20 +63,26 @@ async function candidate() {
   });
   // A balance read five minutes after the close, inside the 24-hour window.
   const holder = holderAt(new Date(e1.closesAt.getTime() + 5 * 60_000 + 123));
-  return { demo, e1, holder, ref: { communityId: demo.communityId, epochId: e1.id } };
+  // Fixture epochs close in the future of the real clock, so runs get a clock inside the window.
+  const clock = () => new Date(e1.closesAt.getTime() + 60 * 60_000);
+  return { demo, e1, holder, clock, ref: { communityId: demo.communityId, epochId: e1.id } };
 }
 
 describe("payout gates on Postgres", () => {
   it("hold, then release: an uncertain check holds the epoch and a confirmed one clears it", async () => {
-    const { demo, e1, holder, ref } = await candidate();
+    const { demo, e1, holder, clock, ref } = await candidate();
     expect((await evaluatePayoutGate(a, ref, { tests })).status).toBe("blocked");
-    await runHoldChecks(a, ref, { check: answer({ kind: "uncertain", reason: "outage" }), tests });
+    await runHoldChecks(a, ref, {
+      check: answer({ kind: "uncertain", reason: "outage" }),
+      tests,
+      clock,
+    });
     const hourAfter = new Date(e1.closesAt.getTime() + 3_600_000);
     expect((await dueHoldChecks(a, hourAfter)).filter((d) => d.epochId === ref.epochId)).toEqual([
       ref,
     ]);
 
-    await runHoldChecks(a, ref, { check: answer(holder), tests });
+    await runHoldChecks(a, ref, { check: answer(holder), tests, clock });
     const [row] = await a.select().from(holdChecks).where(eq(holdChecks.epochId, ref.epochId));
     expect(row).toMatchObject({
       status: "holder",
@@ -92,25 +98,45 @@ describe("payout gates on Postgres", () => {
 
   it("concurrent runs settle on one row, and a confirmed result is never overwritten", async () => {
     for (let round = 0; round < 5; round++) {
-      const { holder, ref } = await candidate();
+      const { holder, clock, ref } = await candidate();
       await Promise.all(
         pools.map((db, i) =>
           runHoldChecks(db, ref, {
             check: answer(i % 2 === 0 ? holder : { kind: "uncertain", reason: "conflict" }),
             tests,
-          }).catch(() => undefined),
+            clock,
+          }),
         ),
       );
       const rows = await a.select().from(holdChecks).where(eq(holdChecks.epochId, ref.epochId));
       expect(rows).toHaveLength(1);
       // Any run that answered holder may land it; after that no uncertain answer can undo it.
-      await runHoldChecks(a, ref, { check: answer(holder), tests });
+      await runHoldChecks(a, ref, { check: answer(holder), tests, clock });
       await runHoldChecks(a, ref, {
         check: answer({ kind: "uncertain", reason: "outage" }),
         tests,
+        clock,
       });
       const [final] = await a.select().from(holdChecks).where(eq(holdChecks.epochId, ref.epochId));
       expect(final?.status).toBe("holder");
+    }
+  });
+
+  it("concurrent runs read each balance once: one run claims the row, the others skip it", async () => {
+    for (let round = 0; round < 5; round++) {
+      const { holder, clock, ref } = await candidate();
+      let calls = 0;
+      const slowHolder: HoldChecker = async () => {
+        calls += 1;
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        return holder;
+      };
+      await Promise.all(
+        pools.map((db) => runHoldChecks(db, ref, { check: slowHolder, tests, clock })),
+      );
+      expect(calls).toBe(1);
+      const rows = await a.select().from(holdChecks).where(eq(holdChecks.epochId, ref.epochId));
+      expect(rows).toEqual([expect.objectContaining({ status: "holder", attempts: 1 })]);
     }
   });
 

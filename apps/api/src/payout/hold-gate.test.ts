@@ -244,6 +244,8 @@ const observed = (kind: "holder" | "below", rawAmount: bigint, observedAt: Date)
 });
 const HOUR = 3_600_000;
 const sinceClose = (e: { closesAt: Date }, ms: number) => new Date(e.closesAt.getTime() + ms);
+// Fixture epochs close in the future of the real clock, so runs get a clock inside the window.
+const inWindow = (e: { closesAt: Date }) => () => sinceClose(e, HOUR);
 
 // A checker that answers from a script and records what it was asked.
 function scripted(...answers: (HoldResult | (() => Promise<HoldResult>))[]) {
@@ -288,7 +290,9 @@ describe("runHoldChecks", () => {
   it("checks only candidates; an uncertain result holds, a confirmed retry releases the claim", async () => {
     const { demo, e1, ref, rows } = await candidateDemo();
     const first = scripted({ kind: "uncertain", reason: "outage" });
-    expect(await runHoldChecks(t.db, ref, { check: first.check, tests })).toEqual({
+    expect(
+      await runHoldChecks(t.db, ref, { check: first.check, tests, clock: inWindow(e1) }),
+    ).toEqual({
       status: "checked",
       holder: 0,
       below: 0,
@@ -313,7 +317,7 @@ describe("runHoldChecks", () => {
     expect(await statusOf(ref, demo.members.signed)).toEqual(["blocked", "held"]);
 
     const retry = scripted(observed("holder", 150_000_000_000n, sinceClose(e1, 5 * 60_000)));
-    await runHoldChecks(t.db, ref, { check: retry.check, tests });
+    await runHoldChecks(t.db, ref, { check: retry.check, tests, clock: inWindow(e1) });
     expect(retry.calls[0]?.checkRound).toBe(row?.checkRound);
     const [cleared] = await rows();
     expect(cleared).toMatchObject({
@@ -332,10 +336,13 @@ describe("runHoldChecks", () => {
     await runHoldChecks(t.db, ref, {
       check: scripted(observed("below", 5n, sinceClose(e1, 5 * 60_000))).check,
       tests,
+      clock: inWindow(e1),
     });
     expect(await statusOf(ref, demo.members.signed)).toEqual(["blocked", "not_payable"]);
     const later = scripted(observed("holder", 150_000_000_000n, sinceClose(e1, 5 * 60_000)));
-    expect(await runHoldChecks(t.db, ref, { check: later.check, tests })).toEqual({
+    expect(
+      await runHoldChecks(t.db, ref, { check: later.check, tests, clock: inWindow(e1) }),
+    ).toEqual({
       status: "checked",
       holder: 0,
       below: 0,
@@ -345,42 +352,40 @@ describe("runHoldChecks", () => {
     expect((await rows())[0]).toMatchObject({ status: "below", rawAmount: "5", attempts: 1 });
   });
 
-  it("a racing run's confirmed result survives this run's uncertain answer", async () => {
-    const { ref, rows } = await candidateDemo();
-    const racing = scripted(async () => {
-      const [row] = await rows();
-      await t.db
-        .update(holdChecks)
-        .set({
-          status: "holder",
-          rawAmount: "150000000000",
-          decimals: 6,
-          provider: "consensus",
-          slot: "1",
-          observedAt: new Date(),
-          attempts: 1,
-        })
-        .where(eq(holdChecks.id, row?.id ?? ""));
-      return { kind: "uncertain", reason: "outage" };
+  it("does not start before the close, and keeps an answer observed before it undecided", async () => {
+    const { e1, ref, rows } = await candidateDemo();
+    const none = scripted();
+    expect(
+      await runHoldChecks(t.db, ref, { check: none.check, tests, clock: () => sinceClose(e1, -1) }),
+    ).toEqual({ status: "too_early" });
+    expect(none.calls).toEqual([]);
+    expect(await rows()).toEqual([]);
+
+    const early = scripted(observed("holder", 150_000_000_000n, sinceClose(e1, -1)));
+    await runHoldChecks(t.db, ref, {
+      check: early.check,
+      tests,
+      clock: () => sinceClose(e1, HOUR),
     });
-    await runHoldChecks(t.db, ref, { check: racing.check, tests });
-    expect((await rows())[0]).toMatchObject({ status: "holder", attempts: 1 });
+    expect((await rows())[0]).toMatchObject({ status: "uncertain", reason: "before_close" });
   });
 
   it("records a missing provider configuration as uncertain", async () => {
-    const { ref, rows } = await candidateDemo();
-    await runHoldChecks(t.db, ref, { check: holdCheckerFromEnv({}), tests });
+    const { e1, ref, rows } = await candidateDemo();
+    await runHoldChecks(t.db, ref, { check: holdCheckerFromEnv({}), tests, clock: inWindow(e1) });
     expect((await rows())[0]).toMatchObject({ status: "uncertain", reason: "not_configured" });
   });
 
   it("does nothing for an epoch the gate stops before the member stage", async () => {
-    const { demo, ref, rows } = await candidateDemo();
+    const { demo, e1, ref, rows } = await candidateDemo();
     const none = scripted();
     await t.db
       .update(communities)
       .set({ firstPaidEpoch: null })
       .where(eq(communities.id, demo.communityId));
-    expect(await runHoldChecks(t.db, ref, { check: none.check, tests })).toEqual({
+    expect(
+      await runHoldChecks(t.db, ref, { check: none.check, tests, clock: inWindow(e1) }),
+    ).toEqual({
       status: "skipped",
       blockers: ["before_first_paid_epoch"],
     });
@@ -445,9 +450,9 @@ describe("runHoldChecks", () => {
       thresholdRaw: THRESHOLD.toString(),
       checkRound: randomUUID(),
     });
-    await expect(runHoldChecks(t.db, ref, { check: scripted().check, tests })).rejects.toThrow(
-      /does not match/,
-    );
+    await expect(
+      runHoldChecks(t.db, ref, { check: scripted().check, tests, clock: inWindow(e1) }),
+    ).rejects.toThrow(/does not match/);
   });
 });
 
