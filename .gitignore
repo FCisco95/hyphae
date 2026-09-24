@@ -23,5 +23,10 @@ docs/rubrics/eval/*.jsonl
 # OS / editor
 .DS_Store
 Thumbs.db
+*.stackdump
 .vscode/
 .idea/
+
+# Next.js
+apps/web/next-env.d.ts
+*.tsbuildinfo
