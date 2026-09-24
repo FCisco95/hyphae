@@ -177,6 +177,27 @@ describe("holdCheckerFromEnv, through the real SDK (consumer guide §7, hold gat
     }
   });
 
+  it("a genesis answer that is not a clean JSON-RPC result confirms nothing", async () => {
+    const { impl } = hosts({ amount: "150000000000" }, { amount: "150000000000" });
+    for (const reply of [
+      { jsonrpc: "2.0", id: 2, result: MAINNET_GENESIS },
+      { jsonrpc: "1.0", id: 1, result: MAINNET_GENESIS },
+      { result: MAINNET_GENESIS },
+      { jsonrpc: "2.0", id: 1, result: MAINNET_GENESIS, error: { code: -1 } },
+      [{ jsonrpc: "2.0", id: 1, result: MAINNET_GENESIS }],
+    ]) {
+      const odd = (async (url: string | URL | Request, init?: RequestInit) => {
+        const body = JSON.parse(String(init?.body)) as { method: string };
+        if (body.method === "getGenesisHash") return new Response(JSON.stringify(reply));
+        return impl(url, init);
+      }) as typeof fetch;
+      expect(await holdCheckerFromEnv(env, odd)(input()), JSON.stringify(reply)).toEqual({
+        kind: "uncertain",
+        reason: "outage",
+      });
+    }
+  });
+
   it("a network it cannot confirm is an outage, and is asked again next time", async () => {
     let down = true;
     const { impl } = hosts({ amount: "150000000000" }, { amount: "150000000000" });
@@ -378,6 +399,27 @@ describe("runHoldChecks", () => {
     expect(await rows()).toEqual([]);
   });
 
+  it("keeps a result that arrives after the window from standing as final", async () => {
+    const { e1, ref, rows } = await candidateDemo();
+    const late = scripted(observed("holder", 150_000_000_000n, sinceClose(e1, 24 * HOUR + 1)));
+    let ticks = 0;
+    // In the window when the run starts and before the call, past it once the answer is back.
+    const clock = () => sinceClose(e1, ++ticks <= 2 ? 23 * HOUR : 24 * HOUR + 1);
+    await runHoldChecks(t.db, ref, { check: late.check, tests, clock });
+    expect(late.calls).toHaveLength(1);
+    expect((await rows())[0]).toMatchObject({ status: "uncertain", reason: "window_closed" });
+  });
+
+  it("checks the window again before every read", async () => {
+    const { e1, ref, rows } = await candidateDemo();
+    const none = scripted();
+    let ticks = 0;
+    const clock = () => sinceClose(e1, ++ticks === 1 ? 23 * HOUR : 24 * HOUR + 1);
+    await runHoldChecks(t.db, ref, { check: none.check, tests, clock });
+    expect(none.calls).toEqual([]);
+    expect((await rows())[0]).toMatchObject({ status: "pending", attempts: 0 });
+  });
+
   it("reads no balance once 24 hours have passed since closes_at", async () => {
     const { e1, ref, rows } = await candidateDemo();
     const none = scripted();
@@ -416,6 +458,7 @@ describe("dueHoldChecks", () => {
   it("returns closed paid epochs with checks still open, within 24 hours of closes_at", async () => {
     const { demo, e1, ref } = await candidateDemo();
     expect(await due(demo.communityId, sinceClose(e1, HOUR))).toEqual([ref]);
+    expect(await due(demo.communityId, sinceClose(e1, 24 * HOUR))).toEqual([ref]);
     expect(await due(demo.communityId, sinceClose(e1, 25 * HOUR))).toEqual([]);
 
     await runHoldChecks(t.db, ref, {

@@ -7,7 +7,7 @@ import {
   parseProjectId,
   parseWalletAddress,
 } from "@organichub/verify";
-import { and, asc, eq, exists, gt, gte, inArray, notExists, or, sql } from "drizzle-orm";
+import { and, asc, eq, exists, gte, inArray, notExists, or, sql } from "drizzle-orm";
 import { type Blocker, evaluatePayoutGate, HOLD_WINDOW_MS } from "./gate.js";
 import type { RulesTest } from "./rules-test.js";
 
@@ -44,8 +44,12 @@ async function servesMainnet(
       signal: AbortSignal.timeout(4_000),
     });
     if (!response.ok) return undefined;
-    const { result } = (await response.json()) as { result?: unknown };
-    return typeof result === "string" ? result === MAINNET_GENESIS : undefined;
+    // Only a clean answer to this request counts: it is cached for the life of the process.
+    const body: unknown = await response.json();
+    if (!body || typeof body !== "object" || Array.isArray(body)) return undefined;
+    const reply = body as Record<string, unknown>;
+    if (reply.jsonrpc !== "2.0" || reply.id !== 1 || "error" in reply) return undefined;
+    return typeof reply.result === "string" ? reply.result === MAINNET_GENESIS : undefined;
   } catch {
     return undefined;
   }
@@ -121,8 +125,9 @@ export async function runHoldChecks(
     return { status: "skipped", blockers: gate.blockers };
   }
   // A balance read after the window could not count, so none is read.
-  const now = (deps.clock ?? (() => new Date()))();
-  if (now.getTime() > gate.closesAt.getTime() + HOLD_WINDOW_MS) return { status: "window_closed" };
+  const clock = deps.clock ?? (() => new Date());
+  const deadline = gate.closesAt.getTime() + HOLD_WINDOW_MS;
+  if (clock().getTime() > deadline) return { status: "window_closed" };
   const counts = { holder: 0, below: 0, uncertain: 0 };
   const held = gate.members.filter((m) => m.status === "held");
   if (held.length === 0 || !gate.hold) return { status: "checked", ...counts };
@@ -169,13 +174,21 @@ export async function runHoldChecks(
   }
 
   for (const row of rows.filter((r) => r.status === "pending" || r.status === "uncertain")) {
-    const result = await deps.check({
+    if (clock().getTime() > deadline) break;
+    const answer = await deps.check({
       projectId: ref.communityId,
       owner: row.wallet,
       mint: row.mint,
       thresholdRaw,
       checkRound: row.checkRound,
     });
+    // An answer that lands after the window cannot count, so it is kept undecided, never final.
+    const late =
+      clock().getTime() > deadline ||
+      (answer.kind !== "uncertain" && answer.observedAt.getTime() > deadline);
+    const result: HoldResult | { kind: "uncertain"; reason: "window_closed" } = late
+      ? { kind: "uncertain", reason: "window_closed" }
+      : answer;
     const attempt = {
       attempts: sql`${holdChecks.attempts} + 1`,
       checkedAt: sql`clock_timestamp()`,
@@ -220,7 +233,7 @@ export async function dueHoldChecks(
       and(
         eq(epochs.status, "closed"),
         gte(epochs.index, communities.firstPaidEpoch),
-        gt(epochs.closesAt, new Date(now.getTime() - HOLD_WINDOW_MS)),
+        gte(epochs.closesAt, new Date(now.getTime() - HOLD_WINDOW_MS)),
         or(
           exists(
             db
