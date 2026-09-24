@@ -25,7 +25,7 @@ export async function me(ctx: CommandContext<Context>) {
     [
       ...walletLines(member),
       ...(await meSummary(db, { communityId: community.id, memberId: member.id })),
-      `${env.PUBLIC_WEB_URL}/w/${member.wallet}`,
+      `${env.PUBLIC_WEB_URL}/c/${community.mint}`,
     ].join("\n"),
   );
 }
