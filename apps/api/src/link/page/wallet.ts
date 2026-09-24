@@ -10,8 +10,8 @@ export type MessageWallet = {
 type Connect = { connect(): Promise<{ accounts: readonly Account[] }> };
 type SignMessage = {
   signMessage(
-    inputs: { account: Account; message: Uint8Array }[],
-  ): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }[]>;
+    ...inputs: { account: Account; message: Uint8Array }[]
+  ): Promise<readonly { signature: Uint8Array; signedMessage: Uint8Array }[]>;
 };
 
 // The only two wallet features Hyphae ever touches.
@@ -37,9 +37,10 @@ export async function connect(w: MessageWallet): Promise<Account> {
 // Refuses a wallet that signed anything other than the exact bytes shown.
 export async function sign(w: MessageWallet, account: Account, message: string): Promise<string> {
   const bytes = new TextEncoder().encode(message);
-  const [out] = await (w.features[MESSAGE] as SignMessage).signMessage([
-    { account, message: bytes },
-  ]);
+  const [out] = await (w.features[MESSAGE] as SignMessage).signMessage({
+    account,
+    message: bytes,
+  });
   if (
     !out ||
     out.signedMessage.length !== bytes.length ||
