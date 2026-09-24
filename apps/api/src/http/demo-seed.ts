@@ -55,7 +55,7 @@ const effort = {
   missingEssentialEvidence: null,
   explanation: "You tested the flow yourself and published the steps and the result.",
 };
-const fakeModel =
+export const fakeModel =
   (score: number, flags: string[] = []) =>
   async (_prompt: unknown, purpose: RewardPurpose) => ({
     output: purpose === "effort" ? { effort } : quality(score, flags),

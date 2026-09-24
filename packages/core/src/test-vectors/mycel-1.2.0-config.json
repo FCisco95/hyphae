@@ -1,0 +1,64 @@
+{
+  "version": 2,
+  "rubric": {
+    "version": "1.2.0",
+    "community": "MYCEL",
+    "guidelines": "What earns points here. Real participation in the conversation, in your own words. Read the post, react to something specific in it, add an angle: an insight, a question, a comparison, a joke that lands, a technical note. One reply and one quote per raid, inside the window.\n\nWhat earns zero. \"lfg\", \"gm\", emoji-only, \"great project ser\", or reusable hype that would fit under any post. A real take on the post’s theme counts even when it does not quote the post. Copy-pasting another member's reply, or your own. Text that reads like an unedited AI draft. Anything off-topic or promotional for something else.\n\nNever, whatever the effort (this is the law, not taste), about MYCEL or any specific coin: telling anyone to buy, ape, get in, or hold it. Saying where its price is going or naming targets. Promising gains, \"easy money\", \"10x\", \"guaranteed\". Claiming returns. The line is naming a coin, or talking about the coin of the post you are replying to. General market talk is opinion, not a breach: \"holding usually beats trading\", \"long-term doesn’t have to mean years\", \"most launches fade in a week\". Safe framings: a personal view (\"I like how they handled…\"), an observation (\"interesting that…\"), curiosity (\"wonder how this performs when…\"), a comparison (\"feels more practical than most launches lately\").\n\nHow grading works. An AI grades every contribution against this rubric and shows its reasoning. Below 60/100 pays nothing. A breach of the \"never\" list is 0. Strikes: first = warning, second = you lose this epoch's points, third = 30 days out of paid raids. Every strike shows you why. The community admin can correct any grade; corrections are public.",
+    "criteria": [
+      {
+        "key": "context_fit",
+        "label": "Specific to the post",
+        "weight": 0.35,
+        "description": "Reacts to the target post. Naming something concrete from it earns full marks; a genuine take on the post’s theme or question earns most of it; reusable hype that would fit under any post earns none."
+      },
+      {
+        "key": "own_voice",
+        "label": "Reads like a real person",
+        "weight": 0.3,
+        "description": "Natural crypto-Twitter voice, light imperfection allowed. No corporate rhythm, no AI-writing signals (pivotal, landscape, testament, underscores, 'Additionally', 'Furthermore', 'experts say', sterile positivity)."
+      },
+      {
+        "key": "value_angle",
+        "label": "Adds an angle",
+        "weight": 0.35,
+        "description": "An insight, a real question, a comparison, a playful take, a technical note. Something the thread did not have before."
+      }
+    ],
+    "timing": {
+      "fullUntil": 360,
+      "zeroAt": 2880
+    },
+    "stakeWeight": "none",
+    "minHoldUnits": "100000000000",
+    "proposalAcceptThreshold": 70
+  },
+  "scoring": {
+    "promptVersion": "reward-eval/1",
+    "promptTemplateHash": "7c3b3482377f4dbdce83a315c0b253c7f4868b11202a7b1a3affeff9ac01742a"
+  },
+  "epoch": {
+    "durationSeconds": 604800
+  },
+  "timing": {
+    "fullCreditUntilMs": 21600000,
+    "zeroCreditAtMs": 172800000
+  },
+  "credit": {
+    "floor": 60,
+    "aiCapMild": 79,
+    "aiCapStrong": 40,
+    "hardZeroFlags": ["guideline_breach", "spam", "off_topic"]
+  },
+  "effort": {
+    "multiplierBps": 30000,
+    "slotLimit": 1,
+    "candidatesPerSlot": 3,
+    "retrievalRounds": 3,
+    "criteria": "Effort requires all three: original substance (the member's own explanation, analysis, test or work, not a routine reaction or a repost); inspectable work (what was done can be checked from the captured evidence: sources, method, steps, results or the actual media); a concrete community contribution beyond a routine reaction. Format alone never qualifies. Length, polish, claimed hours, views, token holdings and bullish sentiment are not evidence of effort or authorship. Minimum evidence: posts, threads and articles need the captured content with attribution and an identifiable original explanation or analysis; product or protocol tests need what was tested, the method, observed results and inspectable output; video or visual work needs the actual media plus context, and a title, thumbnail or transcript cannot stand in for unseen visual claims."
+  },
+  "points": {
+    "unitsPerPoint": "100000000",
+    "rounding": "half_up_after_aggregation",
+    "maxWholePoints": "18446744073709551615"
+  }
+}

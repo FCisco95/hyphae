@@ -2,6 +2,7 @@ import type { RewardPurpose } from "@hyphae/core";
 import { contributions, epochs, rewardIntakes, rewardSnapshotEntries } from "@hyphae/db";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { epochCommitments } from "../payout/commitments.js";
 import { closeEpoch } from "./close.js";
 import { beginDispatch, markReconciliation, runEvaluation } from "./evaluation.js";
 import { admitContribution, type CapturedEvidence } from "./intake.js";
@@ -112,6 +113,23 @@ describe("re-entry of an expired artifact (O3)", () => {
       .from(rewardSnapshotEntries)
       .where(eq(rewardSnapshotEntries.snapshotId, closed.snapshot.id));
     expect(frozen).toEqual(closed.entries);
+  });
+
+  it("names the original contribution in the re-entry's evidence commitment (B4)", async () => {
+    const l = await lane();
+    const original = await l.admitOne();
+    await l.nom(original.contributionId, 3 * MIN);
+    await l.close();
+    const again = await l.nom(original.contributionId, IN_EPOCH_2, recaptured());
+    if (again.status !== "nominated") throw new Error(again.status);
+    const [, reentry] = await l.intakesOf(original.artifactKey);
+
+    const commitments = await epochCommitments(t.db, reentry?.epochId as string);
+    expect(commitments.evidence.get(reentry?.contributionId as string)?.payload).toMatchObject({
+      contribution_id: reentry?.contributionId,
+      reentry_of: original.contributionId,
+      text: "edited after close",
+    });
   });
 
   it("asks for evidence captured now and admits nothing without it", async () => {

@@ -3,6 +3,20 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, concatBytes, hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 import { describe, expect, it } from "vitest";
+import { allocate } from "./allocation.js";
+import {
+  c14n,
+  configHash,
+  type DecisionPayload,
+  decisionPayloadHash,
+  type EpochAuditManifest,
+  type EvidencePayload,
+  epochAuditHash,
+  evidencePayloadHash,
+  jcs,
+  type MemberEpochManifest,
+  memberEpochHash,
+} from "./commitments.js";
 import { buildTree, encodeLeaf, getProof, type Leaf, leafHash, verifyProof } from "./merkle.js";
 
 // The shared H-CONTRACT vectors (B10). This test computes every vector from fixed inputs and
@@ -279,11 +293,386 @@ function programVectors() {
   };
 }
 
+const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+const COMMUNITY = id(1);
+const EPOCH = {
+  id: id(2),
+  index: "2",
+  opens_at: "2026-10-02T00:00:00.000000Z",
+  closes_at: "2026-10-09T00:00:00.000000Z",
+};
+const MINT = "So11111111111111111111111111111111111111112";
+const PROGRAM_ID = "EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E";
+const WALLET_A = "3nVsVs3QSv6Yf1XtRj2d1s2ySSeeNQbtztHwm4VhNgbk";
+const FEE_RECIPIENT = "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR";
+const COMBINING_ACUTE = String.fromCharCode(0x301);
+const BELL = String.fromCharCode(7);
+
+// Built by buildRewardConfigPayload from docs/rubrics/mycel-1.2.0.json with prompt reward-eval/1,
+// the code that bootstrapped MYCEL epoch 1. It is not read back from the production database.
+const MYCEL_CONFIG = JSON.parse(
+  readFileSync(new URL("./test-vectors/mycel-1.2.0-config.json", import.meta.url), "utf8"),
+);
+
+const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function base58Decode(s: string): Uint8Array {
+  let n = 0n;
+  for (const ch of s) n = n * 58n + BigInt(BASE58.indexOf(ch));
+  const out = new Uint8Array(32);
+  for (let i = 31; i >= 0; i--) {
+    out[i] = Number(n & 0xffn);
+    n >>= 8n;
+  }
+  return out;
+}
+
+const hashed = <T>(payload: T, hash: (p: T) => string) => ({
+  payload,
+  c14n: c14n(payload),
+  hash: hash(payload),
+});
+
+function commitmentVectors() {
+  const configs = [
+    { name: "mycel_1_2_0", payload: MYCEL_CONFIG },
+    {
+      name: "non_ascii",
+      payload: {
+        version: 2,
+        rubric: { community: "Hyphae Lab ação ✓", weights: [0.35, 0.3, 1e21] },
+        note: `cafe${COMBINING_ACUTE} 🍄`,
+      },
+    },
+  ].map((c) => ({ ...c, jcs: jcs(c.payload), hash: configHash(c.payload) }));
+  const configH = (configs[0] as (typeof configs)[number]).hash;
+
+  const evidence: Record<string, EvidencePayload> = {
+    x_post: {
+      community_id: COMMUNITY,
+      contribution_id: id(10),
+      member_id: id(20),
+      kind: "reply",
+      url: "https://x.com/hyphae/status/1971234567890123456",
+      text: "Interesting that the claim is one receipt per wallet; how does that scale past 1k members?",
+      capture: {
+        source: "x_oembed",
+        captured_at: "2026-10-03T10:04:05.123000Z",
+        limitations: ["media_not_captured", "quoted_post_not_captured"],
+      },
+      raid_id: id(30),
+      intake_accepted_at: "2026-10-03T10:04:05.456789Z",
+      reentry_of: null,
+    },
+    submit_text: {
+      community_id: COMMUNITY,
+      contribution_id: id(11),
+      member_id: id(20),
+      kind: "text",
+      url: null,
+      text: `Wrote a guide 🍄 for the cafe${COMBINING_ACUTE} crowd${BELL}\n"quoted" \\ done`,
+      capture: {
+        source: "telegram_text",
+        captured_at: "2026-10-04T08:00:00.000000Z",
+        limitations: [],
+      },
+      raid_id: null,
+      intake_accepted_at: "2026-10-04T08:00:00.000001Z",
+      reentry_of: null,
+    },
+    reentry: {
+      community_id: COMMUNITY,
+      contribution_id: id(12),
+      member_id: id(21),
+      kind: "post",
+      url: "https://x.com/hyphae/status/1971234567890123999",
+      text: "Thread: how the vault pays each leaf once.",
+      capture: { source: "x_oembed", captured_at: "2026-10-05T12:00:00.000000Z", limitations: [] },
+      raid_id: null,
+      intake_accepted_at: "2026-10-05T12:00:00.000000Z",
+      reentry_of: id(13),
+    },
+  };
+  const evidenceOut = Object.fromEntries(
+    Object.entries(evidence).map(([k, p]) => [k, hashed(p, evidencePayloadHash)]),
+  );
+
+  const model: DecisionPayload = {
+    community_id: COMMUNITY,
+    epoch_id: EPOCH.id,
+    contribution_id: id(10),
+    revision: "1",
+    predecessor_hash: null,
+    config_hash: configH,
+    evidence_hash: evidenceOut.x_post?.hash as string,
+    source: "model",
+    model: {
+      model: "claude-sonnet-5",
+      prompt_version: "reward-eval/1",
+      prompt_hash: bytesToHex(sha256(utf8ToBytes("prompt"))),
+      input_hash: bytesToHex(sha256(utf8ToBytes("input"))),
+      output_hash: bytesToHex(sha256(utf8ToBytes("output"))),
+    },
+    correction: null,
+    nomination_id: null,
+    raw_quality: "85",
+    credited_quality: "85",
+    flags: [],
+    effort: "not_nominated",
+    effort_criteria: null,
+    timing_bps: "10000",
+    multiplier_bps: "10000",
+    point_units: "8500000000",
+    explanation: "Specific to the post, with a real question.",
+    accepted_at: "2026-10-03T10:04:09.000100Z",
+    affects_allocation: true,
+  };
+  const upgrade: DecisionPayload = {
+    ...model,
+    revision: "2",
+    predecessor_hash: decisionPayloadHash(model),
+    model: {
+      ...(model.model as NonNullable<DecisionPayload["model"]>),
+      input_hash: bytesToHex(sha256(utf8ToBytes("effort input"))),
+    },
+    nomination_id: id(40),
+    effort: "eligible",
+    effort_criteria: {
+      community_contribution: { met: true, note: "answers a question holders keep asking" },
+      inspectable_work: { met: true, note: "steps linked" },
+      original_substance: { met: true, note: "own walkthrough" },
+    },
+    multiplier_bps: "30000",
+    point_units: "25500000000",
+    explanation: "Effort confirmed: an original walkthrough others can check.",
+    accepted_at: "2026-10-05T09:00:00.000000Z",
+  };
+  const lateCorrection: DecisionPayload = {
+    ...upgrade,
+    revision: "3",
+    predecessor_hash: decisionPayloadHash(upgrade),
+    source: "correction",
+    model: null,
+    correction: {
+      actor: "admin:cisco",
+      authority: "community_admin",
+      reason: "The linked steps were copied from another member.",
+      evidence_refs: ["https://x.com/hyphae/status/1971234567890123000", "tg:message:77"],
+    },
+    raw_quality: "85",
+    credited_quality: "0",
+    flags: ["guideline_breach", "spam"],
+    point_units: "0",
+    explanation: "Corrected after the close; explanatory only.",
+    accepted_at: "2026-10-09T00:00:00.000000Z",
+    affects_allocation: false,
+  };
+  const decisions = {
+    model_revision_1: hashed(model, decisionPayloadHash),
+    effort_upgrade_revision_2: hashed(upgrade, decisionPayloadHash),
+    late_correction_revision_3: hashed(lateCorrection, decisionPayloadHash),
+  };
+
+  const base = {
+    network: "solana:devnet" as const,
+    program_id: PROGRAM_ID,
+    community_id: COMMUNITY,
+    mint: MINT,
+    epoch: EPOCH,
+    config_hash: configH,
+  };
+  const memberA: MemberEpochManifest = {
+    ...base,
+    member_id: id(20),
+    wallet: WALLET_A,
+    entries: [
+      {
+        contribution_id: id(10),
+        decision_hash: decisions.effort_upgrade_revision_2.hash,
+        reason: null,
+        point_units: "25500000000",
+      },
+      {
+        contribution_id: id(11),
+        decision_hash: null,
+        reason: "pending_at_close",
+        point_units: "0",
+      },
+      { contribution_id: id(14), decision_hash: null, reason: "excluded", point_units: "0" },
+    ],
+    point_units: "25500000000",
+    whole_points: "255",
+    settlement: {
+      status: "payable",
+      reasons: [],
+      rules_test: { test_id: "mycel-rules-1", passed_at: "2026-10-02T11:22:33.444555Z" },
+      hold: {
+        mint: MINT,
+        threshold_raw: "100000000000",
+        status: "holder",
+        raw_amount: "150000000000",
+        decimals: "6",
+        slot: "412345678",
+        provider: "consensus",
+        observed_at: "2026-10-09T00:05:00.123000Z",
+      },
+      uncapped_lamports: "485000000",
+      amount_lamports: "121250000",
+      cap_remainder_lamports: "363750000",
+    },
+  };
+  const memberB: MemberEpochManifest = {
+    ...base,
+    member_id: id(21),
+    wallet: null,
+    entries: [
+      {
+        contribution_id: id(12),
+        decision_hash: decisions.model_revision_1.hash,
+        reason: null,
+        point_units: "6000000000",
+      },
+    ],
+    point_units: "6000000000",
+    whole_points: "60",
+    settlement: {
+      status: "not_payable",
+      reasons: ["no_rules_test", "no_verified_wallet"],
+      rules_test: { test_id: "mycel-rules-1", passed_at: null },
+      hold: null,
+      uncapped_lamports: "0",
+      amount_lamports: "0",
+      cap_remainder_lamports: "0",
+    },
+  };
+  const members = {
+    counted_pending_excluded: hashed(memberA, memberEpochHash),
+    no_verified_wallet: hashed(memberB, memberEpochHash),
+  };
+  const leafA = leafHash({
+    wallet: base58Decode(WALLET_A),
+    epochIndex: 2n,
+    score: 255n,
+    amount: 121_250_000n,
+    evidenceHash: hexToBytes(members.counted_pending_excluded.hash),
+  });
+  const audit: EpochAuditManifest = {
+    ...base,
+    snapshot: {
+      closed_at: "2026-10-09T00:00:04.000321Z",
+      cutoff_assumption: "decisions accepted strictly before closes_at",
+    },
+    entries: [
+      ...memberA.entries.map((e) => ({ ...e, member_id: id(20) })),
+      ...memberB.entries.map((e) => ({ ...e, member_id: id(21) })),
+    ].sort((x, y) => (x.contribution_id < y.contribution_id ? -1 : 1)),
+    members: [
+      {
+        member_id: id(20),
+        manifest_hash: members.counted_pending_excluded.hash,
+        wallet: WALLET_A,
+        point_units: "25500000000",
+        whole_points: "255",
+        amount_lamports: "121250000",
+      },
+      {
+        member_id: id(21),
+        manifest_hash: members.no_verified_wallet.hash,
+        wallet: null,
+        point_units: "6000000000",
+        whole_points: "60",
+        amount_lamports: "0",
+      },
+    ],
+    settlement: {
+      gross_lamports: "500000000",
+      fee_bps: "300",
+      fee_lamports: "15000000",
+      fee_recipient: FEE_RECIPIENT,
+      net_lamports: "485000000",
+      cap_bps: "2500",
+      cap_lamports: "121250000",
+      payable_members: "1",
+      allocated_lamports: "121250000",
+      cap_remainder_lamports: "363750000",
+      dust_lamports: "0",
+      rules_test_id: "mycel-rules-1",
+      hold: { mint: MINT, threshold_raw: "100000000000" },
+    },
+    root: bytesToHex(buildTree([leafA]).root),
+  };
+
+  return {
+    config: configs,
+    evidence: evidenceOut,
+    decisions,
+    member_epoch: members,
+    epoch_audit: hashed(audit, epochAuditHash),
+  };
+}
+
+// Allocation inputs are labelled members with exact point units; the api's seeded ready epoch
+// reproduces seeded_ready_epoch from real rows.
+function allocationVectors() {
+  const units = (points: bigint) => points * 100_000_000n;
+  const cases = [
+    {
+      name: "worked_example",
+      gross_lamports: 500_000_000n,
+      members: [
+        { label: "m1", point_units: units(255n), payable: true },
+        { label: "m2", point_units: units(85n), payable: true },
+        { label: "m3", point_units: units(40n), payable: true },
+        { label: "m4", point_units: units(60n), payable: false },
+      ],
+    },
+    {
+      name: "seeded_ready_epoch",
+      gross_lamports: 500_000_000n,
+      members: [
+        { label: "effort", point_units: units(255n), payable: true },
+        { label: "ordinary", point_units: units(85n), payable: true },
+        { label: "floor", point_units: units(70n), payable: true },
+        { label: "unsigned", point_units: units(60n), payable: false },
+      ],
+    },
+  ];
+  return cases.map((c) => {
+    const a = allocate(
+      c.gross_lamports,
+      c.members.map((m) => ({ memberId: m.label, pointUnits: m.point_units, payable: m.payable })),
+    );
+    return {
+      name: c.name,
+      gross_lamports: c.gross_lamports.toString(),
+      members: c.members.map((m) => ({ ...m, point_units: m.point_units.toString() })),
+      fee_lamports: a.feeLamports.toString(),
+      net_lamports: a.netLamports.toString(),
+      cap_bps: a.capBps.toString(),
+      cap_lamports: a.capLamports.toString(),
+      allocated_lamports: a.allocatedLamports.toString(),
+      cap_remainder_lamports: a.capRemainderLamports.toString(),
+      dust_lamports: a.dustLamports.toString(),
+      allocations: Object.fromEntries(
+        a.members.map((m) => [
+          m.memberId,
+          {
+            uncapped_lamports: m.uncappedLamports.toString(),
+            amount_lamports: m.amountLamports.toString(),
+            cap_remainder_lamports: m.capRemainderLamports.toString(),
+          },
+        ]),
+      ),
+    };
+  });
+}
+
 function computeVectors() {
   return {
     version: "h-contract-v1",
     merkle: merkleVectors(),
     program: programVectors(),
+    commitments: commitmentVectors(),
+    allocation: allocationVectors(),
   };
 }
 

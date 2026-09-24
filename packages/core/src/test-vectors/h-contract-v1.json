@@ -304,5 +304,587 @@
         "data": "dfe90be57ca5cf1c6355691c178a8ff91007a7478afb955ef7352c63e7b25703984cf78b26e21a56ee93a4f66f8d16b819bb9beb9ffccdfcdc1412e87fee6a324c2a99a1e0e67148ff00000000000000d0203a070000000072b14f73d2de203b79f9ca0491a4e2f1d7479301008504c3c2505961929c755fd074c86a00000000fa"
       }
     }
-  }
+  },
+  "commitments": {
+    "config": [
+      {
+        "name": "mycel_1_2_0",
+        "payload": {
+          "version": 2,
+          "rubric": {
+            "version": "1.2.0",
+            "community": "MYCEL",
+            "guidelines": "What earns points here. Real participation in the conversation, in your own words. Read the post, react to something specific in it, add an angle: an insight, a question, a comparison, a joke that lands, a technical note. One reply and one quote per raid, inside the window.\n\nWhat earns zero. \"lfg\", \"gm\", emoji-only, \"great project ser\", or reusable hype that would fit under any post. A real take on the post’s theme counts even when it does not quote the post. Copy-pasting another member's reply, or your own. Text that reads like an unedited AI draft. Anything off-topic or promotional for something else.\n\nNever, whatever the effort (this is the law, not taste), about MYCEL or any specific coin: telling anyone to buy, ape, get in, or hold it. Saying where its price is going or naming targets. Promising gains, \"easy money\", \"10x\", \"guaranteed\". Claiming returns. The line is naming a coin, or talking about the coin of the post you are replying to. General market talk is opinion, not a breach: \"holding usually beats trading\", \"long-term doesn’t have to mean years\", \"most launches fade in a week\". Safe framings: a personal view (\"I like how they handled…\"), an observation (\"interesting that…\"), curiosity (\"wonder how this performs when…\"), a comparison (\"feels more practical than most launches lately\").\n\nHow grading works. An AI grades every contribution against this rubric and shows its reasoning. Below 60/100 pays nothing. A breach of the \"never\" list is 0. Strikes: first = warning, second = you lose this epoch's points, third = 30 days out of paid raids. Every strike shows you why. The community admin can correct any grade; corrections are public.",
+            "criteria": [
+              {
+                "key": "context_fit",
+                "label": "Specific to the post",
+                "weight": 0.35,
+                "description": "Reacts to the target post. Naming something concrete from it earns full marks; a genuine take on the post’s theme or question earns most of it; reusable hype that would fit under any post earns none."
+              },
+              {
+                "key": "own_voice",
+                "label": "Reads like a real person",
+                "weight": 0.3,
+                "description": "Natural crypto-Twitter voice, light imperfection allowed. No corporate rhythm, no AI-writing signals (pivotal, landscape, testament, underscores, 'Additionally', 'Furthermore', 'experts say', sterile positivity)."
+              },
+              {
+                "key": "value_angle",
+                "label": "Adds an angle",
+                "weight": 0.35,
+                "description": "An insight, a real question, a comparison, a playful take, a technical note. Something the thread did not have before."
+              }
+            ],
+            "timing": {
+              "fullUntil": 360,
+              "zeroAt": 2880
+            },
+            "stakeWeight": "none",
+            "minHoldUnits": "100000000000",
+            "proposalAcceptThreshold": 70
+          },
+          "scoring": {
+            "promptVersion": "reward-eval/1",
+            "promptTemplateHash": "7c3b3482377f4dbdce83a315c0b253c7f4868b11202a7b1a3affeff9ac01742a"
+          },
+          "epoch": {
+            "durationSeconds": 604800
+          },
+          "timing": {
+            "fullCreditUntilMs": 21600000,
+            "zeroCreditAtMs": 172800000
+          },
+          "credit": {
+            "floor": 60,
+            "aiCapMild": 79,
+            "aiCapStrong": 40,
+            "hardZeroFlags": ["guideline_breach", "spam", "off_topic"]
+          },
+          "effort": {
+            "multiplierBps": 30000,
+            "slotLimit": 1,
+            "candidatesPerSlot": 3,
+            "retrievalRounds": 3,
+            "criteria": "Effort requires all three: original substance (the member's own explanation, analysis, test or work, not a routine reaction or a repost); inspectable work (what was done can be checked from the captured evidence: sources, method, steps, results or the actual media); a concrete community contribution beyond a routine reaction. Format alone never qualifies. Length, polish, claimed hours, views, token holdings and bullish sentiment are not evidence of effort or authorship. Minimum evidence: posts, threads and articles need the captured content with attribution and an identifiable original explanation or analysis; product or protocol tests need what was tested, the method, observed results and inspectable output; video or visual work needs the actual media plus context, and a title, thumbnail or transcript cannot stand in for unseen visual claims."
+          },
+          "points": {
+            "unitsPerPoint": "100000000",
+            "rounding": "half_up_after_aggregation",
+            "maxWholePoints": "18446744073709551615"
+          }
+        },
+        "jcs": "{\"credit\":{\"aiCapMild\":79,\"aiCapStrong\":40,\"floor\":60,\"hardZeroFlags\":[\"guideline_breach\",\"spam\",\"off_topic\"]},\"effort\":{\"candidatesPerSlot\":3,\"criteria\":\"Effort requires all three: original substance (the member's own explanation, analysis, test or work, not a routine reaction or a repost); inspectable work (what was done can be checked from the captured evidence: sources, method, steps, results or the actual media); a concrete community contribution beyond a routine reaction. Format alone never qualifies. Length, polish, claimed hours, views, token holdings and bullish sentiment are not evidence of effort or authorship. Minimum evidence: posts, threads and articles need the captured content with attribution and an identifiable original explanation or analysis; product or protocol tests need what was tested, the method, observed results and inspectable output; video or visual work needs the actual media plus context, and a title, thumbnail or transcript cannot stand in for unseen visual claims.\",\"multiplierBps\":30000,\"retrievalRounds\":3,\"slotLimit\":1},\"epoch\":{\"durationSeconds\":604800},\"points\":{\"maxWholePoints\":\"18446744073709551615\",\"rounding\":\"half_up_after_aggregation\",\"unitsPerPoint\":\"100000000\"},\"rubric\":{\"community\":\"MYCEL\",\"criteria\":[{\"description\":\"Reacts to the target post. Naming something concrete from it earns full marks; a genuine take on the post’s theme or question earns most of it; reusable hype that would fit under any post earns none.\",\"key\":\"context_fit\",\"label\":\"Specific to the post\",\"weight\":0.35},{\"description\":\"Natural crypto-Twitter voice, light imperfection allowed. No corporate rhythm, no AI-writing signals (pivotal, landscape, testament, underscores, 'Additionally', 'Furthermore', 'experts say', sterile positivity).\",\"key\":\"own_voice\",\"label\":\"Reads like a real person\",\"weight\":0.3},{\"description\":\"An insight, a real question, a comparison, a playful take, a technical note. Something the thread did not have before.\",\"key\":\"value_angle\",\"label\":\"Adds an angle\",\"weight\":0.35}],\"guidelines\":\"What earns points here. Real participation in the conversation, in your own words. Read the post, react to something specific in it, add an angle: an insight, a question, a comparison, a joke that lands, a technical note. One reply and one quote per raid, inside the window.\\n\\nWhat earns zero. \\\"lfg\\\", \\\"gm\\\", emoji-only, \\\"great project ser\\\", or reusable hype that would fit under any post. A real take on the post’s theme counts even when it does not quote the post. Copy-pasting another member's reply, or your own. Text that reads like an unedited AI draft. Anything off-topic or promotional for something else.\\n\\nNever, whatever the effort (this is the law, not taste), about MYCEL or any specific coin: telling anyone to buy, ape, get in, or hold it. Saying where its price is going or naming targets. Promising gains, \\\"easy money\\\", \\\"10x\\\", \\\"guaranteed\\\". Claiming returns. The line is naming a coin, or talking about the coin of the post you are replying to. General market talk is opinion, not a breach: \\\"holding usually beats trading\\\", \\\"long-term doesn’t have to mean years\\\", \\\"most launches fade in a week\\\". Safe framings: a personal view (\\\"I like how they handled…\\\"), an observation (\\\"interesting that…\\\"), curiosity (\\\"wonder how this performs when…\\\"), a comparison (\\\"feels more practical than most launches lately\\\").\\n\\nHow grading works. An AI grades every contribution against this rubric and shows its reasoning. Below 60/100 pays nothing. A breach of the \\\"never\\\" list is 0. Strikes: first = warning, second = you lose this epoch's points, third = 30 days out of paid raids. Every strike shows you why. The community admin can correct any grade; corrections are public.\",\"minHoldUnits\":\"100000000000\",\"proposalAcceptThreshold\":70,\"stakeWeight\":\"none\",\"timing\":{\"fullUntil\":360,\"zeroAt\":2880},\"version\":\"1.2.0\"},\"scoring\":{\"promptTemplateHash\":\"7c3b3482377f4dbdce83a315c0b253c7f4868b11202a7b1a3affeff9ac01742a\",\"promptVersion\":\"reward-eval/1\"},\"timing\":{\"fullCreditUntilMs\":21600000,\"zeroCreditAtMs\":172800000},\"version\":2}",
+        "hash": "db474d51f5482a0b7901939ad0ccd691d8f53dd0bec612e7a358a347dd55875b"
+      },
+      {
+        "name": "non_ascii",
+        "payload": {
+          "version": 2,
+          "rubric": {
+            "community": "Hyphae Lab ação ✓",
+            "weights": [0.35, 0.3, 1e21]
+          },
+          "note": "café 🍄"
+        },
+        "jcs": "{\"note\":\"café 🍄\",\"rubric\":{\"community\":\"Hyphae Lab ação ✓\",\"weights\":[0.35,0.3,1e+21]},\"version\":2}",
+        "hash": "bc5b06967829e1ee4d06fa4855eb0accfe95939266d05fd8f636350f00137bda"
+      }
+    ],
+    "evidence": {
+      "x_post": {
+        "payload": {
+          "community_id": "00000000-0000-4000-8000-000000000001",
+          "contribution_id": "00000000-0000-4000-8000-000000000010",
+          "member_id": "00000000-0000-4000-8000-000000000020",
+          "kind": "reply",
+          "url": "https://x.com/hyphae/status/1971234567890123456",
+          "text": "Interesting that the claim is one receipt per wallet; how does that scale past 1k members?",
+          "capture": {
+            "source": "x_oembed",
+            "captured_at": "2026-10-03T10:04:05.123000Z",
+            "limitations": ["media_not_captured", "quoted_post_not_captured"]
+          },
+          "raid_id": "00000000-0000-4000-8000-000000000030",
+          "intake_accepted_at": "2026-10-03T10:04:05.456789Z",
+          "reentry_of": null
+        },
+        "c14n": "{\"capture\":{\"captured_at\":\"2026-10-03T10:04:05.123000Z\",\"limitations\":[\"media_not_captured\",\"quoted_post_not_captured\"],\"source\":\"x_oembed\"},\"community_id\":\"00000000-0000-4000-8000-000000000001\",\"contribution_id\":\"00000000-0000-4000-8000-000000000010\",\"intake_accepted_at\":\"2026-10-03T10:04:05.456789Z\",\"kind\":\"reply\",\"member_id\":\"00000000-0000-4000-8000-000000000020\",\"raid_id\":\"00000000-0000-4000-8000-000000000030\",\"reentry_of\":null,\"text\":\"Interesting that the claim is one receipt per wallet; how does that scale past 1k members?\",\"url\":\"https://x.com/hyphae/status/1971234567890123456\"}",
+        "hash": "41d75682d7001214b8974ef471adb4b0df04724b456f1cc4b6166b4369f376d9"
+      },
+      "submit_text": {
+        "payload": {
+          "community_id": "00000000-0000-4000-8000-000000000001",
+          "contribution_id": "00000000-0000-4000-8000-000000000011",
+          "member_id": "00000000-0000-4000-8000-000000000020",
+          "kind": "text",
+          "url": null,
+          "text": "Wrote a guide 🍄 for the café crowd\u0007\n\"quoted\" \\ done",
+          "capture": {
+            "source": "telegram_text",
+            "captured_at": "2026-10-04T08:00:00.000000Z",
+            "limitations": []
+          },
+          "raid_id": null,
+          "intake_accepted_at": "2026-10-04T08:00:00.000001Z",
+          "reentry_of": null
+        },
+        "c14n": "{\"capture\":{\"captured_at\":\"2026-10-04T08:00:00.000000Z\",\"limitations\":[],\"source\":\"telegram_text\"},\"community_id\":\"00000000-0000-4000-8000-000000000001\",\"contribution_id\":\"00000000-0000-4000-8000-000000000011\",\"intake_accepted_at\":\"2026-10-04T08:00:00.000001Z\",\"kind\":\"text\",\"member_id\":\"00000000-0000-4000-8000-000000000020\",\"raid_id\":null,\"reentry_of\":null,\"text\":\"Wrote a guide 🍄 for the café crowd\\u0007\\n\\\"quoted\\\" \\\\ done\",\"url\":null}",
+        "hash": "33d4f0849a84a9a948a911eaea30d0077220f74ad0ae9f5503bf9b0319d5be03"
+      },
+      "reentry": {
+        "payload": {
+          "community_id": "00000000-0000-4000-8000-000000000001",
+          "contribution_id": "00000000-0000-4000-8000-000000000012",
+          "member_id": "00000000-0000-4000-8000-000000000021",
+          "kind": "post",
+          "url": "https://x.com/hyphae/status/1971234567890123999",
+          "text": "Thread: how the vault pays each leaf once.",
+          "capture": {
+            "source": "x_oembed",
+            "captured_at": "2026-10-05T12:00:00.000000Z",
+            "limitations": []
+          },
+          "raid_id": null,
+          "intake_accepted_at": "2026-10-05T12:00:00.000000Z",
+          "reentry_of": "00000000-0000-4000-8000-000000000013"
+        },
+        "c14n": "{\"capture\":{\"captured_at\":\"2026-10-05T12:00:00.000000Z\",\"limitations\":[],\"source\":\"x_oembed\"},\"community_id\":\"00000000-0000-4000-8000-000000000001\",\"contribution_id\":\"00000000-0000-4000-8000-000000000012\",\"intake_accepted_at\":\"2026-10-05T12:00:00.000000Z\",\"kind\":\"post\",\"member_id\":\"00000000-0000-4000-8000-000000000021\",\"raid_id\":null,\"reentry_of\":\"00000000-0000-4000-8000-000000000013\",\"text\":\"Thread: how the vault pays each leaf once.\",\"url\":\"https://x.com/hyphae/status/1971234567890123999\"}",
+        "hash": "6b4fd5027fb116f1099d99f7e5fed29494187e77a49e28d1d3248ca280f79f72"
+      }
+    },
+    "decisions": {
+      "model_revision_1": {
+        "payload": {
+          "community_id": "00000000-0000-4000-8000-000000000001",
+          "epoch_id": "00000000-0000-4000-8000-000000000002",
+          "contribution_id": "00000000-0000-4000-8000-000000000010",
+          "revision": "1",
+          "predecessor_hash": null,
+          "config_hash": "db474d51f5482a0b7901939ad0ccd691d8f53dd0bec612e7a358a347dd55875b",
+          "evidence_hash": "41d75682d7001214b8974ef471adb4b0df04724b456f1cc4b6166b4369f376d9",
+          "source": "model",
+          "model": {
+            "model": "claude-sonnet-5",
+            "prompt_version": "reward-eval/1",
+            "prompt_hash": "cf07194ee232eb531e15f690000d19846dea69cf05504782658afcfacb9228a2",
+            "input_hash": "c96c6d5be8d08a12e7b5cdc1b207fa6b2430974c86803d8891675e76fd992c20",
+            "output_hash": "e0ee8bb50685e05fa0f47ed04203ae953fdfd055f5bd2892ea186504254f8c3a"
+          },
+          "correction": null,
+          "nomination_id": null,
+          "raw_quality": "85",
+          "credited_quality": "85",
+          "flags": [],
+          "effort": "not_nominated",
+          "effort_criteria": null,
+          "timing_bps": "10000",
+          "multiplier_bps": "10000",
+          "point_units": "8500000000",
+          "explanation": "Specific to the post, with a real question.",
+          "accepted_at": "2026-10-03T10:04:09.000100Z",
+          "affects_allocation": true
+        },
+        "c14n": "{\"accepted_at\":\"2026-10-03T10:04:09.000100Z\",\"affects_allocation\":true,\"community_id\":\"00000000-0000-4000-8000-000000000001\",\"config_hash\":\"db474d51f5482a0b7901939ad0ccd691d8f53dd0bec612e7a358a347dd55875b\",\"contribution_id\":\"00000000-0000-4000-8000-000000000010\",\"correction\":null,\"credited_quality\":\"85\",\"effort\":\"not_nominated\",\"effort_criteria\":null,\"epoch_id\":\"00000000-0000-4000-8000-000000000002\",\"evidence_hash\":\"41d75682d7001214b8974ef471adb4b0df04724b456f1cc4b6166b4369f376d9\",\"explanation\":\"Specific to the post, with a real question.\",\"flags\":[],\"model\":{\"input_hash\":\"c96c6d5be8d08a12e7b5cdc1b207fa6b2430974c86803d8891675e76fd992c20\",\"model\":\"claude-sonnet-5\",\"output_hash\":\"e0ee8bb50685e05fa0f47ed04203ae953fdfd055f5bd2892ea186504254f8c3a\",\"prompt_hash\":\"cf07194ee232eb531e15f690000d19846dea69cf05504782658afcfacb9228a2\",\"prompt_version\":\"reward-eval/1\"},\"multiplier_bps\":\"10000\",\"nomination_id\":null,\"point_units\":\"8500000000\",\"predecessor_hash\":null,\"raw_quality\":\"85\",\"revision\":\"1\",\"source\":\"model\",\"timing_bps\":\"10000\"}",
+        "hash": "958fdf071371f682f4ca92b6a16fbfda438d6d89b5321223292911614ff96d18"
+      },
+      "effort_upgrade_revision_2": {
+        "payload": {
+          "community_id": "00000000-0000-4000-8000-000000000001",
+          "epoch_id": "00000000-0000-4000-8000-000000000002",
+          "contribution_id": "00000000-0000-4000-8000-000000000010",
+          "revision": "2",
+          "predecessor_hash": "958fdf071371f682f4ca92b6a16fbfda438d6d89b5321223292911614ff96d18",
+          "config_hash": "db474d51f5482a0b7901939ad0ccd691d8f53dd0bec612e7a358a347dd55875b",
+          "evidence_hash": "41d75682d7001214b8974ef471adb4b0df04724b456f1cc4b6166b4369f376d9",
+          "source": "model",
+          "model": {
+            "model": "claude-sonnet-5",
+            "prompt_version": "reward-eval/1",
+            "prompt_hash": "cf07194ee232eb531e15f690000d19846dea69cf05504782658afcfacb9228a2",
+            "input_hash": "b6bd6e2d475da66f971a855ee1307f13b31a7772f934ce8b6320b6f7a50bb178",
+            "output_hash": "e0ee8bb50685e05fa0f47ed04203ae953fdfd055f5bd2892ea186504254f8c3a"
+          },
+          "correction": null,
+          "nomination_id": "00000000-0000-4000-8000-000000000040",
+          "raw_quality": "85",
+          "credited_quality": "85",
+          "flags": [],
+          "effort": "eligible",
+          "effort_criteria": {
+            "community_contribution": {
+              "met": true,
+              "note": "answers a question holders keep asking"
+            },
+            "inspectable_work": {
+              "met": true,
+              "note": "steps linked"
+            },
+            "original_substance": {
+              "met": true,
+              "note": "own walkthrough"
+            }
+          },
+          "timing_bps": "10000",
+          "multiplier_bps": "30000",
+          "point_units": "25500000000",
+          "explanation": "Effort confirmed: an original walkthrough others can check.",
+          "accepted_at": "2026-10-05T09:00:00.000000Z",
+          "affects_allocation": true
+        },
+        "c14n": "{\"accepted_at\":\"2026-10-05T09:00:00.000000Z\",\"affects_allocation\":true,\"community_id\":\"00000000-0000-4000-8000-000000000001\",\"config_hash\":\"db474d51f5482a0b7901939ad0ccd691d8f53dd0bec612e7a358a347dd55875b\",\"contribution_id\":\"00000000-0000-4000-8000-000000000010\",\"correction\":null,\"credited_quality\":\"85\",\"effort\":\"eligible\",\"effort_criteria\":{\"community_contribution\":{\"met\":true,\"note\":\"answers a question holders keep asking\"},\"inspectable_work\":{\"met\":true,\"note\":\"steps linked\"},\"original_substance\":{\"met\":true,\"note\":\"own walkthrough\"}},\"epoch_id\":\"00000000-0000-4000-8000-000000000002\",\"evidence_hash\":\"41d75682d7001214b8974ef471adb4b0df04724b456f1cc4b6166b4369f376d9\",\"explanation\":\"Effort confirmed: an original walkthrough others can check.\",\"flags\":[],\"model\":{\"input_hash\":\"b6bd6e2d475da66f971a855ee1307f13b31a7772f934ce8b6320b6f7a50bb178\",\"model\":\"claude-sonnet-5\",\"output_hash\":\"e0ee8bb50685e05fa0f47ed04203ae953fdfd055f5bd2892ea186504254f8c3a\",\"prompt_hash\":\"cf07194ee232eb531e15f690000d19846dea69cf05504782658afcfacb9228a2\",\"prompt_version\":\"reward-eval/1\"},\"multiplier_bps\":\"30000\",\"nomination_id\":\"00000000-0000-4000-8000-000000000040\",\"point_units\":\"25500000000\",\"predecessor_hash\":\"958fdf071371f682f4ca92b6a16fbfda438d6d89b5321223292911614ff96d18\",\"raw_quality\":\"85\",\"revision\":\"2\",\"source\":\"model\",\"timing_bps\":\"10000\"}",
+        "hash": "a6104b1b5ea6ff51ac98bfeef08f25acd04f92255cde2dd900b8debb11ef9bcb"
+      },
+      "late_correction_revision_3": {
+        "payload": {
+          "community_id": "00000000-0000-4000-8000-000000000001",
+          "epoch_id": "00000000-0000-4000-8000-000000000002",
+          "contribution_id": "00000000-0000-4000-8000-000000000010",
+          "revision": "3",
+          "predecessor_hash": "a6104b1b5ea6ff51ac98bfeef08f25acd04f92255cde2dd900b8debb11ef9bcb",
+          "config_hash": "db474d51f5482a0b7901939ad0ccd691d8f53dd0bec612e7a358a347dd55875b",
+          "evidence_hash": "41d75682d7001214b8974ef471adb4b0df04724b456f1cc4b6166b4369f376d9",
+          "source": "correction",
+          "model": null,
+          "correction": {
+            "actor": "admin:cisco",
+            "authority": "community_admin",
+            "reason": "The linked steps were copied from another member.",
+            "evidence_refs": ["https://x.com/hyphae/status/1971234567890123000", "tg:message:77"]
+          },
+          "nomination_id": "00000000-0000-4000-8000-000000000040",
+          "raw_quality": "85",
+          "credited_quality": "0",
+          "flags": ["guideline_breach", "spam"],
+          "effort": "eligible",
+          "effort_criteria": {
+            "community_contribution": {
+              "met": true,
+              "note": "answers a question holders keep asking"
+            },
+            "inspectable_work": {
+              "met": true,
+              "note": "steps linked"
+            },
+            "original_substance": {
+              "met": true,
+              "note": "own walkthrough"
+            }
+          },
+          "timing_bps": "10000",
+          "multiplier_bps": "30000",
+          "point_units": "0",
+          "explanation": "Corrected after the close; explanatory only.",
+          "accepted_at": "2026-10-09T00:00:00.000000Z",
+          "affects_allocation": false
+        },
+        "c14n": "{\"accepted_at\":\"2026-10-09T00:00:00.000000Z\",\"affects_allocation\":false,\"community_id\":\"00000000-0000-4000-8000-000000000001\",\"config_hash\":\"db474d51f5482a0b7901939ad0ccd691d8f53dd0bec612e7a358a347dd55875b\",\"contribution_id\":\"00000000-0000-4000-8000-000000000010\",\"correction\":{\"actor\":\"admin:cisco\",\"authority\":\"community_admin\",\"evidence_refs\":[\"https://x.com/hyphae/status/1971234567890123000\",\"tg:message:77\"],\"reason\":\"The linked steps were copied from another member.\"},\"credited_quality\":\"0\",\"effort\":\"eligible\",\"effort_criteria\":{\"community_contribution\":{\"met\":true,\"note\":\"answers a question holders keep asking\"},\"inspectable_work\":{\"met\":true,\"note\":\"steps linked\"},\"original_substance\":{\"met\":true,\"note\":\"own walkthrough\"}},\"epoch_id\":\"00000000-0000-4000-8000-000000000002\",\"evidence_hash\":\"41d75682d7001214b8974ef471adb4b0df04724b456f1cc4b6166b4369f376d9\",\"explanation\":\"Corrected after the close; explanatory only.\",\"flags\":[\"guideline_breach\",\"spam\"],\"model\":null,\"multiplier_bps\":\"30000\",\"nomination_id\":\"00000000-0000-4000-8000-000000000040\",\"point_units\":\"0\",\"predecessor_hash\":\"a6104b1b5ea6ff51ac98bfeef08f25acd04f92255cde2dd900b8debb11ef9bcb\",\"raw_quality\":\"85\",\"revision\":\"3\",\"source\":\"correction\",\"timing_bps\":\"10000\"}",
+        "hash": "4dda3a44c6236078a0db8dc0c3a7720e24efd8681705af8a7f41133a6afac22f"
+      }
+    },
+    "member_epoch": {
+      "counted_pending_excluded": {
+        "payload": {
+          "network": "solana:devnet",
+          "program_id": "EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E",
+          "community_id": "00000000-0000-4000-8000-000000000001",
+          "mint": "So11111111111111111111111111111111111111112",
+          "epoch": {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "index": "2",
+            "opens_at": "2026-10-02T00:00:00.000000Z",
+            "closes_at": "2026-10-09T00:00:00.000000Z"
+          },
+          "config_hash": "db474d51f5482a0b7901939ad0ccd691d8f53dd0bec612e7a358a347dd55875b",
+          "member_id": "00000000-0000-4000-8000-000000000020",
+          "wallet": "3nVsVs3QSv6Yf1XtRj2d1s2ySSeeNQbtztHwm4VhNgbk",
+          "entries": [
+            {
+              "contribution_id": "00000000-0000-4000-8000-000000000010",
+              "decision_hash": "a6104b1b5ea6ff51ac98bfeef08f25acd04f92255cde2dd900b8debb11ef9bcb",
+              "reason": null,
+              "point_units": "25500000000"
+            },
+            {
+              "contribution_id": "00000000-0000-4000-8000-000000000011",
+              "decision_hash": null,
+              "reason": "pending_at_close",
+              "point_units": "0"
+            },
+            {
+              "contribution_id": "00000000-0000-4000-8000-000000000014",
+              "decision_hash": null,
+              "reason": "excluded",
+              "point_units": "0"
+            }
+          ],
+          "point_units": "25500000000",
+          "whole_points": "255",
+          "settlement": {
+            "status": "payable",
+            "reasons": [],
+            "rules_test": {
+              "test_id": "mycel-rules-1",
+              "passed_at": "2026-10-02T11:22:33.444555Z"
+            },
+            "hold": {
+              "mint": "So11111111111111111111111111111111111111112",
+              "threshold_raw": "100000000000",
+              "status": "holder",
+              "raw_amount": "150000000000",
+              "decimals": "6",
+              "slot": "412345678",
+              "provider": "consensus",
+              "observed_at": "2026-10-09T00:05:00.123000Z"
+            },
+            "uncapped_lamports": "485000000",
+            "amount_lamports": "121250000",
+            "cap_remainder_lamports": "363750000"
+          }
+        },
+        "c14n": "{\"community_id\":\"00000000-0000-4000-8000-000000000001\",\"config_hash\":\"db474d51f5482a0b7901939ad0ccd691d8f53dd0bec612e7a358a347dd55875b\",\"entries\":[{\"contribution_id\":\"00000000-0000-4000-8000-000000000010\",\"decision_hash\":\"a6104b1b5ea6ff51ac98bfeef08f25acd04f92255cde2dd900b8debb11ef9bcb\",\"point_units\":\"25500000000\",\"reason\":null},{\"contribution_id\":\"00000000-0000-4000-8000-000000000011\",\"decision_hash\":null,\"point_units\":\"0\",\"reason\":\"pending_at_close\"},{\"contribution_id\":\"00000000-0000-4000-8000-000000000014\",\"decision_hash\":null,\"point_units\":\"0\",\"reason\":\"excluded\"}],\"epoch\":{\"closes_at\":\"2026-10-09T00:00:00.000000Z\",\"id\":\"00000000-0000-4000-8000-000000000002\",\"index\":\"2\",\"opens_at\":\"2026-10-02T00:00:00.000000Z\"},\"member_id\":\"00000000-0000-4000-8000-000000000020\",\"mint\":\"So11111111111111111111111111111111111111112\",\"network\":\"solana:devnet\",\"point_units\":\"25500000000\",\"program_id\":\"EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E\",\"settlement\":{\"amount_lamports\":\"121250000\",\"cap_remainder_lamports\":\"363750000\",\"hold\":{\"decimals\":\"6\",\"mint\":\"So11111111111111111111111111111111111111112\",\"observed_at\":\"2026-10-09T00:05:00.123000Z\",\"provider\":\"consensus\",\"raw_amount\":\"150000000000\",\"slot\":\"412345678\",\"status\":\"holder\",\"threshold_raw\":\"100000000000\"},\"reasons\":[],\"rules_test\":{\"passed_at\":\"2026-10-02T11:22:33.444555Z\",\"test_id\":\"mycel-rules-1\"},\"status\":\"payable\",\"uncapped_lamports\":\"485000000\"},\"wallet\":\"3nVsVs3QSv6Yf1XtRj2d1s2ySSeeNQbtztHwm4VhNgbk\",\"whole_points\":\"255\"}",
+        "hash": "b016a3af62d0b3ed84ce780c47de21b720ea0cc49cf2f696e4cad277a6bd80c3"
+      },
+      "no_verified_wallet": {
+        "payload": {
+          "network": "solana:devnet",
+          "program_id": "EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E",
+          "community_id": "00000000-0000-4000-8000-000000000001",
+          "mint": "So11111111111111111111111111111111111111112",
+          "epoch": {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "index": "2",
+            "opens_at": "2026-10-02T00:00:00.000000Z",
+            "closes_at": "2026-10-09T00:00:00.000000Z"
+          },
+          "config_hash": "db474d51f5482a0b7901939ad0ccd691d8f53dd0bec612e7a358a347dd55875b",
+          "member_id": "00000000-0000-4000-8000-000000000021",
+          "wallet": null,
+          "entries": [
+            {
+              "contribution_id": "00000000-0000-4000-8000-000000000012",
+              "decision_hash": "958fdf071371f682f4ca92b6a16fbfda438d6d89b5321223292911614ff96d18",
+              "reason": null,
+              "point_units": "6000000000"
+            }
+          ],
+          "point_units": "6000000000",
+          "whole_points": "60",
+          "settlement": {
+            "status": "not_payable",
+            "reasons": ["no_rules_test", "no_verified_wallet"],
+            "rules_test": {
+              "test_id": "mycel-rules-1",
+              "passed_at": null
+            },
+            "hold": null,
+            "uncapped_lamports": "0",
+            "amount_lamports": "0",
+            "cap_remainder_lamports": "0"
+          }
+        },
+        "c14n": "{\"community_id\":\"00000000-0000-4000-8000-000000000001\",\"config_hash\":\"db474d51f5482a0b7901939ad0ccd691d8f53dd0bec612e7a358a347dd55875b\",\"entries\":[{\"contribution_id\":\"00000000-0000-4000-8000-000000000012\",\"decision_hash\":\"958fdf071371f682f4ca92b6a16fbfda438d6d89b5321223292911614ff96d18\",\"point_units\":\"6000000000\",\"reason\":null}],\"epoch\":{\"closes_at\":\"2026-10-09T00:00:00.000000Z\",\"id\":\"00000000-0000-4000-8000-000000000002\",\"index\":\"2\",\"opens_at\":\"2026-10-02T00:00:00.000000Z\"},\"member_id\":\"00000000-0000-4000-8000-000000000021\",\"mint\":\"So11111111111111111111111111111111111111112\",\"network\":\"solana:devnet\",\"point_units\":\"6000000000\",\"program_id\":\"EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E\",\"settlement\":{\"amount_lamports\":\"0\",\"cap_remainder_lamports\":\"0\",\"hold\":null,\"reasons\":[\"no_rules_test\",\"no_verified_wallet\"],\"rules_test\":{\"passed_at\":null,\"test_id\":\"mycel-rules-1\"},\"status\":\"not_payable\",\"uncapped_lamports\":\"0\"},\"wallet\":null,\"whole_points\":\"60\"}",
+        "hash": "92569908d523c543d72a8db5a9b658676fc12a4b9078684e141f6cfb509b9ed5"
+      }
+    },
+    "epoch_audit": {
+      "payload": {
+        "network": "solana:devnet",
+        "program_id": "EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E",
+        "community_id": "00000000-0000-4000-8000-000000000001",
+        "mint": "So11111111111111111111111111111111111111112",
+        "epoch": {
+          "id": "00000000-0000-4000-8000-000000000002",
+          "index": "2",
+          "opens_at": "2026-10-02T00:00:00.000000Z",
+          "closes_at": "2026-10-09T00:00:00.000000Z"
+        },
+        "config_hash": "db474d51f5482a0b7901939ad0ccd691d8f53dd0bec612e7a358a347dd55875b",
+        "snapshot": {
+          "closed_at": "2026-10-09T00:00:04.000321Z",
+          "cutoff_assumption": "decisions accepted strictly before closes_at"
+        },
+        "entries": [
+          {
+            "contribution_id": "00000000-0000-4000-8000-000000000010",
+            "decision_hash": "a6104b1b5ea6ff51ac98bfeef08f25acd04f92255cde2dd900b8debb11ef9bcb",
+            "reason": null,
+            "point_units": "25500000000",
+            "member_id": "00000000-0000-4000-8000-000000000020"
+          },
+          {
+            "contribution_id": "00000000-0000-4000-8000-000000000011",
+            "decision_hash": null,
+            "reason": "pending_at_close",
+            "point_units": "0",
+            "member_id": "00000000-0000-4000-8000-000000000020"
+          },
+          {
+            "contribution_id": "00000000-0000-4000-8000-000000000012",
+            "decision_hash": "958fdf071371f682f4ca92b6a16fbfda438d6d89b5321223292911614ff96d18",
+            "reason": null,
+            "point_units": "6000000000",
+            "member_id": "00000000-0000-4000-8000-000000000021"
+          },
+          {
+            "contribution_id": "00000000-0000-4000-8000-000000000014",
+            "decision_hash": null,
+            "reason": "excluded",
+            "point_units": "0",
+            "member_id": "00000000-0000-4000-8000-000000000020"
+          }
+        ],
+        "members": [
+          {
+            "member_id": "00000000-0000-4000-8000-000000000020",
+            "manifest_hash": "b016a3af62d0b3ed84ce780c47de21b720ea0cc49cf2f696e4cad277a6bd80c3",
+            "wallet": "3nVsVs3QSv6Yf1XtRj2d1s2ySSeeNQbtztHwm4VhNgbk",
+            "point_units": "25500000000",
+            "whole_points": "255",
+            "amount_lamports": "121250000"
+          },
+          {
+            "member_id": "00000000-0000-4000-8000-000000000021",
+            "manifest_hash": "92569908d523c543d72a8db5a9b658676fc12a4b9078684e141f6cfb509b9ed5",
+            "wallet": null,
+            "point_units": "6000000000",
+            "whole_points": "60",
+            "amount_lamports": "0"
+          }
+        ],
+        "settlement": {
+          "gross_lamports": "500000000",
+          "fee_bps": "300",
+          "fee_lamports": "15000000",
+          "fee_recipient": "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR",
+          "net_lamports": "485000000",
+          "cap_bps": "2500",
+          "cap_lamports": "121250000",
+          "payable_members": "1",
+          "allocated_lamports": "121250000",
+          "cap_remainder_lamports": "363750000",
+          "dust_lamports": "0",
+          "rules_test_id": "mycel-rules-1",
+          "hold": {
+            "mint": "So11111111111111111111111111111111111111112",
+            "threshold_raw": "100000000000"
+          }
+        },
+        "root": "2d66fd8f91a8646bae9a2b65c781f457b8d073a37d59cfb70d0797fe69973f7c"
+      },
+      "c14n": "{\"community_id\":\"00000000-0000-4000-8000-000000000001\",\"config_hash\":\"db474d51f5482a0b7901939ad0ccd691d8f53dd0bec612e7a358a347dd55875b\",\"entries\":[{\"contribution_id\":\"00000000-0000-4000-8000-000000000010\",\"decision_hash\":\"a6104b1b5ea6ff51ac98bfeef08f25acd04f92255cde2dd900b8debb11ef9bcb\",\"member_id\":\"00000000-0000-4000-8000-000000000020\",\"point_units\":\"25500000000\",\"reason\":null},{\"contribution_id\":\"00000000-0000-4000-8000-000000000011\",\"decision_hash\":null,\"member_id\":\"00000000-0000-4000-8000-000000000020\",\"point_units\":\"0\",\"reason\":\"pending_at_close\"},{\"contribution_id\":\"00000000-0000-4000-8000-000000000012\",\"decision_hash\":\"958fdf071371f682f4ca92b6a16fbfda438d6d89b5321223292911614ff96d18\",\"member_id\":\"00000000-0000-4000-8000-000000000021\",\"point_units\":\"6000000000\",\"reason\":null},{\"contribution_id\":\"00000000-0000-4000-8000-000000000014\",\"decision_hash\":null,\"member_id\":\"00000000-0000-4000-8000-000000000020\",\"point_units\":\"0\",\"reason\":\"excluded\"}],\"epoch\":{\"closes_at\":\"2026-10-09T00:00:00.000000Z\",\"id\":\"00000000-0000-4000-8000-000000000002\",\"index\":\"2\",\"opens_at\":\"2026-10-02T00:00:00.000000Z\"},\"members\":[{\"amount_lamports\":\"121250000\",\"manifest_hash\":\"b016a3af62d0b3ed84ce780c47de21b720ea0cc49cf2f696e4cad277a6bd80c3\",\"member_id\":\"00000000-0000-4000-8000-000000000020\",\"point_units\":\"25500000000\",\"wallet\":\"3nVsVs3QSv6Yf1XtRj2d1s2ySSeeNQbtztHwm4VhNgbk\",\"whole_points\":\"255\"},{\"amount_lamports\":\"0\",\"manifest_hash\":\"92569908d523c543d72a8db5a9b658676fc12a4b9078684e141f6cfb509b9ed5\",\"member_id\":\"00000000-0000-4000-8000-000000000021\",\"point_units\":\"6000000000\",\"wallet\":null,\"whole_points\":\"60\"}],\"mint\":\"So11111111111111111111111111111111111111112\",\"network\":\"solana:devnet\",\"program_id\":\"EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E\",\"root\":\"2d66fd8f91a8646bae9a2b65c781f457b8d073a37d59cfb70d0797fe69973f7c\",\"settlement\":{\"allocated_lamports\":\"121250000\",\"cap_bps\":\"2500\",\"cap_lamports\":\"121250000\",\"cap_remainder_lamports\":\"363750000\",\"dust_lamports\":\"0\",\"fee_bps\":\"300\",\"fee_lamports\":\"15000000\",\"fee_recipient\":\"AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR\",\"gross_lamports\":\"500000000\",\"hold\":{\"mint\":\"So11111111111111111111111111111111111111112\",\"threshold_raw\":\"100000000000\"},\"net_lamports\":\"485000000\",\"payable_members\":\"1\",\"rules_test_id\":\"mycel-rules-1\"},\"snapshot\":{\"closed_at\":\"2026-10-09T00:00:04.000321Z\",\"cutoff_assumption\":\"decisions accepted strictly before closes_at\"}}",
+      "hash": "1b5e4bac12f38eb8c6ec89cd3218a843bc7d9d3d54f4a252ba6d9e387e28ebd7"
+    }
+  },
+  "allocation": [
+    {
+      "name": "worked_example",
+      "gross_lamports": "500000000",
+      "members": [
+        {
+          "label": "m1",
+          "point_units": "25500000000",
+          "payable": true
+        },
+        {
+          "label": "m2",
+          "point_units": "8500000000",
+          "payable": true
+        },
+        {
+          "label": "m3",
+          "point_units": "4000000000",
+          "payable": true
+        },
+        {
+          "label": "m4",
+          "point_units": "6000000000",
+          "payable": false
+        }
+      ],
+      "fee_lamports": "15000000",
+      "net_lamports": "485000000",
+      "cap_bps": "2500",
+      "cap_lamports": "121250000",
+      "allocated_lamports": "280789473",
+      "cap_remainder_lamports": "204210526",
+      "dust_lamports": "1",
+      "allocations": {
+        "m1": {
+          "uncapped_lamports": "325460526",
+          "amount_lamports": "121250000",
+          "cap_remainder_lamports": "204210526"
+        },
+        "m2": {
+          "uncapped_lamports": "108486842",
+          "amount_lamports": "108486842",
+          "cap_remainder_lamports": "0"
+        },
+        "m3": {
+          "uncapped_lamports": "51052631",
+          "amount_lamports": "51052631",
+          "cap_remainder_lamports": "0"
+        },
+        "m4": {
+          "uncapped_lamports": "0",
+          "amount_lamports": "0",
+          "cap_remainder_lamports": "0"
+        }
+      }
+    },
+    {
+      "name": "seeded_ready_epoch",
+      "gross_lamports": "500000000",
+      "members": [
+        {
+          "label": "effort",
+          "point_units": "25500000000",
+          "payable": true
+        },
+        {
+          "label": "ordinary",
+          "point_units": "8500000000",
+          "payable": true
+        },
+        {
+          "label": "floor",
+          "point_units": "7000000000",
+          "payable": true
+        },
+        {
+          "label": "unsigned",
+          "point_units": "6000000000",
+          "payable": false
+        }
+      ],
+      "fee_lamports": "15000000",
+      "net_lamports": "485000000",
+      "cap_bps": "2500",
+      "cap_lamports": "121250000",
+      "allocated_lamports": "304603658",
+      "cap_remainder_lamports": "180396341",
+      "dust_lamports": "1",
+      "allocations": {
+        "effort": {
+          "uncapped_lamports": "301646341",
+          "amount_lamports": "121250000",
+          "cap_remainder_lamports": "180396341"
+        },
+        "ordinary": {
+          "uncapped_lamports": "100548780",
+          "amount_lamports": "100548780",
+          "cap_remainder_lamports": "0"
+        },
+        "floor": {
+          "uncapped_lamports": "82804878",
+          "amount_lamports": "82804878",
+          "cap_remainder_lamports": "0"
+        },
+        "unsigned": {
+          "uncapped_lamports": "0",
+          "amount_lamports": "0",
+          "cap_remainder_lamports": "0"
+        }
+      }
+    }
+  ]
 }
