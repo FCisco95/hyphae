@@ -14,8 +14,10 @@ import { testTenant as tenant, testWallet } from "./test-wallet.js";
 // asserted on final rows, repeated, never on timing.
 const url = process.env.HYPHAE_TEST_PG_URL;
 if (!url) throw new Error("HYPHAE_TEST_PG_URL is not set; run `pnpm test:pg`");
-const pools = Array.from({ length: 6 }, () => createDb(url));
-const [a, b, c] = pools as [ReturnType<typeof createDb>, ...ReturnType<typeof createDb>[]];
+const a = createDb(url);
+const b = createDb(url);
+const c = createDb(url);
+const pools = [a, b, c, createDb(url), createDb(url), createDb(url)];
 const ROUNDS = 20;
 
 beforeAll(async () => {
@@ -144,7 +146,7 @@ describe("proof consumption races", () => {
       const w = await testWallet();
       const runs = [3000n, 3001n].map(async (uid, i) => {
         const { ctx, identity } = await session(id, uid);
-        const linked = createLinkStore(pools[i] ?? a, ctx);
+        const linked = createLinkStore(i === 0 ? a : b, ctx);
         const req = await createVerificationRequest(linked.store, identity, w.address, tenant);
         const proof = { ...req, signature: await w.sign(req.message) };
         return consumeWalletProof(linked.store, identity, proof, tenant).then(
