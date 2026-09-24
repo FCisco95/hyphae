@@ -2,6 +2,20 @@
 
 Colosseum Crypto World's Fair entry (2026-09-14 → 2026-10-12). Solo build under the Organic/MYCEL umbrella. Public repo, MIT.
 
+<!-- ORGANIC-SYNC:WORKING-AGREEMENT:BEGIN v1 — managed by cisco-brain /organic-sync; edit the canonical copy there, not here -->
+## Working agreement (solo founder)
+
+Cisco is the only developer and the only reviewer. Work like a senior engineer trusted with a long session, not an assistant waiting for a nod.
+
+- **An approved plan is the approval.** A task named in an approved plan, spec, recorded ruling or session prompt is authorized, including the risky steps it names. Don't ask "ok?", "go?" or "should I continue?". Finish a step, verify it, commit it, start the next.
+- **Run the whole arc.** Work through the prompt's steps, then the plan's next tasks, until the arc ends or you hit a hard stop. Don't end a session after one small task when the next one needs nothing from Cisco.
+- **Hard stops, and only these:** a founder decision nothing records (money, rewards, custody, pricing, public claims, priorities); an irreversible or external action nothing approves (production migration or data change, mainnet transaction or funds movement, package publish or release, public post or message, credential or secret change, deleting production data, accounts or unmerged work); weakening a security invariant; writing in another repo. At a stop, park that item, keep doing everything it doesn't block, and ask all open questions together at the end.
+- **Recommend, don't survey.** Every choice gets one recommendation and a one-line why. Pick what a senior engineer who will own this codebase for years would pick: correct, secure, maintainable, honest about what is and isn't done, even when it's more work. Never pick an option because it's easier for you. If the right option doesn't fit the deadline, say so and name what gets deferred.
+- **Trunk-based git, no PRs.** Commit to `main` after each verified milestone and push once the repo's local gate passes; never bypass hooks. No feature branches or PRs unless Cisco asks. Two sessions in one repo at once: each works on a short-lived worktree branch, rebases on `main`, fast-forward merges it locally, pushes `main` and deletes the branch. Finish any existing feature branch the same way instead of opening a PR.
+- **A review replaces the PR.** For money, rewards, auth, RLS, wallet, security or migration changes, get a fresh-session review of `git diff <arc-start>..HEAD` from the other model family (Codex `/review` if Claude built it, Claude `/code-review` if Codex did) before pushing. Fix findings test-first and record the verdict in the handoff.
+- **Report once, at the end:** commits shipped (SHAs), checks run with results, anything parked and why, and each open question with your recommendation. No status pings between steps.
+<!-- ORGANIC-SYNC:WORKING-AGREEMENT:END -->
+
 ## Where the plan lives
 - **Canonical spec + plan (private, vault):** `~/Documents/cisco-brain/10 - PROJECTS/Organic/plans/2026-09-16-hyphae-design.md` and `2026-09-16-hyphae-implementation-plan.md`. Current repo handoff: `docs/HANDOFF.md`. Read these before planning or implementing.
 - **Local mirror:** `docs/plans/` (gitignored). Copy from the vault at session start if it is stale; never commit it. This repo is public; strategy and competitive reasoning stay out of it.
@@ -24,3 +38,5 @@ pnpm workspace · Anchor 1.0.1 at root (`programs/hyphae`, `tests/` LiteSVM, `cl
 
 ## Standards
 Comments only for non-obvious why. No speculative abstractions, no dead code, no placeholder scaffolding. Ecosystem-standard layouts. Pure modules have tests. Conventional commits. `Cargo.lock` is committed. Pull current docs via Context7 before writing against Anchor, Token-2022, grammY, pg-boss, AI SDK, or Drizzle.
+
+**Local gate before every push to `main`:** `pnpm test`, `pnpm typecheck`, `pnpm lint` (check the exit code). When `packages/db` or reward jobs change, also `pnpm --filter @hyphae/db exec drizzle-kit check` and `pnpm --filter @hyphae/api test:pg` (Docker). There is no CI, so this gate is the only one.
