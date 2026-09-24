@@ -7,7 +7,7 @@ import {
   parseProjectId,
   parseWalletAddress,
 } from "@organichub/verify";
-import { and, asc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, exists, gt, gte, inArray, notExists, or, sql } from "drizzle-orm";
 import { type Blocker, evaluatePayoutGate } from "./gate.js";
 import type { RulesTest } from "./rules-test.js";
 
@@ -168,12 +168,13 @@ export async function runHoldChecks(
 
 // Retried until confirmed; an epoch with no check yet is looked at for 7 days after its close,
 // which covers a lost close-hook job and a first paid epoch recorded shortly after a close.
-const FIRST_CHECK_WINDOW = "7 days";
+const FIRST_CHECK_WINDOW_MS = 7 * 86_400_000;
 
 export async function dueHoldChecks(
   db: Db,
   now: Date,
 ): Promise<{ communityId: string; epochId: string }[]> {
+  const ofEpoch = eq(holdChecks.epochId, epochs.id);
   return db
     .select({ communityId: epochs.communityId, epochId: epochs.id })
     .from(epochs)
@@ -183,9 +184,18 @@ export async function dueHoldChecks(
       and(
         eq(epochs.status, "closed"),
         gte(epochs.index, communities.firstPaidEpoch),
-        sql`(exists (select 1 from ${holdChecks} where ${holdChecks.epochId} = ${epochs.id} and ${holdChecks.status} in ('pending', 'uncertain'))
-          or (not exists (select 1 from ${holdChecks} where ${holdChecks.epochId} = ${epochs.id})
-              and ${rewardEpochSnapshots.closedAt} > ${now}::timestamptz - ${FIRST_CHECK_WINDOW}::interval))`,
+        or(
+          exists(
+            db
+              .select({ id: holdChecks.id })
+              .from(holdChecks)
+              .where(and(ofEpoch, inArray(holdChecks.status, ["pending", "uncertain"]))),
+          ),
+          and(
+            notExists(db.select({ id: holdChecks.id }).from(holdChecks).where(ofEpoch)),
+            gt(rewardEpochSnapshots.closedAt, new Date(now.getTime() - FIRST_CHECK_WINDOW_MS)),
+          ),
+        ),
       ),
     )
     .orderBy(asc(epochs.closesAt));
