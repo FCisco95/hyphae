@@ -43,6 +43,13 @@
       "when": 1790202415529,
       "tag": "0005_reward_decision_notified",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790239121780,
+      "tag": "0006_reward_decision_corrections",
+      "breakpoints": true
     }
   ]
 }

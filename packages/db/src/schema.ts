@@ -457,10 +457,27 @@ export const rewardDecisions = pgTable(
     affectsAllocation: boolean("affects_allocation").notNull(),
     // Set after Telegram accepts the member's message; null past the grace means it was lost.
     notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    // Operator correction audit (O6): all three set on a correction row, all null otherwise.
+    correctionActor: text("correction_actor"),
+    correctionReason: text("correction_reason"),
+    correctionEvidence: jsonb("correction_evidence").$type<string[]>(),
+    idempotencyKey: text("idempotency_key"),
   },
   (t) => [
     uniqueIndex("reward_decisions_contribution_revision").on(t.contributionId, t.revision),
     uniqueIndex("reward_decisions_predecessor").on(t.predecessorId),
+    uniqueIndex("reward_decisions_community_idempotency")
+      .on(t.communityId, t.idempotencyKey)
+      .where(sql`${t.idempotencyKey} is not null`),
     check("reward_decisions_revision_positive", sql`${t.revision} >= 1`),
+    check(
+      "reward_decisions_correction_complete",
+      sql`(${t.correctionActor} is null) = (${t.correctionReason} is null) and (${t.correctionActor} is null) = (${t.correctionEvidence} is null)`,
+    ),
+    // A correction has a predecessor and no model dispatch of its own.
+    check(
+      "reward_decisions_correction_shape",
+      sql`${t.correctionActor} is null or (${t.predecessorId} is not null and ${t.dispatchId} is null)`,
+    ),
   ],
 );
