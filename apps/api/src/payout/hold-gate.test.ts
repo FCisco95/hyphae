@@ -213,14 +213,16 @@ const DEMO_TEST: RulesTest = {
 };
 const tests = [DEMO_TEST];
 
-const observed = (kind: "holder" | "below", rawAmount: bigint): HoldResult => ({
+const observed = (kind: "holder" | "below", rawAmount: bigint, observedAt: Date): HoldResult => ({
   kind,
   rawAmount,
   decimals: 6,
   provider: "consensus",
   slot: 4242n,
-  observedAt: new Date("2026-11-13T00:05:00.000Z"),
+  observedAt,
 });
+const HOUR = 3_600_000;
+const after = (e: { closesAt: Date }, ms: number) => new Date(e.closesAt.getTime() + ms);
 
 // A checker that answers from a script and records what it was asked.
 function scripted(...answers: (HoldResult | (() => Promise<HoldResult>))[]) {
@@ -263,7 +265,7 @@ const statusOf = async (ref: { communityId: string; epochId: string }, memberId:
 
 describe("runHoldChecks", () => {
   it("checks only candidates; an uncertain result holds, a confirmed retry releases the claim", async () => {
-    const { demo, ref, rows } = await candidateDemo();
+    const { demo, e1, ref, rows } = await candidateDemo();
     const first = scripted({ kind: "uncertain", reason: "outage" });
     expect(await runHoldChecks(t.db, ref, { check: first.check, tests })).toEqual({
       status: "checked",
@@ -289,7 +291,7 @@ describe("runHoldChecks", () => {
     ]);
     expect(await statusOf(ref, demo.members.signed)).toEqual(["blocked", "held"]);
 
-    const retry = scripted(observed("holder", 150_000_000_000n));
+    const retry = scripted(observed("holder", 150_000_000_000n, after(e1, 5 * 60_000)));
     await runHoldChecks(t.db, ref, { check: retry.check, tests });
     expect(retry.calls[0]?.checkRound).toBe(row?.checkRound);
     const [cleared] = await rows();
@@ -305,13 +307,13 @@ describe("runHoldChecks", () => {
   });
 
   it("a confirmed result is final: no second call, no change", async () => {
-    const { demo, ref, rows } = await candidateDemo();
+    const { demo, e1, ref, rows } = await candidateDemo();
     await runHoldChecks(t.db, ref, {
-      check: scripted(observed("below", 5n)).check,
+      check: scripted(observed("below", 5n, after(e1, 5 * 60_000))).check,
       tests,
     });
     expect(await statusOf(ref, demo.members.signed)).toEqual(["blocked", "not_payable"]);
-    const later = scripted(observed("holder", 150_000_000_000n));
+    const later = scripted(observed("holder", 150_000_000_000n, after(e1, 5 * 60_000)));
     expect(await runHoldChecks(t.db, ref, { check: later.check, tests })).toEqual({
       status: "checked",
       holder: 0,
@@ -351,7 +353,7 @@ describe("runHoldChecks", () => {
   });
 
   it("does nothing for an epoch the gate stops before the member stage", async () => {
-    const { demo, ref, rows } = await candidateDemo();
+    const { demo, e1, ref, rows } = await candidateDemo();
     const none = scripted();
     await t.db
       .update(communities)
@@ -372,6 +374,20 @@ describe("runHoldChecks", () => {
         { check: none.check, tests },
       ),
     ).toEqual({ status: "skipped", blockers: ["not_final"] });
+    expect(none.calls).toEqual([]);
+    expect(await rows()).toEqual([]);
+  });
+
+  it("reads no balance once 24 hours have passed since closes_at", async () => {
+    const { e1, ref, rows } = await candidateDemo();
+    const none = scripted();
+    expect(
+      await runHoldChecks(t.db, ref, {
+        check: none.check,
+        tests,
+        clock: () => after(e1, 24 * HOUR + 1),
+      }),
+    ).toEqual({ status: "window_closed" });
     expect(none.calls).toEqual([]);
     expect(await rows()).toEqual([]);
   });
@@ -397,31 +413,33 @@ describe("dueHoldChecks", () => {
   const due = async (communityId: string, now: Date) =>
     (await dueHoldChecks(t.db, now)).filter((d) => d.communityId === communityId);
 
-  it("returns closed paid epochs with open checks, or recently closed ones not yet checked", async () => {
-    const { demo, ref } = await candidateDemo();
-    // The demo closed epoch 1 about a day before NOW.
-    expect(await due(demo.communityId, NOW)).toEqual([ref]);
-    expect(await due(demo.communityId, new Date(NOW.getTime() + 7 * 86_400_000))).toEqual([]);
+  it("returns closed paid epochs with checks still open, within 24 hours of closes_at", async () => {
+    const { demo, e1, ref } = await candidateDemo();
+    expect(await due(demo.communityId, after(e1, HOUR))).toEqual([ref]);
+    expect(await due(demo.communityId, after(e1, 25 * HOUR))).toEqual([]);
 
     await runHoldChecks(t.db, ref, {
       check: scripted({ kind: "uncertain", reason: "stale" }).check,
       tests,
+      clock: () => after(e1, HOUR),
     });
-    expect(await due(demo.communityId, new Date(NOW.getTime() + 30 * 86_400_000))).toEqual([ref]);
+    expect(await due(demo.communityId, after(e1, 2 * HOUR))).toEqual([ref]);
+    expect(await due(demo.communityId, after(e1, 25 * HOUR))).toEqual([]);
 
     await runHoldChecks(t.db, ref, {
-      check: scripted(observed("holder", 150_000_000_000n)).check,
+      check: scripted(observed("holder", 150_000_000_000n, after(e1, 3 * HOUR))).check,
       tests,
+      clock: () => after(e1, 3 * HOUR),
     });
-    expect(await due(demo.communityId, NOW)).toEqual([]);
+    expect(await due(demo.communityId, after(e1, 4 * HOUR))).toEqual([]);
   });
 
   it("skips epochs before the first paid epoch, and open epochs", async () => {
-    const { demo } = await candidateDemo();
+    const { demo, e1 } = await candidateDemo();
     await t.db
       .update(communities)
       .set({ firstPaidEpoch: 2 })
       .where(eq(communities.id, demo.communityId));
-    expect(await due(demo.communityId, NOW)).toEqual([]);
+    expect(await due(demo.communityId, after(e1, HOUR))).toEqual([]);
   });
 });

@@ -8,7 +8,7 @@ import {
   parseWalletAddress,
 } from "@organichub/verify";
 import { and, asc, eq, exists, gt, gte, inArray, notExists, or, sql } from "drizzle-orm";
-import { type Blocker, evaluatePayoutGate } from "./gate.js";
+import { type Blocker, evaluatePayoutGate, HOLD_WINDOW_MS } from "./gate.js";
 import type { RulesTest } from "./rules-test.js";
 
 // The hold gate (P9, P16; Sentinel consumer guide §6): one logical check per candidate member and
@@ -110,15 +110,19 @@ const STRUCTURAL: ReadonlySet<Blocker> = new Set([
 export async function runHoldChecks(
   db: Db,
   ref: { communityId: string; epochId: string },
-  deps: { check: HoldChecker; tests?: readonly RulesTest[] },
+  deps: { check: HoldChecker; tests?: readonly RulesTest[]; clock?: () => Date },
 ): Promise<
   | { status: "skipped"; blockers: Blocker[] }
+  | { status: "window_closed" }
   | { status: "checked"; holder: number; below: number; uncertain: number }
 > {
   const gate = await evaluatePayoutGate(db, ref, deps.tests ? { tests: deps.tests } : {});
   if (gate.status === "blocked" && gate.blockers.some((b) => STRUCTURAL.has(b))) {
     return { status: "skipped", blockers: gate.blockers };
   }
+  // A balance read after the window could not count, so none is read.
+  const now = (deps.clock ?? (() => new Date()))();
+  if (now.getTime() > gate.closesAt.getTime() + HOLD_WINDOW_MS) return { status: "window_closed" };
   const counts = { holder: 0, below: 0, uncertain: 0 };
   const held = gate.members.filter((m) => m.status === "held");
   if (held.length === 0 || !gate.hold) return { status: "checked", ...counts };
@@ -200,10 +204,8 @@ export async function runHoldChecks(
   return { status: "checked", ...counts };
 }
 
-// Retried until confirmed; an epoch with no check yet is looked at for 7 days after its close,
-// which covers a lost close-hook job and a first paid epoch recorded shortly after a close.
-const FIRST_CHECK_WINDOW_MS = 7 * 86_400_000;
-
+// Closed paid epochs inside the hold window whose candidates are not all confirmed yet, or that
+// were never checked (a lost close-hook job, or a first paid epoch recorded after the close).
 export async function dueHoldChecks(
   db: Db,
   now: Date,
@@ -218,6 +220,7 @@ export async function dueHoldChecks(
       and(
         eq(epochs.status, "closed"),
         gte(epochs.index, communities.firstPaidEpoch),
+        gt(epochs.closesAt, new Date(now.getTime() - HOLD_WINDOW_MS)),
         or(
           exists(
             db
@@ -225,10 +228,7 @@ export async function dueHoldChecks(
               .from(holdChecks)
               .where(and(ofEpoch, inArray(holdChecks.status, ["pending", "uncertain"]))),
           ),
-          and(
-            notExists(db.select({ id: holdChecks.id }).from(holdChecks).where(ofEpoch)),
-            gt(rewardEpochSnapshots.closedAt, new Date(now.getTime() - FIRST_CHECK_WINDOW_MS)),
-          ),
+          notExists(db.select({ id: holdChecks.id }).from(holdChecks).where(ofEpoch)),
         ),
       ),
     )

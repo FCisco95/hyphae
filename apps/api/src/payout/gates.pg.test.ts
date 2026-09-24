@@ -31,14 +31,14 @@ const tests: RulesTest[] = [
     questions: [{ text: "?", options: ["a", "b"], answer: 0, why: "because" }],
   },
 ];
-const holder: HoldResult = {
+const holderAt = (observedAt: Date): HoldResult => ({
   kind: "holder",
   rawAmount: 18_446_744_073_709_551_615n, // u64 max: beyond bigint, stored as numeric
   decimals: 6,
   provider: "consensus",
   slot: 18_446_744_073_709_551_000n,
-  observedAt: new Date("2026-11-13T00:05:00.123Z"),
-};
+  observedAt,
+});
 const answer =
   (result: HoldResult): HoldChecker =>
   async () =>
@@ -61,15 +61,20 @@ async function candidate() {
     testId: "demo-rules-1",
     passedAt: new Date(e1.closesAt.getTime() - 60_000),
   });
-  return { demo, ref: { communityId: demo.communityId, epochId: e1.id } };
+  // A balance read five minutes after the close, inside the 24-hour window.
+  const holder = holderAt(new Date(e1.closesAt.getTime() + 5 * 60_000 + 123));
+  return { demo, e1, holder, ref: { communityId: demo.communityId, epochId: e1.id } };
 }
 
 describe("payout gates on Postgres", () => {
   it("hold, then release: an uncertain check holds the epoch and a confirmed one clears it", async () => {
-    const { demo, ref } = await candidate();
+    const { demo, e1, holder, ref } = await candidate();
     expect((await evaluatePayoutGate(a, ref, { tests })).status).toBe("blocked");
     await runHoldChecks(a, ref, { check: answer({ kind: "uncertain", reason: "outage" }), tests });
-    expect((await dueHoldChecks(a, NOW)).filter((d) => d.epochId === ref.epochId)).toEqual([ref]);
+    const hourAfter = new Date(e1.closesAt.getTime() + 3_600_000);
+    expect((await dueHoldChecks(a, hourAfter)).filter((d) => d.epochId === ref.epochId)).toEqual([
+      ref,
+    ]);
 
     await runHoldChecks(a, ref, { check: answer(holder), tests });
     const [row] = await a.select().from(holdChecks).where(eq(holdChecks.epochId, ref.epochId));
@@ -87,7 +92,7 @@ describe("payout gates on Postgres", () => {
 
   it("concurrent runs settle on one row, and a confirmed result is never overwritten", async () => {
     for (let round = 0; round < 5; round++) {
-      const { ref } = await candidate();
+      const { holder, ref } = await candidate();
       await Promise.all(
         pools.map((db, i) =>
           runHoldChecks(db, ref, {

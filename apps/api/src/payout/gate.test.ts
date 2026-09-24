@@ -60,6 +60,7 @@ const holder = (o: {
   memberId: string;
   wallet: string;
   mint: string;
+  observedAt: Date;
 }) => ({
   ...o,
   thresholdRaw: THRESHOLD,
@@ -70,7 +71,6 @@ const holder = (o: {
   decimals: 6,
   provider: "consensus",
   slot: "321",
-  observedAt: new Date("2026-11-13T00:05:00.000Z"),
 });
 
 // The demo's closed epoch with every payout precondition met for its signed member.
@@ -94,6 +94,7 @@ async function cleanDemo() {
       memberId: demo.members.signed,
       wallet: demo.signedWallet,
       mint: demo.mint,
+      observedAt: new Date(e1.closesAt.getTime() + 5 * MIN),
     }),
   );
   return { demo, e1, ref: { communityId: demo.communityId, epochId: e1.id } };
@@ -332,6 +333,24 @@ describe("member checks (P9)", () => {
     expect(gate).toMatchObject({ status: "blocked", blockers: ["no_payable_members"] });
   });
 
+  it("counts a balance only if it was read within 24 hours after closes_at", async () => {
+    const cases: [string, number, string][] = [
+      ["read before the close", -1, "held"],
+      ["read at the close", 0, "payable"],
+      ["read 24 hours after", 24 * 60 * MIN, "payable"],
+      ["read later than 24 hours after", 24 * 60 * MIN + 1, "held"],
+    ];
+    for (const [label, offset, status] of cases) {
+      const { demo, e1, ref } = await cleanDemo();
+      await t.db
+        .update(holdChecks)
+        .set({ observedAt: new Date(e1.closesAt.getTime() + offset) })
+        .where(eq(holdChecks.memberId, demo.members.signed));
+      const { verdict } = await signedVerdict(ref, demo.members.signed);
+      expect(verdict?.status, label).toBe(status);
+    }
+  });
+
   it("holds a candidate whose hold result is missing, pending, uncertain or for other terms", async () => {
     const cases: [string, (memberId: string) => Promise<unknown>][] = [
       ["missing", (m) => t.db.delete(holdChecks).where(eq(holdChecks.memberId, m))],
@@ -493,6 +512,7 @@ async function closedLane(wallets: string[], laneRubric: Rubric = rubric) {
           memberId,
           wallet: wallets[i] ?? "",
           mint: lane.community.mint,
+          observedAt: new Date(epoch.closesAt.getTime() + 5 * MIN),
         }),
       );
     }

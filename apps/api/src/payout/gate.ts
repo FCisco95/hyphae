@@ -46,6 +46,10 @@ export interface MemberVerdict {
   reasons: MemberReason[];
 }
 
+// P9 asks for the balance "when the snapshot is taken". No RPC reads a past balance, so a result
+// counts only if it was read within this window after closes_at; later reads cannot count.
+export const HOLD_WINDOW_MS = 24 * 3_600_000;
+
 // thresholdRaw 0n: the pinned rubric sets no hold condition.
 export interface HoldRequirement {
   mint: string;
@@ -211,14 +215,19 @@ export async function evaluatePayoutGate(
         if (!wallet) reasons.push("no_verified_wallet");
         if (!passed.has(m.memberId)) reasons.push("no_rules_test");
         // The balance matters only for a member who is otherwise payable (P16's candidates), and
-        // only a result for exactly this wallet, mint and pinned threshold counts.
+        // only a result for exactly this wallet, mint and pinned threshold, read in the window,
+        // counts.
         if (reasons.length === 0 && hold.thresholdRaw > 0n) {
           const h = holdOf.get(m.memberId);
+          const read = h?.observedAt?.getTime();
           const applies =
             h !== undefined &&
             h.wallet === wallet &&
             h.mint === hold.mint &&
-            BigInt(h.thresholdRaw) === hold.thresholdRaw;
+            BigInt(h.thresholdRaw) === hold.thresholdRaw &&
+            read !== undefined &&
+            read >= epoch.closesAt.getTime() &&
+            read <= epoch.closesAt.getTime() + HOLD_WINDOW_MS;
           if (applies && h.status === "below") reasons.push("below_hold");
           else if (!(applies && h.status === "holder")) reasons.push("hold_pending");
         }
