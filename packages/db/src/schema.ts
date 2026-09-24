@@ -568,3 +568,82 @@ export const rewardSnapshotMembers = pgTable(
     ),
   ],
 );
+
+// Single-use, 15-minute handle a member receives in a private chat. Only the token digest is stored.
+export const linkSessions = pgTable(
+  "link_sessions",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    telegramUserId: bigint("telegram_user_id", { mode: "bigint" }).notNull(),
+    telegramUsername: text("telegram_username"),
+    tokenDigest: text("token_digest").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true, precision: 3 }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true, precision: 3 }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("link_sessions_community_user").on(t.communityId, t.telegramUserId)],
+);
+
+export const walletProofStatus = pgEnum("wallet_proof_status", ["pending", "consumed"]);
+
+// One SDK proof request; the columns mirror the snapshot the SDK verifies against.
+export const walletProofRequests = pgTable(
+  "wallet_proof_requests",
+  {
+    requestId: uuid("request_id").primaryKey(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    linkSessionId: uuid("link_session_id")
+      .notNull()
+      .references(() => linkSessions.id),
+    telegramUserId: text("telegram_user_id").notNull(),
+    walletAddress: text("wallet_address").notNull(),
+    nonceHash: text("nonce_hash").notNull(), // hex SHA-256
+    origin: text("origin").notNull(),
+    chain: text("chain").notNull(),
+    issuedAt: timestamp("issued_at", { withTimezone: true, precision: 3 }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true, precision: 3 }).notNull(),
+    status: walletProofStatus("status").notNull().default("pending"),
+    consumedAt: timestamp("consumed_at", { withTimezone: true, precision: 3 }),
+  },
+  (t) => [
+    check("wallet_proof_lifetime", sql`${t.expiresAt} = ${t.issuedAt} + interval '5 minutes'`),
+    index("wallet_proof_requests_session").on(t.linkSessionId),
+  ],
+);
+
+// Append-only wallet history. members.wallet is the current value; a payout reads the link valid
+// at the epoch's closesAt (D3), so a relink never retargets a closed epoch.
+export const memberWalletLinks = pgTable(
+  "member_wallet_links",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    wallet: text("wallet").notNull(),
+    method: linkMethod("method").notNull(),
+    proofRequestId: uuid("proof_request_id").references(() => walletProofRequests.requestId),
+    validFrom: timestamp("valid_from", { withTimezone: true, precision: 3 }).notNull(),
+    validTo: timestamp("valid_to", { withTimezone: true, precision: 3 }),
+  },
+  (t) => [
+    uniqueIndex("member_wallet_links_one_current").on(t.memberId).where(sql`${t.validTo} is null`),
+    index("member_wallet_links_member_from").on(t.memberId, t.validFrom),
+    check(
+      "member_wallet_links_signature_has_proof",
+      sql`${t.method} <> 'signature' or ${t.proofRequestId} is not null`,
+    ),
+    check(
+      "member_wallet_links_interval",
+      sql`${t.validTo} is null or ${t.validTo} > ${t.validFrom}`,
+    ),
+  ],
+);
