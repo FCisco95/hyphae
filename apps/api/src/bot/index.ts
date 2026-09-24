@@ -5,23 +5,22 @@ import { linkInGroup, linkStart } from "./commands/link.js";
 import { me } from "./commands/me.js";
 import { raid } from "./commands/raid.js";
 import { submit } from "./commands/submit.js";
+import { logBotError } from "./errors.js";
 
 export const bot = new Bot(env.TELEGRAM_BOT_TOKEN);
 
-bot.command("start", async (ctx) => {
+const commands = bot.errorBoundary(logBotError);
+
+commands.command("start", async (ctx) => {
   if (ctx.chat.type === "private" && (await linkStart(ctx))) return;
   return ctx.reply(
     "Hyphae scores real work for token communities. In a community chat: /link, then /submit.",
   );
 });
-bot.command("link", (ctx) =>
+commands.command("link", (ctx) =>
   ctx.chat.type === "private" ? ctx.reply("Send /link in your community chat.") : linkInGroup(ctx),
 );
-bot.command("me", me);
-bot.command("submit", submit);
-bot.command("effort", effort);
-bot.command("raid", raid);
-
-bot.catch((err) => {
-  console.error("bot error", { update: err.ctx.update.update_id, error: err.error });
-});
+commands.command("me", me);
+commands.command("submit", submit);
+commands.command("effort", effort);
+commands.command("raid", raid);
