@@ -263,13 +263,16 @@ describe("completion versus close (P2)", () => {
       const lane = await seedRewardLane(a);
       const intake = await lane.admitOne();
       // Move epoch 1 onto the real database clock so the race uses real acceptance times.
-      const [{ ms } = { ms: 0 }] = await a.execute<{ ms: number }>(
-        sql`select floor(extract(epoch from clock_timestamp()) * 1000)::double precision as ms`,
-      );
-      const closesAt = new Date(Number(ms) + 300);
+      const dbMs = async () => {
+        const [{ ms } = { ms: 0 }] = await a.execute<{ ms: number }>(
+          sql`select floor(extract(epoch from clock_timestamp()) * 1000)::double precision as ms`,
+        );
+        return Number(ms);
+      };
+      const openedAt = await dbMs();
       await a
         .update(epochs)
-        .set({ opensAt: new Date(Number(ms) - 3_600_000), closesAt })
+        .set({ opensAt: new Date(openedAt - 3_600_000), closesAt: new Date(openedAt + 3_600_000) })
         .where(eq(epochs.id, intake.epochId));
       const begun = await beginDispatch(a, {
         communityId: lane.community.id,
@@ -277,6 +280,10 @@ describe("completion versus close (P2)", () => {
         model: "test:fake",
       });
       if (begun.status !== "begun") throw new Error(begun.status);
+      // Set the boundary only after the dispatch exists: a slow setup must not close the epoch
+      // before the race starts. Completion reads closesAt when it accepts, so this still binds.
+      const closesAt = new Date((await dbMs()) + 300);
+      await a.update(epochs).set({ closesAt }).where(eq(epochs.id, intake.epochId));
 
       const completion = (async () => {
         await new Promise((r) => setTimeout(r, Math.random() * 600));
