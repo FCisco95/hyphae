@@ -8,7 +8,19 @@ import {
   rewardNominations,
   rewardRetrievals,
 } from "@hyphae/db";
-import { and, desc, eq, gt, inArray, isNull, lte, ne, notExists, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  ne,
+  notExists,
+  sql,
+} from "drizzle-orm";
 import { RewardConfigPayload } from "./config.js";
 import type { EvaluationTarget } from "./evaluation.js";
 
@@ -145,12 +157,14 @@ export async function strandedWork(
     }
   }
 
-  // A decision's acceptedAt is its completion time under the lock.
+  // A decision's acceptedAt is its completion time under the lock. Operator corrections have no
+  // dispatch and no member message to lose.
   const unnotified = await db
     .select()
     .from(rewardDecisions)
     .where(
       and(
+        isNotNull(rewardDecisions.dispatchId),
         isNull(rewardDecisions.notifiedAt),
         lte(rewardDecisions.acceptedAt, settled),
         gt(rewardDecisions.acceptedAt, new Date(input.now.getTime() - NOTIFY_WINDOW_MS)),

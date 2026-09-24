@@ -2,6 +2,7 @@ import type { Prompt, RewardPurpose } from "@hyphae/core";
 import { rewardDecisions } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { appendCorrection } from "./decisions.js";
 import {
   beginDispatch,
   type EvaluationDeps,
@@ -348,5 +349,27 @@ describe("strandedWork: decisions whose message was never sent (F3)", () => {
       1,
     );
     expect((await s.sweep(new Date(acceptedAt + NOTIFY_WINDOW_MS))).notifications).toEqual([]);
+  });
+
+  it("never treats an operator correction as a lost evaluation message", async () => {
+    const { s, decision } = await decided();
+    await markNotified(t.db, decision.id, AFTER_GRACE);
+    const corrected = await appendCorrection(
+      t.db,
+      {
+        communityId: s.communityId,
+        contributionId: decision.contributionId,
+        expectedRevision: 1,
+        changes: { rawQuality: 70 },
+        reason: "Restates the post.",
+        evidenceRefs: ["https://x.com/a/status/1"],
+        actor: "script:reward-correct",
+        idempotencyKey: "c1",
+      },
+      { clock: later(3 * MIN) },
+    );
+    expect(corrected.status).toBe("appended");
+    const past = new Date(AFTER_GRACE.getTime() + MIN);
+    expect((await s.sweep(past)).notifications).toEqual([]);
   });
 });
