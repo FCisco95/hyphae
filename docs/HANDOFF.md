@@ -7,7 +7,7 @@ summary: R4 merged (PR #12, 09:36 UTC). R5 (strict close, frozen snapshot, re-en
 
 ## TL;DR
 
-**R5 is on `feat/r5-close-snapshot` (commit `082cffa`), ready for independent review and a PR; merge only on Cisco's yes.** An epoch now closes once, at its scheduled `closesAt`, into a frozen snapshot: each contribution's selected decision or reason, and per-member exact and whole points. Live nominations expire, the next epoch opens, and a late answer counts for nothing. An expired, never-judged artifact can re-enter the next epoch as linked new work. Migration 0007 is **not applied**. R4 (PR #12) was merged by Cisco at 09:36 UTC. Nothing is deployed or bootstrapped.
+**R5 is open as PR #13 on `feat/r5-close-snapshot` (commit `082cffa`); needs an independent review, and merges only on Cisco's yes.** An epoch now closes once, at its scheduled `closesAt`, into a frozen snapshot: each contribution's selected decision or reason, and per-member exact and whole points. Live nominations expire, the next epoch opens, and a late answer counts for nothing. An expired, never-judged artifact can re-enter the next epoch as linked new work. Migration 0007 is **not applied**. R4 (PR #12) was merged by Cisco at 09:36 UTC. Nothing is deployed or bootstrapped.
 
 ## Metadata
 
@@ -49,7 +49,7 @@ Fresh on `082cffa`: `pnpm -r test` exit 0 (core 54, api 208); `pnpm -r typecheck
 
 ## Next Actions
 
-1. Push `feat/r5-close-snapshot`, open the R5 PR, run an independent review; fix valid findings test-first.
+1. PR #13: run an independent review (`/code-review` or a reviewer agent) and read Codex comments; fix valid findings test-first.
 2. Merge on Cisco's yes.
 3. Verified-link build on `feat/verified-link-sdk`'s plan, only on a separate yes after R5 merges.
 4. Weekly video #2 on Friday per `docs/demo/2026-09-25-weekly-video-2.md`.
@@ -76,7 +76,7 @@ Fresh on `082cffa`: `pnpm -r test` exit 0 (core 54, api 208); `pnpm -r typecheck
 
 | What | Where it lives | Notes |
 |---|---|---|
-| R5 code + migration 0007 | `feat/r5-close-snapshot` (`082cffa`) | Not merged, not applied |
+| R5 code + migration 0007 | PR #13 (`082cffa`) | Not merged, not applied |
 | R5 record | `docs/handoffs/2026-09-24-r5-implemented.md` | |
 | Build log | `docs/BUILDLOG.md` | 2026-09-24 (afternoon) entry |
 
