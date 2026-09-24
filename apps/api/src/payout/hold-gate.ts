@@ -187,7 +187,8 @@ export async function runHoldChecks(
         .from(holdChecks)
         .where(and(eq(holdChecks.id, row.id), inArray(holdChecks.status, ["pending", "uncertain"])))
         .for("update", { skipLocked: true });
-      if (!claimed) return undefined;
+      // Getting a connection and the claim can take time: the window is checked again here.
+      if (!claimed || clock().getTime() > deadline) return undefined;
       const answer = await deps.check({
         projectId: ref.communityId,
         owner: row.wallet,

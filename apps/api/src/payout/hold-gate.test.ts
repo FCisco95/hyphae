@@ -408,8 +408,8 @@ describe("runHoldChecks", () => {
     const { e1, ref, rows } = await candidateDemo();
     const late = scripted(observed("holder", 150_000_000_000n, sinceClose(e1, 24 * HOUR + 1)));
     let ticks = 0;
-    // In the window when the run starts and before the call, past it once the answer is back.
-    const clock = () => sinceClose(e1, ++ticks <= 2 ? 23 * HOUR : 24 * HOUR + 1);
+    // In the window at the start, before the claim and after it; past it once the answer is back.
+    const clock = () => sinceClose(e1, ++ticks <= 3 ? 23 * HOUR : 24 * HOUR + 1);
     await runHoldChecks(t.db, ref, { check: late.check, tests, clock });
     expect(late.calls).toHaveLength(1);
     expect((await rows())[0]).toMatchObject({ status: "uncertain", reason: "window_closed" });
@@ -420,6 +420,16 @@ describe("runHoldChecks", () => {
     const none = scripted();
     let ticks = 0;
     const clock = () => sinceClose(e1, ++ticks === 1 ? 23 * HOUR : 24 * HOUR + 1);
+    await runHoldChecks(t.db, ref, { check: none.check, tests, clock });
+    expect(none.calls).toEqual([]);
+    expect((await rows())[0]).toMatchObject({ status: "pending", attempts: 0 });
+  });
+
+  it("checks the window again after claiming the row, before the read", async () => {
+    const { e1, ref, rows } = await candidateDemo();
+    const none = scripted();
+    let ticks = 0;
+    const clock = () => sinceClose(e1, ++ticks <= 2 ? 23 * HOUR : 24 * HOUR + 1);
     await runHoldChecks(t.db, ref, { check: none.check, tests, clock });
     expect(none.calls).toEqual([]);
     expect((await rows())[0]).toMatchObject({ status: "pending", attempts: 0 });
