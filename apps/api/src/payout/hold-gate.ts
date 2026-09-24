@@ -16,7 +16,7 @@ import type { RulesTest } from "./rules-test.js";
 // same checkRound and is never treated as below.
 export type HoldResult =
   | Awaited<ReturnType<typeof checkHold>>
-  | { kind: "uncertain"; reason: "not_configured" | "wrong_network" };
+  | { kind: "uncertain"; reason: "not_configured" | "wrong_network" | "window_closed" };
 
 export type HoldChecker = (input: {
   projectId: string;
@@ -24,6 +24,8 @@ export type HoldChecker = (input: {
   mint: string;
   thresholdRaw: bigint;
   checkRound: string;
+  // Epoch milliseconds after which no balance read may start.
+  deadline?: number;
 }) => Promise<HoldResult>;
 
 // MYCEL is a mainnet token. checkHold takes no chain and does not attest one (guide §6), so each
@@ -84,6 +86,11 @@ export function holdCheckerFromEnv(
       if (networks.includes(undefined)) return { kind: "uncertain", reason: "outage" };
       onMainnet = true;
     }
+    // The genesis check can take seconds. The SDK's own two reads (and their one retry each,
+    // bounded at 4 s) cannot be interrupted, and a late answer is kept undecided by the runner.
+    if (input.deadline !== undefined && Date.now() > input.deadline) {
+      return { kind: "uncertain", reason: "window_closed" };
+    }
     try {
       return await checkHold({
         projectId: parseProjectId(input.projectId),
@@ -125,7 +132,7 @@ export async function runHoldChecks(
   if (gate.status === "blocked" && gate.blockers.some((b) => STRUCTURAL.has(b))) {
     return { status: "skipped", blockers: gate.blockers };
   }
-  // A balance read outside [closesAt, closesAt + window] could not count, so none is read.
+  // A balance read outside [closesAt, closesAt + window] could not count, so none is started.
   const clock = deps.clock ?? (() => new Date());
   const closesAt = gate.closesAt.getTime();
   const deadline = closesAt + HOLD_WINDOW_MS;
@@ -195,6 +202,7 @@ export async function runHoldChecks(
         mint: row.mint,
         thresholdRaw,
         checkRound: row.checkRound,
+        deadline,
       });
       // An answer from outside the window cannot count, so it is kept undecided, never final.
       const observed = answer.kind === "uncertain" ? undefined : answer.observedAt.getTime();

@@ -212,6 +212,15 @@ describe("holdCheckerFromEnv, through the real SDK (consumer guide §7, hold gat
     expect(await check(input())).toMatchObject({ kind: "holder" });
   });
 
+  it("reads no balance once the deadline it was given has passed", async () => {
+    const { impl, calls } = hosts({}, {});
+    expect(await holdCheckerFromEnv(env, impl)({ ...input(), deadline: Date.now() - 1 })).toEqual({
+      kind: "uncertain",
+      reason: "window_closed",
+    });
+    expect(calls).toEqual(["mainnet.helius-rpc.com", "rpc.fallback.test"]); // the genesis checks only
+  });
+
   it("an owner or mint that is not a Solana address: uncertain, not an exception", async () => {
     const { impl } = hosts({}, {});
     const check = holdCheckerFromEnv(env, impl);
@@ -312,6 +321,7 @@ describe("runHoldChecks", () => {
         mint: demo.mint,
         thresholdRaw: THRESHOLD,
         checkRound: row?.checkRound,
+        deadline: sinceClose(e1, 24 * HOUR).getTime(),
       },
     ]);
     expect(await statusOf(ref, demo.members.signed)).toEqual(["blocked", "held"]);
