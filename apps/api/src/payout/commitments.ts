@@ -14,16 +14,14 @@ import {
   rewardDispatches,
   rewardIntakes,
 } from "@hyphae/db";
-import { asc, eq, inArray, type SQL, sql } from "drizzle-orm";
-import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import { asc, eq, inArray } from "drizzle-orm";
+import { isoUs } from "../pg.js";
+import { correctionRecord, effortCriteriaRecord } from "../rewards/decisions.js";
 
 // H-CONTRACT B3–B6 computed from the stored rows. Configs, intakes, contributions, decisions and
 // completed dispatches are insert-only, so a decision made before R6 gets the hash it would have
 // had then, and publication can never meet a missing hash (B6).
 
-// Postgres keeps microseconds; a JS Date would drop them (A3).
-export const isoUs = (column: AnyPgColumn | SQL) =>
-  sql<string>`to_char(${column} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
 // A stored capture time in A3's six-digit form. The fraction is kept as text, since a JS Date would
 // drop microseconds; the date and time without it must exist, which a Date round trip confirms.
 const CAPTURE_TIME = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?Z$/;
@@ -36,11 +34,6 @@ function captureTimeUs(stored: string): string {
   }
   return `${seconds}.${(m?.[2] ?? "").padEnd(6, "0")}Z`;
 }
-
-type Criteria = Record<
-  "originalSubstance" | "inspectableWork" | "communityContribution",
-  { met: boolean; note: string }
->;
 
 export interface EpochCommitments {
   configHash: string;
@@ -143,7 +136,6 @@ export async function epochCommitments(tx: Db, epochId: string): Promise<EpochCo
     if (d.predecessorId && !predecessor) {
       throw new Error(`commitments: decision ${d.id} names a predecessor outside its lineage`);
     }
-    const criteria = d.effortCriteria as Criteria | null;
     const payload: DecisionPayload = {
       community_id: d.communityId,
       epoch_id: d.epochId,
@@ -163,29 +155,13 @@ export async function epochCommitments(tx: Db, epochId: string): Promise<EpochCo
               output_hash: dispatch.outputHash as string,
             }
           : null,
-      correction: isCorrection
-        ? {
-            actor: d.correctionActor as string,
-            // A14: the admin prefix is the only authority in v1, as the read API derives it.
-            authority: d.correctionActor?.startsWith("admin:")
-              ? "community_admin"
-              : "operator_script",
-            reason: d.correctionReason ?? "",
-            evidence_refs: d.correctionEvidence ?? [],
-          }
-        : null,
+      correction: correctionRecord(d),
       nomination_id: d.nominationId,
       raw_quality: d.rawQuality.toString(),
       credited_quality: d.creditedQuality.toString(),
       flags: [...(d.flags as string[])].sort(),
       effort: d.effort,
-      effort_criteria: criteria
-        ? {
-            community_contribution: criteria.communityContribution,
-            inspectable_work: criteria.inspectableWork,
-            original_substance: criteria.originalSubstance,
-          }
-        : null,
+      effort_criteria: effortCriteriaRecord(d),
       timing_bps: d.timingBps.toString(),
       multiplier_bps: d.multiplierBps.toString(),
       point_units: d.pointUnits.toString(),

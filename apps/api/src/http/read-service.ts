@@ -43,6 +43,7 @@ import {
 } from "drizzle-orm";
 import { isoUs, readOnly } from "../pg.js";
 import { RewardConfigPayload } from "../rewards/config.js";
+import { correctionRecord, effortCriteriaRecord } from "../rewards/decisions.js";
 import { selectEffective } from "../rewards/effective.js";
 
 // The public read API v1 (H-CONTRACT Part A). Every function selects named columns only, so no
@@ -614,11 +615,6 @@ export async function readLeaderboard(
   });
 }
 
-type Criteria = Record<
-  "originalSubstance" | "inspectableWork" | "communityContribution",
-  { met: boolean; note: string }
->;
-
 export async function readContribution(
   db: Db,
   contributionId: string,
@@ -702,7 +698,6 @@ export async function readContribution(
       if (d.dispatchId && !dispatch?.outputHash) {
         throw new Error(`read: decision ${d.id} has no completed dispatch`);
       }
-      const criteria = d.effortCriteria as Criteria | null;
       return {
         revision: d.revision,
         status:
@@ -719,13 +714,7 @@ export async function readContribution(
         credit_rule: creditRule(d.rawQuality, flags, d.creditedQuality),
         flags,
         effort: d.effort,
-        effort_criteria: criteria
-          ? {
-              original_substance: criteria.originalSubstance,
-              inspectable_work: criteria.inspectableWork,
-              community_contribution: criteria.communityContribution,
-            }
-          : null,
+        effort_criteria: effortCriteriaRecord(d),
         timing_bps: d.timingBps,
         multiplier_bps: d.multiplierBps,
         point_units: d.pointUnits.toString(),
@@ -743,17 +732,7 @@ export async function readContribution(
                 cost_micro_usd: dispatch.costMicroUsd,
               }
             : null,
-        correction: d.correctionActor
-          ? {
-              actor: d.correctionActor,
-              // A14: the admin prefix is the only authority in v1.
-              authority: d.correctionActor.startsWith("admin:")
-                ? "community_admin"
-                : "operator_script",
-              reason: d.correctionReason ?? "",
-              evidence_refs: d.correctionEvidence ?? [],
-            }
-          : null,
+        correction: correctionRecord(d),
       };
     });
 

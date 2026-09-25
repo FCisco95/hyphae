@@ -175,3 +175,34 @@ export async function appendCorrection(
     return { status: "appended", decision, created: true };
   });
 }
+
+type Criteria = Record<
+  "originalSubstance" | "inspectableWork" | "communityContribution",
+  { met: boolean; note: string }
+>;
+
+// A decision's effort criteria and correction record as the read API serves them and its
+// commitment hashes them (B5).
+export function effortCriteriaRecord(d: Decision) {
+  const c = d.effortCriteria as Criteria | null;
+  return (
+    c && {
+      original_substance: c.originalSubstance,
+      inspectable_work: c.inspectableWork,
+      community_contribution: c.communityContribution,
+    }
+  );
+}
+
+export function correctionRecord(d: Decision) {
+  if (d.correctionActor === null) return null;
+  return {
+    actor: d.correctionActor,
+    // A14: the admin prefix is the only authority in v1.
+    authority: d.correctionActor.startsWith("admin:")
+      ? ("community_admin" as const)
+      : ("operator_script" as const),
+    reason: d.correctionReason ?? "",
+    evidence_refs: d.correctionEvidence ?? [],
+  };
+}
