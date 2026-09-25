@@ -2,21 +2,18 @@ import { randomUUID } from "node:crypto";
 import type { RewardPurpose, Rubric } from "@hyphae/core";
 import {
   communities,
-  type Db,
   epochs,
   holdChecks,
-  linkSessions,
   members,
   memberWalletLinks,
   rewardDecisions,
   rewardSnapshotEntries,
   rewardSnapshotMembers,
   rulesTestPasses,
-  walletProofRequests,
 } from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { seedAuditDemo } from "../http/demo-seed.js";
+import { seedAuditDemo, seedSignedLink } from "../http/demo-seed.js";
 import { readLeaderboard } from "../http/read-service.js";
 import { closeEpoch } from "../rewards/close.js";
 import { buildRewardConfigPayload, latestEpoch } from "../rewards/config.js";
@@ -430,43 +427,6 @@ const fakeModel = async (_prompt: unknown, _purpose: RewardPurpose) => ({
   costMicroUsd: 100,
 });
 
-async function signedLink(db: Db, o: { communityId: string; memberId: string; wallet: string }) {
-  const from = new Date(T0.getTime() - 60 * MIN);
-  const [session] = await db
-    .insert(linkSessions)
-    .values({
-      communityId: o.communityId,
-      telegramUserId: 1n,
-      tokenDigest: randomUUID(),
-      expiresAt: new Date(from.getTime() + 15 * MIN),
-      usedAt: from,
-    })
-    .returning();
-  const requestId = randomUUID();
-  await db.insert(walletProofRequests).values({
-    requestId,
-    communityId: o.communityId,
-    linkSessionId: session?.id ?? "",
-    telegramUserId: "1",
-    walletAddress: o.wallet,
-    nonceHash: "0".repeat(64),
-    origin: "https://hyphae.test",
-    chain: "solana:devnet",
-    issuedAt: from,
-    expiresAt: new Date(from.getTime() + 5 * MIN),
-    status: "consumed",
-    consumedAt: from,
-  });
-  await db.insert(memberWalletLinks).values({
-    communityId: o.communityId,
-    memberId: o.memberId,
-    wallet: o.wallet,
-    method: "signature",
-    proofRequestId: requestId,
-    validFrom: from,
-  });
-}
-
 let laneSeq = 0;
 async function closedLane(wallets: string[], laneRubric: Rubric = rubric) {
   const lane = await seedRewardLane(t.db, buildRewardConfigPayload(laneRubric));
@@ -495,7 +455,14 @@ async function closedLane(wallets: string[], laneRubric: Rubric = rubric) {
       { model: "test:fake", call: fakeModel, horizonMs: 5 * MIN, clock: later(2 * MIN) },
     );
     if (r.status !== "completed") throw new Error(`lane: evaluate ${r.status}`);
-    await signedLink(t.db, { communityId, memberId, wallet: wallets[i] ?? "" });
+    await seedSignedLink(t.db, {
+      communityId,
+      memberId,
+      telegramUserId: 1n,
+      wallet: wallets[i] ?? "",
+      tokenDigest: randomUUID(),
+      linkedAt: new Date(T0.getTime() - 60 * MIN),
+    });
     await t.db.insert(rulesTestPasses).values({
       communityId,
       memberId,

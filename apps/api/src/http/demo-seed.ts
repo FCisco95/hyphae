@@ -84,6 +84,54 @@ export interface AuditDemo {
 }
 
 // Epoch 1 opens 8 days before `now` and has closed; epoch 2 is open at `now`.
+// A signed wallet's proof trail, as verified linking writes it.
+export async function seedSignedLink(
+  db: Db,
+  o: {
+    communityId: string;
+    memberId: string;
+    telegramUserId: bigint;
+    wallet: string;
+    tokenDigest: string;
+    linkedAt: Date;
+  },
+) {
+  const [session] = await db
+    .insert(linkSessions)
+    .values({
+      communityId: o.communityId,
+      telegramUserId: o.telegramUserId,
+      tokenDigest: o.tokenDigest,
+      expiresAt: new Date(o.linkedAt.getTime() + 15 * MIN),
+      usedAt: o.linkedAt,
+    })
+    .returning();
+  if (!session) throw new Error("seed: link session");
+  const requestId = randomUUID();
+  await db.insert(walletProofRequests).values({
+    requestId,
+    communityId: o.communityId,
+    linkSessionId: session.id,
+    telegramUserId: o.telegramUserId.toString(),
+    walletAddress: o.wallet,
+    nonceHash: "0".repeat(64),
+    origin: "https://hyphae.test",
+    chain: "solana:devnet",
+    issuedAt: o.linkedAt,
+    expiresAt: new Date(o.linkedAt.getTime() + 5 * MIN),
+    status: "consumed",
+    consumedAt: o.linkedAt,
+  });
+  await db.insert(memberWalletLinks).values({
+    communityId: o.communityId,
+    memberId: o.memberId,
+    wallet: o.wallet,
+    method: "signature",
+    proofRequestId: requestId,
+    validFrom: o.linkedAt,
+  });
+}
+
 export async function seedAuditDemo(db: Db, now: Date): Promise<AuditDemo> {
   const t0 = new Date(Math.floor((now.getTime() - 8 * DAY) / 1000) * 1000);
   const at =
@@ -130,51 +178,22 @@ export async function seedAuditDemo(db: Db, now: Date): Promise<AuditDemo> {
     .returning();
   if (!signed || !pasted) throw new Error("demo: members");
 
-  // The signed wallet's proof trail, as verified linking writes it.
   const linkedAt = new Date(t0.getTime() - 60 * MIN);
-  const [session] = await db
-    .insert(linkSessions)
-    .values({
-      communityId,
-      telegramUserId: signed.telegramUserId,
-      tokenDigest: `demo-${suffix}`,
-      expiresAt: new Date(linkedAt.getTime() + 15 * MIN),
-      usedAt: linkedAt,
-    })
-    .returning();
-  if (!session) throw new Error("demo: link session");
-  const requestId = randomUUID();
-  await db.insert(walletProofRequests).values({
-    requestId,
+  await seedSignedLink(db, {
     communityId,
-    linkSessionId: session.id,
-    telegramUserId: signed.telegramUserId.toString(),
-    walletAddress: signedWallet,
-    nonceHash: "0".repeat(64),
-    origin: "https://hyphae.test",
-    chain: "solana:devnet",
-    issuedAt: linkedAt,
-    expiresAt: new Date(linkedAt.getTime() + 5 * MIN),
-    status: "consumed",
-    consumedAt: linkedAt,
+    memberId: signed.id,
+    telegramUserId: signed.telegramUserId,
+    wallet: signedWallet,
+    tokenDigest: `demo-${suffix}`,
+    linkedAt,
   });
-  await db.insert(memberWalletLinks).values([
-    {
-      communityId,
-      memberId: signed.id,
-      wallet: signedWallet,
-      method: "signature",
-      proofRequestId: requestId,
-      validFrom: linkedAt,
-    },
-    {
-      communityId,
-      memberId: pasted.id,
-      wallet: pastedWallet,
-      method: "paste",
-      validFrom: linkedAt,
-    },
-  ]);
+  await db.insert(memberWalletLinks).values({
+    communityId,
+    memberId: pasted.id,
+    wallet: pastedWallet,
+    method: "paste",
+    validFrom: linkedAt,
+  });
 
   await bootstrapRewardEpochs(
     db,

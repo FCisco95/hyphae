@@ -3,19 +3,16 @@
 // Built through the reward functions production uses, with a fake model, like the audit demo.
 // The publish tests and the devnet run use it; it reproduces the seeded_ready_epoch vector.
 import { randomBytes, randomUUID } from "node:crypto";
-import type { Rubric } from "@hyphae/core";
 import {
   communities,
   type Db,
   holdChecks,
-  linkSessions,
   members,
   memberWalletLinks,
   rulesTestPasses,
-  walletProofRequests,
 } from "@hyphae/db";
 import { getAddressDecoder } from "@solana/kit";
-import { fakeModel } from "../http/demo-seed.js";
+import { fakeModel, seedSignedLink } from "../http/demo-seed.js";
 import { closeEpoch } from "../rewards/close.js";
 import {
   bootstrapRewardEpochs,
@@ -26,24 +23,14 @@ import {
 import { type EvaluationTarget, runEvaluation } from "../rewards/evaluation.js";
 import { admitContribution } from "../rewards/intake.js";
 import { nominate } from "../rewards/slots.js";
+import { rubric } from "../rewards/test-db.js";
 import { rulesTestFor } from "./rules-test.js";
 
 const MIN = 60_000;
 const DAY = 86_400_000;
 const WEEK = 7 * DAY;
-export const READY_HOLD_THRESHOLD = "100000000000";
-
-// MYCEL 1.2.0, so the real MYCEL rules test applies.
-const rubric: Rubric = {
-  version: "1.2.0",
-  community: "MYCEL",
-  guidelines: "Add something real to the conversation. No price promises. Be specific.",
-  criteria: [{ key: "context_fit", label: "Specific", weight: 1, description: "Reacts." }],
-  timing: { fullUntil: 360, zeroAt: 2880 },
-  stakeWeight: "none",
-  minHoldUnits: READY_HOLD_THRESHOLD,
-  proposalAcceptThreshold: 70,
-};
+// The test rubric is MYCEL 1.2.0, so the real MYCEL rules test applies.
+export const READY_HOLD_THRESHOLD = rubric.minHoldUnits;
 
 export type ReadyLabel = "effort" | "ordinary" | "floor" | "unsigned";
 const PAYABLE = ["effort", "ordinary", "floor"] as const;
@@ -126,40 +113,13 @@ export async function seedReadyEpoch(
       });
       continue;
     }
-    // The proof trail verified linking writes.
-    const [session] = await db
-      .insert(linkSessions)
-      .values({
-        communityId,
-        telegramUserId,
-        tokenDigest: `ready-${suffix}-${label}`,
-        expiresAt: new Date(linkedAt.getTime() + 15 * MIN),
-        usedAt: linkedAt,
-      })
-      .returning();
-    if (!session) throw new Error("ready: link session");
-    const requestId = randomUUID();
-    await db.insert(walletProofRequests).values({
-      requestId,
-      communityId,
-      linkSessionId: session.id,
-      telegramUserId: telegramUserId.toString(),
-      walletAddress: wallets[label],
-      nonceHash: "0".repeat(64),
-      origin: "https://hyphae.test",
-      chain: "solana:devnet",
-      issuedAt: linkedAt,
-      expiresAt: new Date(linkedAt.getTime() + 5 * MIN),
-      status: "consumed",
-      consumedAt: linkedAt,
-    });
-    await db.insert(memberWalletLinks).values({
+    await seedSignedLink(db, {
       communityId,
       memberId: member.id,
+      telegramUserId,
       wallet: wallets[label],
-      method: "signature",
-      proofRequestId: requestId,
-      validFrom: linkedAt,
+      tokenDigest: `ready-${suffix}-${label}`,
+      linkedAt,
     });
   }
 
