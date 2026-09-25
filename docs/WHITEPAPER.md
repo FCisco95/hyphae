@@ -44,7 +44,7 @@ The public audit reads all of this through a read-only API: every contribution w
 
 ## 5. On-chain plan
 
-Scores are computed off-chain. At each close, the epoch's full score set is committed to Solana as a single merkle root. Leaves and internal nodes are hashed with separate domain tags, so a node can never be replayed as a leaf. Chain writes grow with the number of epochs, not the number of contributions. Each community has one vault that anyone can fund. A contributor claims with a merkle proof and receives soulbound Token-2022 points in the same transaction. The claim-leaf format and the contract are still being designed; none of this is deployed.
+Scores are computed off-chain. At each close, the epoch's full score set is committed to Solana as a single merkle root. Leaves and internal nodes are hashed with separate domain tags, so a node can never be replayed as a leaf. Chain writes grow with the number of epochs, not the number of contributions. Each community has one vault that anyone can fund, and nothing withdraws from it: money leaves only as the 3% Hyphae fee at publish or as a claim. Publishing an epoch anchors the root and the hash of the epoch's full audit record, and reserves exactly what the epoch allocates. A contributor claims with a merkle proof signed by their own wallet, once, and the claim leaves a receipt on-chain. The program and the allocation are built and tested locally; soulbound Token-2022 points in the claim are planned, not built.
 
 ## 6. Status
 
@@ -69,7 +69,9 @@ Scores are computed off-chain. At each close, the epoch's full score set is comm
 | MYCEL reward epoch 1 (2026-09-25 → 2026-10-02, rubric 1.2.0) | Deployed; not a paid epoch | `docs/handoffs/2026-09-24-cutover.md` |
 | Public read API v1 and audit page | Locally tested on a seeded epoch, not deployed | `docs/handoffs/2026-09-25-audit-page-plan.md` |
 | Rules test (`/rules`, six questions, 6/6), payout gate and token-hold gate (100,000 MYCEL, read within 24 hours of the close by two independent mainnet providers) | Locally tested on PGlite and Postgres 17, not deployed; migration 0009 not applied | `docs/handoffs/2026-09-24-payout-gates-built.md` |
-| On-chain root and claim, devnet run, mainnet payout (epoch 2 at the earliest) | Planned | `docs/handoffs/2026-09-25-plan.md` |
+| Program: per-community vault, publish (root, audit hash, 3% fee), one claim per leaf with a receipt; exact allocation, member and epoch audit manifests, publish job (R6) | Locally tested (LiteSVM, PGlite, Postgres 17), not deployed; the publish job has no production caller | `docs/handoffs/2026-09-25-r6-anchor-built.md` |
+| Devnet run: publish a seeded epoch, one claim, a refused second claim | Not run: the public devnet faucet refused every airdrop to the throwaway key | `docs/handoffs/2026-09-25-r6-anchor-built.md` |
+| Mainnet payout (epoch 2 at the earliest) | Planned | `docs/handoffs/2026-09-25-plan.md` |
 
 ## 7. Limits
 
