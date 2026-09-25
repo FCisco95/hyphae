@@ -238,5 +238,7 @@ describe("appendCorrection", () => {
     await expect(appendCorrection(t.db, { ...base, reason: " " })).rejects.toThrow(/reason/);
     await expect(appendCorrection(t.db, { ...base, evidenceRefs: [] })).rejects.toThrow(/evidence/);
     await expect(appendCorrection(t.db, { ...base, changes: {} })).rejects.toThrow(/change/);
+    // The actor is what the read API and the decision commitment name as the correction's author.
+    await expect(appendCorrection(t.db, { ...base, actor: " " })).rejects.toThrow(/actor/);
   });
 });

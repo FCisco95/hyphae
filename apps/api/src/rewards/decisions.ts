@@ -44,6 +44,7 @@ export async function appendCorrection(
   input: CorrectionInput,
   deps: RewardDeps = {},
 ): Promise<CorrectionResult> {
+  if (!input.actor.trim()) throw new Error("reward: a correction actor is required");
   const reason = input.reason.trim();
   if (!reason) throw new Error("reward: a correction reason is required");
   if (!input.evidenceRefs.length || input.evidenceRefs.some((ref) => !ref.trim())) {
