@@ -142,10 +142,10 @@ describe("passesBefore", () => {
       testId: "mycel-rules-1",
       before: cutoff,
     });
-    expect([...passed]).toEqual([early.member.id]);
+    expect(passed).toEqual(new Map([[early.member.id, "2026-10-08T23:59:59.999000Z"]]));
     expect(
       await passesBefore(t.db, { memberIds: [], testId: "mycel-rules-1", before: cutoff }),
-    ).toEqual(new Set());
+    ).toEqual(new Map());
   });
 
   it("keeps microseconds, so a pass a fraction of a millisecond early still counts", async () => {
@@ -159,6 +159,6 @@ describe("passesBefore", () => {
     });
     expect(
       await passesBefore(t.db, { memberIds: [member.id], testId: "mycel-rules-1", before: cutoff }),
-    ).toEqual(new Set([member.id]));
+    ).toEqual(new Map([[member.id, "2026-10-08T23:59:59.999700Z"]]));
   });
 });

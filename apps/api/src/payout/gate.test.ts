@@ -102,9 +102,10 @@ async function cleanDemo() {
 
 describe("payout gate on the demo's closed epoch", () => {
   it("is ready when every precondition holds, and lists every member with its reasons", async () => {
-    const { demo, ref } = await cleanDemo();
+    const { demo, e1, ref } = await cleanDemo();
     const gate = await evaluatePayoutGate(t.db, ref, { tests });
     const byId = (id: string) => gate.members.find((m) => m.memberId === id);
+    const us = (ms: number) => new Date(ms).toISOString().replace("Z", "000Z");
     expect(gate.status).toBe("ready");
     expect(gate).toMatchObject({
       epochIndex: 1,
@@ -119,6 +120,11 @@ describe("payout gate on the demo's closed epoch", () => {
       wallet: demo.signedWallet,
       status: "payable",
       reasons: [],
+      rulesTestPassedAt: us(e1.closesAt.getTime() - MIN),
+      holdResult: {
+        check: expect.objectContaining({ status: "holder", wallet: demo.signedWallet }),
+        observedAt: us(e1.closesAt.getTime() + 5 * MIN),
+      },
     });
     expect(byId(demo.members.pasted)).toEqual({
       memberId: demo.members.pasted,
@@ -127,6 +133,8 @@ describe("payout gate on the demo's closed epoch", () => {
       wallet: null,
       status: "not_payable",
       reasons: ["no_points", "no_verified_wallet", "no_rules_test"],
+      rulesTestPassedAt: null,
+      holdResult: null,
     });
     expect(gate.members.map((m) => m.memberId)).toEqual(
       [demo.members.signed, demo.members.pasted].sort(),

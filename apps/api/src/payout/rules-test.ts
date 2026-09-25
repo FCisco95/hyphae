@@ -1,5 +1,6 @@
 import { type Db, members, rulesTestPasses } from "@hyphae/db";
 import { and, eq, inArray, lt, sql } from "drizzle-orm";
+import { isoUs } from "../pg.js";
 
 // The rules test (P9): a member passes it 6/6 before an epoch's close to be payable in that epoch.
 // A test covers the rubrics it teaches; a new rubric version needs its own test.
@@ -137,14 +138,15 @@ export async function recordPass(
   });
 }
 
-// Members among memberIds with a pass of testId strictly before `before` (P9: before closes_at).
+// Members among memberIds with a pass of testId strictly before `before` (P9: before closes_at),
+// each with its pass time in A3's microsecond form.
 export async function passesBefore(
   db: Db,
   input: { memberIds: string[]; testId: string; before: Date },
-): Promise<Set<string>> {
-  if (input.memberIds.length === 0) return new Set();
+): Promise<Map<string, string>> {
+  if (input.memberIds.length === 0) return new Map();
   const rows = await db
-    .select({ memberId: rulesTestPasses.memberId })
+    .select({ memberId: rulesTestPasses.memberId, passedAt: isoUs(rulesTestPasses.passedAt) })
     .from(rulesTestPasses)
     .where(
       and(
@@ -153,5 +155,5 @@ export async function passesBefore(
         lt(rulesTestPasses.passedAt, input.before),
       ),
     );
-  return new Set(rows.map((r) => r.memberId));
+  return new Map(rows.map((r) => [r.memberId, r.passedAt]));
 }

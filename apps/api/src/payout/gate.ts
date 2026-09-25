@@ -11,6 +11,7 @@ import {
 } from "@hyphae/db";
 import { and, eq, sql } from "drizzle-orm";
 import { walletAt } from "../link/wallet-links.js";
+import { isoUs, readOnly } from "../pg.js";
 import { RewardConfigPayload } from "../rewards/config.js";
 import { selectEffective } from "../rewards/effective.js";
 import { passesBefore, type RulesTest, rulesTestFor } from "./rules-test.js";
@@ -35,6 +36,13 @@ export type MemberReason =
   | "below_hold"
   | "hold_pending";
 
+// A hold result the gate applied: decided, for this wallet, mint and pinned threshold, and read in
+// the window.
+export interface AppliedHold {
+  check: typeof holdChecks.$inferSelect & { status: "holder" | "below" };
+  observedAt: string;
+}
+
 export interface MemberVerdict {
   memberId: string;
   pointUnits: string;
@@ -44,6 +52,10 @@ export interface MemberVerdict {
   // held: every other condition holds and the hold result is not confirmed yet.
   status: "payable" | "not_payable" | "held";
   reasons: MemberReason[];
+  // The evidence behind the verdict, which publication commits as it is: the pass that counted
+  // and the hold result applied, times in A3's microsecond form.
+  rulesTestPassedAt: string | null;
+  holdResult: AppliedHold | null;
 }
 
 // P9 asks for the balance "when the snapshot is taken". No RPC reads a past balance, so a result
@@ -59,10 +71,27 @@ export interface HoldRequirement {
 interface GateBase {
   epochIndex: number;
   closesAt: Date;
+  // In member id order.
   members: MemberVerdict[];
 }
+
+// The frozen snapshot a ready verdict was judged on, times in A3's microsecond form.
+export interface JudgedSnapshot {
+  opensAt: string;
+  closesAt: string;
+  closedAt: string;
+  cutoffAssumption: string;
+  entries: SnapshotEntry[];
+}
+
 export type PayoutGate =
-  | (GateBase & { status: "ready"; testId: string; hold: HoldRequirement; payable: number })
+  | (GateBase & {
+      status: "ready";
+      testId: string;
+      hold: HoldRequirement;
+      payable: number;
+      snapshot: JudgedSnapshot;
+    })
   | (GateBase & {
       status: "blocked";
       blockers: Blocker[];
@@ -72,6 +101,7 @@ export type PayoutGate =
 
 type Epoch = typeof epochs.$inferSelect;
 type Snapshot = typeof rewardEpochSnapshots.$inferSelect;
+type SnapshotEntry = typeof rewardSnapshotEntries.$inferSelect;
 type SnapshotMember = typeof rewardSnapshotMembers.$inferSelect;
 
 // The frozen snapshot must still be the O6 selection at closes_at: every decision accepted before
@@ -80,7 +110,7 @@ async function consistentSnapshot(
   tx: Db,
   epoch: Epoch,
   snapshot: Snapshot,
-): Promise<SnapshotMember[] | null> {
+): Promise<{ entries: SnapshotEntry[]; totals: SnapshotMember[] } | null> {
   if (snapshot.closesAt.getTime() !== epoch.closesAt.getTime()) return null;
   const entries = await tx
     .select()
@@ -134,7 +164,8 @@ async function consistentSnapshot(
     .limit(1);
   if (misflagged) return null;
 
-  return totals.sort((a, b) => (a.memberId < b.memberId ? -1 : a.memberId > b.memberId ? 1 : 0));
+  totals.sort((a, b) => (a.memberId < b.memberId ? -1 : a.memberId > b.memberId ? 1 : 0));
+  return { entries, totals };
 }
 
 // Read-only and lock-free: the snapshot is frozen, and passes and hold results only move forward.
@@ -143,10 +174,7 @@ export async function evaluatePayoutGate(
   ref: { communityId: string; epochId: string },
   deps: { tests?: readonly RulesTest[] } = {},
 ): Promise<PayoutGate> {
-  return db.transaction((tx) => payoutGateIn(tx, ref, deps), {
-    isolationLevel: "repeatable read",
-    accessMode: "read only",
-  });
+  return readOnly(db, (tx) => payoutGateIn(tx, ref, deps));
 }
 
 // The gate inside the caller's transaction: publication builds from the same snapshot it judged.
@@ -156,7 +184,12 @@ export async function payoutGateIn(
   deps: { tests?: readonly RulesTest[] } = {},
 ): Promise<PayoutGate> {
   const [row] = await tx
-    .select({ epoch: epochs, community: communities })
+    .select({
+      epoch: epochs,
+      community: communities,
+      opensAt: isoUs(epochs.opensAt),
+      closesAt: isoUs(epochs.closesAt),
+    })
     .from(epochs)
     .innerJoin(communities, eq(communities.id, epochs.communityId))
     .where(and(eq(epochs.id, ref.epochId), eq(epochs.communityId, ref.communityId)));
@@ -190,56 +223,64 @@ export async function payoutGateIn(
   if (epoch.status === "published" || epoch.root !== null) {
     return blocked(["already_published"], { hold });
   }
-  const [snapshot] = await tx
-    .select()
+  const [frozen] = await tx
+    .select({ snapshot: rewardEpochSnapshots, closedAt: isoUs(rewardEpochSnapshots.closedAt) })
     .from(rewardEpochSnapshots)
     .where(eq(rewardEpochSnapshots.epochId, epoch.id));
-  if (!snapshot || epoch.status !== "closed") return blocked(["not_final"], { hold });
+  if (!frozen || epoch.status !== "closed") return blocked(["not_final"], { hold });
   if (community.firstPaidEpoch === null || epoch.index < community.firstPaidEpoch) {
     return blocked(["before_first_paid_epoch"], { hold });
   }
   const test = rulesTestFor(payload.data.rubric, deps.tests);
   if (!test) return blocked(["no_rules_test_defined"], { hold });
   const found = { testId: test.id, hold };
-  const snapshotMembers = await consistentSnapshot(tx, epoch, snapshot);
-  if (!snapshotMembers) return blocked(["snapshot_mismatch"], found);
+  const judged = await consistentSnapshot(tx, epoch, frozen.snapshot);
+  if (!judged) return blocked(["snapshot_mismatch"], found);
 
   const passed = await passesBefore(tx, {
-    memberIds: snapshotMembers.map((m) => m.memberId),
+    memberIds: judged.totals.map((m) => m.memberId),
     testId: test.id,
     before: epoch.closesAt,
   });
   const holdOf = new Map(
-    (await tx.select().from(holdChecks).where(eq(holdChecks.epochId, epoch.id))).map((h) => [
-      h.memberId,
-      h,
-    ]),
+    (
+      await tx
+        .select({ check: holdChecks, observedAt: isoUs(holdChecks.observedAt) })
+        .from(holdChecks)
+        .where(eq(holdChecks.epochId, epoch.id))
+    ).map((h) => [h.check.memberId, h]),
   );
 
   const members: MemberVerdict[] = [];
-  for (const m of snapshotMembers) {
+  for (const m of judged.totals) {
     const reasons: MemberReason[] = [];
     if (m.pointUnits <= 0n) reasons.push("no_points");
     const link = await walletAt(tx, m.memberId, epoch.closesAt);
     const wallet = link?.method === "signature" ? link.wallet : null;
     if (!wallet) reasons.push("no_verified_wallet");
-    if (!passed.has(m.memberId)) reasons.push("no_rules_test");
+    const rulesTestPassedAt = passed.get(m.memberId) ?? null;
+    if (rulesTestPassedAt === null) reasons.push("no_rules_test");
     // The balance matters only for a member who is otherwise payable (P16's candidates), and
-    // only a result for exactly this wallet, mint and pinned threshold, read in the window,
-    // counts.
+    // only a decided result for exactly this wallet, mint and pinned threshold, read in the
+    // window, counts.
+    let applied: AppliedHold | null = null;
     if (reasons.length === 0 && hold.thresholdRaw > 0n) {
       const h = holdOf.get(m.memberId);
-      const read = h?.observedAt?.getTime();
-      const applies =
+      const read = h?.check.observedAt?.getTime();
+      if (
         h !== undefined &&
-        h.wallet === wallet &&
-        h.mint === hold.mint &&
-        BigInt(h.thresholdRaw) === hold.thresholdRaw &&
+        (h.check.status === "holder" || h.check.status === "below") &&
+        h.check.wallet === wallet &&
+        h.check.mint === hold.mint &&
+        BigInt(h.check.thresholdRaw) === hold.thresholdRaw &&
         read !== undefined &&
         read >= epoch.closesAt.getTime() &&
-        read <= epoch.closesAt.getTime() + HOLD_WINDOW_MS;
-      if (applies && h.status === "below") reasons.push("below_hold");
-      else if (!(applies && h.status === "holder")) reasons.push("hold_pending");
+        read <= epoch.closesAt.getTime() + HOLD_WINDOW_MS
+      ) {
+        applied = h as AppliedHold;
+      }
+      if (applied?.check.status === "below") reasons.push("below_hold");
+      else if (!applied) reasons.push("hold_pending");
     }
     members.push({
       memberId: m.memberId,
@@ -253,6 +294,8 @@ export async function payoutGateIn(
             ? "held"
             : "not_payable",
       reasons,
+      rulesTestPassedAt,
+      holdResult: applied,
     });
   }
 
@@ -272,5 +315,12 @@ export async function payoutGateIn(
     ...found,
     members,
     payable: payable.length,
+    snapshot: {
+      opensAt: row.opensAt,
+      closesAt: row.closesAt,
+      closedAt: frozen.closedAt,
+      cutoffAssumption: frozen.snapshot.cutoffAssumption,
+      entries: judged.entries,
+    },
   };
 }
