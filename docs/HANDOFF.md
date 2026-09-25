@@ -55,7 +55,7 @@ Make epoch 2 (2026-10-02T00:00Z → 2026-10-09T00:00Z) the first paid epoch: gat
 
 ## Known Issues / Watch List
 
-- **Devnet run not done** (step 6): every `requestAirdrop` to the throwaway admin failed with the faucet's rate limit, 00:0xZ–00:4xZ. No devnet transaction exists. The run is scripted (below).
+- **Devnet run not done** (step 6): all 13 airdrop requests to the throwaway admin (2026-09-24 ~23:25Z to 2026-09-25 00:40Z) failed with the faucet's rate limit. No devnet transaction exists. The run is scripted (below).
 - **Before the mainnet publish (Oct 9) and not built:** Q1 and Q2; an operator entry point that runs `publishEpoch` with the admin key; a claim path for testers (Q5); MYCEL's `communities.chain_address` (a Neon write); the P8 address; the read API's allocation section (P14).
 - The P8 fee account must already exist with at least the rent-exempt minimum, or the first fee must be at least 0.00089 SOL. The 0.5 SOL pot's fee is 0.015 SOL, which is fine.
 - Carried over: bot token re-rotation; `PUBLIC_WEB_URL` after the Vercel site; the public api is not rate-limited; no CI; the root `package.json` still lists the mocha toolchain.
@@ -63,7 +63,7 @@ Make epoch 2 (2026-10-02T00:00Z → 2026-10-09T00:00Z) the first paid epoch: gat
 ## Next Actions
 
 1. **Cisco (1 minute):** fund `Fcv1xtZ6Em1m9xjGmkfinfA3XQ1sEjeCoxy3UioEv4cM` with 3 devnet SOL at faucet.solana.com (Q4).
-2. **Agent, then (~20 minutes):** the devnet run, from the repo root. `bash <scratch>/devnet-deploy.sh go` deploys the program (upgrade authority = throwaway admin) and creates a devnet mint. Then run `HYPHAE_DEVNET_RUN=1 HYPHAE_DEVNET_ADMIN_KEYPAIR=… HYPHAE_DEVNET_CLAIMANT_KEYPAIR=… HYPHAE_DEVNET_FEE_RECIPIENT=AZo8… HYPHAE_DEVNET_MINT=<mint> HYPHAE_DEVNET_REPORT=<file> pnpm --filter @hyphae/api exec vitest run src/payout/publish.devnet.test.ts`. It initializes the community, funds the vault with 0.05 SOL, publishes the seeded epoch through `publishEpoch`, claims once, and lands a second claim that fails on-chain. Record the signatures in the session record and the whitepaper row.
+2. **Agent, then (~20 minutes):** the devnet run, exactly as written in `docs/handoffs/2026-09-25-r6-anchor-built.md` § Devnet. Deploy the program with the throwaway admin as upgrade authority, create a devnet mint, then run `apps/api/src/payout/publish.devnet.test.ts` with `HYPHAE_DEVNET_RUN=1`. It initializes the community, funds the vault with 0.05 SOL, publishes the seeded epoch through `publishEpoch`, claims once, and lands a second claim that fails on-chain. Record the signatures in the session record, the whitepaper row and here.
 3. **Cisco, before 2026-10-02T00:00Z (unchanged):** apply 0009, set `HOLD_RPC_HELIUS_URL` and `HOLD_RPC_FALLBACK_URL`, deploy `86ff258` (or `main`; both are deployable) with `--depot=false`, then the read-only checks. The earlier steps still stand: token re-rotation, and the Vercel project.
 4. **Cisco:** answer Q1–Q3 and Q5, and name the P8 address by Oct 1.
 5. **Agent, Oct 3–6 (needs Q2 and Q5 answered):** migration 0010 with the stored manifests and hashes, the operator publish entry point, and the claim path. Then the Oct 6 devnet checkpoint.

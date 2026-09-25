@@ -60,7 +60,7 @@ Two fixes came from this session's own review, before Codex: a rules-test pass a
 
 ## Devnet (step 6)
 
-**Not run.** Three throwaway keys were generated in WSL `~/hyphae-devnet/` (admin `Fcv1xtZ6Em1m9xjGmkfinfA3XQ1sEjeCoxy3UioEv4cM`, claimant `3nVsVs3QSv6Yf1XtRj2d1s2ySSeeNQbtztHwm4VhNgbk`, fee recipient `AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR`). Every `solana airdrop` to the admin (1–2 SOL, about 17 attempts between 23:3xZ and 00:5xZ) failed with the faucet's rate limit. Other public devnet endpoints need API keys, and using a key is out of bounds for this arc. The Lab wallet was not used. No devnet transaction exists, so there are no signatures to record.
+**Not run.** Three throwaway keys were generated in WSL `~/hyphae-devnet/` (admin `Fcv1xtZ6Em1m9xjGmkfinfA3XQ1sEjeCoxy3UioEv4cM`, claimant `3nVsVs3QSv6Yf1XtRj2d1s2ySSeeNQbtztHwm4VhNgbk`, fee recipient `AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR`). All 13 `solana airdrop` requests to the admin (1–2 SOL each, 2026-09-24 ~23:25Z to 2026-09-25 00:40Z) failed with the faucet's rate limit. Other public devnet endpoints need API keys, and using a key is out of bounds for this arc. The Lab wallet was not used. No devnet transaction exists, so there are no signatures to record.
 
 What it needs: about 2.6 devnet SOL on the admin (the program's rent is 1.165 SOL, held twice during deploy while the buffer exists, plus a 0.05 SOL pot and fees). Then, in WSL, with the toolchain on PATH and a `config.yml` in `~/hyphae-devnet/` that points `keypair_path` at `admin-2026-09-25.json` and `json_rpc_url` at devnet:
 
