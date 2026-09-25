@@ -308,6 +308,14 @@ describe("commitments over stored rows (the B6 backfill, computed)", () => {
       .set({ capture: { ...capture, capturedAt: "2026-10-03T10:04:05+01:00" } })
       .where(eq(rewardIntakes.id, intake.id));
     await expect(epochCommitments(t.db, seed.epochId)).rejects.toThrow(/capture time/);
+    // So is a time that does not exist.
+    for (const impossible of ["2026-10-03T25:04:05.123456Z", "2026-02-30T10:00:00.000000Z"]) {
+      await t.db
+        .update(rewardIntakes)
+        .set({ capture: { ...capture, capturedAt: impossible } })
+        .where(eq(rewardIntakes.id, intake.id));
+      await expect(epochCommitments(t.db, seed.epochId)).rejects.toThrow(/capture time/);
+    }
   });
 
   it("hashes corrections and late decisions with the audit demo's rows", async () => {

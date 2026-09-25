@@ -103,14 +103,20 @@ fn owned_account(svm: &mut LiteSVM, owner: Pubkey, data: Vec<u8>) -> Pubkey {
     key
 }
 
+// The SPL mint layout: authority (36 bytes), supply (8), decimals (1), is_initialized (1), ...
+const MINT_INITIALIZED: usize = 45;
+
 fn mint_account(svm: &mut LiteSVM, owner: Pubkey) -> Pubkey {
-    owned_account(svm, owner, vec![0; 82])
+    let mut data = vec![0; 82];
+    data[MINT_INITIALIZED] = 1;
+    owned_account(svm, owner, data)
 }
 
 // Token-2022 accounts with extensions: base layout padded to 165 bytes, then the account type
 // (1 = mint, 2 = token account), then the extensions.
 fn token_2022_with_extensions(svm: &mut LiteSVM, account_type: u8) -> Pubkey {
     let mut data = vec![0; 170];
+    data[MINT_INITIALIZED] = 1;
     data[165] = account_type;
     owned_account(svm, TOKEN_2022_PROGRAM, data)
 }
@@ -362,7 +368,8 @@ fn initialize_refuses_an_account_that_is_not_a_token_mint() {
     // A token account is owned by the token program too, but it is not a mint.
     let token_account = owned_account(&mut svm, TOKEN_PROGRAM, vec![0; 165]);
     let token_2022_account = token_2022_with_extensions(&mut svm, 2);
-    for not_a_mint in [wallet, token_account, token_2022_account] {
+    let uninitialized = owned_account(&mut svm, TOKEN_PROGRAM, vec![0; 82]);
+    for not_a_mint in [wallet, token_account, token_2022_account, uninitialized] {
         let outcome = send(
             &mut svm,
             initialize_ix(&admin.pubkey(), &not_a_mint, Pubkey::new_unique()),

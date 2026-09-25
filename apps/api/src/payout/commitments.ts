@@ -24,12 +24,17 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 // Postgres keeps microseconds; a JS Date would drop them (A3).
 export const isoUs = (column: AnyPgColumn | SQL) =>
   sql<string>`to_char(${column} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
-// A stored capture time, in A3's six-digit form, without a JS Date (which would drop microseconds).
+// A stored capture time in A3's six-digit form. The fraction is kept as text, since a JS Date would
+// drop microseconds; the date and time without it must exist, which a Date round trip confirms.
 const CAPTURE_TIME = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?Z$/;
 function captureTimeUs(stored: string): string {
   const m = CAPTURE_TIME.exec(stored);
-  if (!m) throw new Error(`commitments: capture time ${JSON.stringify(stored)} is not UTC (Z)`);
-  return `${m[1]}.${(m[2] ?? "").padEnd(6, "0")}Z`;
+  const seconds = m?.[1];
+  const valid = seconds !== undefined && Number.isFinite(Date.parse(`${seconds}Z`));
+  if (!valid || new Date(`${seconds}Z`).toISOString().slice(0, 19) !== seconds) {
+    throw new Error(`commitments: capture time ${JSON.stringify(stored)} is not a UTC (Z) time`);
+  }
+  return `${seconds}.${(m?.[2] ?? "").padEnd(6, "0")}Z`;
 }
 
 type Criteria = Record<
