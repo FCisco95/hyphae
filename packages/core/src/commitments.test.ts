@@ -231,6 +231,32 @@ describe("payload validation", () => {
     ).toThrow(/decision hash or a reason/);
   });
 
+  it("keeps a member's settlement consistent with its status", () => {
+    const payable = member.settlement;
+    const with_ = (settlement: Partial<MemberEpochManifest["settlement"]>, extra = {}) => ({
+      ...member,
+      ...extra,
+      settlement: { ...payable, ...settlement },
+    });
+    expect(() => memberEpochHash(with_({}, { wallet: null }))).toThrow(/payable/);
+    expect(() => memberEpochHash(with_({ reasons: ["below_hold"] }))).toThrow(/payable/);
+    expect(() =>
+      memberEpochHash(with_({ rules_test: { test_id: "mycel-rules-1", passed_at: null } })),
+    ).toThrow(/payable/);
+    const notPayable = {
+      status: "not_payable" as const,
+      reasons: ["no_rules_test"],
+      uncapped_lamports: "0",
+      amount_lamports: "0",
+      cap_remainder_lamports: "0",
+    };
+    expect(memberEpochHash(with_(notPayable))).toMatch(/^[0-9a-f]{64}$/);
+    expect(() => memberEpochHash(with_({ ...notPayable, reasons: [] }))).toThrow(/not payable/);
+    expect(() =>
+      memberEpochHash(with_({ ...notPayable, amount_lamports: "1", uncapped_lamports: "1" })),
+    ).toThrow(/not payable/);
+  });
+
   it("requires audit members sorted by member id", () => {
     const audit: EpochAuditManifest = {
       network: member.network,

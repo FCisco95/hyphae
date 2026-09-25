@@ -247,6 +247,16 @@ export const MemberEpochManifest = z
     }
     if (!ascending(m.settlement.reasons, (r) => r)) fail("reasons must be sorted");
     const s = m.settlement;
+    // P9: payable means a signed wallet, a pass before the close and nothing against it.
+    if (
+      s.status === "payable" &&
+      (m.wallet === null || s.reasons.length > 0 || s.rules_test.passed_at === null)
+    ) {
+      fail("a payable member has a wallet, a rules-test pass and no reasons");
+    }
+    if (s.status === "not_payable" && (s.reasons.length === 0 || s.uncapped_lamports !== "0")) {
+      fail("a member who is not payable has reasons and no share");
+    }
     if (
       BigInt(s.amount_lamports) + BigInt(s.cap_remainder_lamports) !==
       BigInt(s.uncapped_lamports)

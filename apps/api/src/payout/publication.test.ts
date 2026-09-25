@@ -10,7 +10,13 @@ import {
   RubricSchema,
   verifyProof,
 } from "@hyphae/core";
-import { communities, holdChecks, rewardDecisions, rulesTestPasses } from "@hyphae/db";
+import {
+  communities,
+  holdChecks,
+  rewardDecisions,
+  rewardIntakes,
+  rulesTestPasses,
+} from "@hyphae/db";
 import { getAddressEncoder } from "@solana/kit";
 import { and, asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -278,6 +284,30 @@ describe("commitments over stored rows (the B6 backfill, computed)", () => {
       point_units: "25500000000",
       source: "model",
     });
+  });
+
+  it("commits a capture time exactly as stored, microseconds included", async () => {
+    const seed = await seedReadyEpoch(t.db, { now: NOW });
+    const [intake] = await t.db
+      .select()
+      .from(rewardIntakes)
+      .where(eq(rewardIntakes.memberId, seed.members.floor));
+    if (!intake) throw new Error("intake");
+    const capture = intake.capture as Record<string, unknown>;
+    await t.db
+      .update(rewardIntakes)
+      .set({ capture: { ...capture, capturedAt: "2026-10-03T10:04:05.123456Z" } })
+      .where(eq(rewardIntakes.id, intake.id));
+    const c = await epochCommitments(t.db, seed.epochId);
+    expect(c.evidence.get(intake.contributionId)?.payload.capture.captured_at).toBe(
+      "2026-10-03T10:04:05.123456Z",
+    );
+    // A time that is not UTC with a Z is refused, not reinterpreted.
+    await t.db
+      .update(rewardIntakes)
+      .set({ capture: { ...capture, capturedAt: "2026-10-03T10:04:05+01:00" } })
+      .where(eq(rewardIntakes.id, intake.id));
+    await expect(epochCommitments(t.db, seed.epochId)).rejects.toThrow(/capture time/);
   });
 
   it("hashes corrections and late decisions with the audit demo's rows", async () => {

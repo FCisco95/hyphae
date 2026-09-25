@@ -22,7 +22,7 @@ import {
 import { getAddressEncoder } from "@solana/kit";
 import { and, eq, lt } from "drizzle-orm";
 import { epochCommitments, isoUs } from "./commitments.js";
-import { type Blocker, evaluatePayoutGate, type MemberVerdict } from "./gate.js";
+import { type Blocker, type MemberVerdict, payoutGateIn } from "./gate.js";
 import type { RulesTest } from "./rules-test.js";
 
 // R6: from a ready payout gate to what publish commits on-chain. The gate alone decides who is
@@ -69,11 +69,11 @@ export async function buildPublication(
   input: PublicationSettings & { grossLamports: bigint },
   deps: { tests?: readonly RulesTest[] } = {},
 ): Promise<Publication> {
-  const gate = await evaluatePayoutGate(db, ref, deps);
-  if (gate.status !== "ready") return { status: "blocked", blockers: gate.blockers };
-
+  // One repeatable-read snapshot: the verdict and every row the manifests read agree.
   return db.transaction(
-    async (tx) => {
+    async (tx): Promise<Publication> => {
+      const gate = await payoutGateIn(tx, ref, deps);
+      if (gate.status !== "ready") return { status: "blocked", blockers: gate.blockers };
       const [row] = await tx
         .select({
           epoch: epochs,
