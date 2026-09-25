@@ -16,11 +16,17 @@ export interface OnChainEpoch {
   allocatedLamports: bigint;
 }
 
+export interface OnChainCommunity {
+  address: string;
+  // P7/P8: fixed at initialization; publish_epoch pays the fee to no other address.
+  feeRecipient: string;
+}
+
 export interface PublishChain {
   network: MemberEpochManifest["network"];
   programId: string;
-  // The community PDA for this mint and the publishing admin key.
-  communityAddress(mint: string): Promise<string>;
+  // The community account for this mint and the publishing admin key, once initialized.
+  readCommunity(mint: string): Promise<OnChainCommunity | null>;
   readEpoch(community: string, index: bigint): Promise<OnChainEpoch | null>;
   publishEpoch(input: {
     community: string;
@@ -51,7 +57,7 @@ export type PublishOutcome =
 export async function publishEpoch(
   db: Db,
   chain: PublishChain,
-  input: { communityId: string; epochId: string; grossLamports: bigint; feeRecipient: string },
+  input: { communityId: string; epochId: string; grossLamports: bigint },
   deps: { tests?: readonly RulesTest[] } = {},
 ): Promise<PublishOutcome> {
   const [community] = await db
@@ -59,11 +65,10 @@ export async function publishEpoch(
     .from(communities)
     .where(eq(communities.id, input.communityId));
   if (!community) throw new Error(`publish: no community ${input.communityId}`);
-  // The operator binds a community to its on-chain address; until then nothing is published.
-  if (
-    community.chainAddress === null ||
-    community.chainAddress !== (await chain.communityAddress(community.mint))
-  ) {
+  // The operator binds a community to its initialized on-chain account; until then nothing is
+  // published. The fee recipient comes from that account, so the audit commits the one it pays.
+  const onChain = await chain.readCommunity(community.mint);
+  if (onChain === null || community.chainAddress !== onChain.address) {
     return { status: "refused", reason: "community_not_on_chain" };
   }
 
@@ -74,7 +79,7 @@ export async function publishEpoch(
       grossLamports: input.grossLamports,
       network: chain.network,
       programId: chain.programId,
-      feeRecipient: input.feeRecipient,
+      feeRecipient: onChain.feeRecipient,
     },
     deps,
   );
@@ -86,7 +91,7 @@ export async function publishEpoch(
     grossLamports: publication.allocation.grossLamports,
     allocatedLamports: publication.allocation.allocatedLamports,
   };
-  const existing = await chain.readEpoch(community.chainAddress, publication.epochIndex);
+  const existing = await chain.readEpoch(onChain.address, publication.epochIndex);
   let signature: string;
   if (existing) {
     const same =
@@ -99,13 +104,13 @@ export async function publishEpoch(
         `publish: epoch ${publication.epochIndex} is on-chain and differs from this publication`,
       );
     }
-    signature = await chain.publishSignature(community.chainAddress, publication.epochIndex);
+    signature = await chain.publishSignature(onChain.address, publication.epochIndex);
   } else {
     signature = await chain.publishEpoch({
-      community: community.chainAddress,
+      community: onChain.address,
       index: publication.epochIndex,
       ...intended,
-      feeRecipient: input.feeRecipient,
+      feeRecipient: onChain.feeRecipient,
     });
   }
 

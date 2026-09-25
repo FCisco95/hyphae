@@ -19,14 +19,15 @@ const NOW = new Date("2026-11-20T12:00:00.000Z");
 const GROSS = 500_000_000n;
 const FEE_RECIPIENT = "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR";
 
-// A chain that records what the job asks of it. `onChain` is the epoch account, once one exists.
+// A chain that records what the job asks of it: the community account at `community`, with the
+// fee recipient fixed at its initialization, and `onChain`, the epoch account once one exists.
 function fakeChain(community: string, onChain: OnChainEpoch | null = null) {
   const calls = { read: 0, publish: [] as Parameters<PublishChain["publishEpoch"]>[0][] };
   let epoch = onChain;
   const chain: PublishChain = {
     network: "solana:devnet",
     programId: HYPHAE_PROGRAM_ID,
-    communityAddress: async () => community,
+    readCommunity: async () => ({ address: community, feeRecipient: FEE_RECIPIENT }),
     readEpoch: async () => {
       calls.read += 1;
       return epoch;
@@ -53,7 +54,6 @@ async function seeded(chainAddress: string | null = randomAddress()) {
 const input = (ref: { communityId: string; epochId: string }) => ({
   ...ref,
   grossLamports: GROSS,
-  feeRecipient: FEE_RECIPIENT,
 });
 const epochRow = async (id: string) =>
   (await t.db.select().from(epochs).where(eq(epochs.id, id)))[0];
@@ -147,6 +147,17 @@ describe("publishEpoch", () => {
     });
     const other = await seeded();
     expect(await publishEpoch(t.db, fake.chain, input(other.ref))).toEqual({
+      status: "refused",
+      reason: "community_not_on_chain",
+    });
+    expect(fake.calls).toEqual({ read: 0, publish: [] });
+  });
+
+  it("refuses a community whose on-chain account is not initialized", async () => {
+    const { ref } = await seeded();
+    const fake = fakeChain(randomAddress());
+    const uninitialized: PublishChain = { ...fake.chain, readCommunity: async () => null };
+    expect(await publishEpoch(t.db, uninitialized, input(ref))).toEqual({
       status: "refused",
       reason: "community_not_on_chain",
     });

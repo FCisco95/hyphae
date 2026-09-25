@@ -18,6 +18,7 @@ import { createTestDb } from "../rewards/test-db.js";
 import { SendError, solanaChain } from "./chain.js";
 import {
   claimInstruction,
+  communityAddress,
   decodeClaimReceipt,
   decodeCommunity,
   epochAddress,
@@ -71,7 +72,7 @@ describe.skipIf(!RUN)("devnet run", () => {
       mint,
     };
 
-    const community = address(await chain.communityAddress(mint));
+    const community = await communityAddress(programId, mint, admin.address);
     const vault = await vaultAddress(programId, community);
     report.community = community;
     report.vault = vault;
@@ -110,7 +111,6 @@ describe.skipIf(!RUN)("devnet run", () => {
         communityId: seed.communityId,
         epochId: seed.epochId,
         grossLamports: GROSS,
-        feeRecipient,
       });
       expect(published.status).toBe("published");
       if (published.status !== "published") return;

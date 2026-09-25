@@ -18,6 +18,7 @@ import {
 } from "@solana/kit";
 import {
   communityAddress,
+  decodeCommunity,
   decodeEpoch,
   epochAddress,
   HYPHAE_PROGRAM_ID,
@@ -102,7 +103,15 @@ export async function solanaChain(opts: {
   const chain: PublishChain = {
     network: opts.network,
     programId,
-    communityAddress: (mint) => communityAddress(programId, address(mint), opts.admin.address),
+    async readCommunity(mint) {
+      const at = await communityAddress(programId, address(mint), opts.admin.address);
+      const data = await readAccount(at);
+      if (!data) return null;
+      return {
+        address: at,
+        feeRecipient: getAddressDecoder().decode(decodeCommunity(data).feeRecipient),
+      };
+    },
     async readEpoch(community, index): Promise<OnChainEpoch | null> {
       const data = await readAccount(await epochAddress(programId, address(community), index));
       if (!data) return null;

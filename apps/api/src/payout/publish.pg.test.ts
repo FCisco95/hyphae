@@ -39,7 +39,7 @@ function sharedChain(community: string) {
   const chain: PublishChain = {
     network: SETTINGS.network,
     programId: SETTINGS.programId,
-    communityAddress: async () => community,
+    readCommunity: async () => ({ address: community, feeRecipient: SETTINGS.feeRecipient }),
     readEpoch: async () => onChain,
     publishEpoch: async (input) => {
       if (onChain) throw new Error("account already in use");
@@ -79,7 +79,6 @@ describe("publication and publish on Postgres", () => {
       communityId: seed.communityId,
       epochId: seed.epochId,
       grossLamports: GROSS,
-      feeRecipient: SETTINGS.feeRecipient,
     };
 
     const outcomes = await Promise.allSettled([
