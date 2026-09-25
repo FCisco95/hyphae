@@ -2,7 +2,7 @@ mod common;
 
 use anchor_lang::prelude::Pubkey;
 use anchor_lang::{AccountSerialize, Discriminator, InstructionData, ToAccountMetas};
-use common::{dec, hex, hex32, vectors};
+use common::{dec, hex, hex32, proof, tree, vectors};
 use hyphae::merkle::{encode_leaf, hash_pair, leaf_hash, verify_proof};
 use hyphae::state::{ClaimReceipt, Community, Epoch, Vault};
 use serde_json::Value;
@@ -42,23 +42,17 @@ fn roots_and_proofs_match_typescript() {
     let v = vectors();
     let leaves = v["merkle"]["leaves"].as_array().unwrap();
     let hash_of = |name: &str| hex32(&leaves.iter().find(|l| l["name"] == name).unwrap()["hash"]);
-    for tree in v["merkle"]["trees"].as_array().unwrap() {
-        let root = hex32(&tree["root"]);
-        let names: Vec<&str> = tree["leaves"]
+    for t in v["merkle"]["trees"].as_array().unwrap() {
+        let root = hex32(&t["root"]);
+        let names: Vec<&str> = t["leaves"]
             .as_array()
             .unwrap()
             .iter()
             .map(|n| n.as_str().unwrap())
             .collect();
         for name in &names {
-            let proof: Vec<[u8; 32]> = tree["proofs"][name]
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(hex32)
-                .collect();
             assert!(
-                verify_proof(&root, hash_of(name), &proof),
+                verify_proof(&root, hash_of(name), &proof(t, name)),
                 "{name} in the tree of {}",
                 names.len()
             );
@@ -74,17 +68,12 @@ fn roots_and_proofs_match_typescript() {
 fn a_tampered_proof_fails() {
     let v = vectors();
     let leaves = v["merkle"]["leaves"].as_array().unwrap();
-    let trees = v["merkle"]["trees"].as_array().unwrap();
     for t in v["merkle"]["tampered"].as_array().unwrap() {
-        let size = t["tree"].as_u64().unwrap() as usize;
-        let tree = trees
-            .iter()
-            .find(|x| x["leaves"].as_array().unwrap().len() == size)
-            .unwrap();
+        let root = hex32(&tree(&v, t["tree"].as_u64().unwrap() as usize)["root"]);
         let leaf = leaves.iter().find(|l| l["name"] == t["leaf"]).unwrap();
         let proof: Vec<[u8; 32]> = t["proof"].as_array().unwrap().iter().map(hex32).collect();
         assert_eq!(
-            verify_proof(&hex32(&tree["root"]), hex32(&leaf["hash"]), &proof),
+            verify_proof(&root, hex32(&leaf["hash"]), &proof),
             t["valid"].as_bool().unwrap()
         );
     }

@@ -27,3 +27,22 @@ pub fn hex32(v: &Value) -> [u8; 32] {
 pub fn dec(v: &Value) -> u64 {
     v.as_str().expect("decimal string").parse().expect("u64")
 }
+
+// The vectors' tree of `size` leaves.
+pub fn tree(v: &Value, size: usize) -> &Value {
+    v["merkle"]["trees"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["leaves"].as_array().unwrap().len() == size)
+        .unwrap()
+}
+
+pub fn proof(tree: &Value, name: &str) -> Vec<[u8; 32]> {
+    tree["proofs"][name]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(hex32)
+        .collect()
+}

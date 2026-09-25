@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum HyphaeError {
-    #[msg("The mint is not owned by the SPL Token or Token-2022 program")]
+    #[msg("The mint is not an initialized SPL Token or Token-2022 mint")]
     NotAMint,
     #[msg("The fee recipient must be a real address other than the community and its vault")]
     InvalidFeeRecipient,

@@ -3,7 +3,7 @@ mod common;
 use anchor_lang::prelude::Pubkey;
 use anchor_lang::solana_program::instruction::Instruction;
 use anchor_lang::{system_program, AccountDeserialize, InstructionData, ToAccountMetas};
-use common::{dec, hex32, vectors};
+use common::{dec, hex32, proof, tree, vectors};
 use hyphae::state::{ClaimReceipt, Community, Epoch};
 use litesvm::LiteSVM;
 use serde_json::Value;
@@ -303,24 +303,6 @@ fn leaf(v: &Value, name: &str) -> Leaf {
         evidence_hash: hex32(&l["evidence_hash"]),
         epoch_index: dec(&l["epoch_index"]),
     }
-}
-
-fn tree(v: &Value, size: usize) -> &Value {
-    v["merkle"]["trees"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|t| t["leaves"].as_array().unwrap().len() == size)
-        .unwrap()
-}
-
-fn proof(tree: &Value, name: &str) -> Vec<[u8; 32]> {
-    tree["proofs"][name]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(hex32)
-        .collect()
 }
 
 // The payment proposal's worked example: 0.5 SOL gross, a 3% fee, and the three leaves a, b, c of

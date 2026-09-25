@@ -12,17 +12,17 @@ const ACCOUNT_TYPE_OFFSET: usize = 165;
 const ACCOUNT_TYPE_MINT: u8 = 1;
 
 fn is_mint(info: &AccountInfo) -> bool {
+    let token_2022 = *info.owner == TOKEN_2022_PROGRAM_ID;
+    if !token_2022 && *info.owner != TOKEN_PROGRAM_ID {
+        return false;
+    }
     let Ok(data) = info.try_borrow_data() else {
         return false;
     };
-    let shape = if *info.owner == TOKEN_PROGRAM_ID {
-        data.len() == MINT_LEN
-    } else if *info.owner == TOKEN_2022_PROGRAM_ID {
-        data.len() == MINT_LEN
-            || (data.len() > ACCOUNT_TYPE_OFFSET && data[ACCOUNT_TYPE_OFFSET] == ACCOUNT_TYPE_MINT)
-    } else {
-        false
-    };
+    let shape = data.len() == MINT_LEN
+        || (token_2022
+            && data.len() > ACCOUNT_TYPE_OFFSET
+            && data[ACCOUNT_TYPE_OFFSET] == ACCOUNT_TYPE_MINT);
     shape && data[MINT_INITIALIZED_OFFSET] == 1
 }
 
