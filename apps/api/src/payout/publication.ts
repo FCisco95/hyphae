@@ -174,9 +174,6 @@ export async function buildPublication(
       })
       // Ordered by leaf hash, so the root depends on the leaves alone.
       .sort((a, b) => byKey(a.hash, b.hash));
-    if (unordered.length === 0) {
-      throw new Error("publication: the gross pot pays no payable member a whole lamport");
-    }
     const tree = buildTree(unordered.map((u) => fromHex(u.hash)));
     const leaves: PublishedLeaf[] = unordered.map((u, i) => ({
       ...u.leaf,

@@ -5,7 +5,7 @@ import { BASIS_POINTS } from "./reward-points.js";
 // allocated, cap remainder or dust.
 
 // P7: the Hyphae fee, 3% of the gross pot. The program computes the same number on-chain.
-export const FEE_BPS = 300n;
+const FEE_BPS = 300n;
 // P10: the per-wallet cap is 25% of the net pot, 15% from 20 paid contributors.
 const CAP_BPS = 2_500n;
 const CAP_BPS_LARGE = 1_500n;
@@ -77,16 +77,21 @@ export function allocate(grossLamports: bigint, members: readonly AllocationMemb
     }
     const uncappedLamports = (netLamports * m.pointUnits) / totalUnits;
     const amountLamports = uncappedLamports < capLamports ? uncappedLamports : capLamports;
+    const remainder = uncappedLamports - amountLamports;
     uncappedTotal += uncappedLamports;
     allocatedLamports += amountLamports;
-    capRemainderLamports += uncappedLamports - amountLamports;
+    capRemainderLamports += remainder;
     return {
       memberId: m.memberId,
       uncappedLamports,
       amountLamports,
-      capRemainderLamports: uncappedLamports - amountLamports,
+      capRemainderLamports: remainder,
     };
   });
+  // The program refuses a zero allocation, so a publish always pays someone.
+  if (allocatedLamports === 0n) {
+    throw new Error("allocation: the net pot pays no payable member a whole lamport");
+  }
 
   return {
     grossLamports,

@@ -101,5 +101,7 @@ describe("allocate (P6, P7, P10, P11)", () => {
       /positive points/,
     );
     expect(() => allocate(1_000n, [m("a", 1n), m("a", 2n)])).toThrow(/twice/);
+    // Too small a pot to pay anyone a lamport: the program would refuse the publish.
+    expect(() => allocate(3n, [m("a", 1n)])).toThrow(/whole lamport/);
   });
 });

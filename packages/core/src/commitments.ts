@@ -1,7 +1,7 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import { bytesToHex, concatBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 import { z } from "zod";
-import { type PointUnits, wholePoints } from "./reward-points.js";
+import { BASIS_POINTS, type PointUnits, wholePoints } from "./reward-points.js";
 
 // H-CONTRACT Part B commitments (ruled 2026-09-24): the hyphae-c14n/1 profile (B1), tagged
 // hashes (B2), and the config, evidence, decision, member-epoch and epoch audit payloads
@@ -192,8 +192,8 @@ const entryShape = {
   reason: reason.nullable(),
   point_units: dec,
 };
-type Entry = { decision_hash: string | null; reason: string | null; point_units: string };
-const entryIsSelectedOrReason = (e: Entry) =>
+const entry = z.strictObject(entryShape);
+const entryIsSelectedOrReason = (e: z.infer<typeof entry>) =>
   (e.decision_hash === null) !== (e.reason === null) &&
   (e.reason === null || e.point_units === "0");
 
@@ -208,7 +208,7 @@ export const MemberEpochManifest = z
     member_id: uuid,
     // walletAt(closes_at) when it is signed, else null (B7, D3).
     wallet: base58.nullable(),
-    entries: z.array(z.strictObject(entryShape)),
+    entries: z.array(entry),
     point_units: dec,
     whole_points: dec,
     // Payment rulings P9, P10, P16.
@@ -314,7 +314,7 @@ export const EpochAuditManifest = z
     if (!ascending(a.members, (m) => m.member_id)) fail("members must be sorted by member id");
     const s = a.settlement;
     const n = (v: string) => BigInt(v);
-    if (n(s.fee_lamports) !== (n(s.gross_lamports) * n(s.fee_bps)) / 10_000n) {
+    if (n(s.fee_lamports) !== (n(s.gross_lamports) * n(s.fee_bps)) / BASIS_POINTS) {
       fail("fee_lamports must be the floored fee on the gross pot");
     }
     if (n(s.net_lamports) !== n(s.gross_lamports) - n(s.fee_lamports)) {
