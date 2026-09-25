@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import {
   AccountRole,
   type Address,
@@ -26,8 +27,6 @@ const vectors = JSON.parse(
 );
 const ix = vectors.program.instructions;
 const acc = vectors.program.accounts;
-const hex = (s: string) => Uint8Array.from(Buffer.from(s, "hex"));
-const toHex = (b: Uint8Array) => Buffer.from(b).toString("hex");
 
 const signer = await createKeyPairSignerFromPrivateKeyBytes(new Uint8Array(32).fill(9));
 const other = (n: number): Address =>
@@ -61,9 +60,9 @@ describe("program client bytes (shared vectors)", () => {
       mint: other(1),
       community: other(2),
       vault: other(3),
-      feeRecipient: hex(ix.initialize_community.args.fee_recipient),
+      feeRecipient: hexToBytes(ix.initialize_community.args.fee_recipient),
     });
-    expect(toHex(i.data as Uint8Array)).toBe(ix.initialize_community.data);
+    expect(bytesToHex(i.data as Uint8Array)).toBe(ix.initialize_community.data);
     expect(roles(i)).toEqual(expectedRoles("initialize_community"));
   });
 
@@ -77,12 +76,12 @@ describe("program client bytes (shared vectors)", () => {
       feeRecipient: other(3),
       epoch: other(4),
       index: BigInt(a.index),
-      root: hex(a.root),
-      auditHash: hex(a.audit_hash),
+      root: hexToBytes(a.root),
+      auditHash: hexToBytes(a.audit_hash),
       grossLamports: BigInt(a.gross_lamports),
       allocatedLamports: BigInt(a.allocated_lamports),
     });
-    expect(toHex(i.data as Uint8Array)).toBe(ix.publish_epoch.data);
+    expect(bytesToHex(i.data as Uint8Array)).toBe(ix.publish_epoch.data);
     expect(roles(i)).toEqual(expectedRoles("publish_epoch"));
   });
 
@@ -97,30 +96,30 @@ describe("program client bytes (shared vectors)", () => {
       receipt: other(4),
       score: BigInt(a.score),
       amount: BigInt(a.amount),
-      evidenceHash: hex(a.evidence_hash),
-      proof: a.proof.map(hex),
+      evidenceHash: hexToBytes(a.evidence_hash),
+      proof: a.proof.map(hexToBytes),
     });
-    expect(toHex(i.data as Uint8Array)).toBe(ix.claim.data);
+    expect(bytesToHex(i.data as Uint8Array)).toBe(ix.claim.data);
     expect(roles(i)).toEqual(expectedRoles("claim"));
   });
 
   it("decodes the community, epoch and claim receipt accounts", () => {
-    const c = decodeCommunity(hex(acc.community.data));
+    const c = decodeCommunity(hexToBytes(acc.community.data));
     expect({
-      mint: toHex(c.mint),
-      admin: toHex(c.admin),
-      fee_recipient: toHex(c.feeRecipient),
+      mint: bytesToHex(c.mint),
+      admin: bytesToHex(c.admin),
+      fee_recipient: bytesToHex(c.feeRecipient),
       outstanding_lamports: c.outstandingLamports.toString(),
       bump: c.bump,
       vault_bump: c.vaultBump,
     }).toEqual(acc.community.fields);
 
-    const e = decodeEpoch(hex(acc.epoch.data));
+    const e = decodeEpoch(hexToBytes(acc.epoch.data));
     expect({
-      community: toHex(e.community),
+      community: bytesToHex(e.community),
       index: e.index.toString(),
-      root: toHex(e.root),
-      audit_hash: toHex(e.auditHash),
+      root: bytesToHex(e.root),
+      audit_hash: bytesToHex(e.auditHash),
       gross_lamports: e.grossLamports.toString(),
       fee_lamports: e.feeLamports.toString(),
       allocated_lamports: e.allocatedLamports.toString(),
@@ -129,20 +128,20 @@ describe("program client bytes (shared vectors)", () => {
       bump: e.bump,
     }).toEqual(acc.epoch.fields);
 
-    const r = decodeClaimReceipt(hex(acc.claim_receipt.data));
+    const r = decodeClaimReceipt(hexToBytes(acc.claim_receipt.data));
     expect({
-      epoch: toHex(r.epoch),
-      wallet: toHex(r.wallet),
+      epoch: bytesToHex(r.epoch),
+      wallet: bytesToHex(r.wallet),
       score: r.score.toString(),
       amount: r.amount.toString(),
-      evidence_hash: toHex(r.evidenceHash),
+      evidence_hash: bytesToHex(r.evidenceHash),
       claimed_at: r.claimedAt.toString(),
       bump: r.bump,
     }).toEqual(acc.claim_receipt.fields);
   });
 
   it("refuses bytes that are not the named account", () => {
-    expect(() => decodeEpoch(hex(acc.community.data))).toThrow(/discriminator/);
-    expect(() => decodeEpoch(hex(acc.epoch.data).slice(0, 40))).toThrow(/length/);
+    expect(() => decodeEpoch(hexToBytes(acc.community.data))).toThrow(/discriminator/);
+    expect(() => decodeEpoch(hexToBytes(acc.epoch.data).slice(0, 40))).toThrow(/length/);
   });
 });

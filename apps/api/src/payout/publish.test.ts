@@ -2,6 +2,7 @@ import { communities, epochs, leaves } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb } from "../rewards/test-db.js";
+import { HYPHAE_PROGRAM_ID } from "./program.js";
 import { buildPublication } from "./publication.js";
 import { type OnChainEpoch, type PublishChain, publishEpoch } from "./publish.js";
 import { randomAddress, seedReadyEpoch } from "./ready-seed.js";
@@ -17,7 +18,6 @@ afterAll(async () => {
 const NOW = new Date("2026-11-20T12:00:00.000Z");
 const GROSS = 500_000_000n;
 const FEE_RECIPIENT = "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR";
-const PROGRAM_ID = "EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E";
 
 // A chain that records what the job asks of it. `onChain` is the epoch account, once one exists.
 function fakeChain(community: string, onChain: OnChainEpoch | null = null) {
@@ -25,7 +25,7 @@ function fakeChain(community: string, onChain: OnChainEpoch | null = null) {
   let epoch = onChain;
   const chain: PublishChain = {
     network: "solana:devnet",
-    programId: PROGRAM_ID,
+    programId: HYPHAE_PROGRAM_ID,
     communityAddress: async () => community,
     readEpoch: async () => {
       calls.read += 1;
@@ -75,7 +75,7 @@ describe("publishEpoch", () => {
     const expected = await buildPublication(t.db, ref, {
       grossLamports: GROSS,
       network: "solana:devnet",
-      programId: PROGRAM_ID,
+      programId: HYPHAE_PROGRAM_ID,
       feeRecipient: FEE_RECIPIENT,
     });
     // The epoch is recorded as published now, so the gate refuses to build it again.
@@ -84,7 +84,6 @@ describe("publishEpoch", () => {
     expect(fake.calls.publish).toHaveLength(1);
     const sent = fake.calls.publish[0];
     expect(sent).toMatchObject({
-      mint: seed.mint,
       community: community.chainAddress,
       index: 1n,
       grossLamports: GROSS,
@@ -160,7 +159,7 @@ describe("publishEpoch", () => {
     const built = await buildPublication(t.db, ref, {
       grossLamports: GROSS,
       network: "solana:devnet",
-      programId: PROGRAM_ID,
+      programId: HYPHAE_PROGRAM_ID,
       feeRecipient: FEE_RECIPIENT,
     });
     if (built.status !== "ready") throw new Error("not ready");

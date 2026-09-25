@@ -21,6 +21,7 @@
     "@hono/node-server": "^1.14.0",
     "@hyphae/core": "workspace:*",
     "@hyphae/db": "workspace:*",
+    "@noble/hashes": "^2.4.0",
     "@organichub/verify": "0.1.0",
     "@solana/kit": "^8.3.0",
     "ai": "^7.0.0",

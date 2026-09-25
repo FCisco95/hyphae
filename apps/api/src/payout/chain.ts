@@ -1,3 +1,4 @@
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import {
   type Address,
   address,
@@ -5,7 +6,7 @@ import {
   createSolanaRpc,
   createSolanaRpcSubscriptions,
   createTransactionMessage,
-  getAddressEncoder,
+  getAddressDecoder,
   getSignatureFromTransaction,
   type Instruction,
   pipe,
@@ -45,9 +46,6 @@ export class SendError extends Error {
     );
   }
 }
-
-const toHex = (b: Uint8Array) => Buffer.from(b).toString("hex");
-const fromHex = (s: string) => Uint8Array.from(Buffer.from(s, "hex"));
 
 export async function solanaChain(opts: {
   rpcUrl: string;
@@ -109,16 +107,12 @@ export async function solanaChain(opts: {
       const data = await readAccount(await epochAddress(programId, address(community), index));
       if (!data) return null;
       const e = decodeEpoch(data);
-      if (
-        toHex(e.community) !==
-          toHex(new Uint8Array(getAddressEncoder().encode(address(community)))) ||
-        e.index !== index
-      ) {
+      if (getAddressDecoder().decode(e.community) !== community || e.index !== index) {
         throw new Error("chain: the epoch account names another community or index");
       }
       return {
-        root: toHex(e.root),
-        auditHash: toHex(e.auditHash),
+        root: bytesToHex(e.root),
+        auditHash: bytesToHex(e.auditHash),
         grossLamports: e.grossLamports,
         allocatedLamports: e.allocatedLamports,
       };
@@ -134,8 +128,8 @@ export async function solanaChain(opts: {
           feeRecipient: address(input.feeRecipient),
           epoch: await epochAddress(programId, community, input.index),
           index: input.index,
-          root: fromHex(input.root),
-          auditHash: fromHex(input.auditHash),
+          root: hexToBytes(input.root),
+          auditHash: hexToBytes(input.auditHash),
           grossLamports: input.grossLamports,
           allocatedLamports: input.allocatedLamports,
         }),

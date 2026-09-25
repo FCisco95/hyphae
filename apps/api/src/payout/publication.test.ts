@@ -17,6 +17,7 @@ import {
   rewardIntakes,
   rulesTestPasses,
 } from "@hyphae/db";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { getAddressEncoder } from "@solana/kit";
 import { and, asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -24,8 +25,9 @@ import { seedAuditDemo } from "../http/demo-seed.js";
 import { RewardConfigPayload } from "../rewards/config.js";
 import { createTestDb } from "../rewards/test-db.js";
 import { epochCommitments } from "./commitments.js";
+import { HYPHAE_PROGRAM_ID } from "./program.js";
 import { buildPublication } from "./publication.js";
-import { type ReadyLabel, seedReadyEpoch } from "./ready-seed.js";
+import { READY_HOLD_THRESHOLD, type ReadyLabel, seedReadyEpoch } from "./ready-seed.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -47,11 +49,10 @@ const seededVector = vectors.allocation.find(
 );
 const SETTINGS = {
   network: "solana:devnet" as const,
-  programId: "EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E",
+  programId: HYPHAE_PROGRAM_ID,
   feeRecipient: "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR",
 };
 const GROSS = BigInt(seededVector.gross_lamports);
-const hex = (s: string) => Uint8Array.from(Buffer.from(s, "hex"));
 
 async function ready() {
   const seed = await seedReadyEpoch(t.db, { now: NOW });
@@ -117,21 +118,19 @@ describe("publication of a ready epoch", () => {
         epochIndex: publication.epochIndex,
         score: leaf.score,
         amount: leaf.amountLamports,
-        evidenceHash: hex(leaf.evidenceHash),
+        evidenceHash: hexToBytes(leaf.evidenceHash),
       });
       expect(
         verifyProof(
-          hex(publication.root),
+          hexToBytes(publication.root),
           hash,
-          leaf.proof.map((p) => hex(p)),
+          leaf.proof.map((p) => hexToBytes(p)),
         ),
       ).toBe(true);
-      hashes.push(Buffer.from(hash).toString("hex"));
+      hashes.push(bytesToHex(hash));
     }
     // Anyone can rebuild the root from the leaves alone: leaf hashes in ascending order.
-    expect(Buffer.from(buildTree(hashes.sort().map(hex)).root).toString("hex")).toBe(
-      publication.root,
-    );
+    expect(bytesToHex(buildTree(hashes.sort().map(hexToBytes)).root)).toBe(publication.root);
   });
 
   it("anchors every snapshot entry and member in the audit manifest", async () => {
@@ -149,7 +148,7 @@ describe("publication of a ready epoch", () => {
       fee_recipient: SETTINGS.feeRecipient,
       payable_members: "3",
       rules_test_id: "mycel-rules-1",
-      hold: { mint: seed.mint, threshold_raw: "100000000000" },
+      hold: { mint: seed.mint, threshold_raw: READY_HOLD_THRESHOLD },
     });
     const unsignedManifest = publication.members.find((m) => m.member_id === seed.members.unsigned);
     expect(unsignedManifest?.settlement).toMatchObject({

@@ -10,6 +10,7 @@ import {
   memberEpochHash,
 } from "@hyphae/core";
 import type { Db } from "@hyphae/db";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { getAddressEncoder } from "@solana/kit";
 import { readOnly } from "../pg.js";
 import { epochCommitments } from "./commitments.js";
@@ -21,7 +22,7 @@ import type { RulesTest } from "./rules-test.js";
 // manifests (B7), the leaves (B8), the root and the epoch audit manifest (B9).
 
 export interface PublicationSettings {
-  network: "solana:devnet" | "solana:mainnet";
+  network: MemberEpochManifest["network"];
   programId: string;
   // P8: the fee address fixed on the on-chain community.
   feeRecipient: string;
@@ -50,8 +51,6 @@ export type Publication =
       auditHash: string;
     };
 
-const toHex = (b: Uint8Array) => Buffer.from(b).toString("hex");
-const fromHex = (s: string) => Uint8Array.from(Buffer.from(s, "hex"));
 const byKey = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 export async function buildPublication(
@@ -168,18 +167,18 @@ export async function buildPublication(
           epochIndex,
           score: leaf.score,
           amount: leaf.amountLamports,
-          evidenceHash: fromHex(leaf.evidenceHash),
+          evidenceHash: hexToBytes(leaf.evidenceHash),
         });
-        return { leaf, hash: toHex(hash) };
+        return { leaf, hash: bytesToHex(hash) };
       })
       // Ordered by leaf hash, so the root depends on the leaves alone.
       .sort((a, b) => byKey(a.hash, b.hash));
-    const tree = buildTree(unordered.map((u) => fromHex(u.hash)));
+    const tree = buildTree(unordered.map((u) => hexToBytes(u.hash)));
     const leaves: PublishedLeaf[] = unordered.map((u, i) => ({
       ...u.leaf,
-      proof: getProof(tree, i).map(toHex),
+      proof: getProof(tree, i).map(bytesToHex),
     }));
-    const root = toHex(tree.root);
+    const root = bytesToHex(tree.root);
 
     const audit: EpochAuditManifest = {
       ...base,

@@ -219,7 +219,6 @@ export function decodeEpoch(data: Uint8Array) {
     bump: r.u8(),
   };
 }
-export type EpochAccount = ReturnType<typeof decodeEpoch>;
 
 export function decodeClaimReceipt(data: Uint8Array) {
   const r = new Reader(data, "ClaimReceipt", 8 + 32 + 32 + 8 + 8 + 32 + 8 + 1);

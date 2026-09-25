@@ -3,6 +3,7 @@ import { createDb, epochs, leaves } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { HYPHAE_PROGRAM_ID } from "./program.js";
 import { buildPublication } from "./publication.js";
 import { type OnChainEpoch, type PublishChain, publishEpoch } from "./publish.js";
 import { randomAddress, seedReadyEpoch } from "./ready-seed.js";
@@ -27,7 +28,7 @@ const NOW = new Date("2026-11-20T12:00:00.000Z");
 const GROSS = 500_000_000n;
 const SETTINGS = {
   network: "solana:devnet" as const,
-  programId: "EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E",
+  programId: HYPHAE_PROGRAM_ID,
   feeRecipient: "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR",
 };
 

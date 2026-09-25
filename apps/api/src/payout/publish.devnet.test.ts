@@ -4,6 +4,7 @@
 // when HYPHAE_DEVNET_RUN=1, against devnet, with throwaway keys; never a mainnet key.
 import { readFileSync, writeFileSync } from "node:fs";
 import { leaves } from "@hyphae/db";
+import { hexToBytes } from "@noble/hashes/utils.js";
 import {
   AccountRole,
   type Address,
@@ -133,8 +134,8 @@ describe.skipIf(!RUN)("devnet run", () => {
         receipt,
         score: leaf.score,
         amount: leaf.amountLamports,
-        evidenceHash: Uint8Array.from(Buffer.from(leaf.evidenceHash, "hex")),
-        proof: (leaf.proof as string[]).map((p) => Uint8Array.from(Buffer.from(p, "hex"))),
+        evidenceHash: hexToBytes(leaf.evidenceHash),
+        proof: (leaf.proof as string[]).map(hexToBytes),
       });
       const before = (await rpc.getBalance(vault, { commitment: "confirmed" }).send()).value;
       report.claim = await send([claim], claimant);

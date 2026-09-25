@@ -1,3 +1,4 @@
+import type { MemberEpochManifest } from "@hyphae/core";
 import { communities, type Db, epochs, leaves } from "@hyphae/db";
 import { and, eq, sql } from "drizzle-orm";
 import type { Blocker } from "./gate.js";
@@ -16,13 +17,12 @@ export interface OnChainEpoch {
 }
 
 export interface PublishChain {
-  network: "solana:devnet" | "solana:mainnet";
+  network: MemberEpochManifest["network"];
   programId: string;
   // The community PDA for this mint and the publishing admin key.
   communityAddress(mint: string): Promise<string>;
   readEpoch(community: string, index: bigint): Promise<OnChainEpoch | null>;
   publishEpoch(input: {
-    mint: string;
     community: string;
     index: bigint;
     root: string;
@@ -102,7 +102,6 @@ export async function publishEpoch(
     signature = await chain.publishSignature(community.chainAddress, publication.epochIndex);
   } else {
     signature = await chain.publishEpoch({
-      mint: community.mint,
       community: community.chainAddress,
       index: publication.epochIndex,
       ...intended,
@@ -112,7 +111,7 @@ export async function publishEpoch(
 
   await db.transaction(async (tx) => {
     const [epoch] = await tx
-      .select({ root: epochs.root, status: epochs.status })
+      .select({ root: epochs.root })
       .from(epochs)
       .where(and(eq(epochs.id, input.epochId), eq(epochs.communityId, input.communityId)))
       .for("update");
