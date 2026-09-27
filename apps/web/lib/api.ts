@@ -1,3 +1,5 @@
+import { headers as requestHeaders } from "next/headers.js";
+
 // The one way pages read Hyphae: server-side, parsed, and never defaulted. A failure is a state
 // the page must show, not a zero (H-CONTRACT A11).
 
@@ -9,12 +11,23 @@ interface Parser<T> {
 
 const TIMEOUT_MS = 3_000;
 
+// The address of the visitor whose page is being rendered (Vercel sets x-real-ip and overwrites
+// what a caller sends), or none outside a request.
+async function pageVisitor(): Promise<string | null> {
+  try {
+    return (await requestHeaders()).get("x-real-ip");
+  } catch {
+    return null;
+  }
+}
+
 export async function getJson<T>(
   path: string,
   schema: Parser<T>,
   fetchImpl: typeof fetch = fetch,
   // fresh: never from a cache, for answers that expire (a claim's blockhash, its paid status).
-  // visitor: the address a read is made for, which the API trusts only with the web's token.
+  // visitor: the address a read is made for, which the API trusts only with the web's token. By
+  // default, the visitor of the page being rendered.
   { fresh = false, visitor }: { fresh?: boolean; visitor?: string | null } = {},
 ): Promise<Result<T>> {
   const base = process.env.HYPHAE_API_URL;
@@ -28,7 +41,8 @@ export async function getJson<T>(
     const headers: Record<string, string> = { accept: "application/json" };
     if (token) {
       headers.authorization = `Bearer ${token}`;
-      if (visitor) headers["x-hyphae-visitor"] = visitor;
+      const who = visitor === undefined ? await pageVisitor() : visitor;
+      if (who) headers["x-hyphae-visitor"] = who;
     }
     const response = await fetchImpl(`${base.replace(/\/$/, "")}${path}`, {
       headers,

@@ -2,6 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { getJson } from "./api.js";
 
+// The request a page is being rendered for, as Vercel delivers it.
+vi.mock("next/headers.js", () => ({
+  headers: async () => new Headers({ "x-real-ip": "203.0.113.5" }),
+}));
+
 const Schema = z.object({ mint: z.string() });
 
 const respond = (status: number, body: unknown) =>
@@ -62,5 +67,24 @@ describe("getJson", () => {
     const init = (fetchImpl.mock.calls[0] as unknown[])[1] as RequestInit & { next?: unknown };
     expect(init.cache).toBe("no-store");
     expect(init.next).toBeUndefined();
+  });
+
+  // Every page read counts against its own visitor's window, so distinct URLs sent through the
+  // site by one visitor cannot use up everyone else's.
+  it("names the visitor of the page being rendered, and only with the web's token", async () => {
+    vi.stubEnv("HYPHAE_API_URL", "https://api.test");
+    const fetchImpl = respond(200, { mint: "M" });
+    await getJson("/v1/communities/M", Schema, fetchImpl);
+    vi.stubEnv("HYPHAE_API_TOKEN", "k".repeat(40));
+    await getJson("/v1/communities/M", Schema, fetchImpl);
+    const sent = fetchImpl.mock.calls.map((c) => (c as unknown[])[1] as RequestInit);
+    expect(sent.map((r) => r.headers)).toEqual([
+      { accept: "application/json" },
+      {
+        accept: "application/json",
+        authorization: `Bearer ${"k".repeat(40)}`,
+        "x-hyphae-visitor": "203.0.113.5",
+      },
+    ]);
   });
 });
