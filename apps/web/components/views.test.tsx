@@ -35,6 +35,7 @@ describe("fixtures", () => {
     ReadApiV1.leaderboard.parse(f.leaderboard);
     ReadApiV1.contribution.parse(f.offTopic);
     ReadApiV1.contribution.parse(f.pendingAtClose);
+    ReadApiV1.claim.parse(f.claim);
   });
 });
 

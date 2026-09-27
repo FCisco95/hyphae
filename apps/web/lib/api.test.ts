@@ -54,4 +54,13 @@ describe("getJson", () => {
     expect(await getJson("/x", Schema, f)).toEqual({ ok: false, reason: "unavailable" });
     expect(f).not.toHaveBeenCalled();
   });
+
+  it("reads fresh, never from a cache, when asked: a claim's blockhash expires in a minute", async () => {
+    vi.stubEnv("HYPHAE_API_URL", "https://api.test");
+    const fetchImpl = respond(200, { mint: "M" });
+    await getJson("/x", Schema, fetchImpl, { fresh: true });
+    const init = (fetchImpl.mock.calls[0] as unknown[])[1] as RequestInit & { next?: unknown };
+    expect(init.cache).toBe("no-store");
+    expect(init.next).toBeUndefined();
+  });
 });

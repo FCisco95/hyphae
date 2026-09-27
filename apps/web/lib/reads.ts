@@ -19,3 +19,10 @@ export const readLeaderboard = (mint: string, index: string) =>
   );
 export const readContribution = (id: string) =>
   getJson(`/v1/contributions/${enc(id)}`, ReadApiV1Loose.contribution);
+export const readClaim = (mint: string, index: string, wallet: string) =>
+  getJson(
+    `/v1/communities/${enc(mint)}/epochs/${enc(index)}/claims/${enc(wallet)}`,
+    ReadApiV1Loose.claim,
+    fetch,
+    { fresh: true },
+  );

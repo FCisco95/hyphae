@@ -125,7 +125,7 @@ function EpochBanner({ epoch }: { epoch: Pick<EpochV1, "status" | "closes_at" | 
 
 // P14. Every number is the published one, confirmed against the chain by the API; anything the
 // chain cannot confirm is a sentence, never a zero.
-function unavailableSentence(reason: string): string {
+export function unavailableSentence(reason: string): string {
   switch (reason) {
     case "no_settlement":
       return "Not allocated. No payout exists for this epoch.";
@@ -138,7 +138,7 @@ function unavailableSentence(reason: string): string {
   }
 }
 
-function Tx({ signature, network }: { signature: string; network: Network }) {
+export function Tx({ signature, network }: { signature: string; network: Network }) {
   return (
     <a className="mono" href={explorerTx(signature, network)} rel="noopener noreferrer">
       {shortWallet(signature)}

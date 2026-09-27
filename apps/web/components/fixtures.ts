@@ -1,4 +1,5 @@
 import type {
+  ClaimV1,
   CommunityV1,
   ContributionRowV1,
   ContributionsV1,
@@ -322,4 +323,23 @@ export const pendingAtClose: ContributionV1 = {
   reentered_as: null,
   nomination: null,
   revisions: [],
+};
+
+export const claim: ClaimV1 = {
+  community: { mint: "MintAbc" },
+  epoch: { index: 2 },
+  wallet: addr[4],
+  network: "solana:devnet",
+  program_id: PROGRAM,
+  community_address: addr[0],
+  vault_address: addr[1],
+  epoch_address: addr[2],
+  receipt_address: addr[5],
+  score: "255",
+  amount_lamports: "121250000",
+  evidence_hash: "c".repeat(64),
+  proof: ["d".repeat(64)],
+  root: "a".repeat(64),
+  payment: { status: "claimable", recent_blockhash: addr[3], last_valid_block_height: "1000" },
+  as_of: ts(9, 2),
 };
