@@ -12,7 +12,7 @@ Cisco's answers, in-session, after the afternoon arc. Cisco controls Organic, so
 | # | Question | Ruling | What it means in practice |
 |---|---|---|---|
 | 1 | Where MYCEL's 3% fee goes (P8) | **MYCEL's treasury.** For the pilot, Cisco controls it with his Ledger Flex. | The address is passed to `initialize_community` and **can never change**: the program has no instruction to update `fee_recipient`. One choice is still open, below. |
-| 2 | Upgrade authority on mainnet | **Cisco's Ledger, and only Cisco.** | Deploy with the Ledger as upgrade authority. Read the ProgramData authority back from the chain before funding the vault. |
+| 2 | Upgrade authority on mainnet | **Cisco's Ledger, and only Cisco.** Account ruled later that evening: `2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR` (`44'/501'/2'/0'`), dedicated to Hyphae as admin and upgrade key. | Deploy with the Ledger as upgrade authority. Read the ProgramData authority back from the chain before funding the vault. |
 | 3 | Verifiable build | **Yes**, before the mainnet deploy. | `anchor build --verifiable` (or `solana-verify`) from the reviewed commit; publish the hash. CI's plain build already matches the local one (`cb4ffdd8…8d79`, run `36332048980`). |
 | 4 | Program keypair backup | **Yes**: Cisco copies it to an external SSD. | See below. |
 | 5 | Organic's adapter field | Cisco controls Organic; the Organic sync carries it. | Organic reads `epoch.settlement`, never the top-level `allocation`/`payment`. See the contract below. |
