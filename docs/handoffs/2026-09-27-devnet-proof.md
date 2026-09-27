@@ -12,7 +12,7 @@ summary: The Hyphae program is deployed on devnet with a throwaway admin key, an
   - Admin and upgrade authority: `Fcv1xtZ6Em1m9xjGmkfinfA3XQ1sEjeCoxy3UioEv4cM`.
   - Claimant: `3nVsVs3QSv6Yf1XtRj2d1s2ySSeeNQbtztHwm4VhNgbk`.
   - Fee recipient: `AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR`.
-- Admin balance: **5 SOL** at 2026-09-27T13:48:58Z (one read, no faucet request), **3.70 SOL** after both runs (13:57:34Z).
+- Admin balance: **5 SOL** at 2026-09-27T13:48:58Z (one read, no faucet request), **3.70 SOL** after runs 1–2 (13:57:34Z), **3.51 SOL** after runs 3–5 (15:27Z).
 
 ## Deploy
 
@@ -69,6 +69,52 @@ The read that followed returned `settlement.allocation.status = "unavailable"`. 
 - **Change:** the harness now writes the full P14 read and the claim read to its report **before** asserting. A repeat keeps its reason.
 
 Run 2 used the changed harness and passed end to end.
+
+## Runs 3–5: after the security fixes
+
+Mints were created with `spl-token create-token` as above. Each run used a fresh mint, so epoch 1 was new.
+
+**Run 3 (passed), after F1, F3 and the first F2/F5 fixes.** Its records were kept in a local Postgres (`HYPHAE_DEVNET_DATABASE_URL`) for the README examples and the screenshots.
+
+| Step | Signature |
+|---|---|
+| Mint `GJDHD9Rky93aZssxET68zuhbCGYBEmaiCLR8Hb98t6Rh` | `52cwsSPuPGfRy2BsywvV6udZ7Bzg4whkja8YtEJHSBGBcMsrqCfigzrrFUKngUimfFPgEd6DXYhtAPxjucCy5WdK` |
+| `initialize_community` (community `Gvgs3TJZ2FEs7saQhgCQF8hsiaTRyj4i1FLKfotzRT8w`) | `3n1rz6LEMnvKPorkPUpr8XAMP8jt1JAB2Hnd1bLZwWAf4bXyXHs3dMEDQmWrdqp6uaW3Us1qrzstfVCMhnLTtzwA` |
+| Deposit | `xPY9TmyBvDXMQBdp4PY14LSrhfoUac8Df2DQcKzMpgG2sr7cfqSBbtjVUcK3CrphLCBgazwpSrhvMQAdqNiHdSX` |
+| Fund claimant | `iY2ZGTE4pRTEds1ZrvPVHAiBXT88fWr8oU1LkdL4syZB6b6emRWEs3fLDLSAccF9Nz7gKfUyaZ1NzTYmnHGwD8V` |
+| `publish_epoch`, simulated before signing | `2bFgfKVmYFBEH16FaY2WA2uZX6uYvr86UKMzMGbBZRy6D2kXRdnfvQL8c4q6YQUskx9myWEF8PD3t6GMDc3UXorJ` |
+| `claim` | `TB1DqRMMtuokN2oDEf7Xp8KvRWjZ8uo4eSRitPCFLwY4vbYPUwU3K8P41zUKFZvp5wxDqv2ds5MXfTJDsLH8JKJ` |
+| Duplicate claim, **failed on-chain** | `4dscs6cKL9LECSreDFCQqa4de65da6dix47sNQRL41wN8E2eNeoDz8UhtdoA4BCubW3s8Lkb2QZAjxJhcpV5cU8r` |
+
+The transaction's `blockTime` and the epoch account's `published_at` are the same second, 1790519869. The publish recovery's lookup relies on that.
+
+**Run 4, on the final code.**
+- Mint `2kV8AqSEXQQQLbTwY72cJ1LG2KA6ryLS8wX8GPR3nqQZ`, community `Hbw1xWZ1zPeTeYjpAwPUefswzJcS6rvYVq85QacCFrKz`.
+- Landed:
+  - initialize `5bSk5BAykW61v35cJCgwSTJhBuBjPPCfYGxxrKvWDBEszs6Haceg44hq8PF3dxEBTBCveYikZBgNeJP8drsvN8JQ`
+  - deposit `Wy2gPMLc73Pkt2rqEaah3SgCwVKytJBoQPh9x9dQ19TVxF9VuGfNm2dCthDiELyX4t8QgbckjfdFBxwxHjkUZJC`
+  - fund claimant `62FzssyaR5uca7ZL5ovcvB9qaayjJReKq53q7QLq4QKwA3Z6JKKzzTPxrsuXpUkS8YzU8BcKxejAWmSA1i7exzEb`
+  - publish `R19qcUxoNeqm9mhMWHetPRfqdT8hUPZArsTUW65Kut6GfcAmVVcgqPvKFDyz6K3CzJgoYWrh76Zzg7nozjjAN3X`
+  - claim `5eM6DMzj6sxWMKr4G22KNZgtV9Hy8NVHTE9tgz88kfkVeru3TQ5icELgHrSwmTjGf59CmZqsJW5guEtStbMPAVpd`
+- **Not sent:** the duplicate claim. The public devnet RPC answered `HTTP 429 Too Many Requests`.
+
+**Run 5, on the final code.**
+- Mint `HxjGoZ7xLuhPu2BUNAVENezfqAMEjZbSUKuPh8yF6fQ8`, community `GLKEgUuDmZoNfnaACUtfp6neRWwfmzyFeJ86x1J4cEqu`.
+- Landed:
+  - initialize `wrufQnaAFtciYEWPjL57bGEm11hGVLUmHC7m5jjNnBJMe4FmWdZyRSJKovZQiuVyQ61WZkAULekvKwzK7MSuAAG`
+  - deposit `2qizppqpg1RMRdfqHHmZZ6aL3JUDXvXoU6rHGg4FwPp81qkrLN8ygWUBhthf6qWwigQrSTo5uxM8Z39fYgmWv2Jk`
+  - fund claimant `4vnMhg18ZvjL3boytfayJpZS9pYyWR39tqS7rEHVXwSctzvzMBf5QJKfXoUbrBJiaZ3nLXJGy1CNyd5G8GTzFiJn`
+  - publish `26Zsp2jubqMUNJPtcDieUZAtq2emaY9UifM7zGRzj2QLhzhQMxkVhbUAdJtV2WsWxpPtyYwi2ttQz4trmdkrFvR9`
+  - claim `2R5yQ8GVj7y8YFa7rVSYtttR5kwRyjayx2BHmeMQAcj7phBw4WFmeBpnLAgW5nGDkC14ft3QSopNXC7Z6xApyDfi`
+  - duplicate claim, **failed on-chain** `452fGCV7YNShXxkKr92PRwxP61uhEDtiGSTwHAo62f3k6T8DxpxSXtEC44U5KwnKb3jGVTp8waR9bQ1ypECxK62z`
+- **Not completed:** the balance read after it hit the same 429, so the in-harness P14 read did not run.
+
+**P14 on the final code (15:27:36Z).** The rebuilt API, with `READ_RPC_URL` on devnet, read run 3's publication from devnet:
+- allocation `published`, `publish_tx` `2bFgfK…`, `published_at` `2026-09-27T14:37:49.000000Z` (the chain's second);
+- payment `available`, claimed 12,125,000: the claimant `paid` with `TB1Dq…`, the other two `claimable`;
+- the claim route: `paid` with the same transaction.
+
+Runs 1, 4 and 5 all met the public RPC's rate limit during a burst of reads. The API turns such a failure into `chain_unavailable`, never a zero.
 
 ## What this proves, and what it does not
 
