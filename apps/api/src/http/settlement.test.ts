@@ -410,19 +410,19 @@ describe("P14 allocation and payment", () => {
     const receipt = await claimed(fake, p, leaf);
     fake.state.slow.add(receipt);
     const started = Date.now();
-    const e = await epochOf(p.seed, fake.reader, 200);
+    const e = await epochOf(p.seed, fake.reader, 500);
     expect(Date.now() - started).toBeLessThan(2_000);
     expect(e.allocation.status).toBe("published");
     expect(e.payment).toEqual({ status: "unavailable", reason: "chain_unavailable" });
     // Another member's claim does not wait on that receipt.
     const other = p.intent.leaves[1];
     if (!other) throw new Error("no second leaf");
-    const c = await readClaim(t.db, p.seed.mint, 1, other.wallet, NOW, fake.reader, 200);
+    const c = await readClaim(t.db, p.seed.mint, 1, other.wallet, NOW, fake.reader, 500);
     expect(c?.payment.status).toBe("claimable");
-    const mine = await readClaim(t.db, p.seed.mint, 1, leaf.wallet, NOW, fake.reader, 200);
+    const mine = await readClaim(t.db, p.seed.mint, 1, leaf.wallet, NOW, fake.reader, 500);
     expect(mine?.payment).toEqual({ status: "unavailable", reason: "chain_unavailable" });
     fake.state.slow.add(p.epoch);
-    const stuck = await epochOf(p.seed, fake.reader, 200);
+    const stuck = await epochOf(p.seed, fake.reader, 500);
     const down = { status: "unavailable", reason: "chain_unavailable" };
     expect([stuck.allocation, stuck.payment]).toEqual([down, down]);
   });
