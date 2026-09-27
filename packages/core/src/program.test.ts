@@ -15,6 +15,9 @@ import {
   decodeEpoch,
   HYPHAE_PROGRAM_ID,
   initializeCommunityInstruction,
+  isClaim,
+  isPublishEpoch,
+  type ListedInstruction,
   publishEpochInstruction,
 } from "./program.js";
 
@@ -140,5 +143,66 @@ describe("program client bytes (shared vectors)", () => {
   it("refuses bytes that are not the named account", () => {
     expect(() => decodeEpoch(hexToBytes(acc.community.data))).toThrow(/discriminator/);
     expect(() => decodeEpoch(hexToBytes(acc.epoch.data).slice(0, 40))).toThrow(/length/);
+  });
+});
+
+// How a confirmed transaction lists an instruction: addresses, not signers or roles.
+const listed = (i: Instruction): ListedInstruction => ({
+  program: i.programAddress,
+  accounts: (i.accounts ?? []).map((a) => a.address),
+  data: i.data as Uint8Array,
+});
+
+describe("recognising the program's instructions in a confirmed transaction", () => {
+  const p = ix.publish_epoch.args;
+  const publish = {
+    programId: HYPHAE_PROGRAM_ID,
+    community: other(1),
+    vault: other(2),
+    feeRecipient: other(3),
+    epoch: other(4),
+    index: BigInt(p.index),
+    root: hexToBytes(p.root),
+    auditHash: hexToBytes(p.audit_hash),
+    grossLamports: BigInt(p.gross_lamports),
+    allocatedLamports: BigInt(p.allocated_lamports),
+  };
+  const c = ix.claim.args;
+  const claim = {
+    programId: HYPHAE_PROGRAM_ID,
+    claimant: signer.address,
+    community: other(1),
+    vault: other(2),
+    epoch: other(3),
+    receipt: other(4),
+    score: BigInt(c.score),
+    amount: BigInt(c.amount),
+    evidenceHash: hexToBytes(c.evidence_hash),
+  };
+  const sentPublish = listed(publishEpochInstruction({ ...publish, admin: signer }));
+  const sentClaim = listed(
+    claimInstruction({ ...claim, claimant: signer, proof: c.proof.map(hexToBytes) }),
+  );
+
+  it("knows the publish_epoch that created an epoch account with these commitments", () => {
+    expect(isPublishEpoch(sentPublish, publish)).toBe(true);
+    expect(isPublishEpoch({ ...sentPublish, program: other(0) }, publish)).toBe(false);
+    expect(isPublishEpoch(sentPublish, { ...publish, epoch: other(0) })).toBe(false);
+    expect(isPublishEpoch(sentPublish, { ...publish, feeRecipient: other(0) })).toBe(false);
+    expect(isPublishEpoch(sentPublish, { ...publish, root: new Uint8Array(32) })).toBe(false);
+    expect(isPublishEpoch(sentPublish, { ...publish, grossLamports: 1n })).toBe(false);
+    expect(isPublishEpoch(sentClaim, publish)).toBe(false);
+  });
+
+  it("knows the claim that created a receipt, for this claimant and leaf", () => {
+    expect(isClaim(sentClaim, claim)).toBe(true);
+    expect(isClaim({ ...sentClaim, program: other(0) }, claim)).toBe(false);
+    expect(isClaim(sentClaim, { ...claim, claimant: other(0) })).toBe(false);
+    expect(isClaim(sentClaim, { ...claim, receipt: other(0) })).toBe(false);
+    expect(isClaim(sentClaim, { ...claim, epoch: other(0) })).toBe(false);
+    expect(isClaim(sentClaim, { ...claim, amount: claim.amount + 1n })).toBe(false);
+    expect(isClaim(sentClaim, { ...claim, evidenceHash: new Uint8Array(32) })).toBe(false);
+    expect(isClaim(sentPublish, claim)).toBe(false);
+    expect(isClaim({ ...sentClaim, data: sentClaim.data.slice(0, 20) }, claim)).toBe(false);
   });
 });

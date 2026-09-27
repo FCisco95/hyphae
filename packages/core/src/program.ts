@@ -61,6 +61,33 @@ const signerMeta = (signer: TransactionSigner) => ({
 const writable = (a: Address) => ({ address: a, role: AccountRole.WRITABLE });
 const readonly = (a: Address) => ({ address: a, role: AccountRole.READONLY });
 
+type PublishEpochArgs = {
+  index: bigint;
+  root: Uint8Array;
+  auditHash: Uint8Array;
+  grossLamports: bigint;
+  allocatedLamports: bigint;
+};
+const publishEpochData = (a: PublishEpochArgs) =>
+  concat(
+    discriminator("global:publish_epoch"),
+    u64(a.index),
+    bytes32(a.root, "root"),
+    bytes32(a.auditHash, "audit hash"),
+    u64(a.grossLamports),
+    u64(a.allocatedLamports),
+  );
+
+type ClaimArgs = { score: bigint; amount: bigint; evidenceHash: Uint8Array };
+// A claim's data before its proof.
+const claimHead = (a: ClaimArgs) =>
+  concat(
+    discriminator("global:claim"),
+    u64(a.score),
+    u64(a.amount),
+    bytes32(a.evidenceHash, "evidence hash"),
+  );
+
 export function initializeCommunityInstruction(input: {
   programId: Address;
   admin: TransactionSigner;
@@ -108,14 +135,7 @@ export function publishEpochInstruction(input: {
       writable(input.epoch),
       readonly(SYSTEM_PROGRAM),
     ],
-    data: concat(
-      discriminator("global:publish_epoch"),
-      u64(input.index),
-      bytes32(input.root, "root"),
-      bytes32(input.auditHash, "audit hash"),
-      u64(input.grossLamports),
-      u64(input.allocatedLamports),
-    ),
+    data: publishEpochData(input),
   };
 }
 
@@ -143,15 +163,68 @@ export function claimInstruction(input: {
       writable(input.receipt),
       readonly(SYSTEM_PROGRAM),
     ],
-    data: concat(
-      discriminator("global:claim"),
-      u64(input.score),
-      u64(input.amount),
-      bytes32(input.evidenceHash, "evidence hash"),
-      length,
-      ...input.proof.map((p) => bytes32(p, "proof node")),
-    ),
+    data: concat(claimHead(input), length, ...input.proof.map((p) => bytes32(p, "proof node"))),
   };
+}
+
+// An instruction as a confirmed transaction lists it, top-level or inner: its program, its
+// accounts in order, and its data.
+export interface ListedInstruction {
+  program: string;
+  accounts: readonly string[];
+  data: Uint8Array;
+}
+
+const sameBytes = (a: Uint8Array, b: Uint8Array) =>
+  a.length === b.length && a.every((v, i) => v === b[i]);
+
+// The publish_epoch that created `epoch` with exactly these commitments and amounts. Only one
+// can succeed per epoch account, so a successful transaction carrying it is the publication.
+export function isPublishEpoch(
+  ix: ListedInstruction,
+  e: PublishEpochArgs & {
+    programId: Address;
+    community: Address;
+    vault: Address;
+    feeRecipient: Address;
+    epoch: Address;
+  },
+): boolean {
+  const [, community, vault, feeRecipient, epoch] = ix.accounts;
+  return (
+    ix.program === e.programId &&
+    community === e.community &&
+    vault === e.vault &&
+    feeRecipient === e.feeRecipient &&
+    epoch === e.epoch &&
+    sameBytes(ix.data, publishEpochData(e))
+  );
+}
+
+// The claim that created `receipt` for this claimant and leaf. The proof is not compared: the
+// program verified it against the root, and only one claim per receipt can succeed.
+export function isClaim(
+  ix: ListedInstruction,
+  c: ClaimArgs & {
+    programId: Address;
+    claimant: Address;
+    community: Address;
+    vault: Address;
+    epoch: Address;
+    receipt: Address;
+  },
+): boolean {
+  const [claimant, community, vault, epoch, receipt] = ix.accounts;
+  const head = claimHead(c);
+  return (
+    ix.program === c.programId &&
+    claimant === c.claimant &&
+    community === c.community &&
+    vault === c.vault &&
+    epoch === c.epoch &&
+    receipt === c.receipt &&
+    sameBytes(ix.data.slice(0, head.length), head)
+  );
 }
 
 // Account layouts: an 8-byte discriminator, then Borsh fields in declaration order.
