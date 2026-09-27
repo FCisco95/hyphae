@@ -20,6 +20,8 @@ import {
   getSignatureFromTransaction,
   type Instruction,
   pipe,
+  type Rpc,
+  type SolanaRpcApi,
   sendAndConfirmTransactionFactory,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
@@ -65,6 +67,30 @@ export function programAccount(
   if (value.owner === programId) return bytes;
   if (value.owner === SYSTEM_PROGRAM && !value.executable && bytes.length === 0) return null;
   throw new Error(`chain: an account is not owned by ${programId}`);
+}
+
+// The publish_epoch that created an epoch account with exactly `expected`'s commitments. The
+// second the account records goes to the lookup first, so transactions that merely reference the
+// address from other seconds cannot crowd the creation out of the lookup's bounds.
+export async function publishTransaction(
+  rpc: Rpc<SolanaRpcApi>,
+  expected: Parameters<typeof isPublishEpoch>[1],
+): Promise<string> {
+  const { value } = await rpc
+    .getAccountInfo(expected.epoch, { encoding: "base64", commitment: "confirmed" })
+    .send();
+  const data = programAccount(expected.programId, value);
+  if (!data) throw new Error(`chain: epoch ${expected.index} has no account`);
+  const found = await creatingTransaction(
+    rpc,
+    expected.epoch,
+    (ix) => isPublishEpoch(ix, expected),
+    {
+      blockTime: decodeEpoch(data).publishedAt,
+    },
+  );
+  if (!found) throw new Error(`chain: no publish_epoch transaction for epoch ${expected.index}`);
+  return found.signature;
 }
 
 export async function solanaChain(opts: {
@@ -163,12 +189,7 @@ export async function solanaChain(opts: {
       return send([publishEpochInstruction({ admin: opts.admin, ...(await publishing(input)) })]);
     },
     async publishSignature(input) {
-      const expected = await publishing(input);
-      const found = await creatingTransaction(rpc, expected.epoch, (ix) =>
-        isPublishEpoch(ix, expected),
-      );
-      if (!found) throw new Error(`chain: no publish_epoch transaction for epoch ${input.index}`);
-      return found.signature;
+      return publishTransaction(rpc, await publishing(input));
     },
   };
   return { chain, rpc, programId, send, readAccount };
