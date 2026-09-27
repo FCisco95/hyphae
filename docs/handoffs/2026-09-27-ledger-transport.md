@@ -47,12 +47,12 @@ From `apps/api`, with the production `.env`:
 
 ```sh
 node --env-file=<abs .env> --import tsx scripts/publish-epoch.ts plan \
-  --mint <MYCEL mint> --epoch 2 --gross 500000000 --network mainnet --rpc <mainnet https url> --signer ledger
+  --mint <MYCEL mint> --epoch 2 --gross 500000000 --network mainnet --rpc <mainnet https url> --signer ledger:<Hyphae admin path>
 node --env-file=<abs .env> --import tsx scripts/publish-epoch.ts publish \
-  --mint <MYCEL mint> --epoch 2 --gross 500000000 --network mainnet --rpc <mainnet https url> --signer ledger
+  --mint <MYCEL mint> --epoch 2 --gross 500000000 --network mainnet --rpc <mainnet https url> --signer ledger:<Hyphae admin path>
 ```
 
-`plan` stores the intent and prints every number. `publish` sends exactly that intent and records it. Both need, first:
+`plan` stores the intent and prints every number. `publish` sends exactly that intent and records it. `--signer ledger` has no default account: the path of Hyphae's dedicated admin account is named every time, and a malformed path is refused. Both need, first:
 - the mainnet program deploy;
 - MYCEL's community, initialized by this Ledger with the P8 fee address;
 - the vault funded;

@@ -130,7 +130,7 @@ Run Runbook B (`handoffs/2026-09-24-cutover-decisions.md`), one step per message
 - **0010, 0011 and 0012**. Never deploy it against 0009 alone. Apply 0010 with the worker stopped or a `lock_timeout`, since it takes ACCESS EXCLUSIVE on four reward tables. 0011 creates two tables; 0012 creates one index on the empty `leaves` table.
 - `READ_RPC_URL` (Fly secret) on the publication's network.
 - **One shared random token**, set as two secrets: `READ_API_WEB_TOKEN` on Fly and `HYPHAE_API_TOKEN` on Vercel, at least 32 characters. Without it, all web visitors share the per-address limit. Setting secrets is Cisco's step.
-- The mainnet admin Ledger account chosen (Open Decisions), and the publish script pointed at it.
+- Hyphae's dedicated admin Ledger account picked (Open Decisions); every mainnet command passes `--signer ledger:<its path>`.
 
 ### October 6 checkpoint
 
@@ -146,7 +146,7 @@ Run Runbook B (`handoffs/2026-09-24-cutover-decisions.md`), one step per message
 
 ## Next Actions
 
-1. Cisco: choose Hyphae's mainnet admin Ledger account (Open Decisions); then the publish script's path follows it.
+1. Cisco: pick Hyphae's dedicated admin Ledger account (Open Decisions) and rehearse it once on devnet.
 2. Oct 1: the checklist above.
 3. Done 2026-09-27: the program keypair is on the external SSD, and the MYCEL Treasury Squads is created.
 4. Before the mainnet deploy: a verifiable build, and deploy with the Ledger as upgrade authority, read back from the chain.
@@ -171,7 +171,7 @@ Organic reads Hyphae only through the public read API; Hyphae never touches `org
 | Upgrade authority on mainnet | **Ruled:** Cisco's Ledger, and only Cisco. | Deploy with it, then read the ProgramData authority back before funding the vault. |
 | Verifiable build | **Ruled yes**, before the mainnet deploy. The Cargo.lock resolves `anchor-syn`/`anchor-derive-accounts` 1.2.0 under `anchor-lang` 1.0.1. | `anchor build --verifiable` (or `solana-verify`) from the reviewed commit; publish the hash. Keep the current lockfile. |
 | Program keypair backup | **Done 2026-09-27:** Cisco copied it to an external SSD. Public key checked: `EAz8WkyU…d6E`. | Keep the SSD offline. Until the mainnet deploy, the file can deploy any program at that address. |
-| Hyphae's mainnet admin Ledger account | **Open.** The publish script uses `44'/501'/0'`, fixed in code. On Cisco's Ledger that is `BpmEA1…`, an existing wallet: 0.478 SOL on mainnet, and it received a token on Aug 17. The admin is part of each community's address, so it is permanent for MYCEL's community. The same device also holds `HWHfb…` (`44'/501'/1'/0'`, Organic treasury) and `E9Jch…` (`44'/501'/3'/0'`, Squads signer). | A dedicated, unused Ledger account used only for Hyphae (admin and upgrade key). Make the path a `--ledger-path` option, test-first, instead of the fixed constant. Record it in the vault's Wallets — Registry. |
+| Hyphae's mainnet admin Ledger account | **Ruled 2026-09-27:** a dedicated Ledger account, used only for Hyphae (admin and upgrade key); **its path is still to be picked with Cisco.** The publish script used to fall back to `44'/501'/0'`. On Cisco's Ledger that is `BpmEA1…`, an everyday wallet with 0.478 SOL on mainnet. `--signer ledger` now needs a named, well-formed path. The admin is part of each community's address, so it is permanent per community. The same device also holds `HWHfb…` (`44'/501'/1'/0'`, Organic treasury) and `E9Jch…` (`44'/501'/3'/0'`, Squads signer). | Pick an unused Phantom-visible account (`44'/501'/n'/0'`) and label it "Hyphae admin" in Phantom. Rehearse it once on devnet (`HYPHAE_DEVNET_ADMIN_LEDGER=<path>`), then record it in the vault's Wallets — Registry. |
 | Organic's adapter field | **Ruled:** Cisco controls Organic; the Organic sync carries it. | Read `settlement.allocation` / `settlement.payment`. See the section below. |
 
 Minor, outside this arc's writable paths: `.env.example` should list `READ_RPC_URL`, `READ_API_WEB_TOKEN` and the two hold RPC URLs.
