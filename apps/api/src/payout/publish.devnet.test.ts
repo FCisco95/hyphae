@@ -168,8 +168,9 @@ describe.skipIf(!RUN)("devnet run", () => {
       const intent = await loadIntent(t.db, seed.epochId);
       expect(intent?.root).toBe(published.root);
       expect(intent?.auditHash).toBe(published.auditHash);
-      const audit = (await readEpoch(t.db, seed.mint, 1, new Date(), settlementReader(rpc)))
-        ?.settlement;
+      // Correctness, not page latency: the public devnet RPC gets the time it needs.
+      const reader = settlementReader(rpc, 15_000);
+      const audit = (await readEpoch(t.db, seed.mint, 1, new Date(), reader, 60_000))?.settlement;
       expect(audit?.allocation).toMatchObject({
         status: "published",
         publish_tx: published.signature,
@@ -188,7 +189,8 @@ describe.skipIf(!RUN)("devnet run", () => {
         1,
         claimant.address,
         new Date(),
-        settlementReader(rpc),
+        reader,
+        60_000,
       );
       expect(mine?.payment).toEqual({ status: "paid", claim_tx: report.claim });
       report.audit = {
