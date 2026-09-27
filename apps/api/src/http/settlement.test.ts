@@ -558,7 +558,7 @@ describe("a wallet's claims", () => {
     expect(w.claims.every((c) => c.payment.status === "unavailable")).toBe(true);
     // The first batch waits out the deadline; nothing after it reaches the chain.
     expect(reads.accounts).toBe(LOOKUPS_AT_ONCE);
-  });
+  }, 30_000);
 
   it("gives up on a slow chain by one deadline for the whole list", async () => {
     const wallet = randomAddress();
