@@ -31,17 +31,20 @@ export interface PublishChain {
   // The community account for this mint and the publishing admin key, once initialized.
   readCommunity(mint: string): Promise<OnChainCommunity | null>;
   readEpoch(community: string, index: bigint): Promise<OnChainEpoch | null>;
-  publishEpoch(input: {
-    community: string;
-    index: bigint;
-    root: string;
-    auditHash: string;
-    grossLamports: bigint;
-    allocatedLamports: bigint;
-    feeRecipient: string;
-  }): Promise<string>;
-  // The signature that created the epoch account, for an epoch found already on-chain.
-  publishSignature(community: string, index: bigint): Promise<string>;
+  publishEpoch(input: PublishArgs): Promise<string>;
+  // For an epoch found already on-chain: the transaction whose publish_epoch created its account
+  // with exactly these commitments.
+  publishSignature(input: PublishArgs): Promise<string>;
+}
+
+export interface PublishArgs {
+  community: string;
+  index: bigint;
+  root: string;
+  auditHash: string;
+  grossLamports: bigint;
+  allocatedLamports: bigint;
+  feeRecipient: string;
 }
 
 export type PublishOutcome =
@@ -157,6 +160,12 @@ export async function publishEpoch(
     grossLamports: BigInt(intent.audit.settlement.gross_lamports),
     allocatedLamports: BigInt(intent.audit.settlement.allocated_lamports),
   };
+  const args: PublishArgs = {
+    community: plan.community,
+    index,
+    ...intended,
+    feeRecipient: intent.audit.settlement.fee_recipient,
+  };
   let signature: string;
   if (existing) {
     const same =
@@ -167,14 +176,9 @@ export async function publishEpoch(
     if (!same) {
       throw new Error(`publish: epoch ${index} is on-chain and differs from this publication`);
     }
-    signature = await chain.publishSignature(plan.community, index);
+    signature = await chain.publishSignature(args);
   } else {
-    signature = await chain.publishEpoch({
-      community: plan.community,
-      index,
-      ...intended,
-      feeRecipient: intent.audit.settlement.fee_recipient,
-    });
+    signature = await chain.publishEpoch(args);
   }
 
   await db.transaction(async (tx) => {

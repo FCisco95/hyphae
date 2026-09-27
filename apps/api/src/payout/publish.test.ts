@@ -30,7 +30,11 @@ const FEE_RECIPIENT = "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR";
 // A chain that records what the job asks of it: the community account at `community`, with the
 // fee recipient fixed at its initialization, and `onChain`, the epoch account once one exists.
 function fakeChain(community: string, onChain: OnChainEpoch | null = null) {
-  const calls = { read: 0, publish: [] as Parameters<PublishChain["publishEpoch"]>[0][] };
+  const calls = {
+    read: 0,
+    publish: [] as Parameters<PublishChain["publishEpoch"]>[0][],
+    found: [] as Parameters<PublishChain["publishSignature"]>[0][],
+  };
   let epoch = onChain;
   const chain: PublishChain = {
     network: "solana:devnet",
@@ -50,7 +54,10 @@ function fakeChain(community: string, onChain: OnChainEpoch | null = null) {
       };
       return "sig-publish";
     },
-    publishSignature: async () => "sig-found-on-chain",
+    publishSignature: async (input) => {
+      calls.found.push(input);
+      return "sig-found-on-chain";
+    },
   };
   return { chain, calls };
 }
@@ -141,7 +148,7 @@ describe("publishEpoch", () => {
     const fake = fakeChain(community.chainAddress as string);
     const out = await publishEpoch(t.db, fake.chain, input(ref));
     expect(out).toEqual({ status: "blocked", blockers: ["before_first_paid_epoch"] });
-    expect(fake.calls).toEqual({ read: 0, publish: [] });
+    expect(fake.calls).toEqual({ read: 0, publish: [], found: [] });
     expect(await leafRows(seed.epochId)).toHaveLength(0);
     expect((await epochRow(seed.epochId))?.root).toBeNull();
   });
@@ -158,7 +165,7 @@ describe("publishEpoch", () => {
       status: "refused",
       reason: "community_not_on_chain",
     });
-    expect(fake.calls).toEqual({ read: 0, publish: [] });
+    expect(fake.calls).toEqual({ read: 0, publish: [], found: [] });
   });
 
   it("refuses a community whose on-chain account is not initialized", async () => {
@@ -169,7 +176,7 @@ describe("publishEpoch", () => {
       status: "refused",
       reason: "community_not_on_chain",
     });
-    expect(fake.calls).toEqual({ read: 0, publish: [] });
+    expect(fake.calls).toEqual({ read: 0, publish: [], found: [] });
   });
 
   it("records an epoch that is already on-chain with the same commitments, without sending", async () => {
@@ -195,6 +202,18 @@ describe("publishEpoch", () => {
       recovered: true,
     });
     expect(fake.calls.publish).toHaveLength(0);
+    // The chain is asked for the transaction that published exactly these commitments.
+    expect(fake.calls.found).toEqual([
+      {
+        community: community.chainAddress,
+        index: 1n,
+        root: built.root,
+        auditHash: built.auditHash,
+        grossLamports: GROSS,
+        allocatedLamports: built.allocation.allocatedLamports,
+        feeRecipient: FEE_RECIPIENT,
+      },
+    ]);
     expect((await epochRow(seed.epochId))?.publishTx).toBe("sig-found-on-chain");
   });
 

@@ -4,6 +4,7 @@ import {
   decodeEpoch,
   epochAddress,
   HYPHAE_PROGRAM_ID,
+  isPublishEpoch,
   publishEpochInstruction,
   vaultAddress,
 } from "@hyphae/core";
@@ -25,7 +26,8 @@ import {
   signTransactionMessageWithSigners,
   type TransactionSigner,
 } from "@solana/kit";
-import type { OnChainEpoch, PublishChain } from "./publish.js";
+import { creatingTransaction } from "./evidence.js";
+import type { OnChainEpoch, PublishArgs, PublishChain } from "./publish.js";
 
 // The publish job's chain, on @solana/kit. The RPC must prove it serves the named cluster: the
 // manifests commit to the network, so a devnet label on a mainnet RPC (or the reverse) is refused.
@@ -100,6 +102,22 @@ export async function solanaChain(opts: {
     return Uint8Array.from(Buffer.from(value.data[0], "base64"));
   }
 
+  async function publishing(input: PublishArgs) {
+    const community = address(input.community);
+    return {
+      programId,
+      community,
+      vault: await vaultAddress(programId, community),
+      feeRecipient: address(input.feeRecipient),
+      epoch: await epochAddress(programId, community, input.index),
+      index: input.index,
+      root: hexToBytes(input.root),
+      auditHash: hexToBytes(input.auditHash),
+      grossLamports: input.grossLamports,
+      allocatedLamports: input.allocatedLamports,
+    };
+  }
+
   const chain: PublishChain = {
     network: opts.network,
     programId,
@@ -127,32 +145,15 @@ export async function solanaChain(opts: {
       };
     },
     async publishEpoch(input) {
-      const community = address(input.community);
-      return send([
-        publishEpochInstruction({
-          programId,
-          admin: opts.admin,
-          community,
-          vault: await vaultAddress(programId, community),
-          feeRecipient: address(input.feeRecipient),
-          epoch: await epochAddress(programId, community, input.index),
-          index: input.index,
-          root: hexToBytes(input.root),
-          auditHash: hexToBytes(input.auditHash),
-          grossLamports: input.grossLamports,
-          allocatedLamports: input.allocatedLamports,
-        }),
-      ]);
+      return send([publishEpochInstruction({ admin: opts.admin, ...(await publishing(input)) })]);
     },
-    async publishSignature(community, index) {
-      const epoch = await epochAddress(programId, address(community), index);
-      const signatures = await rpc
-        .getSignaturesForAddress(epoch, { limit: 1000, commitment: "confirmed" })
-        .send();
-      // Newest first; the oldest successful one created the account.
-      const created = signatures.filter((s) => s.err === null).at(-1);
-      if (!created) throw new Error(`chain: no successful transaction for epoch ${index}`);
-      return created.signature;
+    async publishSignature(input) {
+      const expected = await publishing(input);
+      const found = await creatingTransaction(rpc, expected.epoch, (ix) =>
+        isPublishEpoch(ix, expected),
+      );
+      if (!found) throw new Error(`chain: no publish_epoch transaction for epoch ${input.index}`);
+      return found.signature;
     },
   };
   return { chain, rpc, programId, send, readAccount };
