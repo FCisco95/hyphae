@@ -1,14 +1,17 @@
+import type { EpochV1 } from "@hyphae/core";
 import type { Db } from "@hyphae/db";
 import { sql } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import {
   type Page,
+  readClaim,
   readCommunity,
   readContribution,
   readContributions,
   readEpoch,
   readLeaderboard,
 } from "./read-service.js";
+import type { SettlementReader } from "./settlement.js";
 
 // Public read API v1 (H-CONTRACT Part A): GET only, no auth, fixed error bodies (A11).
 
@@ -16,6 +19,7 @@ const MINT = /^[A-Za-z0-9]{1,64}$/;
 const INDEX = /^[1-9]\d{0,8}$/;
 const COUNT = /^\d{1,9}$/;
 const UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+const WALLET = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 class BadRequest extends Error {}
 
@@ -25,6 +29,10 @@ const index = (v: string | undefined) => {
 };
 const mint = (v: string) => {
   if (!MINT.test(v)) throw new BadRequest();
+  return v;
+};
+const wallet = (v: string) => {
+  if (!WALLET.test(v)) throw new BadRequest();
   return v;
 };
 const uuid = (v: string) => {
@@ -59,7 +67,18 @@ async function databaseNow(db: Db): Promise<Date> {
   return new Date(Number(ms));
 }
 
-export function readRoutes(deps: { db: Db; clock?: () => Promise<Date> }) {
+// Settlement sections read the chain, so their state can change at any time: only a final epoch
+// whose sections do not depend on the chain is cached long.
+const readsChain = (e: EpochV1) =>
+  e.allocation.status === "published" ||
+  (e.allocation.status === "unavailable" && e.allocation.reason.startsWith("chain_"));
+
+export function readRoutes(deps: {
+  db: Db;
+  clock?: () => Promise<Date>;
+  // P14's chain reads; without it the settlement sections say chain_unconfigured.
+  chain?: SettlementReader | undefined;
+}) {
   const { db } = deps;
   const now = deps.clock ?? (() => databaseNow(db));
   const app = new Hono();
@@ -84,8 +103,23 @@ export function readRoutes(deps: { db: Db; clock?: () => Promise<Date> }) {
       mint(c.req.param("mint")),
       index(c.req.param("index")),
       await now(),
+      deps.chain,
     );
-    return send(c, body, body?.final);
+    return send(c, body, body?.final && !readsChain(body));
+  });
+  app.get("/communities/:mint/epochs/:index/claims/:wallet", async (c) => {
+    const body = await readClaim(
+      db,
+      mint(c.req.param("mint")),
+      index(c.req.param("index")),
+      wallet(c.req.param("wallet")),
+      await now(),
+      deps.chain,
+    );
+    if (body === null) return c.json({ error: "not_found" }, 404);
+    // Its blockhash expires in about a minute and its status changes with a claim.
+    c.header("Cache-Control", "no-store");
+    return c.json(body);
   });
   app.get("/communities/:mint/epochs/:index/contributions", async (c) => {
     const body = await readContributions(

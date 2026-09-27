@@ -66,6 +66,62 @@ function readApiSchemas(strict: boolean) {
     "excluded",
   ]);
   const unavailable = obj({ status: z.literal("unavailable"), reason: z.string().min(1) });
+  const base58 = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
+  const signature = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{64,88}$/);
+  const network = z.enum(["solana:devnet", "solana:mainnet"]);
+  const n = (v: string) => BigInt(v);
+
+  // P14: the published allocation, from the stored intent and checked against the epoch account.
+  // Every number here comes with the publish transaction.
+  const published = obj({
+    status: z.literal("published"),
+    network,
+    program_id: base58,
+    community_address: base58,
+    vault_address: base58,
+    epoch_address: base58,
+    publish_tx: signature,
+    published_at: iso,
+    root: hex64,
+    audit_hash: hex64,
+    gross_lamports: uint,
+    fee_bps: uint,
+    fee_lamports: uint,
+    fee_recipient: base58,
+    net_lamports: uint,
+    allocated_lamports: uint,
+    cap_remainder_lamports: uint,
+    dust_lamports: uint,
+    payable_members: uint,
+  }).refine(
+    (a) =>
+      n(a.fee_lamports) === (n(a.gross_lamports) * n(a.fee_bps)) / 10_000n &&
+      n(a.net_lamports) === n(a.gross_lamports) - n(a.fee_lamports) &&
+      n(a.allocated_lamports) + n(a.cap_remainder_lamports) + n(a.dust_lamports) ===
+        n(a.net_lamports),
+  );
+  // P13: paid means a claim receipt exists on-chain; its transaction is shown with it.
+  const claimRow = obj({
+    member_id: uuid,
+    wallet: base58,
+    amount_lamports: uint,
+    status: z.enum(["claimable", "paid"]),
+    receipt_address: base58,
+    claim_tx: signature.nullable(),
+  }).refine((c) => (c.status === "paid") === (c.claim_tx !== null));
+  const payments = obj({
+    status: z.literal("available"),
+    claimed_lamports: uint,
+    unclaimed_lamports: uint,
+    claims: z.array(claimRow),
+  }).refine((p) => {
+    const paid = p.claims.filter((c) => c.status === "paid");
+    const sum = (cs: typeof p.claims) => cs.reduce((s, c) => s + n(c.amount_lamports), 0n);
+    return (
+      sum(paid) === n(p.claimed_lamports) &&
+      sum(p.claims) === n(p.claimed_lamports) + n(p.unclaimed_lamports)
+    );
+  });
   const effort = z.enum(["eligible", "ineligible", "not_nominated"]);
   const creditRules = z.enum(["none", "hard_zero", "ai_cap_mild", "ai_cap_strong", "below_floor"]);
 
@@ -183,9 +239,15 @@ function readApiSchemas(strict: boolean) {
         obj({ status: z.literal("frozen"), closed_at: iso, cutoff_assumption: z.string() }),
         obj({ status: z.literal("not_frozen") }),
       ]),
-      allocation: unavailable,
-      payment: unavailable,
-    }),
+      allocation: z.union([published, unavailable]),
+      payment: z.union([payments, unavailable]),
+    }).refine(
+      (e) =>
+        e.payment.status !== "available" ||
+        (e.allocation.status === "published" &&
+          n(e.payment.claimed_lamports) + n(e.payment.unclaimed_lamports) ===
+            n(e.allocation.allocated_lamports)),
+    ),
     contributions: obj({
       community: obj({ mint: z.string().min(1) }),
       epoch: obj({ index: count, closed: z.boolean(), final: z.boolean() }),
@@ -235,6 +297,33 @@ function readApiSchemas(strict: boolean) {
     })
       .refine(walletRule)
       .refine(rowRule),
+    // One wallet's leaf in a published epoch, with what the claim page needs to build the claim.
+    claim: obj({
+      community: obj({ mint: z.string().min(1) }),
+      epoch: obj({ index: count }),
+      wallet: base58,
+      network,
+      program_id: base58,
+      community_address: base58,
+      vault_address: base58,
+      epoch_address: base58,
+      receipt_address: base58,
+      score: uint,
+      amount_lamports: uint,
+      evidence_hash: hex64,
+      proof: z.array(hex64),
+      root: hex64,
+      payment: z.union([
+        obj({
+          status: z.literal("claimable"),
+          recent_blockhash: base58,
+          last_valid_block_height: uint,
+        }),
+        obj({ status: z.literal("paid"), claim_tx: signature }),
+        unavailable,
+      ]),
+      as_of: iso,
+    }),
     error: obj({ error: z.enum(["not_found", "bad_request", "unavailable"]) }),
   };
 }
@@ -251,3 +340,6 @@ export type LeaderboardEntryV1 = LeaderboardV1["entries"][number];
 export type ContributionV1 = z.infer<typeof ReadApiV1.contribution>;
 export type RevisionV1 = ContributionV1["revisions"][number];
 export type SelectedV1 = NonNullable<ContributionRowV1["selected"]>;
+export type ClaimV1 = z.infer<typeof ReadApiV1.claim>;
+export type AllocationV1 = EpochV1["allocation"];
+export type PaymentV1 = EpochV1["payment"];

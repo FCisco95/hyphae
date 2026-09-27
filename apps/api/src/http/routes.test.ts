@@ -1,9 +1,12 @@
-import { ReadApiV1 } from "@hyphae/core";
+import { HYPHAE_PROGRAM_ID, ReadApiV1 } from "@hyphae/core";
 import type { Db } from "@hyphae/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { type PublishChain, publishEpoch } from "../payout/publish.js";
+import { randomAddress, seedReadyEpoch } from "../payout/ready-seed.js";
 import { createTestDb } from "../rewards/test-db.js";
 import { type AuditDemo, seedAuditDemo } from "./demo-seed.js";
 import { readRoutes } from "./routes.js";
+import type { SettlementReader } from "./settlement.js";
 
 const NOW = new Date("2026-11-20T12:00:00.000Z");
 
@@ -70,6 +73,7 @@ describe("read routes v1", () => {
       `/communities/${demo.mint}/epochs/9/contributions`,
       `/communities/${demo.mint}/leaderboard?epoch=9`,
       "/contributions/00000000-0000-4000-8000-000000000000",
+      `/communities/${demo.mint}/epochs/1/claims/So11111111111111111111111111111111111111112`,
       "/wallets/anything",
     ]) {
       const r = await get(path);
@@ -90,6 +94,7 @@ describe("read routes v1", () => {
       `/communities/${demo.mint}/epochs/1/contributions?member=not-a-uuid`,
       "/contributions/not-a-uuid",
       `/communities/${"x".repeat(65)}`,
+      `/communities/${demo.mint}/epochs/1/claims/0OIl-not-base58`,
     ]) {
       const r = await get(path);
       expect(r.status, path).toBe(400);
@@ -125,6 +130,63 @@ describe("read routes v1", () => {
 
   it("accept only GET", async () => {
     const r = await app.request(`/communities/${demo.mint}`, { method: "POST" });
+    expect(r.status).toBe(404);
+  });
+});
+
+describe("the claim route and settled epochs", () => {
+  const PUBLISH_TX = `5${"P".repeat(86)}`;
+  async function publishedRoutes() {
+    const community = randomAddress();
+    const seed = await seedReadyEpoch(t.db, { now: NOW, chainAddress: community });
+    const chain: PublishChain = {
+      network: "solana:devnet",
+      programId: HYPHAE_PROGRAM_ID,
+      readCommunity: async () => ({
+        address: community,
+        feeRecipient: "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR",
+      }),
+      readEpoch: async () => null,
+      publishEpoch: async () => PUBLISH_TX,
+      publishSignature: async () => PUBLISH_TX,
+    };
+    await publishEpoch(t.db, chain, { ...seed, grossLamports: 500_000_000n });
+    // A reader that cannot reach the chain: the leaf is still served, its status unavailable.
+    const down: SettlementReader = {
+      network: async () => {
+        throw new Error("rpc down");
+      },
+      accounts: async () => {
+        throw new Error("rpc down");
+      },
+      firstSignature: async () => null,
+      latestBlockhash: async () => {
+        throw new Error("rpc down");
+      },
+    };
+    return { seed, app: readRoutes({ db: t.db, clock: async () => NOW, chain: down }) };
+  }
+
+  it("serve a wallet's claim, never cached, and keep a chain-read epoch briefly cached", async () => {
+    const { seed, app: live } = await publishedRoutes();
+    const r = await live.request(`/communities/${seed.mint}/epochs/1/claims/${seed.wallets.floor}`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get("cache-control")).toBe("no-store");
+    const claim = ReadApiV1.claim.parse(await r.json());
+    expect(claim.payment).toEqual({ status: "unavailable", reason: "chain_unavailable" });
+
+    const e = await live.request(`/communities/${seed.mint}/epochs/1`);
+    const body = ReadApiV1.epoch.parse(await e.json());
+    expect(body.final).toBe(true);
+    expect(body.allocation).toEqual({ status: "unavailable", reason: "chain_unavailable" });
+    expect(e.headers.get("cache-control")).toBe("public, max-age=15");
+  });
+
+  it("answer 404 for a wallet without a leaf in a published epoch", async () => {
+    const { seed, app: live } = await publishedRoutes();
+    const r = await live.request(
+      `/communities/${seed.mint}/epochs/1/claims/${seed.wallets.unsigned}`,
+    );
     expect(r.status).toBe(404);
   });
 });

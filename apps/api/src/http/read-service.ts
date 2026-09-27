@@ -1,4 +1,5 @@
 import {
+  type ClaimV1,
   type CommunityV1,
   type ContributionRowV1,
   type ContributionsV1,
@@ -41,10 +42,19 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
+import { loadIntent } from "../payout/intent.js";
 import { isoUs, readOnly } from "../pg.js";
 import { RewardConfigPayload } from "../rewards/config.js";
 import { correctionRecord, effortCriteriaRecord } from "../rewards/decisions.js";
 import { selectEffective } from "../rewards/effective.js";
+import {
+  allocationOf,
+  claimOf,
+  type PublicationFacts,
+  paymentOf,
+  type SettlementReader,
+  verifyPublication,
+} from "./settlement.js";
 
 // The public read API v1 (H-CONTRACT Part A). Every function selects named columns only, so no
 // Telegram id, username, session, proof or idempotency key can reach a response (A5), and none
@@ -69,6 +79,7 @@ async function findCommunity(tx: Db, mint: string) {
       mint: communities.mint,
       name: communities.name,
       pausedAt: communities.rewardIntakePausedAt,
+      firstPaidEpoch: communities.firstPaidEpoch,
     })
     .from(communities)
     .where(eq(communities.mint, mint));
@@ -434,13 +445,37 @@ export async function readCommunity(db: Db, mint: string, now: Date): Promise<Co
   });
 }
 
+// The recorded publication of an epoch, as the settlement sections need it.
+async function publicationFacts(
+  tx: Db,
+  epoch: EpochView,
+  firstPaidEpoch: number | null,
+): Promise<PublicationFacts> {
+  const published = epoch.row.publishTx !== null;
+  const [row] = published
+    ? await tx
+        .select({ at: isoUs(epochs.publishedAt) })
+        .from(epochs)
+        .where(eq(epochs.id, epoch.row.id))
+    : [];
+  return {
+    index: epoch.row.index,
+    firstPaidEpoch,
+    publishTx: epoch.row.publishTx,
+    publishedAt: row?.at ?? null,
+    intent: published ? await loadIntent(tx, epoch.row.id) : null,
+  };
+}
+
+// The database is read in one snapshot; the chain is read after it, with no transaction open.
 export async function readEpoch(
   db: Db,
   mint: string,
   index: number,
   now: Date,
+  chain?: SettlementReader,
 ): Promise<EpochV1 | null> {
-  return readOnly(db, async (tx) => {
+  const read = await readOnly(db, async (tx) => {
     const found = await findEpoch(tx, mint, index);
     if (!found) return null;
     const { community, epoch } = found;
@@ -459,7 +494,7 @@ export async function readEpoch(
     );
     const total = [...decisions.values()].reduce((sum, d) => sum + d.pointUnits, 0n);
 
-    return {
+    const body: Omit<EpochV1, "allocation" | "payment"> = {
       community: { mint: community.mint, name: community.name },
       index: epoch.row.index,
       opens_at: epoch.opensAt,
@@ -493,10 +528,32 @@ export async function readEpoch(
             cutoff_assumption: epoch.snapshot.cutoffAssumption,
           }
         : { status: "not_frozen" },
-      allocation: { status: "unavailable", reason: "no_settlement" },
-      payment: { status: "unavailable", reason: "no_settlement" },
     };
+    return { body, facts: await publicationFacts(tx, epoch, community.firstPaidEpoch) };
   });
+  if (!read) return null;
+  const verified = await verifyPublication(read.facts, chain);
+  return {
+    ...read.body,
+    allocation: allocationOf(verified),
+    payment: await paymentOf(verified, chain),
+  };
+}
+
+export async function readClaim(
+  db: Db,
+  mint: string,
+  index: number,
+  wallet: string,
+  now: Date,
+  chain?: SettlementReader,
+): Promise<ClaimV1 | null> {
+  const facts = await readOnly(db, async (tx) => {
+    const found = await findEpoch(tx, mint, index);
+    return found ? publicationFacts(tx, found.epoch, found.community.firstPaidEpoch) : null;
+  });
+  const claim = facts && (await claimOf(facts, chain, wallet));
+  return claim ? { community: { mint }, ...claim, as_of: dateUs(now) } : null;
 }
 
 export async function readContributions(

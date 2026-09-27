@@ -18,6 +18,9 @@ const Env = z.object({
   // Missing or invalid values hold every candidate instead of failing the process.
   HOLD_RPC_HELIUS_URL: z.string().min(1).optional(),
   HOLD_RPC_FALLBACK_URL: z.string().min(1).optional(),
+  // P14's read-only chain reads (epoch accounts, claim receipts). Unset, the settlement sections
+  // stay chain_unconfigured. The cluster is proven by its genesis hash on first use.
+  READ_RPC_URL: z.url().optional(),
 });
 
 export const env = Env.parse(process.env);

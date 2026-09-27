@@ -219,3 +219,165 @@ describe("read API v1 schemas", () => {
     );
   });
 });
+
+// P14 (ruled 2026-09-24): the settlement sections, filled from the stored publication intent and
+// the chain once an epoch is published, and the per-wallet claim route.
+const PROGRAM = "EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E";
+const at = [
+  "3nVsVs3QSv6Yf1XtRj2d1s2ySSeeNQbtztHwm4VhNgbk",
+  "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR",
+  "Fcv1xtZ6Em1m9xjGmkfinfA3XQ1sEjeCoxy3UioEv4cM",
+  "So11111111111111111111111111111111111111112",
+  "SysvarRent111111111111111111111111111111111",
+  "SysvarC1ock11111111111111111111111111111111",
+  "Stake11111111111111111111111111111111111111",
+] as const;
+const SIG = `5${"j".repeat(86)}`;
+
+const allocation = {
+  status: "published",
+  network: "solana:devnet",
+  program_id: PROGRAM,
+  community_address: at[0],
+  vault_address: at[1],
+  epoch_address: at[2],
+  publish_tx: SIG,
+  published_at: ts,
+  root: "a".repeat(64),
+  audit_hash: "b".repeat(64),
+  gross_lamports: "500000000",
+  fee_bps: "300",
+  fee_lamports: "15000000",
+  fee_recipient: at[3],
+  net_lamports: "485000000",
+  allocated_lamports: "304603658",
+  cap_remainder_lamports: "180396341",
+  dust_lamports: "1",
+  payable_members: "3",
+};
+const claims = [
+  {
+    member_id: uuid(2),
+    wallet: at[4],
+    amount_lamports: "121250000",
+    status: "paid",
+    receipt_address: at[5],
+    claim_tx: SIG,
+  },
+  {
+    member_id: uuid(4),
+    wallet: at[5],
+    amount_lamports: "100548780",
+    status: "claimable",
+    receipt_address: at[6],
+    claim_tx: null,
+  },
+  {
+    member_id: uuid(5),
+    wallet: at[6],
+    amount_lamports: "82804878",
+    status: "claimable",
+    receipt_address: at[4],
+    claim_tx: null,
+  },
+];
+const payment = {
+  status: "available",
+  claimed_lamports: "121250000",
+  unclaimed_lamports: "183353658",
+  claims,
+};
+const settled = { ...epoch, status: "closed", closed: true, final: true, allocation, payment };
+
+const claim = {
+  community: { mint: "Mint1" },
+  epoch: { index: 2 },
+  wallet: at[4],
+  network: "solana:devnet",
+  program_id: PROGRAM,
+  community_address: at[0],
+  vault_address: at[1],
+  epoch_address: at[2],
+  receipt_address: at[5],
+  score: "255",
+  amount_lamports: "121250000",
+  evidence_hash: "c".repeat(64),
+  proof: ["d".repeat(64), "e".repeat(64)],
+  root: "a".repeat(64),
+  payment: {
+    status: "claimable",
+    recent_blockhash: at[3],
+    last_valid_block_height: "1000",
+  },
+  as_of: ts,
+};
+
+describe("P14 settlement sections", () => {
+  it("accept a published allocation with its payments, and each honest unavailable state", () => {
+    expect(ok(ReadApiV1.epoch, settled)).toBe(true);
+    for (const reason of [
+      "no_settlement",
+      "before_first_paid_epoch",
+      "chain_unconfigured",
+      "chain_unavailable",
+      "chain_mismatch",
+    ]) {
+      const unavailable = { status: "unavailable", reason };
+      expect(ok(ReadApiV1.epoch, { ...settled, payment: unavailable }), reason).toBe(true);
+      expect(
+        ok(ReadApiV1.epoch, { ...settled, allocation: unavailable, payment: unavailable }),
+      ).toBe(true);
+    }
+  });
+
+  it("refuse settlement numbers that do not reconcile", () => {
+    const bad = (a: Partial<typeof allocation>) =>
+      ok(ReadApiV1.epoch, { ...settled, allocation: { ...allocation, ...a } });
+    expect(bad({ fee_lamports: "15000001" })).toBe(false);
+    expect(bad({ net_lamports: "485000001" })).toBe(false);
+    expect(bad({ dust_lamports: "2" })).toBe(false);
+    expect(bad({ publish_tx: "sig-publish" })).toBe(false);
+  });
+
+  it("never show a payment without its receipt transaction, nor claimed and unclaimed that disagree", () => {
+    const withClaims = (c: typeof claims, p: Partial<typeof payment> = {}) =>
+      ok(ReadApiV1.epoch, { ...settled, payment: { ...payment, ...p, claims: c } });
+    expect(withClaims([{ ...claims[0], claim_tx: null }, ...claims.slice(1)] as never)).toBe(false);
+    expect(withClaims([claims[0], { ...claims[1], claim_tx: SIG }, claims[2]] as never)).toBe(
+      false,
+    );
+    expect(withClaims(claims, { claimed_lamports: "0", unclaimed_lamports: "304603658" })).toBe(
+      false,
+    );
+    expect(withClaims(claims, { unclaimed_lamports: "183353657" })).toBe(false);
+  });
+
+  it("refuse payments shown for an allocation that is not published", () => {
+    expect(
+      ok(ReadApiV1.epoch, {
+        ...settled,
+        allocation: { status: "unavailable", reason: "chain_unavailable" },
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("claim route", () => {
+  it("accept a claimable leaf, a paid one and an unavailable status", () => {
+    expect(ok(ReadApiV1.claim, claim)).toBe(true);
+    expect(ok(ReadApiV1.claim, { ...claim, payment: { status: "paid", claim_tx: SIG } })).toBe(
+      true,
+    );
+    expect(
+      ok(ReadApiV1.claim, {
+        ...claim,
+        payment: { status: "unavailable", reason: "chain_unavailable" },
+      }),
+    ).toBe(true);
+  });
+
+  it("refuse a proof node that is not a hash, and a paid status without its transaction", () => {
+    expect(ok(ReadApiV1.claim, { ...claim, proof: ["d".repeat(63)] })).toBe(false);
+    expect(ok(ReadApiV1.claim, { ...claim, payment: { status: "paid" } })).toBe(false);
+  });
+});

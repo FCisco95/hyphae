@@ -29,7 +29,7 @@ import type { OnChainEpoch, PublishChain } from "./publish.js";
 
 // The publish job's chain, on @solana/kit. The RPC must prove it serves the named cluster: the
 // manifests commit to the network, so a devnet label on a mainnet RPC (or the reverse) is refused.
-const GENESIS: Record<PublishChain["network"], string> = {
+export const GENESIS: Record<PublishChain["network"], string> = {
   "solana:devnet": "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG",
   "solana:mainnet": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
 };
