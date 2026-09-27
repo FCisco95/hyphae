@@ -57,26 +57,48 @@ The PDAs, instruction encoders and account decoders move from `apps/api/src/payo
 
 ## 5. P14 read sections (additive inside v1)
 
-**`epoch.allocation`** is `published` when two things hold:
+**Where they live.** A4 makes a new value in a closed enum a `/v2` change, and v1's `allocation` and `payment` are a closed `unavailable`. So both stay exactly as v1 first shipped them, and P14 is a new field, `epoch.settlement`, holding `allocation` and `payment`:
+
+- While a section is unavailable, the first v1 field repeats it (same reason).
+- Once it holds more, the first v1 field says `unavailable` with reason `see_settlement`.
+- A consumer reading an api that predates `settlement` finds it absent; the loose schema allows that.
+
+(Revised 2026-09-27 after the step-5 Codex review, finding F1; the first draft put `published` into `allocation` itself.)
+
+**`settlement.allocation`** is `published` when three things hold:
 
 - a recorded publication exists;
-- the on-chain epoch account matches its root, audit hash, gross, fee and allocated amount.
+- the on-chain epoch account matches its root, audit hash, gross, fee and allocated amount;
+- the chain shows the successful `publish_epoch` that created that account with exactly those commitments, amounts and fee recipient. The recorded signature is only a hint; the transaction shown is the one the chain proves (F3).
 
-It then serves the stored audit numbers with the publish transaction: gross, fee, net, allocated, cap remainder, dust and payable members.
+It then serves the stored audit numbers with that publish transaction: gross, fee, net, allocated, cap remainder, dust and payable members.
 
-**`epoch.payment`** is `available` from chain reads only:
+**`settlement.payment`** is `available` from chain reads only:
 
 - `claimed` is the epoch account's `claimed_lamports`, and `unclaimed` is allocated minus claimed.
-- A member is `paid` only if their receipt PDA exists, and then comes with its transaction. Otherwise they are `claimable`.
+- A member is `paid` only if their receipt PDA exists, matches their leaf, and the chain shows the successful `claim` that created it for their wallet. The transaction shown is that claim (F2). Otherwise they are `claimable`.
 - A `leaves.claim_tx` string is never evidence.
+
+**Finding a creating transaction.** `init` succeeds once per address, so exactly one successful transaction carries the creating instruction. The lookup:
+
+1. tries the hint first;
+2. pages back through the account's signatures, up to 10 pages of 1,000;
+3. tries the oldest successful ones first, preferring any from the second the account records as its creation, up to 10 transactions;
+4. reads top-level and inner instructions, with lookup-table addresses resolved.
+
+A finalized result is cached per account; a cached one must still match the instruction asked for. The publish job's crash recovery uses the same lookup.
+
+**Deadline.** Chain reads run after the database read, under one 2 s deadline, below the web client's 3 s. Each RPC call has a 1.5 s timeout. Receipt lookups run 8 at a time. The allocation is settled first, so slow payment lookups never hide a verified publication. The claim route reads only its own wallet's receipt (F6).
 
 Otherwise each section is `unavailable`, with one of these reasons:
 
-- `not_published`
+- `no_settlement`
 - `before_first_paid_epoch` (P14's "retained" state)
+- `no_stored_intent`
 - `chain_unconfigured`
-- `chain_unavailable`
+- `chain_unavailable` (including the deadline)
 - `chain_mismatch`
+- `chain_transaction_missing` (the account is there, but its creating transaction is not found within the bounds)
 
 These are never shown as zero.
 
@@ -86,7 +108,8 @@ These are never shown as zero.
 
 ## 6. `/claim`
 
-- **Pages:** `apps/web` gets `/c/[mint]/e/[index]/claim`, and `/claim` redirects to the default mint's latest published epoch.
+- **Pages:** `apps/web` gets `/c/[mint]/e/[index]/claim`, and `/claim` redirects to the default mint's latest epoch with a recorded publication. It searches every closed epoch, newest first. It says none exists only when every read establishes that, and shows unavailable when a read fails (F5).
+- **Freshness:** each signing attempt, including a retry, reads the claim again first. The blockhash is then fresh, and a claim paid in the meantime is not signed (F4).
 - **Data:** the browser gets claim data through a same-origin Next route handler that calls the read API server-side.
 - **Wallet:** it connects through wallet-standard. The page builds the claim instruction with the shared client, for the connected wallet only, and sends it through the wallet's `solana:signAndSendTransaction`.
 - **States:**
