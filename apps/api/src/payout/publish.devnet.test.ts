@@ -1,7 +1,8 @@
 // The devnet run (step 6 of the R6 + Anchor arc): deploy is done beforehand with the Solana CLI;
 // this initializes the community if needed, funds its vault, publishes a seeded ready epoch
-// through publishEpoch, claims one leaf, and checks that a second claim of it fails. It only runs
-// when HYPHAE_DEVNET_RUN=1, against devnet, with throwaway keys; never a mainnet key.
+// through publishEpoch, claims one leaf, checks that a second claim of it fails, and reads the
+// public audit back from devnet. It only runs when HYPHAE_DEVNET_RUN=1, against devnet, with
+// throwaway keys; never a mainnet key.
 import { readFileSync, writeFileSync } from "node:fs";
 import {
   claimInstruction,
@@ -24,8 +25,11 @@ import {
 } from "@solana/kit";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import { settlementReader } from "../http/chain-reader.js";
+import { readClaim, readEpoch } from "../http/read-service.js";
 import { createTestDb } from "../rewards/test-db.js";
 import { SendError, solanaChain } from "./chain.js";
+import { loadIntent } from "./intent.js";
 import { publishEpoch } from "./publish.js";
 import { seedReadyEpoch } from "./ready-seed.js";
 
@@ -158,6 +162,39 @@ describe.skipIf(!RUN)("devnet run", () => {
       expect(second).toHaveProperty("failed");
       const unchanged = (await rpc.getBalance(vault, { commitment: "confirmed" }).send()).value;
       expect(unchanged).toBe(after);
+
+      // End to end: the stored intent, the publication, the claim and the public audit agree,
+      // with the audit's payment read from devnet itself.
+      const intent = await loadIntent(t.db, seed.epochId);
+      expect(intent?.root).toBe(published.root);
+      expect(intent?.auditHash).toBe(published.auditHash);
+      const audit = await readEpoch(t.db, seed.mint, 1, new Date(), settlementReader(rpc));
+      expect(audit?.allocation).toMatchObject({
+        status: "published",
+        publish_tx: published.signature,
+        root: published.root,
+        audit_hash: published.auditHash,
+      });
+      if (audit?.payment.status !== "available") throw new Error("devnet: payment unavailable");
+      expect(audit.payment.claimed_lamports).toBe(leaf.amountLamports.toString());
+      expect(audit.payment.claims.find((c) => c.wallet === claimant.address)).toMatchObject({
+        status: "paid",
+        claim_tx: report.claim,
+      });
+      const mine = await readClaim(
+        t.db,
+        seed.mint,
+        1,
+        claimant.address,
+        new Date(),
+        settlementReader(rpc),
+      );
+      expect(mine?.payment).toEqual({ status: "paid", claim_tx: report.claim });
+      report.audit = {
+        allocation: audit.allocation.status,
+        claimed: audit.payment.claimed_lamports,
+        unclaimed: audit.payment.unclaimed_lamports,
+      };
     } finally {
       await t.close();
       const out = JSON.stringify(report, (_k, v) => (typeof v === "bigint" ? v.toString() : v), 2);
