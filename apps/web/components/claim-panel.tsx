@@ -101,13 +101,7 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
 
   if (!linked) {
     if (wallets === null) return <p className="muted">Looking for a wallet…</p>;
-    if (wallets.length === 0) {
-      return (
-        <p className="notice">
-          No Solana wallet that can sign and send transactions was found in this browser.
-        </p>
-      );
-    }
+    if (wallets.length === 0) return <NoWallet back={`/c/${mint}/e/${index}`} />;
     return (
       <section className="panel">
         <h2>Connect the wallet you verified</h2>
@@ -152,6 +146,20 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
         </>
       )}
     </>
+  );
+}
+
+// A phone browser has no wallet extension; a wallet app's own browser does.
+export function NoWallet({ back }: { back: string }) {
+  return (
+    <section className="notice">
+      <p>No Solana wallet that can sign and send transactions was found in this browser.</p>
+      <p>
+        On a phone, open this page in your wallet app's browser (Phantom, Solflare or Backpack). On
+        a computer, install a wallet extension and reload. Your allocation stays{" "}
+        <a href={back}>on the epoch's audit page</a> either way.
+      </p>
+    </section>
   );
 }
 

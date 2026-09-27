@@ -246,3 +246,45 @@ td .mono,
 td:first-child {
   white-space: nowrap;
 }
+
+/* On a phone each row becomes a block, and each cell shows its column's name. */
+@media (max-width: 640px) {
+  table.stack,
+  table.stack tbody,
+  table.stack tr,
+  table.stack td {
+    display: block;
+    width: 100%;
+  }
+
+  table.stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  table.stack tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  table.stack td {
+    position: relative;
+    padding: 3px 0 3px 7rem;
+    border: 0;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  table.stack td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0;
+    width: 6.5rem;
+    font: 13px / 1.9 var(--sans);
+    color: var(--muted);
+  }
+}

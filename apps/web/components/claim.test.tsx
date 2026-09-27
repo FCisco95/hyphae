@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ClaimSummary, ClaimView } from "./claim.js";
-import { SendStatus } from "./claim-panel.js";
+import { NoWallet, SendStatus } from "./claim-panel.js";
 import * as f from "./fixtures.js";
 
 const text = (el: React.ReactElement) =>
@@ -86,5 +86,14 @@ describe("SendStatus", () => {
     );
     expect(html).not.toContain("<button");
     expect(html).toContain("Waiting for its receipt");
+  });
+});
+
+describe("NoWallet", () => {
+  it("tells a phone how to reach a wallet, and links back to the epoch", () => {
+    const t = text(<NoWallet back="/c/M/e/2" />);
+    expect(t).toContain("No Solana wallet");
+    expect(t).toContain("open this page in your wallet app's browser");
+    expect(renderToStaticMarkup(<NoWallet back="/c/M/e/2" />)).toContain('href="/c/M/e/2"');
   });
 });

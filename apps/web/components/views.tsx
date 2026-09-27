@@ -56,7 +56,10 @@ function AsOf({ at }: { at: string }) {
 export function UnavailableView() {
   return (
     <section className="notice">
-      <p>The audit API is unavailable right now. Nothing on this page is a zero.</p>
+      <p>
+        The audit data can't be read right now. Nothing is shown rather than a guess. Reload the page
+        in a minute.
+      </p>
     </section>
   );
 }
@@ -78,7 +81,7 @@ export function CommunityView({ community }: { community: CommunityV1 }) {
       {community.epochs.length === 0 ? (
         <p className="empty">No reward epoch yet.</p>
       ) : (
-        <table>
+        <table className="stack">
           <thead>
             <tr>
               <th>Epoch</th>
@@ -90,12 +93,12 @@ export function CommunityView({ community }: { community: CommunityV1 }) {
           <tbody>
             {community.epochs.map((e) => (
               <tr key={e.index}>
-                <td>
+                <td data-label="Epoch">
                   <a href={`/c/${community.mint}/e/${e.index}`}>Epoch {e.index}</a>
                 </td>
-                <td>{utc(e.opens_at)}</td>
-                <td>{utc(e.closes_at)}</td>
-                <td>
+                <td data-label="Opens">{utc(e.opens_at)}</td>
+                <td data-label="Closes">{utc(e.closes_at)}</td>
+                <td data-label="Status">
                   <StatusBadge epoch={{ status: e.status, final: e.status === "closed" }} />
                 </td>
               </tr>
@@ -215,7 +218,7 @@ function SettlementPanel({ epoch }: { epoch: LooseEpochV1 }) {
         )}
       </dl>
       {p.status === "available" ? (
-        <table>
+        <table className="stack">
           <thead>
             <tr>
               <th>Member</th>
@@ -227,12 +230,16 @@ function SettlementPanel({ epoch }: { epoch: LooseEpochV1 }) {
           <tbody>
             {p.claims.map((c) => (
               <tr key={c.member_id}>
-                <td className="mono">{shortId(c.member_id)}</td>
-                <td className="mono" title={c.wallet}>
+                <td data-label="Member" className="mono">
+                  {shortId(c.member_id)}
+                </td>
+                <td data-label="Wallet" className="mono" title={c.wallet}>
                   {shortWallet(c.wallet)}
                 </td>
-                <td className="num">{sol(c.amount_lamports)}</td>
-                <td>
+                <td data-label="Allocated" className="num">
+                  {sol(c.amount_lamports)}
+                </td>
+                <td data-label="Status">
                   {c.claim_tx ? (
                     <>
                       Paid in <Tx signature={c.claim_tx} network={a.network} />
@@ -333,7 +340,7 @@ export function EpochView({ epoch, list }: { epoch: LooseEpochV1; list: Contribu
       {list.contributions.length === 0 ? (
         <p className="empty">No contributions in this epoch yet.</p>
       ) : (
-        <table>
+        <table className="stack">
           <thead>
             <tr>
               <th>Work</th>
@@ -347,7 +354,7 @@ export function EpochView({ epoch, list }: { epoch: LooseEpochV1; list: Contribu
           <tbody>
             {list.contributions.map((r) => (
               <tr key={r.id}>
-                <td>
+                <td data-label="Work">
                   <a href={`/contribution/${r.id}`}>{r.kind}</a>
                   {r.url && (
                     <>
@@ -358,17 +365,19 @@ export function EpochView({ epoch, list }: { epoch: LooseEpochV1; list: Contribu
                     </>
                   )}
                 </td>
-                <td className="mono">{shortId(r.member_id)}</td>
-                <td>
+                <td data-label="Member" className="mono">
+                  {shortId(r.member_id)}
+                </td>
+                <td data-label="Wallet">
                   <WalletCell w={r} />
                 </td>
-                <td>{r.selected ? creditSentence(r.selected) : "—"}</td>
-                <td className="num">
+                <td data-label="Score">{r.selected ? creditSentence(r.selected) : "—"}</td>
+                <td data-label="Points" className="num">
                   {r.selected
                     ? `${r.selected.points} (${multiplier(r.selected.multiplier_bps)})`
                     : "—"}
                 </td>
-                <td>{STATE[r.state]}</td>
+                <td data-label="State">{STATE[r.state]}</td>
               </tr>
             ))}
           </tbody>
@@ -405,7 +414,7 @@ export function LeaderboardView({ board }: { board: LeaderboardV1 }) {
       {board.entries.length === 0 ? (
         <p className="empty">No contributions in this epoch yet.</p>
       ) : (
-        <table>
+        <table className="stack">
           <thead>
             <tr>
               <th>Rank</th>
@@ -419,14 +428,22 @@ export function LeaderboardView({ board }: { board: LeaderboardV1 }) {
           <tbody>
             {board.entries.map((e) => (
               <tr key={e.member_id}>
-                <td className="num">{e.rank}</td>
-                <td className="mono">{shortId(e.member_id)}</td>
-                <td>
+                <td data-label="Rank" className="num">
+                  {e.rank}
+                </td>
+                <td data-label="Member" className="mono">
+                  {shortId(e.member_id)}
+                </td>
+                <td data-label="Wallet">
                   <WalletCell w={e} />
                 </td>
-                <td className="num">{e.points}</td>
-                <td className="num">{e.whole_points}</td>
-                <td className="num">
+                <td data-label="Exact points" className="num">
+                  {e.points}
+                </td>
+                <td data-label="Whole points" className="num">
+                  {e.whole_points}
+                </td>
+                <td data-label="Counted" className="num">
                   {e.counted} of {e.contributions}
                 </td>
               </tr>

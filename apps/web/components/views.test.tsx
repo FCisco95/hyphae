@@ -180,9 +180,36 @@ describe("freshness", () => {
 });
 
 describe("UnavailableView", () => {
-  it("never renders a number", () => {
+  it("never renders a number, and says what to do", () => {
     const t = text(<UnavailableView />);
-    expect(t).toContain("The audit API is unavailable right now. Nothing on this page is a zero.");
+    expect(t).toContain("The audit data can't be read right now.");
+    expect(t).toContain("Nothing is shown rather than a guess. Reload the page in a minute.");
     expect(t).not.toMatch(/\d/);
+  });
+});
+
+describe("tables on a phone", () => {
+  // Below 640px each row stacks, and each cell shows its column's name from data-label.
+  it("label every cell with its column and stack on narrow screens", () => {
+    const pages = [
+      <CommunityView key="c" community={f.community} />,
+      <EpochView key="e" epoch={f.settledEpoch} list={f.contributions} />,
+      <LeaderboardView key="l" board={f.leaderboard} />,
+    ];
+    let tables = 0;
+    for (const page of pages) {
+      const html = renderToStaticMarkup(page);
+      for (const table of html.match(/<table[\s\S]*?<\/table>/g) ?? []) {
+        tables += 1;
+        expect(table).toMatch(/^<table class="stack"/);
+        const columns = [...table.matchAll(/<th(?:\s[^>]*)?>([\s\S]*?)<\/th>/g)].map((m) => m[1]);
+        for (const row of table.match(/<tbody>[\s\S]*<\/tbody>/)?.[0].match(/<tr[\s\S]*?<\/tr>/g) ??
+          []) {
+          const labels = [...row.matchAll(/<td[^>]*data-label="([^"]*)"/g)].map((m) => m[1]);
+          expect(labels).toEqual(columns);
+        }
+      }
+    }
+    expect(tables).toBe(4);
   });
 });
