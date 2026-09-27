@@ -3,7 +3,7 @@ import type { PlanOutcome } from "../src/payout/publish.js";
 import type { SignerSpec } from "./publish-signer.js";
 
 export const USAGE =
-  "usage: publish-epoch plan|publish --mint <mint> --epoch <index> --gross <lamports> --network devnet|mainnet --rpc <https url> [--ws <wss url>] --signer file:<keypair.json>|ledger[:<derivation path>]";
+  "usage: publish-epoch plan|publish --mint <mint> --epoch <index> --gross <lamports> --network devnet|mainnet --rpc <https url> [--ws <wss url>] --signer file:<keypair.json>|ledger:<derivation path, e.g. 44'/501'/2'/0'>";
 
 export interface PublishArgs {
   command: "plan" | "publish";
@@ -18,7 +18,8 @@ export interface PublishArgs {
 
 const BASE58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const MAX_U64 = (1n << 64n) - 1n;
-const LEDGER_PATH = "44'/501'/0'";
+// A hardened Solana account path, as the Ledger's Solana app takes it: 44'/501'/a' or 44'/501'/a'/c'.
+const LEDGER_PATH = /^44'\/501'(\/\d{1,9}'){1,2}$/;
 
 function fail(why: string): never {
   throw new Error(`${why}\n${USAGE}`);
@@ -63,9 +64,14 @@ export function parsePublishArgs(argv: string[]): PublishArgs {
   if (spec.startsWith("file:") && spec.length > "file:".length) {
     signer = { kind: "file", path: spec.slice("file:".length) };
   } else if (spec === "ledger" || spec.startsWith("ledger:")) {
-    signer = { kind: "ledger", path: spec.slice("ledger:".length) || LEDGER_PATH };
+    // No default: the device's first account can be the operator's everyday wallet, and the
+    // admin key is part of the community's address, so the operator names it every time.
+    const path = spec.slice("ledger:".length);
+    if (path === "") fail("--signer ledger: name the Ledger account, e.g. ledger:44'/501'/2'/0'");
+    if (!LEDGER_PATH.test(path)) fail("--signer ledger: the path must look like 44'/501'/2'/0'");
+    signer = { kind: "ledger", path };
   } else {
-    fail("--signer must be file:<keypair.json> or ledger[:<derivation path>]");
+    fail("--signer must be file:<keypair.json> or ledger:<derivation path>");
   }
   // Q1: mainnet publishes only from a hardware key.
   if (network === "solana:mainnet" && signer.kind !== "ledger") {

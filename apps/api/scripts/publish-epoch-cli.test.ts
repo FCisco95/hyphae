@@ -8,6 +8,8 @@ import { parsePublishArgs, summarizePlan } from "./publish-epoch-cli.js";
 
 const MINT = "So11111111111111111111111111111111111111112";
 const base = ["--mint", MINT, "--epoch", "2", "--gross", "500000000"];
+// Any named hardened Solana account; which one is Hyphae's admin is the operator's call.
+const LEDGER = "ledger:44'/501'/2'/0'";
 
 describe("parsePublishArgs", () => {
   it("reads a devnet plan with a keypair file, deriving the websocket from the RPC", () => {
@@ -34,7 +36,7 @@ describe("parsePublishArgs", () => {
     });
   });
 
-  it("reads a mainnet publish on the Ledger, with the default derivation path", () => {
+  it("reads a mainnet publish on the Ledger account the operator names", () => {
     expect(
       parsePublishArgs([
         "publish",
@@ -46,20 +48,35 @@ describe("parsePublishArgs", () => {
         "--ws",
         "wss://ws.example/?key=1",
         "--signer",
-        "ledger",
+        LEDGER,
       ]),
     ).toMatchObject({
       command: "publish",
       network: "solana:mainnet",
       wsUrl: "wss://ws.example/?key=1",
-      signer: { kind: "ledger", path: "44'/501'/0'" },
+      signer: { kind: "ledger", path: "44'/501'/2'/0'" },
     });
+    expect(
+      parsePublishArgs([
+        "plan",
+        ...base,
+        ...["--network", "devnet", "--rpc", "https://r.example"],
+        "--signer",
+        "ledger:44'/501'/7'",
+      ]).signer,
+    ).toEqual({ kind: "ledger", path: "44'/501'/7'" });
+  });
+
+  it("names no Ledger account for the operator: the device's first account may be an everyday wallet", () => {
+    const argv = ["plan", ...base, "--network", "devnet", "--rpc", "https://r.example", "--signer"];
+    expect(() => parsePublishArgs([...argv, "ledger"])).toThrow(/name the Ledger account/);
+    expect(() => parsePublishArgs([...argv, "ledger:"])).toThrow(/name the Ledger account/);
   });
 
   const rpc = ["--network", "devnet", "--rpc", "https://api.devnet.solana.com"];
   it.each([
-    ["no command", [...base, ...rpc, "--signer", "ledger"]],
-    ["an unknown command", ["send", ...base, ...rpc, "--signer", "ledger"]],
+    ["no command", [...base, ...rpc, "--signer", LEDGER]],
+    ["an unknown command", ["send", ...base, ...rpc, "--signer", LEDGER]],
     [
       "a keypair file on mainnet",
       [
@@ -74,14 +91,31 @@ describe("parsePublishArgs", () => {
       ],
     ],
     ["no signer", ["plan", ...base, ...rpc]],
+    [
+      "a Ledger path that is not hardened",
+      ["plan", ...base, ...rpc, "--signer", "ledger:44/501/0"],
+    ],
+    [
+      "a Ledger path outside Solana's coin type",
+      ["plan", ...base, ...rpc, "--signer", "ledger:44'/60'/0'"],
+    ],
+    [
+      "a Ledger path with an m/ prefix",
+      ["plan", ...base, ...rpc, "--signer", "ledger:m/44'/501'/0'"],
+    ],
+    [
+      "a Ledger path that is not numeric",
+      ["plan", ...base, ...rpc, "--signer", "ledger:44'/501'/x'"],
+    ],
+    ["a Ledger path too deep", ["plan", ...base, ...rpc, "--signer", "ledger:44'/501'/0'/0'/0'"]],
     ["an unknown signer", ["plan", ...base, ...rpc, "--signer", "env:KEY"]],
     [
       "a zero pot",
-      ["plan", "--mint", MINT, "--epoch", "2", "--gross", "0", ...rpc, "--signer", "ledger"],
+      ["plan", "--mint", MINT, "--epoch", "2", "--gross", "0", ...rpc, "--signer", LEDGER],
     ],
     [
       "a fractional pot",
-      ["plan", "--mint", MINT, "--epoch", "2", "--gross", "1.5", ...rpc, "--signer", "ledger"],
+      ["plan", "--mint", MINT, "--epoch", "2", "--gross", "1.5", ...rpc, "--signer", LEDGER],
     ],
     [
       "a pot beyond u64",
@@ -95,16 +129,16 @@ describe("parsePublishArgs", () => {
         "18446744073709551616",
         ...rpc,
         "--signer",
-        "ledger",
+        LEDGER,
       ],
     ],
     [
       "epoch 0",
-      ["plan", "--mint", MINT, "--epoch", "0", "--gross", "1", ...rpc, "--signer", "ledger"],
+      ["plan", "--mint", MINT, "--epoch", "0", "--gross", "1", ...rpc, "--signer", LEDGER],
     ],
     [
       "a mint that is not base58",
-      ["plan", "--mint", "0OIl", "--epoch", "2", "--gross", "1", ...rpc, "--signer", "ledger"],
+      ["plan", "--mint", "0OIl", "--epoch", "2", "--gross", "1", ...rpc, "--signer", LEDGER],
     ],
     [
       "an http RPC",
@@ -116,7 +150,7 @@ describe("parsePublishArgs", () => {
         "--rpc",
         "http://api.devnet.solana.com",
         "--signer",
-        "ledger",
+        LEDGER,
       ],
     ],
   ])("refuses %s", (_what, argv) => {
