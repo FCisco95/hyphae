@@ -27,7 +27,7 @@ import { type PublishChain, publishEpoch } from "../payout/publish.js";
 import { type ReadySeed, randomAddress, seedReadyEpoch } from "../payout/ready-seed.js";
 import { createTestDb } from "../rewards/test-db.js";
 import { readClaim, readEpoch, readWalletClaims } from "./read-service.js";
-import { mapLimit, type SettlementReader } from "./settlement.js";
+import { LOOKUPS_AT_ONCE, mapLimit, type SettlementReader } from "./settlement.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -537,6 +537,27 @@ describe("a wallet's claims", () => {
     expect(unconfigured.claims.map((c) => c.payment)).toEqual([
       { status: "unavailable", reason: "chain_unconfigured" },
     ]);
+  });
+
+  it("starts no chain read for an entry once the list's deadline has passed", async () => {
+    const wallet = randomAddress();
+    const fake = fakeReader();
+    for (let i = 0; i < LOOKUPS_AT_ONCE + 4; i += 1) {
+      const p = await published({ effort: wallet });
+      await onChain(p, 0n, PUBLISH_TX, fake);
+      fake.state.slow.add(p.epoch);
+    }
+    const reads = { accounts: 0 };
+    const { accounts } = fake.reader;
+    fake.reader.accounts = (owner, at) => {
+      reads.accounts += 1;
+      return accounts(owner, at);
+    };
+    const w = await readWalletClaims(t.db, wallet, all, NOW, fake.reader, 150);
+    expect(w.claims).toHaveLength(LOOKUPS_AT_ONCE + 4);
+    expect(w.claims.every((c) => c.payment.status === "unavailable")).toBe(true);
+    // The first batch waits out the deadline; nothing after it reaches the chain.
+    expect(reads.accounts).toBe(LOOKUPS_AT_ONCE);
   });
 
   it("gives up on a slow chain by one deadline for the whole list", async () => {

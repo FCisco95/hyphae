@@ -403,6 +403,10 @@ export async function walletClaimOf(
   return {
     epoch: { index: facts.index },
     ...found.fields,
-    payment: await byDeadline(leafPayment(facts, reader, found.leaf), until, late),
+    // Past the deadline no read starts, so abandoned reads never pile up behind a slow node.
+    payment:
+      Date.now() >= until
+        ? late
+        : await byDeadline(leafPayment(facts, reader, found.leaf), until, late),
   };
 }
