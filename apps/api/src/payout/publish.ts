@@ -57,12 +57,29 @@ export type PublishOutcome =
       recovered: boolean;
     };
 
-export async function publishEpoch(
+export type PlanOutcome =
+  | { status: "refused"; reason: "community_not_on_chain" }
+  | { status: "blocked"; blockers: Blocker[] }
+  | {
+      status: "planned";
+      intent: PublicationIntent;
+      // The on-chain community account and epoch index the intent is published under.
+      community: string;
+      index: bigint;
+      // The epoch account, when a run already sent it.
+      onChain: OnChainEpoch | null;
+    };
+
+type PublishInput = { communityId: string; epochId: string; grossLamports: bigint };
+
+// Everything before the send: the gate, then the stored intent, or a rebuild stored as the intent.
+// The operator's plan step runs this alone and shows the result before anything is signed.
+export async function planPublication(
   db: Db,
   chain: PublishChain,
-  input: { communityId: string; epochId: string; grossLamports: bigint },
+  input: PublishInput,
   deps: { tests?: readonly RulesTest[] } = {},
-): Promise<PublishOutcome> {
+): Promise<PlanOutcome> {
   const [community] = await db
     .select({ mint: communities.mint, chainAddress: communities.chainAddress })
     .from(communities)
@@ -121,6 +138,18 @@ export async function publishEpoch(
     if (built.status !== "ready") return built;
     intent = await storeIntent(db, ref, onChain.address, built);
   }
+  return { status: "planned", intent, community: onChain.address, index, onChain: existing };
+}
+
+export async function publishEpoch(
+  db: Db,
+  chain: PublishChain,
+  input: PublishInput,
+  deps: { tests?: readonly RulesTest[] } = {},
+): Promise<PublishOutcome> {
+  const plan = await planPublication(db, chain, input, deps);
+  if (plan.status !== "planned") return plan;
+  const { intent, index, onChain: existing } = plan;
 
   const intended: OnChainEpoch = {
     root: intent.root,
@@ -138,13 +167,13 @@ export async function publishEpoch(
     if (!same) {
       throw new Error(`publish: epoch ${index} is on-chain and differs from this publication`);
     }
-    signature = await chain.publishSignature(onChain.address, index);
+    signature = await chain.publishSignature(plan.community, index);
   } else {
     signature = await chain.publishEpoch({
-      community: onChain.address,
+      community: plan.community,
       index,
       ...intended,
-      feeRecipient: onChain.feeRecipient,
+      feeRecipient: intent.audit.settlement.fee_recipient,
     });
   }
 

@@ -12,7 +12,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb } from "../rewards/test-db.js";
 import { buildPublication } from "./publication.js";
-import { type OnChainEpoch, type PublishChain, publishEpoch } from "./publish.js";
+import { type OnChainEpoch, type PublishChain, planPublication, publishEpoch } from "./publish.js";
 import { randomAddress, seedReadyEpoch } from "./ready-seed.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
@@ -388,6 +388,40 @@ describe("the stored publication intent", () => {
     const mainnet: PublishChain = { ...fake.chain, network: "solana:mainnet" };
     await expect(publishEpoch(t.db, mainnet, input(ref))).rejects.toThrow(/another network/);
     expect(fake.calls.publish).toHaveLength(0);
+  });
+
+  it("plans without sending, and a later publish sends exactly the planned bytes", async () => {
+    const { seed, ref } = await seeded();
+    const community = await communityOf(seed.communityId);
+    const fake = fakeChain(community.chainAddress as string);
+    const plan = await planPublication(t.db, fake.chain, input(ref));
+    if (plan.status !== "planned") throw new Error(`not planned: ${plan.status}`);
+    expect(fake.calls.publish).toHaveLength(0);
+    expect(plan).toMatchObject({ community: community.chainAddress, index: 1n, onChain: null });
+    expect(plan.intent.leaves).toHaveLength(3);
+    expect((await intentOf(seed.epochId)).publication?.auditHash).toBe(plan.intent.auditHash);
+
+    const out = await publishEpoch(t.db, fake.chain, input(ref));
+    expect(out).toMatchObject({ status: "published", root: plan.intent.root, recovered: false });
+    expect(fake.calls.publish[0]).toMatchObject({
+      root: plan.intent.root,
+      auditHash: plan.intent.auditHash,
+    });
+  });
+
+  it("plans nothing for a blocked epoch", async () => {
+    const { seed, ref } = await seeded();
+    await t.db
+      .update(communities)
+      .set({ firstPaidEpoch: null })
+      .where(eq(communities.id, seed.communityId));
+    const community = await communityOf(seed.communityId);
+    const fake = fakeChain(community.chainAddress as string);
+    expect(await planPublication(t.db, fake.chain, input(ref))).toEqual({
+      status: "blocked",
+      blockers: ["before_first_paid_epoch"],
+    });
+    expect((await intentOf(seed.epochId)).publication).toBeUndefined();
   });
 
   it("the database refuses bytes and hashes that disagree", async () => {
