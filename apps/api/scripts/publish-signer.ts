@@ -52,18 +52,25 @@ export async function ledgerSigner(
   };
 }
 
-// USB through node-hid. Loaded as CommonJS: the packages' ESM builds omit file extensions.
-async function openUsbLedger(): Promise<LedgerSolana> {
-  const require = createRequire(import.meta.url);
-  const Transport: (typeof TransportModule)["default"] =
-    require("@ledgerhq/hw-transport-node-hid-noevents").default;
-  const App: (typeof SolanaModule)["default"] = require("@ledgerhq/hw-app-solana").default;
-  let transport: Awaited<ReturnType<typeof Transport.create>>;
+// A Ledger over USB: the transport's `open`, and the Solana app on what it opens.
+export async function usbLedger<T>(
+  Transport: { open(path: string): Promise<T> },
+  App: new (
+    transport: T,
+  ) => {
+    getAddress(path: string): Promise<{ address: Uint8Array }>;
+    signTransaction(path: string, message: Buffer): Promise<{ signature: Uint8Array }>;
+  },
+): Promise<LedgerSolana> {
+  let transport: T;
   try {
-    transport = await Transport.create();
+    // An empty path opens the first connected device. Transport.create() is not used: this
+    // transport lists devices synchronously, which trips create()'s own not-yet-initialized
+    // variables whether or not a device is connected.
+    transport = await Transport.open("");
   } catch (cause) {
     throw new Error(
-      "signer: no Ledger over USB. node-hid needs its native build (pnpm approve-builds), and the device must be unlocked with the Solana app open",
+      "signer: no Ledger over USB. Connect the Ledger, unlock it and open the Solana app",
       { cause },
     );
   }
@@ -72,6 +79,16 @@ async function openUsbLedger(): Promise<LedgerSolana> {
     getAddress: (path) => app.getAddress(path),
     signTransaction: (path, message) => app.signTransaction(path, Buffer.from(message)),
   };
+}
+
+// USB through node-hid, whose native build is allowlisted in pnpm-workspace.yaml. Loaded as
+// CommonJS: the packages' ESM builds omit file extensions.
+function openUsbLedger(): Promise<LedgerSolana> {
+  const require = createRequire(import.meta.url);
+  const Transport: (typeof TransportModule)["default"] =
+    require("@ledgerhq/hw-transport-node-hid-noevents").default;
+  const App: (typeof SolanaModule)["default"] = require("@ledgerhq/hw-app-solana").default;
+  return usbLedger(Transport, App);
 }
 
 export async function openSigner(

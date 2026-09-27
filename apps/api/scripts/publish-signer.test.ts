@@ -17,7 +17,7 @@ import {
   verifySignature,
 } from "@solana/kit";
 import { describe, expect, it } from "vitest";
-import { type LedgerSolana, ledgerSigner, openSigner } from "./publish-signer.js";
+import { type LedgerSolana, ledgerSigner, openSigner, usbLedger } from "./publish-signer.js";
 
 const SEED = new Uint8Array(32).fill(7);
 const PATH = "44'/501'/0'";
@@ -103,5 +103,47 @@ describe("openSigner", () => {
       Promise.resolve(device.app),
     );
     expect(signer.address).toBe(device.at);
+  });
+});
+
+describe("the Ledger USB transport", () => {
+  // The Solana app over a transport it was given, recording which one.
+  const made: FakeApp[] = [];
+  class FakeApp {
+    constructor(readonly transport: unknown) {
+      made.push(this);
+    }
+    getAddress = async () => ({ address: new Uint8Array(32) });
+    signTransaction = async () => ({ signature: new Uint8Array(64) });
+  }
+
+  // The no-events transport lists devices synchronously, which trips create()'s own
+  // not-yet-initialized variables whether or not a device is connected.
+  it("opens the first connected device directly, never through create()", async () => {
+    const device = { kind: "device" };
+    const opened: string[] = [];
+    const Transport = {
+      create: async () => {
+        throw new ReferenceError("Cannot access 'sub' before initialization");
+      },
+      open: async (path: string) => {
+        opened.push(path);
+        return device;
+      },
+    };
+    await usbLedger(Transport, FakeApp);
+    expect(opened).toEqual([""]);
+    expect(made.at(-1)?.transport).toBe(device);
+  });
+
+  it("says what to do when no device is connected", async () => {
+    const Transport = {
+      open: async () => {
+        throw new Error("NoDevice");
+      },
+    };
+    await expect(usbLedger(Transport, FakeApp)).rejects.toThrow(
+      /Connect the Ledger, unlock it and open the Solana app/,
+    );
   });
 });

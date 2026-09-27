@@ -2,3 +2,8 @@ packages:
   - "apps/*"
   - "packages/*"
   - "clients/*"
+
+# Only node-hid may run its install script: the operator's Ledger transport needs its native
+# binary (decision 3, 2026-09-27). Every other dependency's build script stays blocked.
+onlyBuiltDependencies:
+  - node-hid

@@ -3,7 +3,9 @@
 // through publishEpoch, claims one leaf, checks that a second claim of it fails, and reads the
 // public audit back from devnet. It only runs when HYPHAE_DEVNET_RUN=1, against devnet, with
 // throwaway keys; never a mainnet key. With HYPHAE_DEVNET_DATABASE_URL (a local Postgres, never
-// Neon) the records stay there, so a local api with READ_RPC_URL on devnet can serve them.
+// Neon) the records stay there, so a local api with READ_RPC_URL on devnet can serve them. With
+// HYPHAE_DEVNET_ADMIN_LEDGER (a derivation path, or empty for the default) a Ledger over USB is the
+// admin, and signs the community, the deposit and the publish on the device.
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
@@ -24,10 +26,12 @@ import {
   address,
   createKeyPairSignerFromBytes,
   getAddressEncoder,
+  type TransactionSigner,
 } from "@solana/kit";
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { describe, expect, it } from "vitest";
+import { openSigner } from "../../scripts/publish-signer.js";
 import { settlementReader } from "../http/chain-reader.js";
 import { readClaim, readEpoch } from "../http/read-service.js";
 import { createTestDb } from "../rewards/test-db.js";
@@ -44,7 +48,7 @@ const signerFromFile = async (path: string) =>
   createKeyPairSignerFromBytes(Uint8Array.from(JSON.parse(readFileSync(path, "utf8"))));
 
 // System program Transfer: u32 variant 2, then u64 lamports.
-function transfer(from: Awaited<ReturnType<typeof signerFromFile>>, to: Address, lamports: bigint) {
+function transfer(from: TransactionSigner, to: Address, lamports: bigint) {
   const data = new Uint8Array(12);
   const view = new DataView(data.buffer);
   view.setUint32(0, 2, true);
@@ -71,7 +75,11 @@ async function database(): Promise<{ db: Db; close: () => Promise<unknown> }> {
 
 describe.skipIf(!RUN)("devnet run", () => {
   it("publishes a seeded epoch, pays one claim, and refuses a second claim", async () => {
-    const admin = await signerFromFile(env.HYPHAE_DEVNET_ADMIN_KEYPAIR as string);
+    const ledger = env.HYPHAE_DEVNET_ADMIN_LEDGER;
+    const admin =
+      ledger === undefined
+        ? await signerFromFile(env.HYPHAE_DEVNET_ADMIN_KEYPAIR as string)
+        : await openSigner({ kind: "ledger", path: ledger || "44'/501'/0'" }, "solana:devnet");
     const claimant = await signerFromFile(env.HYPHAE_DEVNET_CLAIMANT_KEYPAIR as string);
     const feeRecipient = address(env.HYPHAE_DEVNET_FEE_RECIPIENT as string);
     const mint = address(env.HYPHAE_DEVNET_MINT as string);
@@ -88,6 +96,14 @@ describe.skipIf(!RUN)("devnet run", () => {
       feeRecipient,
       mint,
     };
+
+    // Checked before anything is signed, so an unfunded device is asked for nothing.
+    const funds = (await rpc.getBalance(admin.address, { commitment: "confirmed" }).send()).value;
+    if (funds < 100_000_000n) {
+      throw new Error(
+        `devnet: fund the admin ${admin.address} with 0.1 devnet SOL, then run again`,
+      );
+    }
 
     const community = await communityAddress(programId, mint, admin.address);
     const vault = await vaultAddress(programId, community);
