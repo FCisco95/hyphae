@@ -18,7 +18,7 @@ import {
   getTransactionDecoder,
 } from "@solana/kit";
 import { describe, expect, it } from "vitest";
-import { attemptClaim, type ClaimRead, claimTransaction } from "./claim.js";
+import { attemptClaim, awaitReceipt, type ClaimRead, claimTransaction } from "./claim.js";
 
 const WALLET = "SysvarRent111111111111111111111111111111111";
 const OTHER = "SysvarC1ock11111111111111111111111111111111";
@@ -174,5 +174,43 @@ describe("attemptClaim", () => {
       expect(out).toEqual({ read: fresh, signature: null });
       expect(signs).toBe(0);
     }
+  });
+});
+
+describe("awaitReceipt", () => {
+  it("stops at the first read that shows the receipt paid", async () => {
+    const claim = await served();
+    const paid: ClaimRead = {
+      state: "ready",
+      claim: { ...claim, payment: { status: "paid", claim_tx: `4${"C".repeat(86)}` } },
+    };
+    const reads = [{ state: "ready", claim } as ClaimRead, paid];
+    let waits = 0;
+    const out = await awaitReceipt(
+      async () => reads.shift() ?? paid,
+      5,
+      async () => {
+        waits += 1;
+      },
+    );
+    expect(out).toEqual({ state: "paid", read: paid });
+    expect(waits).toBe(2);
+  });
+
+  // A wallet can return a signature for a transaction that never lands.
+  it("gives up as unresolved, with the last read, after its polls find no receipt", async () => {
+    const claim = await served();
+    const claimable: ClaimRead = { state: "ready", claim };
+    let reads = 0;
+    const out = await awaitReceipt(
+      async () => {
+        reads += 1;
+        return claimable;
+      },
+      3,
+      async () => {},
+    );
+    expect(out).toEqual({ state: "unresolved", read: claimable });
+    expect(reads).toBe(3);
   });
 });

@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ClaimSummary, ClaimView } from "./claim.js";
+import { SendStatus } from "./claim-panel.js";
 import * as f from "./fixtures.js";
 
 const text = (el: React.ReactElement) =>
@@ -49,5 +50,41 @@ describe("ClaimSummary", () => {
     );
     expect(t).toContain("can't be confirmed on-chain right now");
     expect(t).not.toContain("Claimable");
+  });
+});
+
+describe("SendStatus", () => {
+  const signature = `5${"S".repeat(86)}`;
+
+  it("keeps a way forward when a sent claim never shows a receipt", () => {
+    const html = renderToStaticMarkup(
+      <SendStatus
+        send={{ state: "unresolved", signature }}
+        network="solana:devnet"
+        onRecheck={() => {}}
+      />,
+    );
+    expect(html).toContain("Check again");
+    expect(
+      text(
+        <SendStatus
+          send={{ state: "unresolved", signature }}
+          network="solana:devnet"
+          onRecheck={() => {}}
+        />,
+      ),
+    ).toContain("No receipt has appeared on-chain");
+  });
+
+  it("offers nothing to press while a claim is on its way", () => {
+    const html = renderToStaticMarkup(
+      <SendStatus
+        send={{ state: "sent", signature }}
+        network="solana:devnet"
+        onRecheck={() => {}}
+      />,
+    );
+    expect(html).not.toContain("<button");
+    expect(html).toContain("Waiting for its receipt");
   });
 });

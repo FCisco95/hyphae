@@ -2,7 +2,7 @@
 
 import { ReadApiV1Loose } from "@hyphae/core";
 import { useEffect, useState } from "react";
-import { attemptClaim, type ClaimRead } from "../lib/claim.js";
+import { attemptClaim, awaitReceipt, type ClaimRead } from "../lib/claim.js";
 import { shortWallet, sol } from "../lib/format.js";
 import {
   type Account,
@@ -18,7 +18,7 @@ import { Tx } from "./views.js";
 type Load = { state: "idle" | "loading" } | ClaimRead;
 type Send =
   | { state: "idle" | "signing" }
-  | { state: "sent"; signature: string }
+  | { state: "sent" | "unresolved"; signature: string }
   | { state: "failed"; message: string };
 
 const POLLS = 20;
@@ -78,17 +78,24 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
       }
       setSend({ state: "sent", signature });
       // Paid is shown only once the receipt is read on-chain.
-      for (let i = 0; i < POLLS; i += 1) {
-        await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-        const next = await read(wallet);
-        if (next.state === "ready" && next.claim.payment.status === "paid") {
-          setLoad(next);
-          return;
-        }
-      }
+      const receipt = await awaitReceipt(
+        () => read(wallet),
+        POLLS,
+        () => new Promise((resolve) => setTimeout(resolve, POLL_MS)),
+      );
+      setLoad(receipt.read);
+      if (receipt.state === "unresolved") setSend({ state: "unresolved", signature });
     } catch (e) {
       setSend({ state: "failed", message: messageOf(e) });
     }
+  }
+
+  // A fresh read after an unresolved send. A claim still claimable can be signed again; the
+  // attempt reads it once more first, so a receipt that has appeared meanwhile signs nothing.
+  async function recheck() {
+    if (!linked) return;
+    setLoad(await read(linked.account.address));
+    setSend({ state: "idle" });
   }
 
   if (!linked) {
@@ -138,16 +145,47 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
                 </button>
               </p>
             )}
-          {send.state === "signing" && <p className="muted">Waiting for your wallet…</p>}
-          {send.state === "sent" && load.claim.payment.status !== "paid" && (
-            <p className="muted">
-              Sent in <Tx signature={send.signature} network={load.claim.network} />. Waiting for
-              its receipt on-chain…
-            </p>
+          {load.claim.payment.status !== "paid" && (
+            <SendStatus send={send} network={load.claim.network} onRecheck={recheck} />
           )}
-          {send.state === "failed" && <p className="notice">{send.message}</p>}
         </>
       )}
     </>
   );
+}
+
+export function SendStatus({
+  send,
+  network,
+  onRecheck,
+}: {
+  send: Send;
+  network: "solana:devnet" | "solana:mainnet";
+  onRecheck: () => void;
+}) {
+  switch (send.state) {
+    case "signing":
+      return <p className="muted">Waiting for your wallet…</p>;
+    case "sent":
+      return (
+        <p className="muted">
+          Sent in <Tx signature={send.signature} network={network} />. Waiting for its receipt
+          on-chain…
+        </p>
+      );
+    case "unresolved":
+      return (
+        <p className="notice">
+          Sent in <Tx signature={send.signature} network={network} />. No receipt has appeared
+          on-chain yet; the transaction may have been dropped.{" "}
+          <button type="button" onClick={onRecheck}>
+            Check again
+          </button>
+        </p>
+      );
+    case "failed":
+      return <p className="notice">{send.message}</p>;
+    default:
+      return null;
+  }
 }

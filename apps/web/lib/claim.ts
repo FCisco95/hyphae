@@ -113,3 +113,21 @@ export async function attemptClaim(
   const transaction = await claimTransaction(fresh.claim, wallet);
   return { read: fresh, signature: await signAndSend(fresh.claim, transaction) };
 }
+
+// After a send, the read that shows the receipt paid, or `unresolved` with the last read once
+// `polls` reads find none: a wallet can return a signature for a transaction that never lands.
+export async function awaitReceipt(
+  read: () => Promise<ClaimRead>,
+  polls: number,
+  wait: () => Promise<void>,
+): Promise<{ state: "paid" | "unresolved"; read: ClaimRead }> {
+  let last: ClaimRead = { state: "unavailable" };
+  for (let i = 0; i < polls; i += 1) {
+    await wait();
+    last = await read();
+    if (last.state === "ready" && last.claim.payment.status === "paid") {
+      return { state: "paid", read: last };
+    }
+  }
+  return { state: "unresolved", read: last };
+}
