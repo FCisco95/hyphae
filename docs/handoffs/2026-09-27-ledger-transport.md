@@ -34,7 +34,7 @@ The agent runs every command. Cisco's hands are needed only on the device.
    3. The claimant's funding (a SOL transfer).
    4. `publish_epoch` (blind).
 
-   Cisco approves each one. A device left idle times out, and the run fails without landing anything.
+   Cisco approves each one. If the device times out or a prompt is rejected, that transaction is not sent. Those already confirmed stay landed, and the next run uses a fresh mint.
 5. The agent records every signature, the refused duplicate claim and the P14 read, as in `2026-09-27-devnet-proof.md`.
 
 Blind signing means the device shows a hash, not the instruction. What the operator checks is the plan printed before signing: pot, fee, allocation, root and audit hash. The code refuses a device signature over any other bytes.
