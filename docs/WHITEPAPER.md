@@ -69,13 +69,13 @@ Scores are computed off-chain. At each close, the epoch's full score set is comm
 | MYCEL reward epoch 1 (2026-09-25 → 2026-10-02, rubric 1.2.0) | Deployed; not a paid epoch | `docs/handoffs/2026-09-24-cutover.md` |
 | Public read API v1 and audit page | Locally tested on a seeded epoch, not deployed | `docs/handoffs/2026-09-25-audit-page-plan.md` |
 | Rules test (`/rules`, six questions, 6/6), payout gate and token-hold gate (100,000 MYCEL, read within 24 hours of the close by two independent mainnet providers) | Locally tested on PGlite and Postgres 17, not deployed; migration 0009 not applied | `docs/handoffs/2026-09-24-payout-gates-built.md` |
-| Program: per-community vault, publish (root, audit hash, 3% fee), one claim per leaf with a receipt; exact allocation, member and epoch audit manifests, publish job (R6) | Locally tested (LiteSVM, PGlite, Postgres 17), not deployed; the publish job has no production caller | `docs/handoffs/2026-09-25-r6-anchor-built.md` |
-| Devnet run: publish a seeded epoch, one claim, a refused second claim | Not run: the public devnet faucet refused every airdrop to the throwaway key | `docs/handoffs/2026-09-25-r6-anchor-built.md` |
+| Program: per-community vault, publish (root, audit hash, 3% fee), one claim per leaf with a receipt; exact allocation, member and epoch audit manifests, publish job (R6) | Deployed on devnet with throwaway keys, not on mainnet; the publish job has no production caller | `docs/handoffs/2026-09-25-r6-anchor-built.md` |
+| Devnet run: publish a seeded epoch, one claim, a refused second claim, and the audit's settlement read back from devnet | Run 2026-09-27, every signature recorded | `docs/handoffs/2026-09-27-devnet-proof.md` |
 | Mainnet payout (epoch 2 at the earliest) | Planned | `docs/handoffs/2026-09-25-plan.md` |
 
 ## 7. Limits
 
 - **Text only.** The scorer reads a post's text through X's public oEmbed. It can't see images or video. Work that depends on media it can't capture waits for evidence instead of being judged blind.
 - **Only signed wallets can ever be paid.** `/link` links a wallet by signing. A wallet pasted before the cutover keeps scoring but is marked not verified and is never paid. A closed epoch pays the wallet that was verified at its close.
-- **No payout yet.** Points are not money. No root has been published, no claim exists and nothing has been paid.
+- **No mainnet payout yet.** Points are not money. On devnet, test SOL has been published and claimed; on mainnet no root has been published, no claim exists and nothing has been paid.
 - **The model can disagree with the founder.** Scores are a model's reading of the rubric. When it disagrees, the answer is a public correction: a human score recorded as a new row beside the model's, with its reason.
