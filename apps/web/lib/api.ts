@@ -14,7 +14,8 @@ export async function getJson<T>(
   schema: Parser<T>,
   fetchImpl: typeof fetch = fetch,
   // fresh: never from a cache, for answers that expire (a claim's blockhash, its paid status).
-  { fresh = false }: { fresh?: boolean } = {},
+  // visitor: the address a read is made for, which the API trusts only with the web's token.
+  { fresh = false, visitor }: { fresh?: boolean; visitor?: string | null } = {},
 ): Promise<Result<T>> {
   const base = process.env.HYPHAE_API_URL;
   if (!base) {
@@ -22,8 +23,15 @@ export async function getJson<T>(
     return { ok: false, reason: "unavailable" };
   }
   try {
+    // Server-side only: the token never reaches a browser.
+    const token = process.env.HYPHAE_API_TOKEN;
+    const headers: Record<string, string> = { accept: "application/json" };
+    if (token) {
+      headers.authorization = `Bearer ${token}`;
+      if (visitor) headers["x-hyphae-visitor"] = visitor;
+    }
     const response = await fetchImpl(`${base.replace(/\/$/, "")}${path}`, {
-      headers: { accept: "application/json" },
+      headers,
       signal: AbortSignal.timeout(TIMEOUT_MS),
       ...(fresh ? { cache: "no-store" } : { next: { revalidate: 15 } }),
     } as RequestInit);

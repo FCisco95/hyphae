@@ -161,6 +161,42 @@ describe("read routes v1", () => {
     expect((await from("192.0.2.1")).status).toBe(200);
   });
 
+  it("trust a named visitor only from the web server's token, each with their own window", async () => {
+    const TOKEN = "t".repeat(40);
+    const clock = 0;
+    const limited = readRoutes({
+      db: t.db,
+      clock: async () => NOW,
+      limit: { limit: 2, windowMs: 60_000, now: () => clock },
+      webToken: TOKEN,
+    });
+    // Every call arrives from one address, as the web server's calls do.
+    const call = (headers: Record<string, string>) =>
+      limited.request(`/communities/${demo.mint}`, {
+        headers: { "fly-client-ip": "198.51.100.7", ...headers },
+      });
+    const web = (visitor?: string) =>
+      call({
+        authorization: `Bearer ${TOKEN}`,
+        ...(visitor ? { "x-hyphae-visitor": visitor } : {}),
+      });
+    expect([(await web("a")).status, (await web("a")).status, (await web("a")).status]).toEqual([
+      200, 200, 429,
+    ]);
+    expect((await web("b")).status).toBe(200);
+    // The web server's own page reads, cached on its side, share a ten times larger window.
+    const own = await web();
+    expect([own.status, own.headers.get("ratelimit-limit")]).toEqual([200, "20"]);
+    // A wrong token is an ordinary caller, counted by its address; the visitor it names is ignored.
+    const forged = (visitor: string) =>
+      call({ authorization: `Bearer ${"x".repeat(40)}`, "x-hyphae-visitor": visitor });
+    expect([
+      (await forged("c")).status,
+      (await forged("d")).status,
+      (await forged("e")).status,
+    ]).toEqual([200, 200, 429]);
+  });
+
   it("accept only GET", async () => {
     const r = await app.request(`/communities/${demo.mint}`, { method: "POST" });
     expect(r.status).toBe(404);

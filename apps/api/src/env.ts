@@ -21,6 +21,8 @@ const Env = z.object({
   // P14's read-only chain reads (epoch accounts, claim receipts). Unset, the settlement sections
   // stay chain_unconfigured. The cluster is proven by its genesis hash on first use.
   READ_RPC_URL: z.url().optional(),
+  // Shared with the web server, whose read calls are then limited per visitor, not per address.
+  READ_API_WEB_TOKEN: z.string().min(32).optional(),
 });
 
 export const env = Env.parse(process.env);

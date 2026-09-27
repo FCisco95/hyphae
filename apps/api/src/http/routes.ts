@@ -3,7 +3,7 @@ import type { Db } from "@hyphae/db";
 import { sql } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import { openApiDocument } from "./openapi.js";
-import { flyClient, type RateLimit, rateLimit } from "./rate-limit.js";
+import { budgets, type RateLimit, rateLimit } from "./rate-limit.js";
 import {
   type Page,
   readClaim,
@@ -82,6 +82,8 @@ export function readRoutes(deps: {
   // P14's chain reads; without it the settlement sections say chain_unconfigured.
   chain?: SettlementReader | undefined;
   limit?: RateLimit;
+  // The web server's bearer token: its calls are counted per visitor (see budgets).
+  webToken?: string | undefined;
 }) {
   const { db } = deps;
   const now = deps.clock ?? (() => databaseNow(db));
@@ -92,7 +94,8 @@ export function readRoutes(deps: {
     c.header("Access-Control-Allow-Origin", "*");
   });
   // Generous for one reader; it caps what one address can make the chain reads cost.
-  app.use("*", rateLimit(deps.limit ?? { limit: 300, windowMs: 60_000 }, flyClient));
+  const limit = deps.limit ?? { limit: 300, windowMs: 60_000 };
+  app.use("*", rateLimit(limit, budgets(limit.limit, deps.webToken)));
 
   const send = (c: Context, body: unknown | null, final = false) => {
     if (body === null) return c.json({ error: "not_found" }, 404);

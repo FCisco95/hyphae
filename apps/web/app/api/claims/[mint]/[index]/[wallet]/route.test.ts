@@ -25,6 +25,25 @@ describe("GET /api/claims/:mint/:index/:wallet", () => {
     );
   });
 
+  // The API limits requests per address, and every visitor's read comes from this server.
+  it("names the visitor to the API with the web's token, and only with it", async () => {
+    vi.stubEnv("HYPHAE_API_URL", "https://api.test");
+    const fetchMock = vi.fn(
+      async (_url: string, _init?: RequestInit) => new Response(JSON.stringify(f.claim)),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const from = new Request("https://site.test/", { headers: { "x-real-ip": "203.0.113.9" } });
+    await GET(from, params(f.claim.wallet));
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).toEqual({ accept: "application/json" });
+    vi.stubEnv("HYPHAE_API_TOKEN", "k".repeat(40));
+    await GET(from, params(f.claim.wallet));
+    expect(fetchMock.mock.calls[1]?.[1]?.headers).toEqual({
+      accept: "application/json",
+      authorization: `Bearer ${"k".repeat(40)}`,
+      "x-hyphae-visitor": "203.0.113.9",
+    });
+  });
+
   it("answers 404 for no leaf and 503 when the API is unavailable, never a default", async () => {
     vi.stubEnv("HYPHAE_API_URL", "https://api.test");
     vi.spyOn(console, "error").mockImplementation(() => {});

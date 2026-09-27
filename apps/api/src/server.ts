@@ -28,6 +28,7 @@ app.route(
   readRoutes({
     db,
     chain: env.READ_RPC_URL ? settlementReader(createSolanaRpc(env.READ_RPC_URL)) : undefined,
+    webToken: env.READ_API_WEB_TOKEN,
   }),
 );
 

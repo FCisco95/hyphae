@@ -7,11 +7,12 @@ export const dynamic = "force-dynamic";
 const headers = { "cache-control": "no-store" };
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ mint: string; index: string; wallet: string }> },
 ) {
   const { mint, index, wallet } = await context.params;
-  const r = await readClaim(mint, index, wallet);
+  // Vercel sets x-real-ip to the caller's address and overwrites whatever the caller sent.
+  const r = await readClaim(mint, index, wallet, request.headers.get("x-real-ip"));
   if (r.ok) return Response.json(r.data, { headers });
   return Response.json(
     { error: r.reason },
