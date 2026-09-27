@@ -13,7 +13,7 @@ import type { Db } from "@hyphae/db";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { getAddressEncoder } from "@solana/kit";
 import { readOnly } from "../pg.js";
-import { epochCommitments } from "./commitments.js";
+import { storedEpochCommitments } from "./commitment-store.js";
 import { type Blocker, type MemberVerdict, payoutGateIn } from "./gate.js";
 import type { RulesTest } from "./rules-test.js";
 
@@ -64,7 +64,7 @@ export async function buildPublication(
     const gate = await payoutGateIn(tx, ref, deps);
     if (gate.status !== "ready") return { status: "blocked", blockers: gate.blockers };
     const { snapshot } = gate;
-    const commitments = await epochCommitments(tx, ref.epochId);
+    const commitments = await storedEpochCommitments(tx, ref.epochId);
 
     const allocation = allocate(
       input.grossLamports,

@@ -18,9 +18,8 @@ import { asc, eq, inArray } from "drizzle-orm";
 import { isoUs } from "../pg.js";
 import { correctionRecord, effortCriteriaRecord } from "../rewards/decisions.js";
 
-// H-CONTRACT B3–B6 computed from the stored rows. Configs, intakes, contributions, decisions and
-// completed dispatches are insert-only, so a decision made before R6 gets the hash it would have
-// had then, and publication can never meet a missing hash (B6).
+// Reconstruct H-CONTRACT B3–B5 bytes from their immutable inputs. B6 persistence and the strict
+// stored-hash check used by publication live in commitment-store.ts.
 
 // A stored capture time in A3's six-digit form. The fraction is kept as text, since a JS Date would
 // drop microseconds; the date and time without it must exist, which a Date round trip confirms.
@@ -37,6 +36,7 @@ function captureTimeUs(stored: string): string {
 
 export interface EpochCommitments {
   configHash: string;
+  configHashes: Map<string, string>;
   evidence: Map<string, { payload: EvidencePayload; hash: string }>;
   decisions: Map<string, { payload: DecisionPayload; hash: string }>;
 }
@@ -71,6 +71,9 @@ export async function epochCommitments(tx: Db, epochId: string): Promise<EpochCo
 
   const evidence = new Map<string, { payload: EvidencePayload; hash: string }>();
   for (const { intake, acceptedAt, contribution } of intakes) {
+    if (intake.communityId !== epoch.communityId) {
+      throw new Error(`commitments: intake ${intake.id} is outside its epoch's community`);
+    }
     const capture = intake.capture as {
       source: "x_oembed" | "telegram_text";
       capturedAt: string;
@@ -110,11 +113,23 @@ export async function epochCommitments(tx: Db, epochId: string): Promise<EpochCo
   const configHashes = new Map(
     (
       await tx
-        .select({ id: rewardConfigs.id, payload: rewardConfigs.payload })
+        .select({
+          id: rewardConfigs.id,
+          communityId: rewardConfigs.communityId,
+          payload: rewardConfigs.payload,
+        })
         .from(rewardConfigs)
         .where(inArray(rewardConfigs.id, configIds))
-    ).map((c) => [c.id, configHash(c.payload)]),
+    ).map((c) => {
+      if (c.communityId !== epoch.communityId) {
+        throw new Error(`commitments: config ${c.id} is outside its epoch's community`);
+      }
+      return [c.id, configHash(c.payload)];
+    }),
   );
+  for (const id of configIds) {
+    if (!configHashes.has(id)) throw new Error(`commitments: config ${id} is missing`);
+  }
 
   const dispatchIds = lineage.flatMap((r) => (r.d.dispatchId ? [r.d.dispatchId] : []));
   const dispatches = new Map(
@@ -125,11 +140,21 @@ export async function epochCommitments(tx: Db, epochId: string): Promise<EpochCo
   );
 
   const decisions = new Map<string, { payload: DecisionPayload; hash: string }>();
+  const lastDecision = new Map<string, typeof rewardDecisions.$inferSelect>();
   // Ordered by revision within each contribution, so a predecessor is always hashed first.
   for (const { d, acceptedAt } of lineage) {
+    const previous = lastDecision.get(d.contributionId);
+    if (
+      d.communityId !== epoch.communityId ||
+      d.epochId !== epoch.id ||
+      d.revision !== (previous?.revision ?? 0) + 1 ||
+      d.predecessorId !== (previous?.id ?? null)
+    ) {
+      throw new Error(`commitments: decision ${d.id} has an invalid lineage`);
+    }
     const dispatch = d.dispatchId ? dispatches.get(d.dispatchId) : undefined;
     const isCorrection = d.correctionActor !== null;
-    if (!isCorrection && !dispatch?.outputHash) {
+    if (!isCorrection && (!dispatch?.outputHash || dispatch.state !== "completed")) {
       throw new Error(`commitments: decision ${d.id} has no completed dispatch`);
     }
     const predecessor = d.predecessorId ? decisions.get(d.predecessorId) : undefined;
@@ -170,10 +195,12 @@ export async function epochCommitments(tx: Db, epochId: string): Promise<EpochCo
       affects_allocation: d.affectsAllocation,
     };
     decisions.set(d.id, { payload, hash: decisionPayloadHash(payload) });
+    lastDecision.set(d.contributionId, d);
   }
 
   return {
     configHash: configHashes.get(epoch.rewardConfigId) as string,
+    configHashes,
     evidence,
     decisions,
   };

@@ -24,6 +24,7 @@ import { type EvaluationTarget, runEvaluation } from "../rewards/evaluation.js";
 import { admitContribution } from "../rewards/intake.js";
 import { nominate } from "../rewards/slots.js";
 import { rubric } from "../rewards/test-db.js";
+import { backfillEpochCommitments } from "./commitment-store.js";
 import { rulesTestFor } from "./rules-test.js";
 
 const MIN = 60_000;
@@ -54,6 +55,8 @@ export async function seedReadyEpoch(
     mint?: string;
     wallets?: Partial<Record<(typeof PAYABLE)[number], string>>;
     chainAddress?: string | null;
+    // false creates pre-B6 rows for migration/refusal tests.
+    storeCommitments?: boolean;
   },
 ): Promise<ReadySeed> {
   const t0 = new Date(Math.floor((opts.now.getTime() - 8 * DAY) / 1000) * 1000);
@@ -224,6 +227,9 @@ export async function seedReadyEpoch(
       observedAt: new Date(epoch.closesAt.getTime() + 5 * MIN),
       checkedAt: new Date(epoch.closesAt.getTime() + 5 * MIN),
     });
+  }
+  if (opts.storeCommitments !== false) {
+    await backfillEpochCommitments(db, { communityId, epochId: epoch.id });
   }
   return {
     communityId,
