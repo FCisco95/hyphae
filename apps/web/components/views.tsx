@@ -57,8 +57,8 @@ export function UnavailableView() {
   return (
     <section className="notice">
       <p>
-        The audit data can't be read right now. Nothing is shown rather than a guess. Reload the page
-        in a minute.
+        The audit data can't be read right now. Nothing is shown rather than a guess. Reload the
+        page in a minute.
       </p>
     </section>
   );
