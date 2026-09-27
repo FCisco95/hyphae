@@ -18,7 +18,13 @@ import {
   getTransactionDecoder,
 } from "@solana/kit";
 import { describe, expect, it } from "vitest";
-import { attemptClaim, awaitReceipt, type ClaimRead, claimTransaction } from "./claim.js";
+import {
+  afterSendRead,
+  attemptClaim,
+  awaitReceipt,
+  type ClaimRead,
+  claimTransaction,
+} from "./claim.js";
 
 const WALLET = "SysvarRent111111111111111111111111111111111";
 const OTHER = "SysvarC1ock11111111111111111111111111111111";
@@ -212,5 +218,31 @@ describe("awaitReceipt", () => {
     );
     expect(out).toEqual({ state: "unresolved", read: claimable });
     expect(reads).toBe(3);
+  });
+});
+
+describe("afterSendRead", () => {
+  it("keeps the claim on screen through a failed read, and stays unresolved", async () => {
+    const claim = await served();
+    const shown: ClaimRead = { state: "ready", claim };
+    for (const failed of [{ state: "unavailable" }, { state: "none" }] as ClaimRead[]) {
+      expect(afterSendRead(shown, failed)).toEqual({ shown, resolved: false });
+    }
+    const unconfirmed: ClaimRead = {
+      state: "ready",
+      claim: { ...claim, payment: { status: "unavailable", reason: "chain_unavailable" } },
+    };
+    expect(afterSendRead(shown, unconfirmed)).toEqual({ shown: unconfirmed, resolved: false });
+  });
+
+  it("resolves once the chain says paid or still claimable", async () => {
+    const claim = await served();
+    const shown: ClaimRead = { state: "ready", claim };
+    const paid: ClaimRead = {
+      state: "ready",
+      claim: { ...claim, payment: { status: "paid", claim_tx: `4${"C".repeat(86)}` } },
+    };
+    expect(afterSendRead(shown, paid)).toEqual({ shown: paid, resolved: true });
+    expect(afterSendRead(shown, shown)).toEqual({ shown, resolved: true });
   });
 });

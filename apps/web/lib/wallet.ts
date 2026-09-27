@@ -1,8 +1,10 @@
 import { getBase58Decoder } from "@solana/kit";
 import { getWallets } from "@wallet-standard/app";
 
-// The two wallet-standard features the claim page touches: connect, and sign-and-send. The wallet
-// shows and simulates the transaction before its owner approves it.
+// The two wallet-standard features the claim page touches: connect, and sign-and-send. The standard
+// does not require a wallet to simulate before approval, and the page has no RPC to simulate with.
+// A claim is read fresh right before each signing and the program refuses a bad claim atomically,
+// so a failed claim costs the claimant only its fee.
 
 export type Account = { address: string; chains: readonly string[] };
 export type ClaimWallet = {

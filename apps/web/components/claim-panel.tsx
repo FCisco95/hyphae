@@ -2,7 +2,7 @@
 
 import { ReadApiV1Loose } from "@hyphae/core";
 import { useEffect, useState } from "react";
-import { attemptClaim, awaitReceipt, type ClaimRead } from "../lib/claim.js";
+import { afterSendRead, attemptClaim, awaitReceipt, type ClaimRead } from "../lib/claim.js";
 import { shortWallet, sol } from "../lib/format.js";
 import {
   type Account,
@@ -83,7 +83,7 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
         POLLS,
         () => new Promise((resolve) => setTimeout(resolve, POLL_MS)),
       );
-      setLoad(receipt.read);
+      setLoad(afterSendRead(fresh, receipt.read).shown);
       if (receipt.state === "unresolved") setSend({ state: "unresolved", signature });
     } catch (e) {
       setSend({ state: "failed", message: messageOf(e) });
@@ -93,9 +93,10 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
   // A fresh read after an unresolved send. A claim still claimable can be signed again; the
   // attempt reads it once more first, so a receipt that has appeared meanwhile signs nothing.
   async function recheck() {
-    if (!linked) return;
-    setLoad(await read(linked.account.address));
-    setSend({ state: "idle" });
+    if (!linked || load.state !== "ready") return;
+    const next = afterSendRead(load, await read(linked.account.address));
+    setLoad(next.shown);
+    if (next.resolved) setSend({ state: "idle" });
   }
 
   if (!linked) {

@@ -131,3 +131,14 @@ export async function awaitReceipt(
   }
   return { state: "unresolved", read: last };
 }
+
+// A read after a send. A failed read never replaces the claim on screen, so the sent signature
+// and "Check again" stay available; the send is resolved only once the chain says paid or still
+// claimable.
+export function afterSendRead(
+  shown: ClaimRead,
+  fresh: ClaimRead,
+): { shown: ClaimRead; resolved: boolean } {
+  if (fresh.state !== "ready") return { shown, resolved: false };
+  return { shown: fresh, resolved: fresh.claim.payment.status !== "unavailable" };
+}
