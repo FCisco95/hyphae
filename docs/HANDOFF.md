@@ -1,6 +1,6 @@
 ---
 date: 2026-09-27
-summary: The Sep 27 afternoon arc is on main and pushed; nothing is deployed. Devnet proven: publish, claim, a duplicate refused on-chain, and P14 read back from devnet. The Oct 1 candidate 86ff258 re-gated clean. A three-round program security review found no fund-loss path, and its findings are fixed or accepted as scoped. CI is green. Also added: a wallet-claims route with rate limits, OpenAPI and /docs; phone layouts; the custody policy on /rules, the epoch page and the README; and a working Ledger transport. Oct 1 deploys 86ff258 + 0009. Main is the Oct 7–8 payout candidate and needs 0010–0012.
+summary: The Sep 27 afternoon arc is on main and pushed; nothing is deployed. Devnet proven: publish, claim, a duplicate refused on-chain, and P14 read back from devnet. The Oct 1 candidate 86ff258 re-gated clean. A three-round program security review found no fund-loss path, and its findings are fixed or accepted as scoped. CI is green. Also added: a wallet-claims route with rate limits, OpenAPI and /docs; phone layouts; the custody policy on /rules, the epoch page and the README; and a working Ledger transport. Oct 1 deploys 86ff258 + 0009. Main is the Oct 7–8 payout candidate and needs 0010–0012. Cisco then answered the key questions: the upgrade key is his Ledger alone, a verifiable build comes before mainnet, he backs up the program keypair, and MYCEL's fee goes to a MYCEL treasury on his Ledger. Whether that treasury is a plain address or a Squads vault is still open.
 ---
 
 # Hyphae handoff
@@ -19,8 +19,10 @@ Record: [afternoon snapshot](handoffs/2026-09-27-afternoon-arc.md).
 
 **Waiting on Cisco:**
 - the Ledger real-device devnet run (steps in [the Ledger record](handoffs/2026-09-27-ledger-transport.md));
-- P8;
-- the questions below.
+- the fee address shape (plain Ledger address or a Squads vault), then the address;
+- copying the program keypair to the external SSD.
+
+**For the Organic sync:** read [For Organic and other integrators](#for-organic-and-other-integrators) below and [the key rulings](handoffs/2026-09-27-keys-and-fee-rulings.md).
 
 ## Metadata
 
@@ -30,6 +32,7 @@ Record: [afternoon snapshot](handoffs/2026-09-27-afternoon-arc.md).
 - Authority:
   - The session prompt's pre-approvals (local/devnet R6 + Anchor, Week 3 #9, Week 4 #1, #2, #4, #5).
   - Decisions 2 and 3, answered in-session (`handoffs/2026-09-27-custody-wording-and-ledger-rulings.md`).
+  - The key and fee rulings (`handoffs/2026-09-27-keys-and-fee-rulings.md`).
   - Earlier rulings unchanged.
   - Nothing approves Neon writes, production deploys or mainnet transactions.
 
@@ -138,24 +141,37 @@ Run Runbook B (`handoffs/2026-09-24-cutover-decisions.md`), one step per message
   - decisions 1–3; Q1 wording public; Q3.
 - **Still needed:**
   - Cisco's Ledger real-device devnet run;
-  - P8 named;
-  - the upgrade-authority device and a verifiable build before mainnet (questions below).
+  - the fee address: its shape, then the address (P8);
+  - before mainnet: a verifiable build and the Ledger set as upgrade authority (both ruled yes).
 
 ## Next Actions
 
 1. Cisco: the Ledger real-device devnet run, one step at a time (`handoffs/2026-09-27-ledger-transport.md`).
 2. Oct 1: the checklist above.
-3. Before the mainnet deploy: a verifiable build and the upgrade-authority setup (questions 2–3).
+3. Cisco: copy `target/deploy/hyphae-keypair.json` to the external SSD, and choose the fee address shape.
+4. Before the mainnet deploy: a verifiable build, and deploy with the Ledger as upgrade authority, read back from the chain.
+
+## For Organic and other integrators
+
+Organic reads Hyphae only through the public read API; Hyphae never touches `organic-app`. Full contract: [the key rulings](handoffs/2026-09-27-keys-and-fee-rulings.md#for-organic-and-other-integrators).
+
+1. **Contract:** `GET /v1/openapi.json` (OpenAPI 3.1, generated from `ReadApiV1`). v1 changes are additive only, so ignore unknown fields.
+2. **Payouts:** read `epoch.settlement.allocation` and `epoch.settlement.payment`. The top-level `allocation`/`payment` always say `unavailable` with reason `see_settlement`.
+3. **A member's claims:** `GET /v1/wallets/{wallet}/claims`, with proofs, at most 100 per page.
+4. **Limits:** 300 requests a minute per IP. Only Hyphae's web has a token; if Organic needs more, add one token per integrator.
+5. **Not live yet:** production `b7bfe55` has no `/v1`. The Oct 7–8 candidate serves it after migrations 0010–0012.
+
+**Organic-side proposal (not Hyphae work):** when a community bonds, Organic creates a 2-of-3 treasury (Organic, the community's admin or developer, and the community), with Organic as the tiebreaker if one side goes silent. That treasury must exist before the community is initialized in Hyphae, because its address becomes the permanent `fee_recipient`. It needs its own Organic design, with custody calls for Cisco.
 
 ## Open Decisions
 
 | Item | Status | Recommendation |
 |---|---|---|
-| P8 fee address | **Open**; needed when MYCEL's community is initialized on mainnet (before the Oct 7–8 publish). | A new hardware-wallet address, separate from Lab funds; it is fixed forever at initialization. |
-| Upgrade authority on mainnet | The public policy now says it is "held the same way": on a hardware wallet, and any upgrade is announced first. | Deploy with the same Ledger as upgrade authority, then read the ProgramData authority back before funding the vault. |
-| Verifiable build | Not done. The Cargo.lock resolves `anchor-syn`/`anchor-derive-accounts` 1.2.0 under `anchor-lang` 1.0.1. | Before the mainnet deploy: `anchor build --verifiable` (or `solana-verify`) from the reviewed commit, and publish the hash. Keep the current lockfile, since the devnet binary was built from it. |
-| Program keypair backup | `target/deploy/hyphae-keypair.json` exists only on this machine. | Back it up offline now. Losing it before the mainnet deploy loses the pinned address. |
-| Organic's adapter field | Open since Sep 27. | Read `settlement.allocation` / `settlement.payment`; tell Stage C1 before it touches the adapter. |
+| P8 fee address | **Ruled:** MYCEL's treasury, controlled by Cisco's Ledger Flex for the pilot. **Open:** its shape. The address is permanent; the program cannot change it. | A Squads vault with the Ledger as its only member. Its members can grow to Organic's 2-of-3 later without changing the address. |
+| Upgrade authority on mainnet | **Ruled:** Cisco's Ledger, and only Cisco. | Deploy with it, then read the ProgramData authority back before funding the vault. |
+| Verifiable build | **Ruled yes**, before the mainnet deploy. The Cargo.lock resolves `anchor-syn`/`anchor-derive-accounts` 1.2.0 under `anchor-lang` 1.0.1. | `anchor build --verifiable` (or `solana-verify`) from the reviewed commit; publish the hash. Keep the current lockfile. |
+| Program keypair backup | **Ruled yes:** Cisco copies it to an external SSD. Public key checked: `EAz8WkyU…d6E`. | Keep the SSD offline. Until the mainnet deploy, the file can deploy any program at that address. |
+| Organic's adapter field | **Ruled:** Cisco controls Organic; the Organic sync carries it. | Read `settlement.allocation` / `settlement.payment`. See the section below. |
 
 Minor, outside this arc's writable paths: `.env.example` should list `READ_RPC_URL`, `READ_API_WEB_TOKEN` and the two hold RPC URLs.
 
@@ -171,6 +187,7 @@ Minor, outside this arc's writable paths: `.env.example` should list `READ_RPC_U
   - `-custody-wording-and-ledger-rulings.md`
   - `-ledger-transport.md`
   - `-afternoon-arc.md`
+  - `-keys-and-fee-rulings.md`
 - Devnet: the program, five throwaway communities and their accounts.
 - No production change, no mainnet transaction, no secret.
 
@@ -185,5 +202,5 @@ Minor, outside this arc's writable paths: `.env.example` should list `READ_RPC_U
 ## Next-session Prompt
 
 ```text
-Resume Hyphae. Read CLAUDE.md, AGENTS.md, docs/HANDOFF.md and docs/handoffs/2026-09-27-afternoon-arc.md. The Sep 27 afternoon arc is pushed: devnet proof recorded (2026-09-27-devnet-proof.md), program security review fixed or accepted over three Codex astra rounds, CI green, wallet-claims route + rate limits + OpenAPI /docs, phone layouts, the approved custody policy public, and the Ledger transport working (fake-device tested). Next with Cisco: the Ledger real-device devnet run (2026-09-27-ledger-transport.md, one step per message), then the Oct 1 checklist (86ff258 + 0009, unchanged, rehearsed clean). Main is the Oct 7-8 candidate: needs 0010-0012, READ_RPC_URL, READ_API_WEB_TOKEN/HYPHAE_API_TOKEN. Open: P8, upgrade-authority device, verifiable build, program keypair backup, Organic adapter field. No Neon writes, production deploys or mainnet transactions without Cisco's yes.
+Resume Hyphae. Read CLAUDE.md, AGENTS.md, docs/HANDOFF.md and docs/handoffs/2026-09-27-afternoon-arc.md. The Sep 27 afternoon arc is pushed: devnet proof recorded (2026-09-27-devnet-proof.md), program security review fixed or accepted over three Codex astra rounds, CI green, wallet-claims route + rate limits + OpenAPI /docs, phone layouts, the approved custody policy public, and the Ledger transport working (fake-device tested). Next with Cisco: the Ledger real-device devnet run (2026-09-27-ledger-transport.md, one step per message), then the Oct 1 checklist (86ff258 + 0009, unchanged, rehearsed clean). Main is the Oct 7-8 candidate: needs 0010-0012, READ_RPC_URL, READ_API_WEB_TOKEN/HYPHAE_API_TOKEN. Ruled (2026-09-27-keys-and-fee-rulings.md): upgrade key = Cisco's Ledger only; verifiable build before mainnet; Cisco backs up the program keypair; MYCEL's fee goes to a MYCEL treasury on his Ledger. Open: the fee address shape (recommend a Squads vault, Ledger as its only member) and the address itself. No Neon writes, production deploys or mainnet transactions without Cisco's yes.
 ```
