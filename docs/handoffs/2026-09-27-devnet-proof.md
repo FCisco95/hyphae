@@ -145,6 +145,33 @@ Before any signature:
   - the claimant `paid` with the claim transaction, the other two `claimable`.
 - **The claim route:** `paid`, with the same transaction.
 
+## Run 7: Hyphae's own admin account signs (passed)
+
+The rehearsal of the mainnet admin, 18:58Z, on the code at `ae90dad`. The Ledger served `44'/501'/2'/0'` = `2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR`, the account Cisco ruled as Hyphae's admin and upgrade key.
+
+Setup:
+- Devnet funding from the throwaway admin: 0.15 SOL (`5aEJThDFbJDq1TRnEjCv2XfjeExwZGKX6CWLUygEsgKYmPHKns6ttVj692TSynFVaaqra3SV3VCYFB6fjE4CpPWr`).
+- A fresh mint, `362QrubZ1pj3Nm9Kvwy6uAkSkM6q5s85pecv5guw8yBY` (`35fRxcGMqykXVzfDxqVJF1CpEiBrQRxaW9xeiKBoEvx1tN7b3cHeF84HExw6DpekvkpNPN3UunoXBTDbs88dWqnt`).
+
+`HYPHAE_DEVNET_ADMIN_LEDGER="44'/501'/2'/0'"`: exit 0, 54.0 s.
+
+| Step | Signed on the Ledger | Signature |
+|---|---|---|
+| `initialize_community` (blind) | yes | `2xkfBYCqiJhQupUL6gB7P9m6DkpgomVkysYMw5bRVveAZvBDmSwzZ7C3kfSVDpaY5PFoN7mcwXbQ8KPHhStvsENo` |
+| Vault deposit, 0.05 SOL | yes | `2Af95ffYBU6fE11G7hJryYeASkD85HsZ1ikfbbHu1srBp72hWHSzaJRAiqZuRVj65EFxoYJQgRu6Z3dKb8agaoof` |
+| Claimant funding, 0.01 SOL | yes | `5b8dVyNGABSPNSRYKaLVcMcr1D9bR1vuiEF2n97gHP5troutWJuqokYkwMvhkcoVkpNALh23UQo5pNEmokbay7sJ` |
+| `publish_epoch` (blind) | yes | `3oJ4T6NeYonVRgi1JBfofsRHEkd5RfuTKaEhUc7AHqFL8Pio2r2s6o4n7YtLm7zMPpLCw38mDa1efEzBBpAgy6DD` |
+| Claim, 12,125,000 lamports | file key (claimant) | `5ccGT1yLxySoRKjUZftCooXmbxk35WrJ71XFVuH8rfXxaKNiufPkzgLRdAbywRoLjoTL4DvFv3daYTgGyp8a3SmK` |
+| Second claim of the same leaf | refused on-chain, `Custom program error: #0` | `5ob9A3Sg7DYoxCAMLDyX5EpuT2jSF6QBsruPRLf4tdTdTCSkfZCdXSkMuWLuqkFEPQC3eQJVGgzosxdLQbA2EknP` |
+
+- Accounts: community `Bzatx3tHH1YrjuJhB3SffdiSTqpCnLYjpVxiuzjUX5iA`, vault `EtwTx2dms6Gn1T87g4Kdrb2j7N2R1bTefVpvQ1LG3Hpx`, epoch `5oYrnxoUqZz1GWbRnBNpvLWBwxXDFEFjhm1ud3CtgYnV`, receipt `BEtuSyCwVCVw6AN8WfFoQkHskHtggnaFZXWzANaS8oFc`.
+- Root `576b76de…5a30`, audit hash `6d137b65…1853`.
+- **P14 read from devnet:**
+  - `published` at 18:58:59Z;
+  - gross 50,000,000 lamports, fee 1,500,000, allocated 30,460,365 across 3 payable members;
+  - the claimant `paid`, the other two `claimable`.
+- **The claim route:** `paid`.
+
 ## What this proves, and what it does not
 
 - **Proves on devnet:**
@@ -152,7 +179,7 @@ Before any signature:
   - It pays exactly the leaf amount.
   - It refuses a second claim of the same leaf on-chain.
   - The read API's P14 shows only transactions the chain proves.
-  - A Ledger Flex signs `initialize_community`, the deposits and `publish_epoch` through Hyphae's own signer, each simulated before the device is asked (run 6).
+  - A Ledger Flex signs `initialize_community`, the deposits and `publish_epoch` through Hyphae's own signer, each simulated before the device is asked (run 6). It signs again from Hyphae's ruled admin account `2kz1Zq…` (run 7).
 - **Does not prove:**
   - A browser claim through `/claim` with a real wallet.
   - Anything on mainnet.

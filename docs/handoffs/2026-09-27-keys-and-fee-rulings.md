@@ -89,3 +89,12 @@ The link to Hyphae:
 - A Squads vault address fits this directly. It is the same shape recommended for MYCEL above, so MYCEL would not need special handling later.
 
 This needs its own design in Organic: who holds the community's signer, and how a signer is replaced. That design includes custody and money calls for Cisco. Nothing in Hyphae changes for it.
+
+## The signer change and its review
+
+Every Ledger publish now names the account (`--signer ledger:<path>`). Before that, `--signer ledger` fell back to Cisco's everyday wallet `44'/501'/0'`. A malformed or out-of-range path is refused before a device is opened.
+
+- **Commits:** `f3589b2`, with fixes in `4f28ad4` and `e37bc32`.
+- **Reviewed by Codex `gpt-6-astra`, xhigh, read-only, a fresh session each round:**
+  - Round 1 (`82e25ca..b34c08b`), NEEDS-ATTENTION with 2 low findings: the index limit refused valid hardened indices up to 2^31 − 1, and four places still offered a bare `--signer ledger`. Both fixed test-first.
+  - Round 2 (`ae90dad..e37bc32`), **APPROVE**: no findings, 352 parser cases, no bare `--signer ledger` left in the repo.

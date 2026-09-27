@@ -18,7 +18,7 @@ summary: The Sep 27 afternoon arc is on main and pushed; nothing is deployed. De
 Record: [afternoon snapshot](handoffs/2026-09-27-afternoon-arc.md).
 
 **Waiting on Cisco:**
-- one devnet rehearsal with Hyphae's admin account `2kz1Zq…` (`44'/501'/2'/0'`);
+- nothing on the keys: Hyphae's admin `2kz1Zq…` is ruled and rehearsed (devnet run 7);
 - nothing else from the key rulings: the MYCEL Treasury Squads is created and confirmed, and the program keypair is on the external SSD.
 
 **For the Organic sync:** read [For Organic and other integrators](#for-organic-and-other-integrators) below and [the key rulings](handoffs/2026-09-27-keys-and-fee-rulings.md).
@@ -27,7 +27,7 @@ Record: [afternoon snapshot](handoffs/2026-09-27-afternoon-arc.md).
 
 - Last updated: 2026-09-27 (afternoon arc).
 - Runner: Claude Code, **Opus 5.5 (`claude-opus-5-5`)**, xhigh. Git, Docker (Postgres 17), WSL and Playwright all worked.
-- Reviewers: Codex CLI 0.157.1, **`gpt-6-astra`, xhigh**, read-only, a fresh session each round. Six rounds; the verdicts are in the snapshot.
+- Reviewers: Codex CLI 0.157.1, **`gpt-6-astra`, xhigh**, read-only, a fresh session each round. Six rounds; the verdicts are in the snapshot. Two more that evening on the Ledger-path change: round 1 NEEDS-ATTENTION (2 low, fixed), round 2 APPROVE (`handoffs/2026-09-27-keys-and-fee-rulings.md`).
 - Authority:
   - The session prompt's pre-approvals (local/devnet R6 + Anchor, Week 3 #9, Week 4 #1, #2, #4, #5).
   - Decisions 2 and 3, answered in-session (`handoffs/2026-09-27-custody-wording-and-ledger-rulings.md`).
@@ -146,7 +146,7 @@ Run Runbook B (`handoffs/2026-09-24-cutover-decisions.md`), one step per message
 
 ## Next Actions
 
-1. Cisco: rehearse Hyphae's admin account `2kz1Zq…` (`44'/501'/2'/0'`) once on devnet, with the Ledger plugged into the machine running the harness.
+1. Done 2026-09-27: Hyphae's admin account `2kz1Zq…` rehearsed on devnet (run 7).
 2. Oct 1: the checklist above.
 3. Done 2026-09-27: the program keypair is on the external SSD, and the MYCEL Treasury Squads is created.
 4. Before the mainnet deploy: a verifiable build, and deploy with the Ledger as upgrade authority, read back from the chain.
@@ -171,7 +171,7 @@ Organic reads Hyphae only through the public read API; Hyphae never touches `org
 | Upgrade authority on mainnet | **Ruled:** Cisco's Ledger, and only Cisco. | Deploy with it, then read the ProgramData authority back before funding the vault. |
 | Verifiable build | **Ruled yes**, before the mainnet deploy. The Cargo.lock resolves `anchor-syn`/`anchor-derive-accounts` 1.2.0 under `anchor-lang` 1.0.1. | `anchor build --verifiable` (or `solana-verify`) from the reviewed commit; publish the hash. Keep the current lockfile. |
 | Program keypair backup | **Done 2026-09-27:** Cisco copied it to an external SSD. Public key checked: `EAz8WkyU…d6E`. | Keep the SSD offline. Until the mainnet deploy, the file can deploy any program at that address. |
-| Hyphae's mainnet admin Ledger account | **Ruled 2026-09-27: `2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR`**, Cisco's Ledger at `44'/501'/2'/0'`, used only for Hyphae (the admin of every community and the program's upgrade key). It was read from the device, with no mainnet history and 0 SOL at 19:55Z. `--signer ledger` has no default path; every run passes `--signer ledger:44'/501'/2'/0'`. The admin is part of each community's address, so MYCEL's community is permanently tied to it. Cisco's other Ledger accounts: `BpmEA1…` (`44'/501'/0'`, everyday), `HWHfb…` (`44'/501'/1'/0'`, Organic treasury), `E9Jch…` (`44'/501'/3'/0'`, Squads signer). | Rehearse it once on devnet (`HYPHAE_DEVNET_ADMIN_LEDGER="44'/501'/2'/0'"`). Before the mainnet deploy, fund it for fees and rent only; the pot is funded per epoch. |
+| Hyphae's mainnet admin Ledger account | **Ruled 2026-09-27: `2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR`**, Cisco's Ledger at `44'/501'/2'/0'`, used only for Hyphae (the admin of every community and the program's upgrade key). It was read from the device, with no mainnet history and 0 SOL at 19:55Z. `--signer ledger` has no default path; every run passes `--signer ledger:44'/501'/2'/0'`. The admin is part of each community's address, so MYCEL's community is permanently tied to it. Cisco's other Ledger accounts: `BpmEA1…` (`44'/501'/0'`, everyday), `HWHfb…` (`44'/501'/1'/0'`, Organic treasury), `E9Jch…` (`44'/501'/3'/0'`, Squads signer). | Rehearsed on devnet: run 7 passed, 18:58Z. Before the mainnet deploy, fund it for fees and rent only; the pot is funded per epoch. |
 | Organic's adapter field | **Ruled:** Cisco controls Organic; the Organic sync carries it. | Read `settlement.allocation` / `settlement.payment`. See the section below. |
 
 Minor, outside this arc's writable paths: `.env.example` should list `READ_RPC_URL`, `READ_API_WEB_TOKEN` and the two hold RPC URLs.
