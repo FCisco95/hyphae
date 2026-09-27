@@ -1,95 +1,108 @@
 ---
 date: 2026-09-27
-summary: The completion scope (0011 durable publication bytes, recovery from them, the operator publish script behind a signer interface, P14 in an additive settlement field, the claim route and /claim) is built test-first on main, reviewed twice by Codex gpt-6-astra, and pushed. Pushing deploys nothing; Neon stays at 0000–0008. Devnet is blocked at 0 SOL, so there is no on-chain proof yet. Oct 1 deploys 86ff258 + 0009; current main is the Oct 7–8 payout candidate and needs 0010 and 0011.
+summary: The Sep 27 afternoon arc is on main and pushed; nothing is deployed. Devnet proven: publish, claim, a duplicate refused on-chain, and P14 read back from devnet. The Oct 1 candidate 86ff258 re-gated clean. A three-round program security review found no fund-loss path, and its findings are fixed or accepted as scoped. CI is green. Also added: a wallet-claims route with rate limits, OpenAPI and /docs; phone layouts; the custody policy on /rules, the epoch page and the README; and a working Ledger transport. Oct 1 deploys 86ff258 + 0009. Main is the Oct 7–8 payout candidate and needs 0010–0012.
 ---
 
 # Hyphae handoff
 
 ## TL;DR
 
-**The completion scope is built, reviewed and on `main`.** Migration 0011 stores each publication's exact audit and member manifest bytes before any send, and publish and recovery use only those bytes. `apps/api/scripts/publish-epoch.ts` plans or publishes behind a signer interface: a keypair file on devnet, a Ledger on mainnet. The read API serves P14 in `epoch.settlement`, where every publish and claim transaction shown is the one the chain proves, and adds a per-wallet claim route. The audit site shows the settlement, and `/claim` builds the claim in the browser. Record: [completion snapshot](handoffs/2026-09-27-completion-built.md).
+**Everything the arc planned is built, reviewed and on `main`; nothing is deployed.**
+- **Proof on devnet.** The program runs there with throwaway keys. A publish from the stored intent, a claim, a duplicate refused on-chain and the P14 read are all recorded with signatures.
+- **Oct 1.** `86ff258` passes its exact gate again.
+- **Program security review.** Codex `gpt-6-astra`, xhigh, three rounds: no withdrawal, forged-proof or double-claim path. Five client findings are fixed, or accepted as scoped by the reviewer.
+- **CI** runs the full gate on every push, green.
+- **API and site.** The API serves a wallet's claims, rate limits, OpenAPI and `/docs`. The site works on a phone. The approved custody policy is public.
+- **Ledger.** The transport works; a library bug that would have blocked every real-device publish is fixed.
 
-**Blocked:** devnet (admin `Fcv1xtZ6Em1m9xjGmkfinfA3XQ1sEjeCoxy3UioEv4cM` holds 0 SOL; keys present). **Parked:** the Ledger USB transport's native build (`node-hid`), which needs Cisco's approval.
+Record: [afternoon snapshot](handoffs/2026-09-27-afternoon-arc.md).
+
+**Waiting on Cisco:**
+- the Ledger real-device devnet run (steps in [the Ledger record](handoffs/2026-09-27-ledger-transport.md));
+- P8;
+- the questions below.
 
 ## Metadata
 
-- Last updated: 2026-09-27.
-- Runner: Claude Code, **Opus 5.5 (`claude-opus-5-5`)**, xhigh. Git, Docker (Postgres 17) and WSL all worked.
-- Reviewers:
-  - Hash work: Claude `/code-review high` and a fresh Claude checklist subagent on the Codex-built range; Codex `gpt-6-astra` xhigh on the fix: **APPROVE**.
-  - Completion scope: Codex CLI **`gpt-6-astra`, xhigh**, read-only, fresh.
-    - Round 1 (`355067e..5d9da17`): **NEEDS-ATTENTION**, 6 mediums, all fixed test-first.
-    - Round 2 (`5d9da17..f24cefa`): **APPROVE**, no verified findings. Note: the 2 s deadline covers chain reads only, not the database read.
+- Last updated: 2026-09-27 (afternoon arc).
+- Runner: Claude Code, **Opus 5.5 (`claude-opus-5-5`)**, xhigh. Git, Docker (Postgres 17), WSL and Playwright all worked.
+- Reviewers: Codex CLI 0.157.1, **`gpt-6-astra`, xhigh**, read-only, a fresh session each round. Six rounds; the verdicts are in the snapshot.
 - Authority:
-  - H-CONTRACT A/B and P1–P16 (`2026-09-24-contract-and-payment-rulings.md`).
-  - Local/devnet R6 + Anchor (`2026-09-25-gate-and-r6-rulings.md`).
-  - Decision 1, Q1 and Q3 (`2026-09-27-completion-and-custody-rulings.md`).
+  - The session prompt's pre-approvals (local/devnet R6 + Anchor, Week 3 #9, Week 4 #1, #2, #4, #5).
+  - Decisions 2 and 3, answered in-session (`handoffs/2026-09-27-custody-wording-and-ledger-rulings.md`).
+  - Earlier rulings unchanged.
   - Nothing approves Neon writes, production deploys or mainnet transactions.
 
 ## Current State
 
 | Component | Commit | Stage |
 |---|---|---|
-| Migration 0010 (hash columns + CHECKs) | `dabfb56` | Pushed. **Not applied to Neon.** |
-| Backfill + strict publication | `82c1c2e`, `acd83fc` | Pushed. Not deployed. |
-| Migration 0011 (publication intent bytes + SQL hash CHECKs) | `1dadda2` | Pushed. **Not applied to Neon.** |
-| Durable intent, publish/recovery from stored bytes | `1dadda2`, `4faf625` | Pushed. `publishEpoch` has no production caller; only the operator script calls it. |
-| Program client in `@hyphae/core` + instruction matchers | `9932dc0`, `0c5c119` | Pushed. Bytes pinned by the shared vectors. |
-| Operator script `publish-epoch.ts` + signers | `10a5284` | Pushed. Keypair file: devnet only. Ledger: built and fake-tested; USB transport blocked on `node-hid` approval. |
-| P14 read path + claim route | `d0ea1b2`, `d745750` | Pushed. Not deployed; needs `READ_RPC_URL`. |
-| Web settlement panel, `/claim` | `4ca3abf`, `44c495d`, `d745750`, `62ac927` | Pushed. Not deployed (no Vercel project yet). |
-| Anchor program | `b782495` | Unchanged since Sep 25. `anchor build` 0; Rust 21 + 6. **Not on devnet.** |
-| Devnet proof | — | **Not run.** 0 SOL at 10:38:46Z and 12:23:36Z. No signatures. |
-| Production | Fly `b7bfe55`, Neon 0000–0008 | Last recorded, not queried. |
+| Program (unchanged since `b782495`) | `.so` sha256 `cb4ffdd8…8d79` | **On devnet** (`EAz8WkyU…`, upgrade authority = throwaway admin). Not on mainnet. |
+| Devnet proof | `3237aac`, `d28b080` | Runs 2, 3 passed; 4, 5 landed every transaction (public-RPC 429 on reads). P14 read from devnet on the final build. |
+| Security fixes (F1–F5) | `eaa8f1a` … `a9d6a5a` | Pushed. |
+| CI | `894b7b1`, `68db100` | `CI` green on main; `Program` weekly + dispatch. |
+| Wallet claims, rate limits, OpenAPI, `/docs` | `d712289`, `135a80f`, `a40f575`, `6e48b12`, `2ac312d` | Pushed, not deployed. |
+| Migration 0012 (`leaves_wallet` index) | `2c689aa` | Pushed. **Not applied to Neon.** |
+| Web polish, screenshots, custody policy | `236905e`, `ffdfac0`, `37d09cc` | Pushed, not deployed (no Vercel project yet). |
+| Ledger transport, node-hid allowlisted | `34c14dd` | Pushed. Fake-device tested; no real-device run yet. |
+| Production | Fly `b7bfe55`, Neon 0000–0008 | Last recorded, not queried. `b7bfe55` does not serve `/v1`. |
 
 ## Interfaces and Invariants
 
-- `publishEpoch(db, chain, { communityId, epochId, grossLamports })`:
-  1. Refuses an unbound community.
-  2. Returns `blocked` from the gate with no write.
-  3. For a ready epoch: backfills hashes, then loads the stored intent or builds and stores it. A rebuild must equal the stored intent.
-  4. Sends only the stored bytes. A recovered on-chain epoch is matched to the `publish_epoch` with exactly those commitments.
-  5. Records leaves and root from the intent.
-- `planPublication(...)` is everything before the send; the script's `plan` prints it.
-- `creatingTransaction(rpc, at, matches, { hint, blockTime })` proves the successful transaction whose instruction created a program account.
-  - Order: the hint first, then up to 10 pages back, then up to 10 transactions, oldest first, preferring the creation second.
-  - It reads inner instructions and lookup tables.
-- Read API v1 `epoch.settlement = { allocation, payment }`:
-  - `allocation` is `published` only with an on-chain epoch account matching the intent and its proven `publish_epoch`.
-  - `payment` is `available` only with receipts matching leaves, each with its proven `claim`, summing to the account's claimed total.
-  - Otherwise `unavailable` with a reason: `no_settlement`, `before_first_paid_epoch`, `no_stored_intent`, `chain_unconfigured`, `chain_unavailable`, `chain_mismatch` or `chain_transaction_missing`.
-  - v1's `allocation`/`payment` stay a closed `unavailable` (`see_settlement` once there is more).
-  - Chain reads run under a 2 s deadline.
-- Claim route `GET /v1/communities/:mint/epochs/:index/claims/:wallet`: the leaf, addresses, payment status and a recent blockhash. `no-store`. 404 without a leaf.
-- Unchanged: the 89-byte leaf, merkle root, audit manifest bytes, fee (3%, to the on-chain fee recipient) and reserve (allocated total) semantics.
+- `GET /v1/wallets/:wallet/claims?offset&limit`:
+  - every leaf of the wallet in a recorded publication of a served epoch, newest first;
+  - each entry carries its addresses, proof and payment: `paid` with the chain-proven `claim_tx`, `claimable` (no blockhash), or `unavailable` with a reason;
+  - one chain deadline for the whole list, and no read starts after it;
+  - `/v1/wallets/:wallet` stays unserved (A15).
+- Rate limits on `/v1`:
+  - `RateLimit-Policy/Limit/Remaining/Reset` on every response.
+  - 300 a minute per `Fly-Client-IP`. Past it: `429`, `Retry-After`, body `{ "error": "unavailable" }` (A4: the error enum is closed).
+  - With the bearer `READ_API_WEB_TOKEN`, the api trusts `x-hyphae-visitor` and gives each visitor their own window; the web's own reads get 10×.
+  - The web sends the token (`HYPHAE_API_TOKEN`) server-side only, naming the visitor from `x-real-ip`. Vercel overwrites that header. If the web ever runs elsewhere, its ingress must overwrite it too, or visitors can pick their own window.
+- `/v1/openapi.json` is generated from `ReadApiV1`; a test fails on an undocumented route. `/docs` runs Scalar 1.72.1, pinned with SRI.
+- `programAccount()`: an empty, System-owned, non-executable account at a program address reads as not created. Every other owner is refused.
+- `creatingTransaction(…, { exhaustive })`: publish recovery searches the whole history, the epoch account's second first. Public reads stay bounded.
+- `signSimulated()`: every operator send is simulated as the exact unsigned message, only partial signers are accepted, and no signer is asked for a failing transaction.
+- The custody policy lives once, in `@hyphae/core` `CUSTODY_POLICY`, and is shown on `/rules`, the epoch page and the README (a test holds the README to it).
+- Unchanged: the 89-byte leaf, roots, audit bytes, 3% fee, allocated-only reserve, P14 in `epoch.settlement`.
 
 ## Validation
 
-Gate on `f24cefa`:
+Final gate on `5963852`, which gives one seed-heavy test a 30 s budget; no code changed after `5daeb9b`.
 
 **Tests**
-- `pnpm test`: **614 passed** (core 104, web 34, api 476) + 1 skipped devnet harness.
-- `test:pg` on Docker Postgres 17: **41/41**.
+- `pnpm test`: **654 passed** (core 106, web 45, api 503) + 1 skipped devnet harness.
+- `test:pg` on Docker Postgres 17: **42/42**.
 
 **Static checks and builds**
-- `pnpm typecheck`: exit 0.
+- Typecheck: 0.
+- `pnpm lint`: 0 (234 files).
 - `drizzle-kit check`: pass.
 - `git diff --check`: clean.
-- `next build`: pass. API build: pass.
-- Biome on tracked + new files: clean. `pnpm lint` exits 1 only on the globally ignored `.claude/settings.local.json`.
+- `next build`: pass.
 
 **Rust and vectors**
-- WSL `anchor build`: exit 0.
-- `cargo test -p hyphae --tests`: 21 + 6.
-- Python vectors: 16 reproduced.
+- WSL `anchor build`: 0, same `.so` hash.
+- `cargo fmt --check`: clean.
+- `cargo test -p hyphae --tests`: **24 + 6** (3 new prefunded-PDA tests).
+- Python vectors: 16.
 
-**Mutation probes:** 19 across the build and the fixes, each caught by a named test. The list is in the snapshot.
+**Local end to end**
+- The built api on a local Postgres, holding the demo seed and a devnet publication, read against devnet: README examples, `/docs`, P14 and the claim route.
+- The built web was screenshotted at 390 and 1180.
+
+**CI:** first run on main **green** (`36324993213`). The run for this push is in the snapshot.
 
 ## Devnet and Deployment Readiness
 
-**Devnet:** when the admin holds ≥ 2.6 devnet SOL, follow `handoffs/2026-09-25-r6-anchor-built.md` § Devnet exactly, then run `HYPHAE_DEVNET_RUN=1` `publish.devnet.test.ts`, and record every signature. No faucet loops, never the Lab wallet.
+**Devnet:**
+- Admin `Fcv1xtZ6…` holds **3.51 devnet SOL** (15:27Z).
+- The program is deployed there.
+- The Ledger real-device run follows `handoffs/2026-09-27-ledger-transport.md`, one step at a time with Cisco.
 
 ### October 1 — attended checklist (deploy candidate `86ff258`)
+
+**Rehearsed 2026-09-27, read-only, in a temporary worktree:** its exact gate passed. `pnpm -r test` 453, typecheck 0, Biome 179 tracked files, `drizzle-kit check`, `test:pg` 15/15, `git diff --check`. Nothing to add to the checklist. The procedure is unchanged.
 
 Run Runbook B (`handoffs/2026-09-24-cutover-decisions.md`), one step per message, with Cisco at every hard stop:
 
@@ -112,49 +125,65 @@ Run Runbook B (`handoffs/2026-09-24-cutover-decisions.md`), one step per message
 9. **`first_paid_epoch` go/no-go before 2026-10-02T00:00Z** (Cisco). On a yes: `update communities set first_paid_epoch = 2 where mint = '<MYCEL mint>' and first_paid_epoch is null;`. Epoch 1 stays unpaid.
 
 **Not on Oct 1:** current `main` is the **Oct 7–8 payout candidate**. It needs:
-- **0010 and 0011**. Never deploy it against 0009 alone; the ORM's full-row reads need 0010's columns. Apply 0010 with the worker stopped (or a `lock_timeout`): it takes ACCESS EXCLUSIVE on four reward tables in one transaction. 0011 only creates two tables.
-- A `READ_RPC_URL` Fly secret for P14, on the publication's network.
-- `node-hid`'s native build approved, for a Ledger publish.
+- **0010, 0011 and 0012**. Never deploy it against 0009 alone. Apply 0010 with the worker stopped or a `lock_timeout`, since it takes ACCESS EXCLUSIVE on four reward tables. 0011 creates two tables; 0012 creates one index on the empty `leaves` table.
+- `READ_RPC_URL` (Fly secret) on the publication's network.
+- **One shared random token**, set as two secrets: `READ_API_WEB_TOKEN` on Fly and `HYPHAE_API_TOKEN` on Vercel, at least 32 characters. Without it, all web visitors share the per-address limit. Setting secrets is Cisco's step.
+- The Ledger real-device devnet run.
 
-### October 6 checkpoint — not ready
+### October 6 checkpoint
 
-- **Done:** decision 1 is built and reviewed; Q1 and Q3 are ruled.
+- **Done:**
+  - devnet proof (publish, claim, duplicate refused on-chain, P14 read);
+  - program security review, fixes, CI;
+  - decisions 1–3; Q1 wording public; Q3.
 - **Still needed:**
-  - a funded devnet proof (publish, claim, duplicate refused on-chain, P14 read);
+  - Cisco's Ledger real-device devnet run;
   - P8 named;
-  - the Ledger transport approved and tried once on a real device;
-  - Cisco's public Q1 wording.
+  - the upgrade-authority device and a verifiable build before mainnet (questions below).
 
 ## Next Actions
 
-1. When the admin is funded: the devnet run, signatures recorded, P14 read against devnet.
+1. Cisco: the Ledger real-device devnet run, one step at a time (`handoffs/2026-09-27-ledger-transport.md`).
 2. Oct 1: the checklist above.
-3. After Cisco's answers below: the Ledger transport (approve `node-hid`, one real-device `plan`/`publish` on devnet), and the Q1 disclosure on the site.
+3. Before the mainnet deploy: a verifiable build and the upgrade-authority setup (questions 2–3).
 
 ## Open Decisions
 
 | Item | Status | Recommendation |
 |---|---|---|
-| Decision 1, completion scope | **Answered** 2026-09-27: yes. Built. | — |
-| Q1 custody | **Answered** 2026-09-27: trusted-publisher pilot, hardware key, limit disclosed. | The public wording is still Cisco's to approve. |
-| Q3 reserves | **Answered** 2026-09-27: allocated claims only. | No code change needed. |
-| P8 fee address | **Open**, needed by Oct 1. | A dedicated address, separate from Lab funds. |
-| `node-hid` native build (Ledger USB) | **Open**. | Approve it with `pnpm approve-builds` (only `node-hid`). It is a dev-only dependency of the operator script. |
-| Organic's adapter field | **Open**. It should read `settlement.allocation` / `settlement.payment` (A4), not `allocation.status` as H-CONTRACT line 253 anticipated. | Keep `settlement`; tell Stage C1 before it touches the adapter. |
+| P8 fee address | **Open**; needed when MYCEL's community is initialized on mainnet (before the Oct 7–8 publish). | A new hardware-wallet address, separate from Lab funds; it is fixed forever at initialization. |
+| Upgrade authority on mainnet | The public policy now says it is "held the same way": on a hardware wallet, and any upgrade is announced first. | Deploy with the same Ledger as upgrade authority, then read the ProgramData authority back before funding the vault. |
+| Verifiable build | Not done. The Cargo.lock resolves `anchor-syn`/`anchor-derive-accounts` 1.2.0 under `anchor-lang` 1.0.1. | Before the mainnet deploy: `anchor build --verifiable` (or `solana-verify`) from the reviewed commit, and publish the hash. Keep the current lockfile, since the devnet binary was built from it. |
+| Program keypair backup | `target/deploy/hyphae-keypair.json` exists only on this machine. | Back it up offline now. Losing it before the mainnet deploy loses the pinned address. |
+| Organic's adapter field | Open since Sep 27. | Read `settlement.allocation` / `settlement.payment`; tell Stage C1 before it touches the adapter. |
 
-Minor, outside this arc's paths: add `.claude/settings.local.json` to the repo `.gitignore` so `pnpm lint` exits 0 on every clone.
+Minor, outside this arc's writable paths: `.env.example` should list `READ_RPC_URL`, `READ_API_WEB_TOKEN` and the two hold RPC URLs.
 
 ## Generated Artifacts and Suggested Skills
 
 **Artifacts**
-- Commits `af217f7` … `2accfd3` and this session's docs commit.
-- `docs/handoffs/2026-09-27-completion-note.md`, `-completion-and-custody-rulings.md` and `-completion-built.md`.
-- No keys, credentials, deployments or jobs.
+- Commits `3237aac` … `5daeb9b`.
+- `.github/workflows/ci.yml`, `program.yml`.
+- `docs/screenshots/*.png` (8).
+- Handoff records:
+  - `docs/handoffs/2026-09-27-devnet-proof.md`
+  - `-custody-wording-draft.md`
+  - `-custody-wording-and-ledger-rulings.md`
+  - `-ledger-transport.md`
+  - `-afternoon-arc.md`
+- Devnet: the program, five throwaway communities and their accounts.
+- No production change, no mainnet transaction, no secret.
 
-**Suggested skills:** `superpowers:test-driven-development`, `solana-dev`, `context7-mcp` (@solana/kit, wallet-standard, Ledger), `superpowers:verification-before-completion`, `deploy-to-vercel` for the Oct 1 web project, `handoff`.
+**Suggested skills:**
+- `solana-dev`: verifiable build and mainnet deploy checklist.
+- `superpowers:test-driven-development`.
+- `superpowers:verification-before-completion`.
+- `context7-mcp` (Ledger, Vercel env).
+- `deploy-to-vercel` for Oct 1.
+- `handoff`.
 
 ## Next-session Prompt
 
 ```text
-Resume Hyphae. Read CLAUDE.md, AGENTS.md, docs/HANDOFF.md and docs/handoffs/2026-09-27-completion-built.md. The completion scope is built and pushed (af217f7..2accfd3): 0011 durable publication bytes, recovery from them, publish-epoch.ts behind a signer interface, P14 in the additive epoch.settlement field with on-chain-proven transactions, the claim route and /claim. Codex astra xhigh reviewed it twice. If the devnet admin Fcv1xtZ6Em1m9xjGmkfinfA3XQ1sEjeCoxy3UioEv4cM holds >= 2.6 SOL, run the devnet proof and record every signature; otherwise record the balance once and continue. Oct 1: deploy 86ff258 + 0009 per the checklist; main is the Oct 7-8 candidate and needs 0010 + 0011 + READ_RPC_URL. Open: P8 fee address, node-hid approval, Q1 public wording, Organic adapter field. No Neon writes, production deploys or mainnet transactions without Cisco's yes.
+Resume Hyphae. Read CLAUDE.md, AGENTS.md, docs/HANDOFF.md and docs/handoffs/2026-09-27-afternoon-arc.md. The Sep 27 afternoon arc is pushed: devnet proof recorded (2026-09-27-devnet-proof.md), program security review fixed or accepted over three Codex astra rounds, CI green, wallet-claims route + rate limits + OpenAPI /docs, phone layouts, the approved custody policy public, and the Ledger transport working (fake-device tested). Next with Cisco: the Ledger real-device devnet run (2026-09-27-ledger-transport.md, one step per message), then the Oct 1 checklist (86ff258 + 0009, unchanged, rehearsed clean). Main is the Oct 7-8 candidate: needs 0010-0012, READ_RPC_URL, READ_API_WEB_TOKEN/HYPHAE_API_TOKEN. Open: P8, upgrade-authority device, verifiable build, program keypair backup, Organic adapter field. No Neon writes, production deploys or mainnet transactions without Cisco's yes.
 ```
