@@ -19,7 +19,16 @@ Cisco's answers, in-session, after the afternoon arc. Cisco controls Organic, so
 
 ### The fee address shape (1): ruled Squads
 
-Cisco chose the Squads multisig recommended below: "we can create a squad wallet". Only its vault address is still open.
+Cisco chose the Squads multisig recommended below: "we can create a squad wallet".
+
+He then chose its members: "I want to use the same if we can". MYCEL's treasury is a **new** Squads v4 multisig, 2-of-3, with the same three members as Organic's platform multisig.
+
+That multisig is `Bai5U1Nm7A7KNmj7cUjv36VkjrjdXxmTbseePHEYuwcE`, vault `6H6gpGJo76EjQUY4ktrMuk72eJjWA8qD1KU322cbVZs1`. Read from mainnet: threshold 2, no config authority, no time lock, and three members with every permission:
+- `E9JchUJ5to8AR71ttBVJ64r3NGiW8vvucRZcqagpT6KW`: the Ledger;
+- `HhRcqjFs8uRcw337UB2Zko6abJiGvx9UaMgCBHzWM2Wy`: a hot key;
+- `HYJCqE47aB4RxbJs4yuX5CNyw3FKvH1EnEdK7vHsR2R7`: the cold backup.
+
+It is a separate multisig, not a second vault of Organic's. The two can then change members independently: MYCEL's treasury gains community members later, and Organic's platform admin stays as it is. No new keys; only the vault address is still open.
 
 The address is permanent, but "the Ledger for now" implies a change of control later.
 
@@ -33,7 +42,7 @@ Waiting on: the vault address, once Cisco creates the Squads. Squads v4 facts th
 - Deposit to the **vault** (index 0), a PDA. The multisig account is a different address.
 - Creating it costs about 0.103 SOL (a one-time 0.1 SOL fee plus rent).
 - A Ledger connects through Phantom or Solflare, with blind signing on.
-- Squads advises against 1-of-1. It is accepted here because the fees are small (0.015 SOL per 0.5 SOL epoch) and the Ledger's recovery phrase backs up the only member. It moves to 2-of-3 with Organic's design. Nothing uses it until MYCEL's community is initialized on mainnet (Oct 7–8, its own hard stop).
+- 2-of-3 from the start, so one lost key does not lock the treasury. Members change later through a 2-of-3 vote, with no change to the vault address. Nothing uses it until MYCEL's community is initialized on mainnet (Oct 7–8, its own hard stop).
 
 ### The program keypair (4)
 
