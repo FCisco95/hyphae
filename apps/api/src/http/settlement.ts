@@ -167,7 +167,8 @@ async function verifyPublication(
       epoch,
       claimed: e.claimedLamports,
       publishTx,
-      publishedAt: facts.publishedAt,
+      // The second the chain recorded; the database's time can be a later recovery's.
+      publishedAt: new Date(Number(e.publishedAt) * 1000).toISOString().replace("Z", "000Z"),
     };
   } catch (error) {
     return failure(error);

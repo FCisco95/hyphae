@@ -293,7 +293,9 @@ describe("P14 allocation and payment", () => {
       vault_address: await vaultAddress(HYPHAE_PROGRAM_ID, address(p.community)),
       epoch_address: p.epoch,
       publish_tx: PUBLISH_TX,
-      published_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/),
+      // The second the epoch account records, not when the database recorded the publication
+      // (a recovery can record it much later).
+      published_at: "2026-09-21T14:13:20.000000Z",
       root: p.intent.root,
       audit_hash: p.intent.auditHash,
       gross_lamports: "500000000",
