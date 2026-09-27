@@ -2,6 +2,7 @@ import type { EpochV1 } from "@hyphae/core";
 import type { Db } from "@hyphae/db";
 import { sql } from "drizzle-orm";
 import { type Context, Hono } from "hono";
+import { openApiDocument } from "./openapi.js";
 import { flyClient, type RateLimit, rateLimit } from "./rate-limit.js";
 import {
   type Page,
@@ -155,6 +156,12 @@ export function readRoutes(deps: {
   app.get("/contributions/:id", async (c) => {
     const body = await readContribution(db, uuid(c.req.param("id")), await now());
     return send(c, body, body?.epoch.final);
+  });
+
+  const document = openApiDocument();
+  app.get("/openapi.json", (c) => {
+    c.header("Cache-Control", "public, max-age=300");
+    return c.json(document);
   });
 
   app.notFound((c) => c.json({ error: "not_found" }, 404));
