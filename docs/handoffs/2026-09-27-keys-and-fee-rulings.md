@@ -38,7 +38,12 @@ A plain Ledger address works for the pilot. Moving MYCEL's fees to a multisig la
 
 Checked in the program: `publish_epoch` credits `fee_recipient` with `add_lamports` and needs nothing from it but its address. Any system-owned address can receive the fee, including a Squads vault.
 
-Waiting on: the vault address, once Cisco creates the Squads. Squads v4 facts that matter here, from its docs:
+**Created** 2026-09-27 18:17:35Z by the Ledger `E9Jch…`, in `S6vfMef2sKCVH1jp46RpnHBY4qgbv8kYotfwwNyAjVsyHa2jxP2Xp1vyC2RxypdCzvz3dBpz5odAmaNdLMcVCCp` (`MultisigCreateV2`).
+
+- **Multisig account (MYCEL Treasury):** `34wSn95ZFMsvsq7w6g8Rej7GSagGmpc6Vq5aHiCebu51`. Read from mainnet: threshold 2, no config authority, no time lock, the three members above with every permission. **Never send funds here.**
+- **Vault, index 0 (the fee address):** `rRceAUBNsnZKJDytjdHfCdqgTJGoDagtKujfvaBu7MK`. Derived from seeds `["multisig", multisig, "vault", 0]` under `SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf`. Squads' `isSquad` endpoint returns `v4` for it and `false` for the multisig account. It is System-owned with no data and held the 0.001 SOL Squads funds at creation.
+
+Squads v4 facts that matter here, from its docs:
 - Deposit to the **vault** (index 0), a PDA. The multisig account is a different address.
 - Creating it costs about 0.103 SOL (a one-time 0.1 SOL fee plus rent).
 - A Ledger connects through Phantom or Solflare, with blind signing on.

@@ -19,7 +19,7 @@ Record: [afternoon snapshot](handoffs/2026-09-27-afternoon-arc.md).
 
 **Waiting on Cisco:**
 - the Ledger real-device devnet run (steps in [the Ledger record](handoffs/2026-09-27-ledger-transport.md));
-- creating the MYCEL treasury Squads (with the agent, one step at a time), then its vault address;
+- the MYCEL treasury Squads is created; Cisco confirms that the app shows the same vault address;
 - copying the program keypair to the external SSD.
 
 **For the Organic sync:** read [For Organic and other integrators](#for-organic-and-other-integrators) below and [the key rulings](handoffs/2026-09-27-keys-and-fee-rulings.md).
@@ -141,14 +141,14 @@ Run Runbook B (`handoffs/2026-09-24-cutover-decisions.md`), one step per message
   - decisions 1–3; Q1 wording public; Q3.
 - **Still needed:**
   - Cisco's Ledger real-device devnet run;
-  - the MYCEL treasury Squads created, and its vault address (P8);
+  - P8: done. The MYCEL Treasury Squads vault is `rRceAUBN…u7MK`;
   - before mainnet: a verifiable build and the Ledger set as upgrade authority (both ruled yes).
 
 ## Next Actions
 
 1. Cisco: the Ledger real-device devnet run, one step at a time (`handoffs/2026-09-27-ledger-transport.md`).
 2. Oct 1: the checklist above.
-3. Cisco: copy `target/deploy/hyphae-keypair.json` to the external SSD, and create the MYCEL treasury Squads.
+3. Cisco: copy `target/deploy/hyphae-keypair.json` to the external SSD, (the MYCEL Treasury Squads is created).
 4. Before the mainnet deploy: a verifiable build, and deploy with the Ledger as upgrade authority, read back from the chain.
 
 ## For Organic and other integrators
@@ -167,7 +167,7 @@ Organic reads Hyphae only through the public read API; Hyphae never touches `org
 
 | Item | Status | Recommendation |
 |---|---|---|
-| P8 fee address | **Ruled:** MYCEL's treasury is a new Squads v4 multisig, 2-of-3, with the same three members as Organic's platform multisig (Ledger `E9Jch…`, hot key `HhRc…`, cold backup `HYJC…`). **Open:** the address, once Cisco creates it. The address is permanent; the program cannot change it. | Use the Squads **vault** (index 0), never the multisig account. Check it with Squads' `isSquad` endpoint before `initialize_community`. |
+| P8 fee address | **Created 2026-09-27 18:17Z:** MYCEL Treasury, a Squads v4 multisig `34wSn95ZFMsvsq7w6g8Rej7GSagGmpc6Vq5aHiCebu51`, 2-of-3, with the same three members as Organic's platform multisig. **Fee address = its vault `rRceAUBNsnZKJDytjdHfCdqgTJGoDagtKujfvaBu7MK`.** | Pass the vault, never the multisig account, to `initialize_community` (Oct 7–8, its own hard stop). Squads' `isSquad` check: the vault passes (v4); the multisig account does not. |
 | Upgrade authority on mainnet | **Ruled:** Cisco's Ledger, and only Cisco. | Deploy with it, then read the ProgramData authority back before funding the vault. |
 | Verifiable build | **Ruled yes**, before the mainnet deploy. The Cargo.lock resolves `anchor-syn`/`anchor-derive-accounts` 1.2.0 under `anchor-lang` 1.0.1. | `anchor build --verifiable` (or `solana-verify`) from the reviewed commit; publish the hash. Keep the current lockfile. |
 | Program keypair backup | **Ruled yes:** Cisco copies it to an external SSD. Public key checked: `EAz8WkyU…d6E`. | Keep the SSD offline. Until the mainnet deploy, the file can deploy any program at that address. |
@@ -202,5 +202,5 @@ Minor, outside this arc's writable paths: `.env.example` should list `READ_RPC_U
 ## Next-session Prompt
 
 ```text
-Resume Hyphae. Read CLAUDE.md, AGENTS.md, docs/HANDOFF.md and docs/handoffs/2026-09-27-afternoon-arc.md. The Sep 27 afternoon arc is pushed: devnet proof recorded (2026-09-27-devnet-proof.md), program security review fixed or accepted over three Codex astra rounds, CI green, wallet-claims route + rate limits + OpenAPI /docs, phone layouts, the approved custody policy public, and the Ledger transport working (fake-device tested). Next with Cisco: the Ledger real-device devnet run (2026-09-27-ledger-transport.md, one step per message), then the Oct 1 checklist (86ff258 + 0009, unchanged, rehearsed clean). Main is the Oct 7-8 candidate: needs 0010-0012, READ_RPC_URL, READ_API_WEB_TOKEN/HYPHAE_API_TOKEN. Ruled (2026-09-27-keys-and-fee-rulings.md): upgrade key = Cisco's Ledger only; verifiable build before mainnet; Cisco backs up the program keypair; MYCEL's fee goes to a MYCEL treasury on his Ledger. MYCEL's treasury is a new Squads v4 multisig, 2-of-3, with the same three members as Organic's platform multisig; open: its vault address. No Neon writes, production deploys or mainnet transactions without Cisco's yes.
+Resume Hyphae. Read CLAUDE.md, AGENTS.md, docs/HANDOFF.md and docs/handoffs/2026-09-27-afternoon-arc.md. The Sep 27 afternoon arc is pushed: devnet proof recorded (2026-09-27-devnet-proof.md), program security review fixed or accepted over three Codex astra rounds, CI green, wallet-claims route + rate limits + OpenAPI /docs, phone layouts, the approved custody policy public, and the Ledger transport working (fake-device tested). Next with Cisco: the Ledger real-device devnet run (2026-09-27-ledger-transport.md, one step per message), then the Oct 1 checklist (86ff258 + 0009, unchanged, rehearsed clean). Main is the Oct 7-8 candidate: needs 0010-0012, READ_RPC_URL, READ_API_WEB_TOKEN/HYPHAE_API_TOKEN. Ruled (2026-09-27-keys-and-fee-rulings.md): upgrade key = Cisco's Ledger only; verifiable build before mainnet; Cisco backs up the program keypair; MYCEL's fee goes to a MYCEL treasury on his Ledger. MYCEL's treasury is a new Squads v4 multisig 34wSn95ZFMsvsq7w6g8Rej7GSagGmpc6Vq5aHiCebu51, 2-of-3, with the same three members as Organic's platform multisig; the fee address is its vault rRceAUBNsnZKJDytjdHfCdqgTJGoDagtKujfvaBu7MK. No Neon writes, production deploys or mainnet transactions without Cisco's yes.
 ```
