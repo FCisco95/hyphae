@@ -21,7 +21,16 @@ const NEVER = /\bpaid\b|\bclaimed\b|payout sent/i;
 describe("fixtures", () => {
   it("match the strict API schemas", () => {
     ReadApiV1.community.parse(f.community);
-    for (const e of [f.finalEpoch, f.openEpoch, f.closingEpoch]) ReadApiV1.epoch.parse(e);
+    for (const e of [
+      f.finalEpoch,
+      f.openEpoch,
+      f.closingEpoch,
+      f.settledEpoch,
+      f.retainedEpoch,
+      f.chainDownEpoch,
+    ]) {
+      ReadApiV1.epoch.parse(e);
+    }
     ReadApiV1.contributions.parse(f.contributions);
     ReadApiV1.leaderboard.parse(f.leaderboard);
     ReadApiV1.contribution.parse(f.offTopic);
@@ -71,6 +80,55 @@ describe("EpochView", () => {
   it("renders a verified wallet shortened and never an unverified address", () => {
     const html = renderToStaticMarkup(<EpochView epoch={f.finalEpoch} list={f.contributions} />);
     expect(html).toContain("MAoR…VhAB");
+  });
+});
+
+describe("Settlement (P14)", () => {
+  const settlement = (e: typeof f.finalEpoch) =>
+    text(<EpochView epoch={e} list={f.contributions} />)
+      .split("Settlement")[1]
+      ?.split("Contributions")[0] ?? "";
+
+  it("shows every published number exactly, with the publish transaction", () => {
+    const html = renderToStaticMarkup(<EpochView epoch={f.settledEpoch} list={f.contributions} />);
+    const t = settlement(f.settledEpoch);
+    for (const expected of [
+      "0.5 SOL",
+      "0.015 SOL",
+      "3%",
+      "0.485 SOL",
+      "0.304603658 SOL",
+      "0.180396341 SOL",
+      "0.000000001 SOL",
+      "0.12125 SOL",
+      "0.183353658 SOL",
+      "devnet",
+    ]) {
+      expect(t).toContain(expected);
+    }
+    expect(html).toContain(`https://explorer.solana.com/tx/${f.PUBLISH_TX}?cluster=devnet`);
+  });
+
+  it("shows paid only next to the claim transaction, and a way to claim the rest", () => {
+    const html = renderToStaticMarkup(<EpochView epoch={f.settledEpoch} list={f.contributions} />);
+    expect(html).toContain(`https://explorer.solana.com/tx/${f.CLAIM_TX}?cluster=devnet`);
+    expect(settlement(f.settledEpoch).match(/\bPaid\b/g)).toHaveLength(1);
+    expect(settlement(f.settledEpoch)).toContain("Claimable");
+    expect(html).toContain('href="/c/MintAbc/e/2/claim"');
+  });
+
+  it("an epoch before the first paid epoch is retained", () => {
+    const t = settlement(f.retainedEpoch);
+    expect(t).toContain("Retained: this epoch is before the first paid epoch.");
+    // P14's own wording names the first paid epoch; no payment is shown.
+    expect(t).not.toMatch(/Paid in|claimed|SOL/i);
+  });
+
+  it("an unreadable chain shows no number at all, and never paid", () => {
+    const t = settlement(f.chainDownEpoch);
+    expect(t).toContain("can't be confirmed on-chain right now");
+    expect(t).not.toMatch(/\d/);
+    expect(t).not.toMatch(NEVER);
   });
 });
 

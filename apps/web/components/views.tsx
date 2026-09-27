@@ -7,7 +7,17 @@ import type {
   LeaderboardV1,
   RevisionV1,
 } from "@hyphae/core";
-import { creditSentence, multiplier, STATE, shortId, shortWallet, utc } from "../lib/format.js";
+import {
+  creditSentence,
+  explorerTx,
+  multiplier,
+  networkName,
+  STATE,
+  shortId,
+  shortWallet,
+  sol,
+  utc,
+} from "../lib/format.js";
 
 // Pure views over parsed read-API responses. Pages fetch; these only render.
 
@@ -113,11 +123,133 @@ function EpochBanner({ epoch }: { epoch: Pick<EpochV1, "status" | "closes_at" | 
   return null;
 }
 
-function SettlementPanel() {
+// P14. Every number is the published one, confirmed against the chain by the API; anything the
+// chain cannot confirm is a sentence, never a zero.
+function unavailableSentence(reason: string): string {
+  switch (reason) {
+    case "no_settlement":
+      return "Not allocated. No payout exists for this epoch.";
+    case "before_first_paid_epoch":
+      return "Retained: this epoch is before the first paid epoch.";
+    case "chain_mismatch":
+      return "The on-chain record does not match the published audit, so nothing is shown until it is reconciled.";
+    default:
+      return "The allocation can't be confirmed on-chain right now. Nothing here is a zero.";
+  }
+}
+
+function Tx({ signature, network }: { signature: string; network: Network }) {
+  return (
+    <a className="mono" href={explorerTx(signature, network)} rel="noopener noreferrer">
+      {shortWallet(signature)}
+    </a>
+  );
+}
+
+type Network = "solana:devnet" | "solana:mainnet";
+
+function SettlementPanel({ epoch }: { epoch: EpochV1 }) {
+  const a = epoch.allocation;
+  if (a.status !== "published") {
+    return (
+      <section className="panel">
+        <h2>Settlement</h2>
+        <p>{unavailableSentence(a.reason)}</p>
+      </section>
+    );
+  }
+  const p = epoch.payment;
+  const tx = <Tx signature={a.publish_tx} network={a.network} />;
   return (
     <section className="panel">
       <h2>Settlement</h2>
-      <p>Not allocated. No payout exists for this epoch.</p>
+      <p className="muted">
+        Published on {networkName(a.network)} at {utc(a.published_at)} in {tx}. Root{" "}
+        <span className="mono">{a.root.slice(0, 12)}</span>, audit hash{" "}
+        <span className="mono">{a.audit_hash.slice(0, 12)}</span>.
+      </p>
+      <dl className="facts">
+        <div>
+          <dt>Gross pot</dt>
+          <dd>{sol(a.gross_lamports)}</dd>
+        </div>
+        <div>
+          <dt>Fee</dt>
+          <dd>
+            {sol(a.fee_lamports)} ({Number(a.fee_bps) / 100}%) to{" "}
+            <span className="mono" title={a.fee_recipient}>
+              {shortWallet(a.fee_recipient)}
+            </span>
+          </dd>
+        </div>
+        <div>
+          <dt>Net pot</dt>
+          <dd>{sol(a.net_lamports)}</dd>
+        </div>
+        <div>
+          <dt>Allocated</dt>
+          <dd>
+            {sol(a.allocated_lamports)} to {a.payable_members} payable members
+          </dd>
+        </div>
+        <div>
+          <dt>Retained: cap remainder</dt>
+          <dd>{sol(a.cap_remainder_lamports)}</dd>
+        </div>
+        <div>
+          <dt>Retained: dust</dt>
+          <dd>{sol(a.dust_lamports)}</dd>
+        </div>
+        {p.status === "available" && (
+          <>
+            <div>
+              <dt>Claimed</dt>
+              <dd>{sol(p.claimed_lamports)}</dd>
+            </div>
+            <div>
+              <dt>Unclaimed</dt>
+              <dd>{sol(p.unclaimed_lamports)}</dd>
+            </div>
+          </>
+        )}
+      </dl>
+      {p.status === "available" ? (
+        <table>
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Wallet</th>
+              <th>Allocated</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {p.claims.map((c) => (
+              <tr key={c.member_id}>
+                <td className="mono">{shortId(c.member_id)}</td>
+                <td className="mono" title={c.wallet}>
+                  {shortWallet(c.wallet)}
+                </td>
+                <td className="num">{sol(c.amount_lamports)}</td>
+                <td>
+                  {c.claim_tx ? (
+                    <>
+                      Paid in <Tx signature={c.claim_tx} network={a.network} />
+                    </>
+                  ) : (
+                    "Claimable"
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p>Payments: {unavailableSentence(p.reason)}</p>
+      )}
+      <p>
+        <a href={`/c/${epoch.community.mint}/e/${epoch.index}/claim`}>Claim with your wallet →</a>
+      </p>
     </section>
   );
 }
@@ -195,7 +327,7 @@ export function EpochView({ epoch, list }: { epoch: EpochV1; list: Contributions
       <p>
         <a href={`/c/${epoch.community.mint}/e/${epoch.index}/leaderboard`}>Leaderboard →</a>
       </p>
-      <SettlementPanel />
+      <SettlementPanel epoch={epoch} />
       <h2>Contributions</h2>
       {list.contributions.length === 0 ? (
         <p className="empty">No contributions in this epoch yet.</p>

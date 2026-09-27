@@ -23,8 +23,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </nav>
         <main>{children}</main>
         <footer className="muted">
-          Points are not money. Nothing on this site has been allocated or transferred. All times
-          UTC.
+          Points are not money. An allocation or payment appears only once the chain confirms it.
+          All times UTC.
         </footer>
       </body>
     </html>

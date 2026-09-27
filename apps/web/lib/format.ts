@@ -43,3 +43,17 @@ export const STATE: Record<ContributionRowV1["state"], string> = {
 };
 
 export const multiplier = (bps: number) => `${bps / 10000}×`;
+
+// Exact lamports as SOL, never rounded: "304603658" -> "0.304603658 SOL".
+export function sol(lamports: string): string {
+  const v = BigInt(lamports);
+  const whole = v / 1_000_000_000n;
+  const fraction = (v % 1_000_000_000n).toString().padStart(9, "0").replace(/0+$/, "");
+  return `${whole}${fraction ? `.${fraction}` : ""} SOL`;
+}
+
+export const networkName = (n: "solana:devnet" | "solana:mainnet") =>
+  n === "solana:devnet" ? "devnet" : "mainnet";
+
+export const explorerTx = (signature: string, network: "solana:devnet" | "solana:mainnet") =>
+  `https://explorer.solana.com/tx/${signature}${network === "solana:devnet" ? "?cluster=devnet" : ""}`;

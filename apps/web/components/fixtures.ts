@@ -72,6 +72,78 @@ export const openEpoch: EpochV1 = {
 };
 export const closingEpoch: EpochV1 = { ...openEpoch, status: "closing", closed: true };
 
+export const PROGRAM = "EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E";
+export const PUBLISH_TX = `5${"P".repeat(86)}`;
+export const CLAIM_TX = `4${"C".repeat(86)}`;
+const addr = [
+  "3nVsVs3QSv6Yf1XtRj2d1s2ySSeeNQbtztHwm4VhNgbk",
+  "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR",
+  "Fcv1xtZ6Em1m9xjGmkfinfA3XQ1sEjeCoxy3UioEv4cM",
+  "So11111111111111111111111111111111111111112",
+  "SysvarRent111111111111111111111111111111111",
+  "SysvarC1ock11111111111111111111111111111111",
+] as const;
+// A published, partly claimed epoch: the seeded_ready_epoch numbers.
+export const settledEpoch: EpochV1 = {
+  ...baseEpoch,
+  index: 2,
+  allocation: {
+    status: "published",
+    network: "solana:devnet",
+    program_id: PROGRAM,
+    community_address: addr[0],
+    vault_address: addr[1],
+    epoch_address: addr[2],
+    publish_tx: PUBLISH_TX,
+    published_at: ts(9, 1),
+    root: "a".repeat(64),
+    audit_hash: "b".repeat(64),
+    gross_lamports: "500000000",
+    fee_bps: "300",
+    fee_lamports: "15000000",
+    fee_recipient: addr[3],
+    net_lamports: "485000000",
+    allocated_lamports: "304603658",
+    cap_remainder_lamports: "180396341",
+    dust_lamports: "1",
+    payable_members: "3",
+  },
+  payment: {
+    status: "available",
+    claimed_lamports: "121250000",
+    unclaimed_lamports: "183353658",
+    claims: [
+      {
+        member_id: id(11),
+        wallet: addr[4],
+        amount_lamports: "121250000",
+        status: "paid",
+        receipt_address: addr[5],
+        claim_tx: CLAIM_TX,
+      },
+      {
+        member_id: id(12),
+        wallet: addr[5],
+        amount_lamports: "183353658",
+        status: "claimable",
+        receipt_address: addr[4],
+        claim_tx: null,
+      },
+    ],
+  },
+};
+export const retainedEpoch: EpochV1 = {
+  ...baseEpoch,
+  allocation: { status: "unavailable", reason: "before_first_paid_epoch" },
+  payment: { status: "unavailable", reason: "before_first_paid_epoch" },
+};
+export const chainDownEpoch: EpochV1 = {
+  ...baseEpoch,
+  index: 2,
+  allocation: { status: "unavailable", reason: "chain_unavailable" },
+  payment: { status: "unavailable", reason: "chain_unavailable" },
+};
+
 const epochRef = { index: 1, closes_at: ts(2), closed: true, final: true };
 export const offTopicRow: ContributionRowV1 = {
   id: id(1),
