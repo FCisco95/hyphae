@@ -17,6 +17,8 @@ Every signer still goes through `signSimulated`: the exact message is simulated 
 
 ## Real-device devnet run: Cisco's steps, one at a time
 
+**Done 2026-09-27 18:39Z: run 6 passed.** Signatures are in `2026-09-27-devnet-proof.md`. In practice: the Ledger must be plugged into the machine running the harness; the agent read the device's addresses, funded its devnet address and created the mint; Cisco approved four prompts.
+
 The agent runs every command. Cisco's hands are needed only on the device.
 
 1. **Prepare the Ledger.** Update the firmware and the Solana app in Ledger Live. In the Solana app's settings, turn **Blind signing** on. The app cannot decode Hyphae's own instructions, so without it the device refuses them. Then **quit Ledger Live**, which holds the USB device.

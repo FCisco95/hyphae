@@ -13,12 +13,12 @@ summary: The Sep 27 afternoon arc is on main and pushed; nothing is deployed. De
 - **Program security review.** Codex `gpt-6-astra`, xhigh, three rounds: no withdrawal, forged-proof or double-claim path. Five client findings are fixed, or accepted as scoped by the reviewer.
 - **CI** runs the full gate on every push, green.
 - **API and site.** The API serves a wallet's claims, rate limits, OpenAPI and `/docs`. The site works on a phone. The approved custody policy is public.
-- **Ledger.** The transport works; a library bug that would have blocked every real-device publish is fixed.
+- **Ledger.** The transport works; a library bug that would have blocked every real-device publish is fixed. **Cisco's Ledger Flex then signed a full devnet run** (run 6: community, deposits, publish; claim paid, duplicate refused, P14 read).
 
 Record: [afternoon snapshot](handoffs/2026-09-27-afternoon-arc.md).
 
 **Waiting on Cisco:**
-- the Ledger real-device devnet run (steps in [the Ledger record](handoffs/2026-09-27-ledger-transport.md));
+- which Ledger account is Hyphae's mainnet admin and upgrade key (see Open Decisions);
 - nothing else from the key rulings: the MYCEL Treasury Squads is created and confirmed, and the program keypair is on the external SSD.
 
 **For the Organic sync:** read [For Organic and other integrators](#for-organic-and-other-integrators) below and [the key rulings](handoffs/2026-09-27-keys-and-fee-rulings.md).
@@ -46,7 +46,7 @@ Record: [afternoon snapshot](handoffs/2026-09-27-afternoon-arc.md).
 | Wallet claims, rate limits, OpenAPI, `/docs` | `d712289`, `135a80f`, `a40f575`, `6e48b12`, `2ac312d` | Pushed, not deployed. |
 | Migration 0012 (`leaves_wallet` index) | `2c689aa` | Pushed. **Not applied to Neon.** |
 | Web polish, screenshots, custody policy | `236905e`, `ffdfac0`, `37d09cc` | Pushed, not deployed (no Vercel project yet). |
-| Ledger transport, node-hid allowlisted | `34c14dd` | Pushed. Fake-device tested; no real-device run yet. |
+| Ledger transport, node-hid allowlisted | `34c14dd` | Pushed. Real-device devnet run passed (run 6, 18:39Z, `44'/501'/0'`). |
 | Production | Fly `b7bfe55`, Neon 0000–0008 | Last recorded, not queried. `b7bfe55` does not serve `/v1`. |
 
 ## Interfaces and Invariants
@@ -100,7 +100,7 @@ Final gate on `5963852`, which gives one seed-heavy test a 30 s budget; no code 
 **Devnet:**
 - Admin `Fcv1xtZ6…` holds **3.51 devnet SOL** (15:27Z).
 - The program is deployed there.
-- The Ledger real-device run follows `handoffs/2026-09-27-ledger-transport.md`, one step at a time with Cisco.
+- The Ledger real-device run passed (run 6 in `handoffs/2026-09-27-devnet-proof.md`). The device's devnet address `BpmEA1…` keeps 0.087 devnet SOL.
 
 ### October 1 — attended checklist (deploy candidate `86ff258`)
 
@@ -130,22 +130,23 @@ Run Runbook B (`handoffs/2026-09-24-cutover-decisions.md`), one step per message
 - **0010, 0011 and 0012**. Never deploy it against 0009 alone. Apply 0010 with the worker stopped or a `lock_timeout`, since it takes ACCESS EXCLUSIVE on four reward tables. 0011 creates two tables; 0012 creates one index on the empty `leaves` table.
 - `READ_RPC_URL` (Fly secret) on the publication's network.
 - **One shared random token**, set as two secrets: `READ_API_WEB_TOKEN` on Fly and `HYPHAE_API_TOKEN` on Vercel, at least 32 characters. Without it, all web visitors share the per-address limit. Setting secrets is Cisco's step.
-- The Ledger real-device devnet run.
+- The mainnet admin Ledger account chosen (Open Decisions), and the publish script pointed at it.
 
 ### October 6 checkpoint
 
 - **Done:**
   - devnet proof (publish, claim, duplicate refused on-chain, P14 read);
   - program security review, fixes, CI;
-  - decisions 1–3; Q1 wording public; Q3.
+  - decisions 1–3; Q1 wording public; Q3;
+  - Cisco's Ledger real-device devnet run (run 6);
+  - P8: the MYCEL Treasury Squads vault `rRceAUBN…u7MK`.
 - **Still needed:**
-  - Cisco's Ledger real-device devnet run;
-  - P8: done. The MYCEL Treasury Squads vault is `rRceAUBN…u7MK`;
+  - the mainnet admin Ledger account;
   - before mainnet: a verifiable build and the Ledger set as upgrade authority (both ruled yes).
 
 ## Next Actions
 
-1. Cisco: the Ledger real-device devnet run, one step at a time (`handoffs/2026-09-27-ledger-transport.md`).
+1. Cisco: choose Hyphae's mainnet admin Ledger account (Open Decisions); then the publish script's path follows it.
 2. Oct 1: the checklist above.
 3. Done 2026-09-27: the program keypair is on the external SSD, and the MYCEL Treasury Squads is created.
 4. Before the mainnet deploy: a verifiable build, and deploy with the Ledger as upgrade authority, read back from the chain.
@@ -170,6 +171,7 @@ Organic reads Hyphae only through the public read API; Hyphae never touches `org
 | Upgrade authority on mainnet | **Ruled:** Cisco's Ledger, and only Cisco. | Deploy with it, then read the ProgramData authority back before funding the vault. |
 | Verifiable build | **Ruled yes**, before the mainnet deploy. The Cargo.lock resolves `anchor-syn`/`anchor-derive-accounts` 1.2.0 under `anchor-lang` 1.0.1. | `anchor build --verifiable` (or `solana-verify`) from the reviewed commit; publish the hash. Keep the current lockfile. |
 | Program keypair backup | **Done 2026-09-27:** Cisco copied it to an external SSD. Public key checked: `EAz8WkyU…d6E`. | Keep the SSD offline. Until the mainnet deploy, the file can deploy any program at that address. |
+| Hyphae's mainnet admin Ledger account | **Open.** The publish script uses `44'/501'/0'`, fixed in code. On Cisco's Ledger that is `BpmEA1…`, an existing wallet: 0.478 SOL on mainnet, and it received a token on Aug 17. The admin is part of each community's address, so it is permanent for MYCEL's community. The same device also holds `HWHfb…` (`44'/501'/1'/0'`, Organic treasury) and `E9Jch…` (`44'/501'/3'/0'`, Squads signer). | A dedicated, unused Ledger account used only for Hyphae (admin and upgrade key). Make the path a `--ledger-path` option, test-first, instead of the fixed constant. Record it in the vault's Wallets — Registry. |
 | Organic's adapter field | **Ruled:** Cisco controls Organic; the Organic sync carries it. | Read `settlement.allocation` / `settlement.payment`. See the section below. |
 
 Minor, outside this arc's writable paths: `.env.example` should list `READ_RPC_URL`, `READ_API_WEB_TOKEN` and the two hold RPC URLs.
@@ -201,5 +203,5 @@ Minor, outside this arc's writable paths: `.env.example` should list `READ_RPC_U
 ## Next-session Prompt
 
 ```text
-Resume Hyphae. Read CLAUDE.md, AGENTS.md, docs/HANDOFF.md and docs/handoffs/2026-09-27-afternoon-arc.md. The Sep 27 afternoon arc is pushed: devnet proof recorded (2026-09-27-devnet-proof.md), program security review fixed or accepted over three Codex astra rounds, CI green, wallet-claims route + rate limits + OpenAPI /docs, phone layouts, the approved custody policy public, and the Ledger transport working (fake-device tested). Next with Cisco: the Ledger real-device devnet run (2026-09-27-ledger-transport.md, one step per message), then the Oct 1 checklist (86ff258 + 0009, unchanged, rehearsed clean). Main is the Oct 7-8 candidate: needs 0010-0012, READ_RPC_URL, READ_API_WEB_TOKEN/HYPHAE_API_TOKEN. Ruled (2026-09-27-keys-and-fee-rulings.md): upgrade key = Cisco's Ledger only; verifiable build before mainnet; Cisco backs up the program keypair; MYCEL's fee goes to a MYCEL treasury on his Ledger. MYCEL's treasury is a new Squads v4 multisig 34wSn95ZFMsvsq7w6g8Rej7GSagGmpc6Vq5aHiCebu51, 2-of-3, with the same three members as Organic's platform multisig; the fee address is its vault rRceAUBNsnZKJDytjdHfCdqgTJGoDagtKujfvaBu7MK. No Neon writes, production deploys or mainnet transactions without Cisco's yes.
+Resume Hyphae. Read CLAUDE.md, AGENTS.md, docs/HANDOFF.md and docs/handoffs/2026-09-27-afternoon-arc.md. The Sep 27 afternoon arc is pushed: devnet proof recorded (2026-09-27-devnet-proof.md), program security review fixed or accepted over three Codex astra rounds, CI green, wallet-claims route + rate limits + OpenAPI /docs, phone layouts, the approved custody policy public, and the Ledger transport working: Cisco's Ledger Flex signed devnet run 6 end to end. Next with Cisco: choose the mainnet admin Ledger account, then the Oct 1 checklist (86ff258 + 0009, unchanged, rehearsed clean). Main is the Oct 7-8 candidate: needs 0010-0012, READ_RPC_URL, READ_API_WEB_TOKEN/HYPHAE_API_TOKEN. Ruled (2026-09-27-keys-and-fee-rulings.md): upgrade key = Cisco's Ledger only; verifiable build before mainnet; Cisco backs up the program keypair; MYCEL's fee goes to a MYCEL treasury on his Ledger. MYCEL's treasury is a new Squads v4 multisig 34wSn95ZFMsvsq7w6g8Rej7GSagGmpc6Vq5aHiCebu51, 2-of-3, with the same three members as Organic's platform multisig; the fee address is its vault rRceAUBNsnZKJDytjdHfCdqgTJGoDagtKujfvaBu7MK. No Neon writes, production deploys or mainnet transactions without Cisco's yes.
 ```

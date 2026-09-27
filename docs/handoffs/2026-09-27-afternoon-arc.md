@@ -71,7 +71,7 @@ Final gate on `5963852`. That commit only gives one seed-heavy test a 30 s budge
 
 ## Parked, and why
 
-- **The Ledger real-device run.** It needs Cisco's hands on the device. The steps are in `2026-09-27-ledger-transport.md`.
+- **The Ledger real-device run.** Done after this arc, the same evening: run 6 in `2026-09-27-devnet-proof.md`.
 - **Cold P14 payment evidence past 10,000 newer references.** It needs a worker job that pins verified signatures, plus a schema change. Accepted as scoped; after the hackathon.
 - **Browser pre-sign simulation.** No RPC in the page by design. Accepted as a low-severity pilot deferral.
 - **`.env.example`** lacks `READ_RPC_URL`, `READ_API_WEB_TOKEN` and the hold RPC variables. The root file was outside this arc's writable paths.

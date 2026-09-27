@@ -116,6 +116,35 @@ The transaction's `blockTime` and the epoch account's `published_at` are the sam
 
 Runs 1, 4 and 5 all met the public RPC's rate limit during a burst of reads. The API turns such a failure into `chain_unavailable`, never a zero.
 
+## Run 6: Cisco's Ledger signs (passed)
+
+The first real-device run, on the final code (`a71bccf`), 18:39Z. Cisco's Ledger Flex, connected over USB to the Windows machine, was the community admin at the code's default path `44'/501'/0'` (`BpmEA1WV2252o4LPEvJ2Lhj1PpGbQJN2zPCjAnnbkhcQ`).
+
+Before any signature:
+- The agent read the device's addresses; that signs nothing.
+- The throwaway admin funded the device's devnet address with 0.15 SOL (`4dEAxtDt9Z95adAnxT6XSwnPnZpUMw1LoUCFAcSHF9iFUbqnecBJjGrKDuVhLXKLYDGcbatLTQ8RuJdYSkCbaPxR`).
+- A fresh mint `8qPHREpU7vAyzXC2RcW4WiNMs82eLyvuJMWGMH81cCDg` was created by the throwaway admin (`38MiLLvUSt9Gac77xWZ5UJHKfhWMtW2fdfnPNy6sx3xCGyZTtHDitmq4PXMPpf3JwRJqwrJpBjoQwhG3KAKzDbL9`).
+
+`HYPHAE_DEVNET_RUN=1 HYPHAE_DEVNET_ADMIN_LEDGER= … vitest run src/payout/publish.devnet.test.ts`: exit 0, 39.6 s. Every admin transaction was simulated first, then signed on the device after Cisco approved it:
+
+| Step | Signed on the Ledger | Signature |
+|---|---|---|
+| `initialize_community` (blind) | yes | `4yjYLxhRhqbn6iRPGhH8gMb5HNNwV72wg4cz7z2J4ibzah2wUEEmoTwrtCemaCJwojs2eMYQ6uPPdqMX2mCujDcs` |
+| Vault deposit, 0.05 SOL | yes | `28G48rffXsqhoUBcZyj3br1V2EJ8zkUJYy4fJrqFhiooHj4EZbaSEgrz1hoMxvF3FUxPbQSKgbeM9vXX1Qoi7gjF` |
+| Claimant funding, 0.01 SOL | yes | `2ekamAB3NMMAZ1NVec9zBwJ5SHRogKL9T7DMqPWiDmkXKbTu53nuFgK5stH8DjHXW3i2mDh1gebwsJwQS6GPmpA3` |
+| `publish_epoch` (blind) | yes | `5BsZvrhnvNTchDKjVHgGmjnC4mgFLHhdKQ2MsQBSQHCGfXhJhqxEYvYXJepfDU2u4aFxTRSgm2LJ1FmXXNBwkbCm` |
+| Claim, 12,125,000 lamports | file key (claimant) | `2JcFjfs8wBEYSaMYwZdwsk1amCq6Ki5jA5PbieLfU2pyBiDj1HxnH7uqQt3DnoLViWF13wguwcsw6kuyve5hJFf7` |
+| Second claim of the same leaf | refused on-chain, `Custom program error: #0` | `3H7pBKUPAy3EAfpqNYCDknkRoWxbdznHV9kgS2VA97FNAEpug3YF8BQk4r5LceeHCRZtG8S37TF6BoMWuaYVXyqw` |
+
+- Accounts: community `2jQq2uhM9L5X1HfDWi1KUP4ynRBfbVgFjGQ2jj9xEQ6o`, vault `62iBWa6eWPLX6xnHenZTxZrMS4kH9eQufrxUKzLj4gb`, epoch `41oWtKDSaFJq9JKuVq3kuV2UCHnTCfH1zhjrcBjkBp5B`, receipt `7DCj2UQXRxVTfuAxaaEPn899R19dR5vwzznv3BN6TdRc`.
+- Root `d25c2dba…2faa`, audit hash `0fb7e449…4b2e`.
+- **P14 read from devnet:**
+  - `published`, `published_at` 18:39:45Z;
+  - gross 50,000,000 lamports, fee 1,500,000 (300 bps), net 48,500,000;
+  - allocated 30,460,365 across 3 payable members;
+  - the claimant `paid` with the claim transaction, the other two `claimable`.
+- **The claim route:** `paid`, with the same transaction.
+
 ## What this proves, and what it does not
 
 - **Proves on devnet:**
@@ -123,7 +152,7 @@ Runs 1, 4 and 5 all met the public RPC's rate limit during a burst of reads. The
   - It pays exactly the leaf amount.
   - It refuses a second claim of the same leaf on-chain.
   - The read API's P14 shows only transactions the chain proves.
+  - A Ledger Flex signs `initialize_community`, the deposits and `publish_epoch` through Hyphae's own signer, each simulated before the device is asked (run 6).
 - **Does not prove:**
-  - A Ledger signature: the file key is devnet-only, and the Ledger transport is parked.
   - A browser claim through `/claim` with a real wallet.
   - Anything on mainnet.
