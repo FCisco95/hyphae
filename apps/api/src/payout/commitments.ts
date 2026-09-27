@@ -157,10 +157,7 @@ export async function epochCommitments(tx: Db, epochId: string): Promise<EpochCo
     if (!isCorrection && (!dispatch?.outputHash || dispatch.state !== "completed")) {
       throw new Error(`commitments: decision ${d.id} has no completed dispatch`);
     }
-    const predecessor = d.predecessorId ? decisions.get(d.predecessorId) : undefined;
-    if (d.predecessorId && !predecessor) {
-      throw new Error(`commitments: decision ${d.id} names a predecessor outside its lineage`);
-    }
+    const predecessor = previous ? decisions.get(previous.id) : undefined;
     const payload: DecisionPayload = {
       community_id: d.communityId,
       epoch_id: d.epochId,

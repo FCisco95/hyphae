@@ -104,8 +104,9 @@ export interface BackfillCounts {
   snapshots: number;
 }
 
-// Explicit, per-epoch B6 backfill. The existing reward-writer lock also excludes close/corrections;
-// a mismatch aborts the transaction rather than rewriting a previously stored commitment.
+// Per-epoch B6 backfill; the publish job runs it for a ready epoch before building. The existing
+// reward-writer lock also excludes close/corrections; a mismatch aborts the transaction rather
+// than rewriting a previously stored commitment.
 export async function backfillEpochCommitments(
   db: Db,
   ref: { communityId: string; epochId: string },
@@ -121,15 +122,15 @@ export async function backfillEpochCommitments(
     const rows = await hashRows(tx, epoch.id, computed);
     verify(rows, true);
 
+    // Counts rows actually written, not rows attempted.
     const fill = async (
       group: HashRow[],
-      update: (id: string, hash: string) => Promise<unknown>,
+      update: (id: string, hash: string) => Promise<unknown[]>,
     ) => {
       let count = 0;
       for (const row of group) {
         if (row.stored === null && row.expected !== null) {
-          await update(row.id, row.expected);
-          count += 1;
+          count += (await update(row.id, row.expected)).length;
         }
       }
       return count;
@@ -139,25 +140,29 @@ export async function backfillEpochCommitments(
         tx
           .update(rewardConfigs)
           .set({ configHash: hash })
-          .where(and(eq(rewardConfigs.id, id), isNull(rewardConfigs.configHash))),
+          .where(and(eq(rewardConfigs.id, id), isNull(rewardConfigs.configHash)))
+          .returning({ id: rewardConfigs.id }),
       ),
       evidence: await fill(rows.evidence, async (id, hash) =>
         tx
           .update(rewardIntakes)
           .set({ evidenceHash: hash })
-          .where(and(eq(rewardIntakes.id, id), isNull(rewardIntakes.evidenceHash))),
+          .where(and(eq(rewardIntakes.id, id), isNull(rewardIntakes.evidenceHash)))
+          .returning({ id: rewardIntakes.id }),
       ),
       decisions: await fill(rows.decision, async (id, hash) =>
         tx
           .update(rewardDecisions)
           .set({ decisionHash: hash })
-          .where(and(eq(rewardDecisions.id, id), isNull(rewardDecisions.decisionHash))),
+          .where(and(eq(rewardDecisions.id, id), isNull(rewardDecisions.decisionHash)))
+          .returning({ id: rewardDecisions.id }),
       ),
       snapshots: await fill(rows.snapshot, async (id, hash) =>
         tx
           .update(rewardSnapshotEntries)
           .set({ decisionHash: hash })
-          .where(and(eq(rewardSnapshotEntries.id, id), isNull(rewardSnapshotEntries.decisionHash))),
+          .where(and(eq(rewardSnapshotEntries.id, id), isNull(rewardSnapshotEntries.decisionHash)))
+          .returning({ id: rewardSnapshotEntries.id }),
       ),
     };
     verify(await hashRows(tx, epoch.id, computed), false);

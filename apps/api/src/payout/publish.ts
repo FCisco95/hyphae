@@ -1,7 +1,8 @@
 import type { MemberEpochManifest } from "@hyphae/core";
 import { communities, type Db, epochs, leaves } from "@hyphae/db";
 import { and, eq, sql } from "drizzle-orm";
-import type { Blocker } from "./gate.js";
+import { backfillEpochCommitments } from "./commitment-store.js";
+import { type Blocker, evaluatePayoutGate } from "./gate.js";
 import { buildPublication } from "./publication.js";
 import type { RulesTest } from "./rules-test.js";
 
@@ -72,9 +73,17 @@ export async function publishEpoch(
     return { status: "refused", reason: "community_not_on_chain" };
   }
 
+  // B6: a ready epoch's hashes are stored here, under the reward-writer lock, so a never-backfilled
+  // epoch or a late correction cannot strand publication or its recovery. The backfill never
+  // overwrites and refuses a mismatch; the build below stays strict. A blocked epoch gets no write.
+  const ref = { communityId: input.communityId, epochId: input.epochId };
+  const gate = await evaluatePayoutGate(db, ref, deps);
+  if (gate.status !== "ready") return { status: "blocked", blockers: gate.blockers };
+  await backfillEpochCommitments(db, ref);
+
   const publication = await buildPublication(
     db,
-    { communityId: input.communityId, epochId: input.epochId },
+    ref,
     {
       grossLamports: input.grossLamports,
       network: chain.network,

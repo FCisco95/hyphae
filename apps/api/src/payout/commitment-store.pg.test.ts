@@ -7,14 +7,12 @@ import {
   rewardIntakes,
   rewardSnapshotEntries,
 } from "@hyphae/db";
-import { and, asc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { appendCorrection } from "../rewards/decisions.js";
-import { at } from "../rewards/test-db.js";
 import { backfillEpochCommitments, storedEpochCommitments } from "./commitment-store.js";
 import { epochCommitments } from "./commitments.js";
-import { commitmentCases } from "./commitments.test-cases.js";
+import { commitmentCases, lateCorrection } from "./commitments.test-cases.js";
 import { HYPHAE_PROGRAM_ID } from "./program.js";
 import { buildPublication } from "./publication.js";
 import { seedReadyEpoch } from "./ready-seed.js";
@@ -51,39 +49,13 @@ describe("backfill racing a late correction", () => {
     for (let i = 0; i < ROUNDS; i += 1) {
       const seed = await seedReadyEpoch(db, { now: NOW, storeCommitments: false });
       const before = await epochCommitments(db, seed.epochId);
-      const [entry] = await db
-        .select()
-        .from(rewardSnapshotEntries)
-        .where(eq(rewardSnapshotEntries.memberId, seed.members.ordinary));
-      if (!entry?.decisionId) throw new Error("seed: ordinary member has no selected decision");
-      const [latest] = await db
-        .select()
-        .from(rewardDecisions)
-        .where(eq(rewardDecisions.contributionId, entry.contributionId))
-        .orderBy(asc(rewardDecisions.revision))
-        .then((rows) => rows.slice(-1));
-      if (!latest) throw new Error("seed: no decision to correct");
+      const { entry, correct } = await lateCorrection(db, seed);
 
       const [filled, corrected] = await Promise.all([
         backfillEpochCommitments(db, seed),
-        appendCorrection(
-          other,
-          {
-            communityId: seed.communityId,
-            contributionId: entry.contributionId,
-            expectedRevision: latest.revision,
-            changes: { rawQuality: latest.rawQuality === 40 ? 41 : 40 },
-            reason: "Operator review after the close.",
-            evidenceRefs: ["https://x.com/a/status/1"],
-            actor: "script:reward-correct",
-            idempotencyKey: `race-${seed.epochId}`,
-          },
-          // After the close, so the correction is explanatory only.
-          { clock: at(NOW) },
-        ),
+        correct(other),
       ]);
-      if (corrected.status !== "appended") throw new Error(`correction ${corrected.status}`);
-      expect(corrected.decision.affectsAllocation).toBe(false);
+      expect(corrected.affectsAllocation).toBe(false);
 
       // Whichever committed first, every stored hash is the one the rows determine.
       const after = await epochCommitments(db, seed.epochId);
@@ -91,9 +63,9 @@ describe("backfill racing a late correction", () => {
         .select()
         .from(rewardDecisions)
         .where(eq(rewardDecisions.epochId, seed.epochId));
-      const correctionHash = decisions.find((d) => d.id === corrected.decision.id)?.decisionHash;
+      const correctionHash = decisions.find((d) => d.id === corrected.id)?.decisionHash;
       for (const d of decisions) {
-        if (d.id === corrected.decision.id && correctionHash === null) continue;
+        if (d.id === corrected.id && correctionHash === null) continue;
         expect(d.decisionHash).toBe(after.decisions.get(d.id)?.hash);
       }
       const intakes = await db

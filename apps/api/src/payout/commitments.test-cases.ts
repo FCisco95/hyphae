@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
+  communities,
   type Db,
   epochs,
   rewardConfigs,
@@ -11,13 +12,14 @@ import {
 } from "@hyphae/db";
 import { asc, eq, sql } from "drizzle-orm";
 import { seedAuditDemo } from "../http/demo-seed.js";
-import { createTestDb } from "../rewards/test-db.js";
+import { appendCorrection } from "../rewards/decisions.js";
+import { at, createTestDb } from "../rewards/test-db.js";
 import { backfillEpochCommitments, storedEpochCommitments } from "./commitment-store.js";
 import { epochCommitments } from "./commitments.js";
 import { HYPHAE_PROGRAM_ID } from "./program.js";
 import { buildPublication } from "./publication.js";
-import { type PublishChain, publishEpoch } from "./publish.js";
-import { randomAddress, seedReadyEpoch } from "./ready-seed.js";
+import { type OnChainEpoch, type PublishChain, publishEpoch } from "./publish.js";
+import { type ReadySeed, randomAddress, seedReadyEpoch } from "./ready-seed.js";
 
 const NOW = new Date("2026-11-20T12:00:00.000Z");
 const SETTINGS = {
@@ -26,6 +28,102 @@ const SETTINGS = {
   feeRecipient: "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR",
   grossLamports: 500_000_000n,
 };
+type HashKind = "config" | "evidence" | "decision" | "snapshot";
+const violatesCheck = (error: unknown) =>
+  (error as { cause?: { code?: string } }).cause?.code === "23514";
+
+// A chain holding at most one epoch account. With `crashAfterSend`, a send lands on-chain and then
+// fails, like a run that stops before recording.
+function recordingChain(community: string) {
+  let onChain: OnChainEpoch | null = null;
+  const state = { sends: 0, crashAfterSend: false };
+  const chain: PublishChain = {
+    network: SETTINGS.network,
+    programId: SETTINGS.programId,
+    readCommunity: async () => ({ address: community, feeRecipient: SETTINGS.feeRecipient }),
+    readEpoch: async () => onChain,
+    publishEpoch: async (input) => {
+      state.sends += 1;
+      onChain = {
+        root: input.root,
+        auditHash: input.auditHash,
+        grossLamports: input.grossLamports,
+        allocatedLamports: input.allocatedLamports,
+      };
+      if (state.crashAfterSend) throw new Error("crashed after send");
+      return "sig-publish";
+    },
+    publishSignature: async () => "sig-found-on-chain",
+  };
+  return { chain, state };
+}
+
+const publishInput = (seed: ReadySeed) => ({
+  communityId: seed.communityId,
+  epochId: seed.epochId,
+  grossLamports: SETTINGS.grossLamports,
+});
+
+function setHash(db: Db, seed: ReadySeed, kind: HashKind, hash: string | null) {
+  if (kind === "config") {
+    return db
+      .update(rewardConfigs)
+      .set({ configHash: hash })
+      .where(eq(rewardConfigs.communityId, seed.communityId));
+  }
+  if (kind === "evidence") {
+    return db
+      .update(rewardIntakes)
+      .set({ evidenceHash: hash })
+      .where(eq(rewardIntakes.epochId, seed.epochId));
+  }
+  if (kind === "decision") {
+    return db
+      .update(rewardDecisions)
+      .set({ decisionHash: hash })
+      .where(eq(rewardDecisions.epochId, seed.epochId));
+  }
+  return db
+    .update(rewardSnapshotEntries)
+    .set({ decisionHash: hash })
+    .where(eq(rewardSnapshotEntries.memberId, seed.members.floor));
+}
+
+// A correction of the ordinary member's selected work, accepted after the close, so it is
+// explanatory only. The lineage is read now; `correct` appends through any pool.
+export async function lateCorrection(db: Db, seed: ReadySeed) {
+  const [entry] = await db
+    .select()
+    .from(rewardSnapshotEntries)
+    .where(eq(rewardSnapshotEntries.memberId, seed.members.ordinary));
+  if (!entry?.decisionId) throw new Error("seed: ordinary member has no selected decision");
+  const lineage = await db
+    .select()
+    .from(rewardDecisions)
+    .where(eq(rewardDecisions.contributionId, entry.contributionId))
+    .orderBy(asc(rewardDecisions.revision));
+  const latest = lineage.at(-1);
+  if (!latest) throw new Error("seed: no decision to correct");
+  const correct = async (writer: Db) => {
+    const result = await appendCorrection(
+      writer,
+      {
+        communityId: seed.communityId,
+        contributionId: entry.contributionId,
+        expectedRevision: latest.revision,
+        changes: { rawQuality: latest.rawQuality === 40 ? 41 : 40 },
+        reason: "Operator review after the close.",
+        evidenceRefs: ["https://x.com/a/status/1"],
+        actor: "script:reward-correct",
+        idempotencyKey: `late-${seed.epochId}`,
+      },
+      { clock: at(NOW) },
+    );
+    if (result.status !== "appended") throw new Error(`correction ${result.status}`);
+    return result.decision;
+  };
+  return { entry: { ...entry, decisionId: entry.decisionId }, correct };
+}
 
 // The same assertions run against PGlite and the real PostgreSQL driver.
 export function commitmentCases(
@@ -152,67 +250,138 @@ export function commitmentCases(
         .where(eq(rewardSnapshotEntries.contributionId, demo.contributions.pendingAtClose));
       assert.ok(pending[0]?.reason);
       assert.equal(pending[0]?.decisionHash, null);
+      // An entry with no selected decision cannot carry a decision hash.
+      await assert.rejects(
+        async () =>
+          db
+            .update(rewardSnapshotEntries)
+            .set({ decisionHash: "a".repeat(64) })
+            .where(eq(rewardSnapshotEntries.id, pending[0]?.id as string)),
+        violatesCheck,
+      );
     },
   );
 
   for (const kind of ["config", "evidence", "decision", "snapshot"] as const) {
-    for (const hash of [null, "f".repeat(64)]) {
-      check(
-        `refuses ${hash === null ? "missing" : "mismatched"} ${kind} hash before a chain send`,
-        async (db) => {
-          const community = randomAddress();
-          const seed = await seedReadyEpoch(db, { now: NOW, chainAddress: community });
-          if (kind === "config") {
-            await db
-              .update(rewardConfigs)
-              .set({ configHash: hash })
-              .where(eq(rewardConfigs.communityId, seed.communityId));
-          } else if (kind === "evidence") {
-            await db
-              .update(rewardIntakes)
-              .set({ evidenceHash: hash })
-              .where(eq(rewardIntakes.epochId, seed.epochId));
-          } else if (kind === "decision") {
-            await db
-              .update(rewardDecisions)
-              .set({ decisionHash: hash })
-              .where(eq(rewardDecisions.epochId, seed.epochId));
-          } else {
-            await db
-              .update(rewardSnapshotEntries)
-              .set({ decisionHash: hash })
-              .where(eq(rewardSnapshotEntries.memberId, seed.members.floor));
-          }
-          let sends = 0;
-          const chain: PublishChain = {
-            network: SETTINGS.network,
-            programId: SETTINGS.programId,
-            readCommunity: async () => ({
-              address: community,
-              feeRecipient: SETTINGS.feeRecipient,
-            }),
-            readEpoch: async () => null,
-            publishEpoch: async () => {
-              sends += 1;
-              return "unexpected";
-            },
-            publishSignature: async () => "unexpected",
-          };
-          await assert.rejects(
-            () => publishEpoch(db, chain, { ...seed, grossLamports: SETTINGS.grossLamports }),
-            hash === null ? /missing stored .* hash/ : /stored .* hash mismatch/,
-          );
-          assert.equal(sends, 0);
-          if (hash !== null) {
-            await assert.rejects(
-              () => backfillEpochCommitments(db, seed),
-              /stored .* hash mismatch/,
-            );
-          }
-        },
+    check(`refuses a mismatched ${kind} hash before a chain send`, async (db) => {
+      const community = randomAddress();
+      const seed = await seedReadyEpoch(db, { now: NOW, chainAddress: community });
+      await setHash(db, seed, kind, "f".repeat(64));
+      const { chain, state } = recordingChain(community);
+      await assert.rejects(
+        () => publishEpoch(db, chain, publishInput(seed)),
+        new RegExp(`stored ${kind} hash mismatch`),
       );
-    }
+      assert.equal(state.sends, 0);
+      await assert.rejects(() => backfillEpochCommitments(db, seed), /stored .* hash mismatch/);
+    });
+
+    check(
+      `publication refuses a missing ${kind} hash; the publish job fills it before sending`,
+      async (db) => {
+        const community = randomAddress();
+        const seed = await seedReadyEpoch(db, { now: NOW, chainAddress: community });
+        const expected = await buildPublication(db, seed, SETTINGS);
+        assert.equal(expected.status, "ready");
+        await setHash(db, seed, kind, null);
+        await assert.rejects(
+          () => buildPublication(db, seed, SETTINGS),
+          new RegExp(`missing stored ${kind} hash`),
+        );
+        const { chain, state } = recordingChain(community);
+        const out = await publishEpoch(db, chain, publishInput(seed));
+        assert.equal(out.status, "published");
+        assert.equal(state.sends, 1);
+        if (out.status === "published" && expected.status === "ready") {
+          assert.equal(out.root, expected.root);
+          assert.equal(out.auditHash, expected.auditHash);
+        }
+      },
+    );
   }
+
+  check("the publish job fills a never-backfilled closed epoch, then publishes", async (db) => {
+    const community = randomAddress();
+    const seed = await seedReadyEpoch(db, {
+      now: NOW,
+      chainAddress: community,
+      storeCommitments: false,
+    });
+    const { chain, state } = recordingChain(community);
+    const out = await publishEpoch(db, chain, publishInput(seed));
+    assert.equal(out.status, "published");
+    assert.equal(state.sends, 1);
+    assert.deepEqual(
+      await storedEpochCommitments(db, seed.epochId),
+      await epochCommitments(db, seed.epochId),
+    );
+  });
+
+  check("the publish job neither fills nor sends for a blocked epoch", async (db) => {
+    const community = randomAddress();
+    const seed = await seedReadyEpoch(db, {
+      now: NOW,
+      chainAddress: community,
+      storeCommitments: false,
+    });
+    await db
+      .update(communities)
+      .set({ firstPaidEpoch: null })
+      .where(eq(communities.id, seed.communityId));
+    const { chain, state } = recordingChain(community);
+    assert.deepEqual(await publishEpoch(db, chain, publishInput(seed)), {
+      status: "blocked",
+      blockers: ["before_first_paid_epoch"],
+    });
+    assert.equal(state.sends, 0);
+    const decisions = await db
+      .select()
+      .from(rewardDecisions)
+      .where(eq(rewardDecisions.epochId, seed.epochId));
+    assert.ok(decisions.every((d) => d.decisionHash === null));
+  });
+
+  check("a late correction must be backfilled and leaves the publication unchanged", async (db) => {
+    const seed = await seedReadyEpoch(db, { now: NOW });
+    const before = await buildPublication(db, seed, SETTINGS);
+    assert.equal(before.status, "ready");
+    const late = await lateCorrection(db, seed);
+    const correction = await late.correct(db);
+    assert.equal(correction.affectsAllocation, false);
+    await assert.rejects(
+      () => buildPublication(db, seed, SETTINGS),
+      /missing stored decision hash/,
+    );
+    assert.deepEqual(await backfillEpochCommitments(db, seed), {
+      configs: 0,
+      evidence: 0,
+      decisions: 1,
+      snapshots: 0,
+    });
+    assert.deepEqual(await buildPublication(db, seed, SETTINGS), before);
+  });
+
+  check(
+    "recovers a publish that crashed after its send, even after a late correction",
+    async (db) => {
+      const community = randomAddress();
+      const seed = await seedReadyEpoch(db, { now: NOW, chainAddress: community });
+      const { chain, state } = recordingChain(community);
+      state.crashAfterSend = true;
+      await assert.rejects(() => publishEpoch(db, chain, publishInput(seed)), /crashed/);
+      state.crashAfterSend = false;
+      await (await lateCorrection(db, seed)).correct(db);
+      const out = await publishEpoch(db, chain, publishInput(seed));
+      assert.equal(out.status, "published");
+      if (out.status !== "published") return;
+      assert.equal(out.recovered, true);
+      assert.equal(out.signature, "sig-found-on-chain");
+      assert.equal(state.sends, 1);
+      const [row] = await db.select().from(epochs).where(eq(epochs.id, seed.epochId));
+      assert.equal(row?.root, out.root);
+      assert.equal(row?.publishTx, "sig-found-on-chain");
+    },
+  );
 
   check("rejects a snapshot mismatch without filling any other hashes", async (db) => {
     const seed = await seedReadyEpoch(db, { now: NOW, storeCommitments: false });
@@ -273,17 +442,12 @@ export function commitmentCases(
     await assert.rejects(() => backfillEpochCommitments(db, seed), /no completed dispatch/);
   });
 
-  check("database constraints reject malformed hashes", async (db) => {
+  check("database constraints reject malformed hashes in every hash column", async (db) => {
     const seed = await seedReadyEpoch(db, { now: NOW, storeCommitments: false });
-    for (const value of ["", "A".repeat(64), "a".repeat(63), "a".repeat(65)]) {
-      await assert.rejects(
-        () =>
-          db
-            .update(rewardConfigs)
-            .set({ configHash: value })
-            .where(eq(rewardConfigs.communityId, seed.communityId)),
-        (error: unknown) => (error as { cause?: { code?: string } }).cause?.code === "23514",
-      );
+    for (const kind of ["config", "evidence", "decision", "snapshot"] as const) {
+      for (const value of ["", "A".repeat(64), "a".repeat(63), "a".repeat(65)]) {
+        await assert.rejects(async () => setHash(db, seed, kind, value), violatesCheck);
+      }
     }
   });
 
