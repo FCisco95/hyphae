@@ -66,7 +66,8 @@ Final gate on `5963852`. That commit only gives one seed-heavy test a 30 s budge
 - Typecheck 0 · `pnpm lint` 0 (234 files) · `drizzle-kit check` pass · `next build` pass · `git diff --check` clean.
 - Python vectors: 16 hashes reproduced.
 - Rust, unchanged since its run this session: WSL `anchor build` 0 with the same `.so` sha256 (`cb4ffdd8…8d79`), `cargo fmt --check` clean, `cargo test -p hyphae --tests` **24 + 6**.
-- CI for this push: still running when this record was committed; its run id follows in the next commit.
+- CI for the push of `c2a72d4`: **green** (`36332044728`), including node-hid's Linux prebuild on install.
+- `Program` dispatch on `c2a72d4`: **green** (`36332048980`). CI's `anchor build` gave the same `.so` sha256 as local WSL, and `cargo test` passed 24 + 6. The first dispatch had failed before `--ignore-keys`.
 
 ## Parked, and why
 

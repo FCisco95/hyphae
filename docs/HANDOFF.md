@@ -40,7 +40,7 @@ Record: [afternoon snapshot](handoffs/2026-09-27-afternoon-arc.md).
 | Program (unchanged since `b782495`) | `.so` sha256 `cb4ffdd8…8d79` | **On devnet** (`EAz8WkyU…`, upgrade authority = throwaway admin). Not on mainnet. |
 | Devnet proof | `3237aac`, `d28b080` | Runs 2, 3 passed; 4, 5 landed every transaction (public-RPC 429 on reads). P14 read from devnet on the final build. |
 | Security fixes (F1–F5) | `eaa8f1a` … `a9d6a5a` | Pushed. |
-| CI | `894b7b1`, `68db100` | `CI` green on main; `Program` weekly + dispatch. |
+| CI | `894b7b1`, `68db100` | `CI` green on main (`36332044728`); `Program` green on dispatch (`36332048980`), weekly after. |
 | Wallet claims, rate limits, OpenAPI, `/docs` | `d712289`, `135a80f`, `a40f575`, `6e48b12`, `2ac312d` | Pushed, not deployed. |
 | Migration 0012 (`leaves_wallet` index) | `2c689aa` | Pushed. **Not applied to Neon.** |
 | Web polish, screenshots, custody policy | `236905e`, `ffdfac0`, `37d09cc` | Pushed, not deployed (no Vercel project yet). |
@@ -91,7 +91,7 @@ Final gate on `5963852`, which gives one seed-heavy test a 30 s budget; no code 
 - The built api on a local Postgres, holding the demo seed and a devnet publication, read against devnet: README examples, `/docs`, P14 and the claim route.
 - The built web was screenshotted at 390 and 1180.
 
-**CI:** first run on main **green** (`36324993213`). The run for this push is in the snapshot.
+**CI:** the push of `c2a72d4` ran **green** (`36332044728`): the full gate, test:pg on Postgres 17, the vectors, and node-hid's Linux prebuild on install. `Program` dispatch **green** (`36332048980`): `anchor build` gave the same `.so` sha256 as local WSL (`cb4ffdd8…8d79`), and `cargo test` passed 24 + 6.
 
 ## Devnet and Deployment Readiness
 
