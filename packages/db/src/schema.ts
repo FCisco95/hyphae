@@ -177,7 +177,11 @@ export const leaves = pgTable(
     proof: jsonb("proof").notNull(), // hex[] sibling hashes
     claimTx: text("claim_tx"),
   },
-  (t) => [uniqueIndex("leaves_epoch_wallet").on(t.epochId, t.wallet)],
+  (t) => [
+    uniqueIndex("leaves_epoch_wallet").on(t.epochId, t.wallet),
+    // The public wallet-claims read looks leaves up by wallet alone.
+    index("leaves_wallet").on(t.wallet),
+  ],
 );
 
 // A text's H-CONTRACT B2 tagged hash, computed in SQL: sha256(tag || 0x00 || utf8(text)).

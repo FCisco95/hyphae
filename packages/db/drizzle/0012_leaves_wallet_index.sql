@@ -1,0 +1,1 @@
+CREATE INDEX "leaves_wallet" ON "leaves" USING btree ("wallet");

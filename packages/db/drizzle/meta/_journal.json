@@ -85,6 +85,13 @@
       "when": 1790506357853,
       "tag": "0011_publication_intent",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790521992081,
+      "tag": "0012_leaves_wallet_index",
+      "breakpoints": true
     }
   ]
 }
