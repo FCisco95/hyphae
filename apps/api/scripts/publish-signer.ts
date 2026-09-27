@@ -97,7 +97,7 @@ export async function openSigner(
   openLedger: () => Promise<LedgerSolana> = openUsbLedger,
 ): Promise<TransactionSigner> {
   if (network === "solana:mainnet" && spec.kind !== "ledger") {
-    throw new Error("signer: mainnet publishes only from a hardware key (--signer ledger)");
+    throw new Error("signer: mainnet publishes only from a hardware key (--signer ledger:<derivation path>)");
   }
   if (spec.kind === "ledger") return ledgerSigner(await openLedger(), spec.path);
   const bytes = Uint8Array.from(JSON.parse(readFileSync(spec.path, "utf8")) as number[]);

@@ -19,7 +19,16 @@ export interface PublishArgs {
 const BASE58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 const MAX_U64 = (1n << 64n) - 1n;
 // A hardened Solana account path, as the Ledger's Solana app takes it: 44'/501'/a' or 44'/501'/a'/c'.
-const LEDGER_PATH = /^44'\/501'(\/\d{1,9}'){1,2}$/;
+const LEDGER_PATH = /^44'\/501'(\/\d{1,10}'){1,2}$/;
+const MAX_HARDENED_INDEX = 0x7fffffff;
+
+function isLedgerPath(path: string): boolean {
+  if (!LEDGER_PATH.test(path)) return false;
+  return path
+    .split("/")
+    .slice(2)
+    .every((index) => Number(index.slice(0, -1)) <= MAX_HARDENED_INDEX);
+}
 
 function fail(why: string): never {
   throw new Error(`${why}\n${USAGE}`);
@@ -68,14 +77,14 @@ export function parsePublishArgs(argv: string[]): PublishArgs {
     // admin key is part of the community's address, so the operator names it every time.
     const path = spec.slice("ledger:".length);
     if (path === "") fail("--signer ledger: name the Ledger account, e.g. ledger:44'/501'/2'/0'");
-    if (!LEDGER_PATH.test(path)) fail("--signer ledger: the path must look like 44'/501'/2'/0'");
+    if (!isLedgerPath(path)) fail("--signer ledger: the path must look like 44'/501'/2'/0'");
     signer = { kind: "ledger", path };
   } else {
     fail("--signer must be file:<keypair.json> or ledger:<derivation path>");
   }
   // Q1: mainnet publishes only from a hardware key.
   if (network === "solana:mainnet" && signer.kind !== "ledger") {
-    fail("mainnet publishes only from a hardware key (--signer ledger)");
+    fail("mainnet publishes only from a hardware key (--signer ledger:<derivation path>)");
   }
   return {
     command,

@@ -94,7 +94,9 @@ describe("openSigner", () => {
 
   it("refuses a keypair file on mainnet: mainnet publishes from a hardware key (Q1)", async () => {
     const { path } = await keyFile();
-    await expect(openSigner({ kind: "file", path }, "solana:mainnet")).rejects.toThrow(/hardware/);
+    await expect(openSigner({ kind: "file", path }, "solana:mainnet")).rejects.toThrow(
+      /hardware key \(--signer ledger:<derivation path>\)/,
+    );
   });
 
   it("opens the Ledger for mainnet", async () => {

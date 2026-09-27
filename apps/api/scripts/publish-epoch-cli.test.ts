@@ -67,6 +67,21 @@ describe("parsePublishArgs", () => {
     ).toEqual({ kind: "ledger", path: "44'/501'/7'" });
   });
 
+  it("takes every hardened index the device can derive, up to 2^31 - 1", () => {
+    const argv = ["plan", ...base, "--network", "devnet", "--rpc", "https://r.example", "--signer"];
+    expect(parsePublishArgs([...argv, "ledger:44'/501'/2147483647'/0'"]).signer).toEqual({
+      kind: "ledger",
+      path: "44'/501'/2147483647'/0'",
+    });
+  });
+
+  it("points a mainnet file signer at a named Ledger account", () => {
+    const argv = ["plan", ...base, "--network", "mainnet", "--rpc", "https://r.example"];
+    expect(() => parsePublishArgs([...argv, "--signer", "file:k.json"])).toThrow(
+      /--signer ledger:<derivation path>/,
+    );
+  });
+
   it("names no Ledger account for the operator: the device's first account may be an everyday wallet", () => {
     const argv = ["plan", ...base, "--network", "devnet", "--rpc", "https://r.example", "--signer"];
     expect(() => parsePublishArgs([...argv, "ledger"])).toThrow(/name the Ledger account/);
@@ -108,6 +123,10 @@ describe("parsePublishArgs", () => {
       ["plan", ...base, ...rpc, "--signer", "ledger:44'/501'/x'"],
     ],
     ["a Ledger path too deep", ["plan", ...base, ...rpc, "--signer", "ledger:44'/501'/0'/0'/0'"]],
+    [
+      "a Ledger index past 2^31 - 1",
+      ["plan", ...base, ...rpc, "--signer", "ledger:44'/501'/2147483648'"],
+    ],
     ["an unknown signer", ["plan", ...base, ...rpc, "--signer", "env:KEY"]],
     [
       "a zero pot",

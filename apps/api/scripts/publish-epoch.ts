@@ -1,6 +1,6 @@
 // Usage: node --env-file=<abs .env> --import tsx scripts/publish-epoch.ts plan|publish \
 //   --mint <mint> --epoch <index> --gross <lamports> --network devnet|mainnet --rpc <https url> \
-//   [--ws <wss url>] --signer file:<keypair.json>|ledger[:<derivation path>]
+//   [--ws <wss url>] --signer file:<keypair.json>|ledger:<derivation path, e.g. 44'/501'/2'/0'>
 // Operator entry point for R6 publication. `plan` stores the epoch's publication intent (exact
 // bytes, before any send) and prints every number it commits to; `publish` sends that intent
 // with the community's admin key and records it, or records it if a run already sent it. Run one

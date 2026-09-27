@@ -42,7 +42,7 @@ The two crash cases then work out as follows:
 The signer is `@solana/kit`'s `TransactionSigner`:
 
 - **`file:<path>`** is a keypair file, refused on mainnet.
-- **`ledger[:<path>]`** is a Ledger running the Solana app. It signs the message on the device, so the key never leaves it. Mainnet requires it (Q1).
+- **`ledger:<path>`** is a Ledger running the Solana app. It signs the message on the device, so the key never leaves it. Mainnet requires it (Q1). The path is required, with no default account (changed the same evening). Hyphae's admin is `44'/501'/2'/0'`.
 
 The run also enforces two things:
 
