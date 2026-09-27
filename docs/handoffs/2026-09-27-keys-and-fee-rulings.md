@@ -42,6 +42,7 @@ Checked in the program: `publish_epoch` credits `fee_recipient` with `add_lampor
 
 - **Multisig account (MYCEL Treasury):** `34wSn95ZFMsvsq7w6g8Rej7GSagGmpc6Vq5aHiCebu51`. Read from mainnet: threshold 2, no config authority, no time lock, the three members above with every permission. **Never send funds here.**
 - **Vault, index 0 (the fee address):** `rRceAUBNsnZKJDytjdHfCdqgTJGoDagtKujfvaBu7MK`. Derived from seeds `["multisig", multisig, "vault", 0]` under `SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf`. Squads' `isSquad` endpoint returns `v4` for it and `false` for the multisig account. It is System-owned with no data and held the 0.001 SOL Squads funds at creation.
+- **Confirmed twice:** the Squads app's Receive screen shows the same address for "Account 1". Cisco checked it against the chain derivation above.
 
 Squads v4 facts that matter here, from its docs:
 - Deposit to the **vault** (index 0), a PDA. The multisig account is a different address.
