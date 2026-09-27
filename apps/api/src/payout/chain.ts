@@ -13,10 +13,12 @@ import {
   type Address,
   address,
   appendTransactionMessageInstructions,
+  compileTransaction,
   createSolanaRpc,
   createSolanaRpcSubscriptions,
   createTransactionMessage,
   getAddressDecoder,
+  getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
   type Instruction,
   pipe,
@@ -93,6 +95,27 @@ export async function publishTransaction(
   return found.signature;
 }
 
+// The chain simulates the exact unsigned message first, so a transaction it would refuse never
+// reaches a signer: a Ledger is never asked to approve one.
+export async function signSimulated(
+  rpc: Rpc<SolanaRpcApi>,
+  message: Parameters<typeof signTransactionMessageWithSigners>[0],
+) {
+  const { value } = await rpc
+    .simulateTransaction(getBase64EncodedWireTransaction(compileTransaction(message)), {
+      encoding: "base64",
+      sigVerify: false,
+      commitment: "confirmed",
+    })
+    .send();
+  if (value.err !== null) {
+    const err = JSON.stringify(value.err, (_k, v) => (typeof v === "bigint" ? v.toString() : v));
+    const logs = (value.logs ?? []).slice(-5).join(" | ");
+    throw new Error(`chain: the simulation failed, so nothing was signed: ${err} (${logs})`);
+  }
+  return signTransactionMessageWithSigners(message);
+}
+
 export async function solanaChain(opts: {
   rpcUrl: string;
   wsUrl: string;
@@ -123,7 +146,10 @@ export async function solanaChain(opts: {
       (m) => setTransactionMessageLifetimeUsingBlockhash(blockhash, m),
       (m) => appendTransactionMessageInstructions(instructions, m),
     );
-    const transaction = await signTransactionMessageWithSigners(message);
+    // skipPreflight is for landing a failing transaction on purpose, so it is not simulated.
+    const transaction = options.skipPreflight
+      ? await signTransactionMessageWithSigners(message)
+      : await signSimulated(rpc, message);
     const signature = getSignatureFromTransaction(transaction);
     try {
       await sendAndConfirm(transaction as Parameters<typeof sendAndConfirm>[0], {

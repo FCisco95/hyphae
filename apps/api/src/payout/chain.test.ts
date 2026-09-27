@@ -8,13 +8,23 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import { utf8ToBytes } from "@noble/hashes/utils.js";
 import {
   address,
+  appendTransactionMessageInstructions,
+  blockhash,
   createNoopSigner,
   createSolanaRpcFromTransport,
+  createTransactionMessage,
   getBase58Decoder,
+  getBase64Encoder,
+  getTransactionDecoder,
+  pipe,
   type RpcTransport,
+  type SignatureDictionary,
+  setTransactionMessageFeePayerSigner,
+  setTransactionMessageLifetimeUsingBlockhash,
+  type TransactionPartialSigner,
 } from "@solana/kit";
 import { describe, expect, it } from "vitest";
-import { programAccount, publishTransaction } from "./chain.js";
+import { programAccount, publishTransaction, signSimulated } from "./chain.js";
 
 const SYSTEM = "11111111111111111111111111111111";
 const OTHER = "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR";
@@ -144,5 +154,60 @@ describe("publishTransaction", () => {
     const { rpc, e, fetched, publish } = await chainWith(12);
     expect(await publishTransaction(rpc, e)).toBe(publish?.signature);
     expect(fetched[0]).toBe(publish?.signature);
+  });
+});
+
+describe("signSimulated", () => {
+  const PAYER = address("3nVsVs3QSv6Yf1XtRj2d1s2ySSeeNQbtztHwm4VhNgbk");
+  const BLOCKHASH = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
+
+  function setup(err: unknown) {
+    const simulated: string[] = [];
+    const transport: RpcTransport = async <T>({ payload }: { payload: unknown }) => {
+      const { id, method, params } = payload as { id: number; method: string; params: unknown[] };
+      if (method !== "simulateTransaction") throw new Error(`unexpected ${method}`);
+      simulated.push(params[0] as string);
+      const value = { err, logs: ["Program log: refused"], accounts: null, unitsConsumed: 1 };
+      return { jsonrpc: "2.0", id, result: { context: { slot: 1 }, value } } as T;
+    };
+    let signs = 0;
+    const signer: TransactionPartialSigner = {
+      address: PAYER,
+      signTransactions: async (txs) => {
+        signs += 1;
+        return txs.map(() => ({ [PAYER]: new Uint8Array(64) }) as SignatureDictionary);
+      },
+    };
+    const message = pipe(
+      createTransactionMessage({ version: 0 }),
+      (m) => setTransactionMessageFeePayerSigner(signer, m),
+      (m) =>
+        setTransactionMessageLifetimeUsingBlockhash(
+          { blockhash: blockhash(BLOCKHASH), lastValidBlockHeight: 10n },
+          m,
+        ),
+      (m) =>
+        appendTransactionMessageInstructions(
+          [{ programAddress: address(SYSTEM), data: Uint8Array.of(2, 0, 0, 0) }],
+          m,
+        ),
+    );
+    return { rpc: createSolanaRpcFromTransport(transport), message, simulated, signs: () => signs };
+  }
+
+  it("asks no signer to sign a transaction the chain would refuse", async () => {
+    const s = setup({ InstructionError: [0, { Custom: 0 }] });
+    await expect(signSimulated(s.rpc, s.message)).rejects.toThrow(/simulation.*refused/s);
+    expect(s.signs()).toBe(0);
+  });
+
+  it("signs exactly the message it simulated", async () => {
+    const s = setup(null);
+    const signed = await signSimulated(s.rpc, s.message);
+    expect(s.signs()).toBe(1);
+    const simulated = getTransactionDecoder().decode(
+      getBase64Encoder().encode(s.simulated[0] as string),
+    );
+    expect(signed.messageBytes).toEqual(simulated.messageBytes);
   });
 });
