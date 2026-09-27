@@ -71,6 +71,13 @@
       "when": 1790284758294,
       "tag": "0009_payout_gates",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790457684750,
+      "tag": "0010_reward_commitment_hashes",
+      "breakpoints": true
     }
   ]
 }

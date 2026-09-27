@@ -192,9 +192,13 @@ export const rewardConfigs = pgTable(
     payload: jsonb("payload").notNull(),
     // Internal digest of the versioned canonical payload. Not the O7 configuration hash.
     digest: text("digest").notNull(),
+    configHash: text("config_hash"),
     createdAt: createdAt(),
   },
-  (t) => [uniqueIndex("reward_configs_community_digest").on(t.communityId, t.digest)],
+  (t) => [
+    uniqueIndex("reward_configs_community_digest").on(t.communityId, t.digest),
+    check("reward_configs_hash_format", sql`${t.configHash} ~ '^[0-9a-f]{64}$'`),
+  ],
 );
 
 export const rewardProposalStatus = pgEnum("reward_proposal_status", [
@@ -258,6 +262,7 @@ export const rewardIntakes = pgTable(
     idempotencyKey: text("idempotency_key").notNull(), // "tg:<chat_id>:<message_id>"
     acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull(),
     capture: jsonb("capture").notNull(),
+    evidenceHash: text("evidence_hash"),
     reentryOf: uuid("reentry_of").references((): AnyPgColumn => rewardIntakes.id),
   },
   (t) => [
@@ -268,6 +273,7 @@ export const rewardIntakes = pgTable(
     uniqueIndex("reward_intakes_epoch_artifact").on(t.epochId, t.artifactKey),
     uniqueIndex("reward_intakes_community_idempotency").on(t.communityId, t.idempotencyKey),
     index("reward_intakes_epoch_member").on(t.epochId, t.memberId),
+    check("reward_intakes_hash_format", sql`${t.evidenceHash} ~ '^[0-9a-f]{64}$'`),
   ],
 );
 
@@ -460,6 +466,7 @@ export const rewardDecisions = pgTable(
       .references(() => rewardConfigs.id),
     revision: integer("revision").notNull(),
     predecessorId: uuid("predecessor_id").references((): AnyPgColumn => rewardDecisions.id),
+    decisionHash: text("decision_hash"),
     dispatchId: uuid("dispatch_id").references(() => rewardDispatches.id),
     nominationId: uuid("nomination_id").references(() => rewardNominations.id),
     rawQuality: integer("raw_quality").notNull(),
@@ -489,6 +496,7 @@ export const rewardDecisions = pgTable(
       .on(t.communityId, t.idempotencyKey)
       .where(sql`${t.idempotencyKey} is not null`),
     check("reward_decisions_revision_positive", sql`${t.revision} >= 1`),
+    check("reward_decisions_hash_format", sql`${t.decisionHash} ~ '^[0-9a-f]{64}$'`),
     check(
       "reward_decisions_correction_complete",
       sql`(${t.correctionActor} is null) = (${t.correctionReason} is null) and (${t.correctionActor} is null) = (${t.correctionEvidence} is null)`,
@@ -538,6 +546,7 @@ export const rewardSnapshotEntries = pgTable(
       .notNull()
       .references(() => members.id),
     decisionId: uuid("decision_id").references(() => rewardDecisions.id),
+    decisionHash: text("decision_hash"),
     revision: integer("revision"),
     reason: rewardSnapshotReason("reason"),
     pointUnits: bigint("point_units", { mode: "bigint" }).notNull(),
@@ -545,6 +554,11 @@ export const rewardSnapshotEntries = pgTable(
   (t) => [
     uniqueIndex("reward_snapshot_entries_snapshot_contribution").on(t.snapshotId, t.contributionId),
     index("reward_snapshot_entries_contribution").on(t.contributionId),
+    check("reward_snapshot_entries_hash_format", sql`${t.decisionHash} ~ '^[0-9a-f]{64}$'`),
+    check(
+      "reward_snapshot_entries_hash_selected",
+      sql`${t.decisionId} is not null or ${t.decisionHash} is null`,
+    ),
     check(
       "reward_snapshot_entries_selected_or_reason",
       sql`(${t.decisionId} is null) = (${t.revision} is null) and (${t.decisionId} is null) <> (${t.reason} is null) and (${t.reason} is null or ${t.pointUnits} = 0)`,
