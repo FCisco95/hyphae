@@ -1,3 +1,4 @@
+import { CUSTODY_POLICY } from "@hyphae/core";
 import { members, rulesTestPasses } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { Bot } from "grammy";
@@ -152,7 +153,9 @@ describe("/rules", () => {
       command("/rules", { id: Number(community.telegramChatId), type: "group" }),
     );
     expect(last(h.out)?.text).toBe(
-      `Take the rules test privately: https://t.me/t_bot?start=rules_${community.id}`,
+      `Take the rules test privately: https://t.me/t_bot?start=rules_${community.id}
+
+${CUSTODY_POLICY}`,
     );
     await h.bot.handleUpdate(command("/rules", privateChat));
     expect(last(h.out)?.text).toBe("Send /rules in your community chat.");

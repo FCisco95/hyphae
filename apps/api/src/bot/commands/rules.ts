@@ -1,3 +1,4 @@
+import { CUSTODY_POLICY } from "@hyphae/core";
 import { communities, type Db, members, rewardConfigs } from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
 import { type CommandContext, Composer, type Context, InlineKeyboard } from "grammy";
@@ -126,7 +127,9 @@ export function rulesTest(db: Db): Composer<Context> {
     if (!community) return reply(ctx, "This chat is not a registered Hyphae community.");
     return reply(
       ctx,
-      `Take the rules test privately: https://t.me/${ctx.me.username}?start=${rulesStartPayload(community.id)}`,
+      `Take the rules test privately: https://t.me/${ctx.me.username}?start=${rulesStartPayload(community.id)}
+
+${CUSTODY_POLICY}`,
     );
   });
 

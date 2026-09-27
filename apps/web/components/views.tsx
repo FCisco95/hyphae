@@ -8,6 +8,7 @@ import type {
   LooseEpochV1,
   RevisionV1,
 } from "@hyphae/core";
+import { CUSTODY_POLICY_URL, CUSTODY_SUMMARY } from "@hyphae/core";
 import {
   creditSentence,
   explorerTx,
@@ -153,6 +154,18 @@ export function Tx({ signature, network }: { signature: string; network: Network
 
 type Network = "solana:devnet" | "solana:mainnet";
 
+function CustodyNote() {
+  return (
+    <p className="muted small">
+      {CUSTODY_SUMMARY}{" "}
+      <a href={CUSTODY_POLICY_URL} rel="noopener noreferrer">
+        The full policy
+      </a>
+      .
+    </p>
+  );
+}
+
 function SettlementPanel({ epoch }: { epoch: LooseEpochV1 }) {
   const { allocation: a, payment: p } = settlementOf(epoch);
   if (a.status !== "published") {
@@ -160,6 +173,7 @@ function SettlementPanel({ epoch }: { epoch: LooseEpochV1 }) {
       <section className="panel">
         <h2>Settlement</h2>
         <p>{unavailableSentence(a.reason)}</p>
+        <CustodyNote />
       </section>
     );
   }
@@ -258,6 +272,7 @@ function SettlementPanel({ epoch }: { epoch: LooseEpochV1 }) {
       <p>
         <a href={`/c/${epoch.community.mint}/e/${epoch.index}/claim`}>Claim with your wallet →</a>
       </p>
+      <CustodyNote />
     </section>
   );
 }

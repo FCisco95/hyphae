@@ -1,4 +1,4 @@
-import { ReadApiV1, ReadApiV1Loose } from "@hyphae/core";
+import { CUSTODY_POLICY_URL, CUSTODY_SUMMARY, ReadApiV1, ReadApiV1Loose } from "@hyphae/core";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import * as f from "./fixtures.js";
@@ -109,6 +109,12 @@ describe("Settlement (P14)", () => {
       expect(t).toContain(expected);
     }
     expect(html).toContain(`https://explorer.solana.com/tx/${f.PUBLISH_TX}?cluster=devnet`);
+  });
+
+  it("states the pilot's custody policy with a link to all of it", () => {
+    const html = renderToStaticMarkup(<EpochView epoch={f.settledEpoch} list={f.contributions} />);
+    expect(settlement(f.settledEpoch)).toContain(CUSTODY_SUMMARY);
+    expect(html).toContain(`href="${CUSTODY_POLICY_URL}"`);
   });
 
   it("shows paid only next to the claim transaction, and a way to claim the rest", () => {

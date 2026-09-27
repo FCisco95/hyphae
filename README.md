@@ -23,12 +23,12 @@ Public, read-only, unauthenticated JSON, to be served at `https://hyphae-api.fly
 
 ## Integrate in 10 lines
 
-Every leaf of a wallet, in every community, with its proof and its payment status (`paid` with the claim transaction, `claimable`, or `unavailable` with a reason):
+A wallet's leaves in every community, newest first, each with its proof and its payment status (`paid` with the claim transaction, `claimable`, or `unavailable` with a reason). This reads the first 100; `total_claims` counts them all, and `offset` pages on.
 
 ```js
 const API = process.env.HYPHAE_API ?? "https://hyphae-api.fly.dev/v1";
 const wallet = process.argv[2];
-const { claims } = await (await fetch(`${API}/wallets/${wallet}/claims`)).json();
+const { claims } = await (await fetch(`${API}/wallets/${wallet}/claims?limit=100`)).json();
 ```
 
 Check each proof yourself: rebuild the 89-byte leaf, then hash up the sorted pairs to the root. It is the same computation the program runs before it pays.
@@ -63,11 +63,15 @@ const [community] = await getProgramDerivedAddress({ programAddress: HYPHAE, see
 const [vault] = await getProgramDerivedAddress({ programAddress: HYPHAE, seeds: ["vault", enc.encode(community)] });
 ```
 
-- SOL leaves the vault only through the program. Each published epoch sends the 3% Hyphae fee to the recipient fixed when the community was created. Each claim pays one leaf of a published root, once.
+- SOL leaves the vault only through the program: each published epoch sends the 3% Hyphae fee to the recipient fixed when the community was created, and each claim pays one leaf of a published root, once. Who is trusted with what is under [Custody during the pilot](#custody-during-the-pilot).
 - An epoch can only allocate SOL that no earlier epoch has allocated and nobody has claimed yet.
 - The program is on devnet only. Check its address on the network you use before sending anything.
 
 Organic's bagworker sweep can target this address. Nothing in this repository changes Organic's code.
+
+## Custody during the pilot
+
+**Pilot policy.** Hyphae's publisher key sets each epoch's payout list, so you trust it with that epoch's pot. We keep that key on a hardware wallet and fund one epoch at a time, just before it pays. The program has no withdraw instruction: SOL leaves the vault only through member claims and the 3% fee. The program can still be upgraded. The upgrade key is held the same way, and any upgrade is announced here before it is used.
 
 ## Develop
 
