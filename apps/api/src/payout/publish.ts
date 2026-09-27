@@ -3,12 +3,14 @@ import { communities, type Db, epochs, leaves } from "@hyphae/db";
 import { and, eq, sql } from "drizzle-orm";
 import { backfillEpochCommitments } from "./commitment-store.js";
 import { type Blocker, evaluatePayoutGate } from "./gate.js";
+import { loadIntent, type PublicationIntent, storeIntent } from "./intent.js";
 import { buildPublication } from "./publication.js";
 import type { RulesTest } from "./rules-test.js";
 
 // The R6 publish job: a ready epoch's root, audit hash, gross pot and allocated total go on-chain
-// through publish_epoch, then its leaves and root are recorded. Written, not scheduled: nothing
-// in the api or worker calls it, and it refuses a community not bound to its on-chain address.
+// through publish_epoch, then its leaves and root are recorded. The exact bytes are stored as the
+// epoch's intent before the send, and every later run sends or records those bytes. Nothing in
+// the api or worker calls it, and it refuses a community not bound to its on-chain address.
 
 export interface OnChainEpoch {
   root: string;
@@ -73,34 +75,59 @@ export async function publishEpoch(
     return { status: "refused", reason: "community_not_on_chain" };
   }
 
-  // B6: a ready epoch's hashes are stored here, under the reward-writer lock, so a never-backfilled
-  // epoch or a late correction cannot strand publication or its recovery. The backfill never
-  // overwrites and refuses a mismatch; the build below stays strict. A blocked epoch gets no write.
   const ref = { communityId: input.communityId, epochId: input.epochId };
   const gate = await evaluatePayoutGate(db, ref, deps);
   if (gate.status !== "ready") return { status: "blocked", blockers: gate.blockers };
-  await backfillEpochCommitments(db, ref);
 
-  const publication = await buildPublication(
-    db,
-    ref,
-    {
-      grossLamports: input.grossLamports,
-      network: chain.network,
-      programId: chain.programId,
-      feeRecipient: onChain.feeRecipient,
-    },
-    deps,
-  );
-  if (publication.status !== "ready") return publication;
+  // A stored intent is only ever sent or recorded as stored, and only where it was made for.
+  const stored = await loadIntent(db, input.epochId);
+  if (stored) {
+    const s = stored.audit.settlement;
+    if (
+      stored.audit.network !== chain.network ||
+      stored.audit.program_id !== chain.programId ||
+      stored.communityAddress !== onChain.address ||
+      s.fee_recipient !== onChain.feeRecipient ||
+      BigInt(s.gross_lamports) !== input.grossLamports
+    ) {
+      throw new Error(
+        `publish: the stored intent for epoch ${input.epochId} was made for another network, community or pot`,
+      );
+    }
+  }
+  const index = BigInt(gate.epochIndex);
+  const existing = await chain.readEpoch(onChain.address, index);
+
+  let intent: PublicationIntent;
+  if (stored && existing) {
+    // After the send, the chain and the stored bytes decide; nothing is rebuilt.
+    intent = stored;
+  } else {
+    // Before any send, today's rebuild must equal the stored intent, or becomes it. B6: the
+    // backfill stores a ready epoch's hashes under the reward-writer lock first, so a
+    // never-backfilled epoch or a late correction cannot strand the strict build.
+    await backfillEpochCommitments(db, ref);
+    const built = await buildPublication(
+      db,
+      ref,
+      {
+        grossLamports: input.grossLamports,
+        network: chain.network,
+        programId: chain.programId,
+        feeRecipient: onChain.feeRecipient,
+      },
+      deps,
+    );
+    if (built.status !== "ready") return built;
+    intent = await storeIntent(db, ref, onChain.address, built);
+  }
 
   const intended: OnChainEpoch = {
-    root: publication.root,
-    auditHash: publication.auditHash,
-    grossLamports: publication.allocation.grossLamports,
-    allocatedLamports: publication.allocation.allocatedLamports,
+    root: intent.root,
+    auditHash: intent.auditHash,
+    grossLamports: BigInt(intent.audit.settlement.gross_lamports),
+    allocatedLamports: BigInt(intent.audit.settlement.allocated_lamports),
   };
-  const existing = await chain.readEpoch(onChain.address, publication.epochIndex);
   let signature: string;
   if (existing) {
     const same =
@@ -109,15 +136,13 @@ export async function publishEpoch(
       existing.grossLamports === intended.grossLamports &&
       existing.allocatedLamports === intended.allocatedLamports;
     if (!same) {
-      throw new Error(
-        `publish: epoch ${publication.epochIndex} is on-chain and differs from this publication`,
-      );
+      throw new Error(`publish: epoch ${index} is on-chain and differs from this publication`);
     }
-    signature = await chain.publishSignature(onChain.address, publication.epochIndex);
+    signature = await chain.publishSignature(onChain.address, index);
   } else {
     signature = await chain.publishEpoch({
       community: onChain.address,
-      index: publication.epochIndex,
+      index,
       ...intended,
       feeRecipient: onChain.feeRecipient,
     });
@@ -131,11 +156,11 @@ export async function publishEpoch(
       .for("update");
     if (!epoch) throw new Error(`publish: epoch ${input.epochId} vanished`);
     if (epoch.root !== null) {
-      if (epoch.root === publication.root) return;
+      if (epoch.root === intent.root) return;
       throw new Error(`publish: epoch ${input.epochId} was recorded with another root`);
     }
     await tx.insert(leaves).values(
-      publication.leaves.map((l) => ({
+      intent.leaves.map((l) => ({
         epochId: input.epochId,
         memberId: l.memberId,
         wallet: l.wallet,
@@ -149,8 +174,8 @@ export async function publishEpoch(
       .update(epochs)
       .set({
         status: "published",
-        root: publication.root,
-        potLamports: publication.allocation.grossLamports,
+        root: intent.root,
+        potLamports: intended.grossLamports,
         publishTx: signature,
         publishedAt: sql`clock_timestamp()`,
       })
@@ -160,9 +185,9 @@ export async function publishEpoch(
   return {
     status: "published",
     signature,
-    root: publication.root,
-    auditHash: publication.auditHash,
-    leaves: publication.leaves.length,
+    root: intent.root,
+    auditHash: intent.auditHash,
+    leaves: intent.leaves.length,
     recovered: existing !== null,
   };
 }

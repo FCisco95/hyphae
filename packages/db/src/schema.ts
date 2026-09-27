@@ -180,6 +180,62 @@ export const leaves = pgTable(
   (t) => [uniqueIndex("leaves_epoch_wallet").on(t.epochId, t.wallet)],
 );
 
+// A text's H-CONTRACT B2 tagged hash, computed in SQL: sha256(tag || 0x00 || utf8(text)).
+const taggedHashSql = (tag: string, text: AnyPgColumn) =>
+  sql`encode(sha256(convert_to(${sql.raw(`'${tag}'`)}, 'UTF8') || '\\x00'::bytea || convert_to(${text}, 'UTF8')), 'hex')`;
+
+// The publication intent: stored before any send, never updated. The audit manifest's exact
+// hyphae-c14n/1 bytes are what the on-chain audit hash commits to; a CHECK ties each hash to them.
+export const epochPublications = pgTable(
+  "epoch_publications",
+  {
+    id: id(),
+    epochId: uuid("epoch_id")
+      .notNull()
+      .references(() => epochs.id),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    // The on-chain community account the intent is published under.
+    communityAddress: text("community_address").notNull(),
+    root: text("root").notNull(),
+    auditHash: text("audit_hash").notNull(),
+    auditManifest: text("audit_manifest").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("epoch_publications_epoch").on(t.epochId),
+    check("epoch_publications_root_format", sql`${t.root} ~ '^[0-9a-f]{64}$'`),
+    check(
+      "epoch_publications_audit_hash",
+      sql`${t.auditHash} = ${taggedHashSql("hyphae/epoch-audit/v1", t.auditManifest)}`,
+    ),
+  ],
+);
+
+// Every member-epoch manifest of an intent, byte for byte (B7); its hash is the leaf's evidence.
+export const epochPublicationMembers = pgTable(
+  "epoch_publication_members",
+  {
+    id: id(),
+    publicationId: uuid("publication_id")
+      .notNull()
+      .references(() => epochPublications.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    manifestHash: text("manifest_hash").notNull(),
+    manifest: text("manifest").notNull(),
+  },
+  (t) => [
+    uniqueIndex("epoch_publication_members_publication_member").on(t.publicationId, t.memberId),
+    check(
+      "epoch_publication_members_hash",
+      sql`${t.manifestHash} = ${taggedHashSql("hyphae/member-epoch/v1", t.manifest)}`,
+    ),
+  ],
+);
+
 // Immutable reward configuration bundles (O4). Insert-only.
 export const rewardConfigs = pgTable(
   "reward_configs",

@@ -53,6 +53,41 @@ export type Publication =
 
 const byKey = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
+// The leaves (B8) and root that member-epoch manifests commit to. A payable member whose floored
+// share is 0 gets no leaf: a claim would only cost rent.
+export function leavesOf(
+  members: readonly MemberEpochManifest[],
+  epochIndex: bigint,
+): { leaves: PublishedLeaf[]; root: string } {
+  const encoder = getAddressEncoder();
+  const unordered = members
+    .filter((m) => m.settlement.status === "payable" && m.settlement.amount_lamports !== "0")
+    .map((m) => {
+      const leaf = {
+        memberId: m.member_id,
+        wallet: m.wallet as string,
+        score: BigInt(m.whole_points),
+        amountLamports: BigInt(m.settlement.amount_lamports),
+        evidenceHash: memberEpochHash(m),
+      };
+      const hash = leafHash({
+        wallet: new Uint8Array(encoder.encode(leaf.wallet as never)),
+        epochIndex,
+        score: leaf.score,
+        amount: leaf.amountLamports,
+        evidenceHash: hexToBytes(leaf.evidenceHash),
+      });
+      return { leaf, hash: bytesToHex(hash) };
+    })
+    // Ordered by leaf hash, so the root depends on the leaves alone.
+    .sort((a, b) => byKey(a.hash, b.hash));
+  const tree = buildTree(unordered.map((u) => hexToBytes(u.hash)));
+  return {
+    leaves: unordered.map((u, i) => ({ ...u.leaf, proof: getProof(tree, i).map(bytesToHex) })),
+    root: bytesToHex(tree.root),
+  };
+}
+
 export async function buildPublication(
   db: Db,
   ref: { communityId: string; epochId: string },
@@ -148,37 +183,8 @@ export async function buildPublication(
       };
     });
     const manifestHash = new Map(members.map((m) => [m.member_id, memberEpochHash(m)]));
-
-    // A payable member whose floored share is 0 gets no leaf: a claim would only cost rent.
-    const encoder = getAddressEncoder();
     const epochIndex = BigInt(gate.epochIndex);
-    const unordered = members
-      .filter((m) => m.settlement.status === "payable" && m.settlement.amount_lamports !== "0")
-      .map((m) => {
-        const leaf = {
-          memberId: m.member_id,
-          wallet: m.wallet as string,
-          score: BigInt(m.whole_points),
-          amountLamports: BigInt(m.settlement.amount_lamports),
-          evidenceHash: manifestHash.get(m.member_id) as string,
-        };
-        const hash = leafHash({
-          wallet: new Uint8Array(encoder.encode(leaf.wallet as never)),
-          epochIndex,
-          score: leaf.score,
-          amount: leaf.amountLamports,
-          evidenceHash: hexToBytes(leaf.evidenceHash),
-        });
-        return { leaf, hash: bytesToHex(hash) };
-      })
-      // Ordered by leaf hash, so the root depends on the leaves alone.
-      .sort((a, b) => byKey(a.hash, b.hash));
-    const tree = buildTree(unordered.map((u) => hexToBytes(u.hash)));
-    const leaves: PublishedLeaf[] = unordered.map((u, i) => ({
-      ...u.leaf,
-      proof: getProof(tree, i).map(bytesToHex),
-    }));
-    const root = bytesToHex(tree.root);
+    const { leaves, root } = leavesOf(members, epochIndex);
 
     const audit: EpochAuditManifest = {
       ...base,

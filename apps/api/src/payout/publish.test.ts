@@ -1,4 +1,13 @@
-import { communities, epochs, leaves } from "@hyphae/db";
+import { c14n, memberEpochHash, TAGS, taggedHash } from "@hyphae/core";
+import {
+  communities,
+  epochPublicationMembers,
+  epochPublications,
+  epochs,
+  holdChecks,
+  leaves,
+  rewardDecisions,
+} from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb } from "../rewards/test-db.js";
@@ -219,5 +228,184 @@ describe("publishEpoch", () => {
     expect(await leafRows(seed.epochId)).toHaveLength(0);
     const out = await publishEpoch(t.db, fake.chain, input(ref));
     expect(out).toMatchObject({ status: "published", signature: "sig-publish" });
+  });
+});
+
+// The durable intent (0011): what a run will send is stored, byte for byte, before the send, and
+// every later run sends or records those bytes.
+describe("the stored publication intent", () => {
+  const settings = {
+    grossLamports: GROSS,
+    network: "solana:devnet" as const,
+    programId: HYPHAE_PROGRAM_ID,
+    feeRecipient: FEE_RECIPIENT,
+  };
+  const intentOf = async (epochId: string) => {
+    const [publication] = await t.db
+      .select()
+      .from(epochPublications)
+      .where(eq(epochPublications.epochId, epochId));
+    const members = publication
+      ? await t.db
+          .select()
+          .from(epochPublicationMembers)
+          .where(eq(epochPublicationMembers.publicationId, publication.id))
+      : [];
+    return { publication, members };
+  };
+  // A send that never lands: the run stops before anything is on-chain.
+  const neverLands = (chain: PublishChain): PublishChain => ({
+    ...chain,
+    publishEpoch: async () => {
+      throw new Error("blockhash expired");
+    },
+  });
+  async function stoppedBeforeSend() {
+    const { seed, ref } = await seeded();
+    const community = await communityOf(seed.communityId);
+    const fake = fakeChain(community.chainAddress as string);
+    await expect(publishEpoch(t.db, neverLands(fake.chain), input(ref))).rejects.toThrow(
+      /blockhash/,
+    );
+    return { seed, ref, fake, ...(await intentOf(seed.epochId)) };
+  }
+
+  it("stores the exact audit and member bytes, with their hashes, before it sends", async () => {
+    const { seed, ref } = await seeded();
+    const community = await communityOf(seed.communityId);
+    const built = await buildPublication(t.db, ref, settings);
+    if (built.status !== "ready") throw new Error("not ready");
+    const fake = fakeChain(community.chainAddress as string);
+    let atSend: Awaited<ReturnType<typeof intentOf>> | undefined;
+    const watched: PublishChain = {
+      ...fake.chain,
+      publishEpoch: async (i) => {
+        atSend = await intentOf(seed.epochId);
+        return fake.chain.publishEpoch(i);
+      },
+    };
+    await publishEpoch(t.db, watched, input(ref));
+
+    expect(atSend?.publication).toMatchObject({
+      communityId: seed.communityId,
+      communityAddress: community.chainAddress,
+      root: built.root,
+      auditHash: built.auditHash,
+      auditManifest: c14n(built.audit),
+    });
+    expect(taggedHash(TAGS.epochAudit, atSend?.publication?.auditManifest as string)).toBe(
+      built.auditHash,
+    );
+    const stored = new Map(atSend?.members.map((m) => [m.memberId, m]));
+    expect(stored.size).toBe(built.members.length);
+    for (const m of built.members) {
+      expect(stored.get(m.member_id)?.manifest).toBe(c14n(m));
+      expect(stored.get(m.member_id)?.manifestHash).toBe(memberEpochHash(m));
+    }
+  });
+
+  it("sends the stored bytes after a run that stopped before its send", async () => {
+    const { seed, ref, fake, publication } = await stoppedBeforeSend();
+    expect(publication).toBeDefined();
+    expect(fake.calls.publish).toHaveLength(0);
+
+    const out = await publishEpoch(t.db, fake.chain, input(ref));
+    expect(out).toMatchObject({ status: "published", recovered: false, root: publication?.root });
+    expect(fake.calls.publish[0]).toMatchObject({
+      root: publication?.root,
+      auditHash: publication?.auditHash,
+    });
+    expect((await intentOf(seed.epochId)).publication?.id).toBe(publication?.id);
+  });
+
+  it("records the stored bytes after a run that stopped past its send, without rebuilding", async () => {
+    const { seed, ref } = await seeded();
+    const community = await communityOf(seed.communityId);
+    const fake = fakeChain(community.chainAddress as string);
+    const landsThenStops: PublishChain = {
+      ...fake.chain,
+      publishEpoch: async (i) => {
+        await fake.chain.publishEpoch(i);
+        throw new Error("process killed after the send");
+      },
+    };
+    await expect(publishEpoch(t.db, landsThenStops, input(ref))).rejects.toThrow(/killed/);
+    const { publication, members } = await intentOf(seed.epochId);
+
+    // After the send the chain and the stored bytes decide: a row edited since, which would stop
+    // any rebuild, does not stop recording what is already on-chain.
+    await t.db
+      .update(rewardDecisions)
+      .set({ explanation: "edited after the send" })
+      .where(eq(rewardDecisions.epochId, seed.epochId));
+    const out = await publishEpoch(t.db, fake.chain, input(ref));
+    expect(out).toMatchObject({
+      status: "published",
+      recovered: true,
+      signature: "sig-found-on-chain",
+      root: publication?.root,
+      auditHash: publication?.auditHash,
+    });
+    expect(fake.calls.publish).toHaveLength(1);
+    const recorded = await leafRows(seed.epochId);
+    const byMember = new Map(members.map((m) => [m.memberId, m.manifestHash]));
+    expect(recorded).toHaveLength(3);
+    for (const l of recorded) expect(l.evidenceHash).toBe(byMember.get(l.memberId));
+    expect((await epochRow(seed.epochId))?.root).toBe(publication?.root);
+  });
+
+  it("refuses to send when today's rebuild differs from the stored intent", async () => {
+    const { seed, ref, fake } = await stoppedBeforeSend();
+    // A recorded hold observation changes after the intent: the rebuilt manifest differs.
+    await t.db
+      .update(holdChecks)
+      .set({ rawAmount: "999999999999999" })
+      .where(eq(holdChecks.memberId, seed.members.effort));
+    await expect(publishEpoch(t.db, fake.chain, input(ref))).rejects.toThrow(
+      /differs from its stored intent/,
+    );
+    expect(fake.calls.publish).toHaveLength(0);
+    expect(await leafRows(seed.epochId)).toHaveLength(0);
+  });
+
+  it("refuses a stored intent that no longer adds up from its own bytes", async () => {
+    const { seed, ref, fake, members } = await stoppedBeforeSend();
+    const target = members.find((m) => m.memberId === seed.members.floor);
+    if (!target) throw new Error("no floor manifest");
+    // Bytes and hash still agree, so the database accepts it; the audit no longer names it.
+    const forged = c14n({ ...JSON.parse(target.manifest), point_units: "1" });
+    await t.db
+      .update(epochPublicationMembers)
+      .set({ manifest: forged, manifestHash: taggedHash(TAGS.memberEpoch, forged) })
+      .where(eq(epochPublicationMembers.id, target.id));
+    await expect(publishEpoch(t.db, fake.chain, input(ref))).rejects.toThrow(
+      /stored intent .* inconsistent/,
+    );
+    expect(fake.calls.publish).toHaveLength(0);
+  });
+
+  it("refuses a stored intent made for another network", async () => {
+    const { ref, fake } = await stoppedBeforeSend();
+    const mainnet: PublishChain = { ...fake.chain, network: "solana:mainnet" };
+    await expect(publishEpoch(t.db, mainnet, input(ref))).rejects.toThrow(/another network/);
+    expect(fake.calls.publish).toHaveLength(0);
+  });
+
+  it("the database refuses bytes and hashes that disagree", async () => {
+    const { publication, members } = await stoppedBeforeSend();
+    const violates = (error: unknown) =>
+      (error as { cause?: { code?: string } }).cause?.code === "23514";
+    await expect(
+      t.db
+        .update(epochPublications)
+        .set({ auditManifest: `${publication?.auditManifest} ` })
+        .where(eq(epochPublications.id, publication?.id as string)),
+    ).rejects.toSatisfy(violates);
+    await expect(
+      t.db
+        .update(epochPublicationMembers)
+        .set({ manifestHash: "0".repeat(64) })
+        .where(eq(epochPublicationMembers.id, members[0]?.id as string)),
+    ).rejects.toSatisfy(violates);
   });
 });

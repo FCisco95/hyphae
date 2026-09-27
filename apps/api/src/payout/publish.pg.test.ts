@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { createDb, epochs, leaves } from "@hyphae/db";
+import { createDb, epochPublications, epochs, leaves } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -103,6 +103,13 @@ describe("publication and publish on Postgres", () => {
       expect(typeof l.amountLamports).toBe("bigint");
       expect(Array.isArray(l.proof)).toBe(true);
     }
+    // Both runs stored or found the same single intent.
+    const intents = await a
+      .select()
+      .from(epochPublications)
+      .where(eq(epochPublications.epochId, seed.epochId));
+    expect(intents).toHaveLength(1);
+    expect(intents[0]?.root).toBe(row?.root);
     // A later run only sees an epoch that is already published.
     expect(await publishEpoch(b, shared.chain, input)).toEqual({
       status: "blocked",
