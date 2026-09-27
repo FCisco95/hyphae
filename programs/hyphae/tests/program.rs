@@ -677,3 +677,68 @@ fn a_zero_claim_fails() {
         Some(ZERO_AMOUNT)
     );
 }
+
+// Anyone can send lamports to a future PDA, which leaves an empty System-owned account there.
+// Anchor's `init` still creates each account, so prefunding cannot block a community, an epoch
+// or a claim.
+#[test]
+fn initialize_creates_a_community_and_vault_someone_prefunded() {
+    let mut svm = LiteSVM::new();
+    svm.add_program_from_file(
+        hyphae::ID,
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../target/deploy/hyphae.so"),
+    )
+    .unwrap();
+    let admin = funded(&mut svm, 10 * SOL);
+    let mint = mint_account(&mut svm, TOKEN_PROGRAM);
+    let community = community_pda(&mint, &admin.pubkey());
+    svm.airdrop(&community, 1_000_000).unwrap();
+    svm.airdrop(&vault_pda(&community), 1_000_000).unwrap();
+    let fee_recipient = funded(&mut svm, SOL).pubkey();
+
+    send(
+        &mut svm,
+        initialize_ix(&admin.pubkey(), &mint, fee_recipient),
+        &[&admin],
+    )
+    .unwrap();
+
+    assert_eq!(svm.get_account(&community).unwrap().owner, hyphae::ID);
+    assert_eq!(
+        svm.get_account(&vault_pda(&community)).unwrap().owner,
+        hyphae::ID
+    );
+}
+
+#[test]
+fn publish_creates_an_epoch_someone_prefunded() {
+    let v = vectors();
+    let mut env = setup();
+    env.deposit(SOL);
+    let epoch = epoch_pda(&env.community, 2);
+    env.svm.airdrop(&epoch, 1_000_000).unwrap();
+    let root = hex32(&tree(&v, 3)["root"]);
+
+    env.publish(2, root, GROSS, ALLOCATED).unwrap();
+
+    assert_eq!(env.svm.get_account(&epoch).unwrap().owner, hyphae::ID);
+    assert_eq!(env.epoch(2).root, root);
+    assert_eq!(env.community().outstanding_lamports, ALLOCATED);
+}
+
+#[test]
+fn a_claim_creates_a_receipt_someone_prefunded() {
+    let (mut env, v) = published();
+    let a = leaf(&v, "a");
+    let key = claimant(&mut env, &a);
+    let receipt = receipt_pda(&epoch_pda(&env.community, 2), &key.pubkey());
+    env.svm.airdrop(&receipt, 1_000_000).unwrap();
+    let vault_before = env.balance(&env.vault);
+
+    env.claim(&key, 2, &a, a.amount, proof(tree(&v, 3), "a"))
+        .unwrap();
+
+    assert_eq!(env.svm.get_account(&receipt).unwrap().owner, hyphae::ID);
+    assert_eq!(vault_before - env.balance(&env.vault), a.amount);
+    assert_eq!(env.epoch(2).claimed_lamports, a.amount);
+}

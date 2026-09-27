@@ -50,6 +50,23 @@ export class SendError extends Error {
   }
 }
 
+const SYSTEM_PROGRAM = "11111111111111111111111111111111";
+
+// A program account's bytes, or null where the program has created none. Anyone can send lamports
+// to a future PDA, which leaves an empty System-owned account there; the program's `init` still
+// creates the account (Anchor tops up rent, allocates and assigns), so it reads as not created.
+// Any other owner is refused.
+export function programAccount(
+  programId: string,
+  value: { owner: string; executable: boolean; data: readonly [string, string] } | null,
+): Uint8Array | null {
+  if (!value) return null;
+  const bytes = Uint8Array.from(Buffer.from(value.data[0], "base64"));
+  if (value.owner === programId) return bytes;
+  if (value.owner === SYSTEM_PROGRAM && !value.executable && bytes.length === 0) return null;
+  throw new Error(`chain: an account is not owned by ${programId}`);
+}
+
 export async function solanaChain(opts: {
   rpcUrl: string;
   wsUrl: string;
@@ -97,9 +114,7 @@ export async function solanaChain(opts: {
     const { value } = await rpc
       .getAccountInfo(at, { encoding: "base64", commitment: "confirmed" })
       .send();
-    if (!value) return null;
-    if (value.owner !== programId) throw new Error(`chain: ${at} is not owned by the program`);
-    return Uint8Array.from(Buffer.from(value.data[0], "base64"));
+    return programAccount(programId, value);
   }
 
   async function publishing(input: PublishArgs) {

@@ -21,9 +21,11 @@ function rpcWith(answer: (call: Call) => unknown) {
   return { rpc: createSolanaRpcFromTransport(transport), calls };
 }
 
-const account = (owner: string, bytes: number[]) => ({
+const SYSTEM = "11111111111111111111111111111111";
+
+const account = (owner: string, bytes: number[], executable = false) => ({
   data: [Buffer.from(bytes).toString("base64"), "base64"],
-  executable: false,
+  executable,
   lamports: 1_000_000,
   owner,
   rentEpoch: 0,
@@ -64,6 +66,22 @@ describe("the chain reader", () => {
     await expect(settlementReader(rpc).accounts(HYPHAE_PROGRAM_ID, [A])).rejects.toThrow(
       /not owned/,
     );
+  });
+
+  // Anyone can send lamports to a future receipt or epoch address; the program's `init` still
+  // creates the account there, so the reader must not turn that into an unreadable chain.
+  it("reads a prefunded, empty system account at a program address as not created yet", async () => {
+    const { rpc } = rpcWith(() => ({ context: { slot: 1 }, value: [account(SYSTEM, [])] }));
+    expect(await settlementReader(rpc).accounts(HYPHAE_PROGRAM_ID, [A])).toEqual([null]);
+  });
+
+  it("still refuses a system account that holds data or is executable", async () => {
+    for (const other of [account(SYSTEM, [0]), account(SYSTEM, [], true)]) {
+      const { rpc } = rpcWith(() => ({ context: { slot: 1 }, value: [other] }));
+      await expect(settlementReader(rpc).accounts(HYPHAE_PROGRAM_ID, [A])).rejects.toThrow(
+        /not owned/,
+      );
+    }
   });
 
   it("finds the transaction that created an account, and remembers it once finalized", async () => {

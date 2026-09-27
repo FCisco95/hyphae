@@ -1,5 +1,5 @@
 import { address, type Rpc, type SolanaRpcApi } from "@solana/kit";
-import { GENESIS } from "../payout/chain.js";
+import { GENESIS, programAccount } from "../payout/chain.js";
 import { type Creation, creatingTransaction } from "../payout/evidence.js";
 import type { SettlementReader } from "./settlement.js";
 
@@ -42,15 +42,7 @@ export function settlementReader(rpc: Rpc<SolanaRpcApi>, timeoutMs = 1_500): Set
             commitment: "confirmed",
           })
           .send({ abortSignal: abortSignal() });
-        for (const account of value) {
-          if (!account) {
-            out.push(null);
-            continue;
-          }
-          if (account.owner !== owner)
-            throw new Error(`chain: an account is not owned by ${owner}`);
-          out.push(Uint8Array.from(Buffer.from(account.data[0], "base64")));
-        }
+        for (const account of value) out.push(programAccount(owner, account));
       }
       return out;
     },
