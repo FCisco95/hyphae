@@ -1,4 +1,5 @@
-import { createHash } from "node:crypto";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { utf8ToBytes as utf8 } from "@noble/hashes/utils.js";
 import {
   AccountRole,
   type Address,
@@ -9,14 +10,13 @@ import {
   type TransactionSigner,
 } from "@solana/kit";
 
-// Client for programs/hyphae: PDAs, instruction bytes and account layouts. The bytes are pinned by
-// the shared H-CONTRACT vectors, which the Rust tests assert against the program itself.
+// Client for programs/hyphae: PDAs, instruction bytes and account layouts, shared by the publish
+// job and the claim page. The bytes are pinned by the shared H-CONTRACT vectors, which the Rust
+// tests assert against the program itself.
 export const HYPHAE_PROGRAM_ID = address("EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E");
 const SYSTEM_PROGRAM = address("11111111111111111111111111111111");
 
-const utf8 = (s: string) => new TextEncoder().encode(s);
-const discriminator = (preimage: string) =>
-  new Uint8Array(createHash("sha256").update(preimage).digest().subarray(0, 8));
+const discriminator = (preimage: string) => sha256(utf8(preimage)).slice(0, 8);
 const addressBytes = (a: Address) => new Uint8Array(getAddressEncoder().encode(a));
 
 const MAX_U64 = (1n << 64n) - 1n;

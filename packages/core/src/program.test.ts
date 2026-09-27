@@ -20,10 +20,7 @@ import {
 
 // The shared H-CONTRACT vectors; the Rust tests assert the same bytes against the program.
 const vectors = JSON.parse(
-  readFileSync(
-    new URL("../../../../packages/core/src/test-vectors/h-contract-v1.json", import.meta.url),
-    "utf8",
-  ),
+  readFileSync(new URL("./test-vectors/h-contract-v1.json", import.meta.url), "utf8"),
 );
 const ix = vectors.program.instructions;
 const acc = vectors.program.accounts;

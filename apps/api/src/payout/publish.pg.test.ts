@@ -1,9 +1,9 @@
 import { fileURLToPath } from "node:url";
+import { HYPHAE_PROGRAM_ID } from "@hyphae/core";
 import { createDb, epochPublications, epochs, leaves } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { HYPHAE_PROGRAM_ID } from "./program.js";
 import { buildPublication } from "./publication.js";
 import { type OnChainEpoch, type PublishChain, publishEpoch } from "./publish.js";
 import { randomAddress, seedReadyEpoch } from "./ready-seed.js";

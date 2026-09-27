@@ -1,3 +1,12 @@
+import {
+  communityAddress,
+  decodeCommunity,
+  decodeEpoch,
+  epochAddress,
+  HYPHAE_PROGRAM_ID,
+  publishEpochInstruction,
+  vaultAddress,
+} from "@hyphae/core";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import {
   type Address,
@@ -16,15 +25,6 @@ import {
   signTransactionMessageWithSigners,
   type TransactionSigner,
 } from "@solana/kit";
-import {
-  communityAddress,
-  decodeCommunity,
-  decodeEpoch,
-  epochAddress,
-  HYPHAE_PROGRAM_ID,
-  publishEpochInstruction,
-  vaultAddress,
-} from "./program.js";
 import type { OnChainEpoch, PublishChain } from "./publish.js";
 
 // The publish job's chain, on @solana/kit. The RPC must prove it serves the named cluster: the

@@ -1,4 +1,4 @@
-import { c14n, memberEpochHash, TAGS, taggedHash } from "@hyphae/core";
+import { c14n, HYPHAE_PROGRAM_ID, memberEpochHash, TAGS, taggedHash } from "@hyphae/core";
 import {
   communities,
   epochPublicationMembers,
@@ -11,7 +11,6 @@ import {
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb } from "../rewards/test-db.js";
-import { HYPHAE_PROGRAM_ID } from "./program.js";
 import { buildPublication } from "./publication.js";
 import { type OnChainEpoch, type PublishChain, publishEpoch } from "./publish.js";
 import { randomAddress, seedReadyEpoch } from "./ready-seed.js";

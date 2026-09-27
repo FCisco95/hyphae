@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { HYPHAE_PROGRAM_ID } from "@hyphae/core";
 import {
   communities,
   type Db,
@@ -16,7 +17,6 @@ import { appendCorrection } from "../rewards/decisions.js";
 import { at, createTestDb } from "../rewards/test-db.js";
 import { backfillEpochCommitments, storedEpochCommitments } from "./commitment-store.js";
 import { epochCommitments } from "./commitments.js";
-import { HYPHAE_PROGRAM_ID } from "./program.js";
 import { buildPublication } from "./publication.js";
 import { type OnChainEpoch, type PublishChain, publishEpoch } from "./publish.js";
 import { type ReadySeed, randomAddress, seedReadyEpoch } from "./ready-seed.js";

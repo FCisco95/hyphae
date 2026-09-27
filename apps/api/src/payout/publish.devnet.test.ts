@@ -3,6 +3,16 @@
 // through publishEpoch, claims one leaf, and checks that a second claim of it fails. It only runs
 // when HYPHAE_DEVNET_RUN=1, against devnet, with throwaway keys; never a mainnet key.
 import { readFileSync, writeFileSync } from "node:fs";
+import {
+  claimInstruction,
+  communityAddress,
+  decodeClaimReceipt,
+  decodeCommunity,
+  epochAddress,
+  initializeCommunityInstruction,
+  receiptAddress,
+  vaultAddress,
+} from "@hyphae/core";
 import { leaves } from "@hyphae/db";
 import { hexToBytes } from "@noble/hashes/utils.js";
 import {
@@ -16,16 +26,6 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { createTestDb } from "../rewards/test-db.js";
 import { SendError, solanaChain } from "./chain.js";
-import {
-  claimInstruction,
-  communityAddress,
-  decodeClaimReceipt,
-  decodeCommunity,
-  epochAddress,
-  initializeCommunityInstruction,
-  receiptAddress,
-  vaultAddress,
-} from "./program.js";
 import { publishEpoch } from "./publish.js";
 import { seedReadyEpoch } from "./ready-seed.js";
 

@@ -5,6 +5,7 @@ import {
   decisionPayloadHash,
   epochAuditHash,
   evidencePayloadHash,
+  HYPHAE_PROGRAM_ID,
   leafHash,
   memberEpochHash,
   RubricSchema,
@@ -25,7 +26,6 @@ import { seedAuditDemo } from "../http/demo-seed.js";
 import { RewardConfigPayload } from "../rewards/config.js";
 import { createTestDb } from "../rewards/test-db.js";
 import { epochCommitments } from "./commitments.js";
-import { HYPHAE_PROGRAM_ID } from "./program.js";
 import { buildPublication } from "./publication.js";
 import { READY_HOLD_THRESHOLD, type ReadyLabel, seedReadyEpoch } from "./ready-seed.js";
 

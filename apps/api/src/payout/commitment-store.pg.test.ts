@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { HYPHAE_PROGRAM_ID } from "@hyphae/core";
 import {
   createDb,
   rewardConfigs,
@@ -13,7 +14,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { backfillEpochCommitments, storedEpochCommitments } from "./commitment-store.js";
 import { epochCommitments } from "./commitments.js";
 import { commitmentCases, lateCorrection } from "./commitments.test-cases.js";
-import { HYPHAE_PROGRAM_ID } from "./program.js";
 import { buildPublication } from "./publication.js";
 import { seedReadyEpoch } from "./ready-seed.js";
 
