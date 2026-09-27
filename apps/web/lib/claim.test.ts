@@ -18,7 +18,7 @@ import {
   getTransactionDecoder,
 } from "@solana/kit";
 import { describe, expect, it } from "vitest";
-import { claimTransaction } from "./claim.js";
+import { attemptClaim, type ClaimRead, claimTransaction } from "./claim.js";
 
 const WALLET = "SysvarRent111111111111111111111111111111111";
 const OTHER = "SysvarC1ock11111111111111111111111111111111";
@@ -112,6 +112,67 @@ describe("claimTransaction", () => {
     ] as const;
     for (const [what, c, wallet] of refused) {
       await expect(claimTransaction(c as ClaimV1, wallet), what).rejects.toThrow(/claim:/);
+    }
+  });
+});
+
+describe("attemptClaim", () => {
+  const lifetimeOf = (tx: Uint8Array) => {
+    const message = getCompiledTransactionMessageDecoder().decode(
+      getTransactionDecoder().decode(tx).messageBytes,
+    );
+    return message.lifetimeToken;
+  };
+
+  it("reads the claim again right before each signing, and signs that fresh read", async () => {
+    const claim = await served();
+    const events: string[] = [];
+    const blockhashes = [BLOCKHASH, OTHER];
+    const read = async (): Promise<ClaimRead> => {
+      const recent_blockhash = blockhashes[events.filter((e) => e === "read").length] as string;
+      events.push("read");
+      return {
+        state: "ready",
+        claim: { ...claim, payment: { ...claim.payment, recent_blockhash } } as ClaimV1,
+      };
+    };
+    const signed: string[] = [];
+    const send = async (_c: ClaimV1, tx: Uint8Array) => {
+      events.push("sign");
+      signed.push(lifetimeOf(tx));
+      return `5${"S".repeat(86)}`;
+    };
+    // A first attempt the wallet rejects, then a retry: each signs a blockhash read just before.
+    await expect(
+      attemptClaim(WALLET, read, async () => {
+        events.push("sign");
+        throw new Error("rejected in the wallet");
+      }),
+    ).rejects.toThrow(/rejected/);
+    const out = await attemptClaim(WALLET, read, send);
+    expect(out.signature).toBe(`5${"S".repeat(86)}`);
+    expect(signed).toEqual([OTHER]);
+    expect(events).toEqual(["read", "sign", "read", "sign"]);
+  });
+
+  it("signs nothing when the fresh read is paid, unavailable or gone", async () => {
+    const claim = await served();
+    const paid: ClaimRead = {
+      state: "ready",
+      claim: { ...claim, payment: { status: "paid", claim_tx: `4${"C".repeat(86)}` } },
+    };
+    for (const fresh of [paid, { state: "unavailable" }, { state: "none" }] as ClaimRead[]) {
+      let signs = 0;
+      const out = await attemptClaim(
+        WALLET,
+        async () => fresh,
+        async () => {
+          signs += 1;
+          return "never";
+        },
+      );
+      expect(out).toEqual({ read: fresh, signature: null });
+      expect(signs).toBe(0);
     }
   });
 });

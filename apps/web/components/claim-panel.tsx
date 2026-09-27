@@ -1,8 +1,8 @@
 "use client";
 
-import { type ClaimV1, ReadApiV1Loose } from "@hyphae/core";
+import { ReadApiV1Loose } from "@hyphae/core";
 import { useEffect, useState } from "react";
-import { claimTransaction } from "../lib/claim.js";
+import { attemptClaim, type ClaimRead } from "../lib/claim.js";
 import { shortWallet, sol } from "../lib/format.js";
 import {
   type Account,
@@ -15,9 +15,7 @@ import {
 import { ClaimSummary } from "./claim.js";
 import { Tx } from "./views.js";
 
-type Load =
-  | { state: "idle" | "loading" | "none" | "unavailable" }
-  | { state: "ready"; claim: ClaimV1 };
+type Load = { state: "idle" | "loading" } | ClaimRead;
 type Send =
   | { state: "idle" | "signing" }
   | { state: "sent"; signature: string }
@@ -38,7 +36,7 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
     return onWalletRegister(() => setWallets(claimWallets()));
   }, []);
 
-  async function read(wallet: string): Promise<Load> {
+  async function read(wallet: string): Promise<ClaimRead> {
     const path = `/api/claims/${encodeURIComponent(mint)}/${index}/${encodeURIComponent(wallet)}`;
     try {
       const r = await fetch(path, { cache: "no-store" });
@@ -65,20 +63,24 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
 
   async function claim() {
     if (!linked || load.state !== "ready") return;
+    const wallet = linked.account.address;
     setSend({ state: "signing" });
     try {
-      const transaction = await claimTransaction(load.claim, linked.account.address);
-      const signature = await signAndSend(
-        linked.w,
-        linked.account,
-        load.claim.network,
-        transaction,
+      const { read: fresh, signature } = await attemptClaim(
+        wallet,
+        () => read(wallet),
+        (c, transaction) => signAndSend(linked.w, linked.account, c.network, transaction),
       );
+      setLoad(fresh);
+      if (!signature) {
+        setSend({ state: "idle" });
+        return;
+      }
       setSend({ state: "sent", signature });
       // Paid is shown only once the receipt is read on-chain.
       for (let i = 0; i < POLLS; i += 1) {
         await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-        const next = await read(linked.account.address);
+        const next = await read(wallet);
         if (next.state === "ready" && next.claim.payment.status === "paid") {
           setLoad(next);
           return;

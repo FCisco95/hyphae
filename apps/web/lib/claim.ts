@@ -95,3 +95,21 @@ export async function claimTransaction(claim: ClaimV1, wallet: string): Promise<
   );
   return new Uint8Array(getTransactionEncoder().encode(compileTransaction(message)));
 }
+
+// A read of the claim route for the connected wallet.
+export type ClaimRead = { state: "none" | "unavailable" } | { state: "ready"; claim: ClaimV1 };
+
+// One claim attempt. The claim is read again right before signing: its blockhash expires in about
+// a minute, and it may have been paid meanwhile. Only a claim still claimable is built and signed.
+export async function attemptClaim(
+  wallet: string,
+  read: () => Promise<ClaimRead>,
+  signAndSend: (claim: ClaimV1, transaction: Uint8Array) => Promise<string>,
+): Promise<{ read: ClaimRead; signature: string | null }> {
+  const fresh = await read();
+  if (fresh.state !== "ready" || fresh.claim.payment.status !== "claimable") {
+    return { read: fresh, signature: null };
+  }
+  const transaction = await claimTransaction(fresh.claim, wallet);
+  return { read: fresh, signature: await signAndSend(fresh.claim, transaction) };
+}
