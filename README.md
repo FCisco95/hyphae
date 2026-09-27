@@ -1,8 +1,102 @@
 # Hyphae
 
-Hyphae is a proof-of-contribution layer for token communities. Members do real work for a community, an AI scores it against public guidelines and shows its reasoning, and each epoch's full score set is committed to Solana as a merkle root so the scoring is auditable. Points are minted as soulbound Token-2022 balances, treasury fees settle to whoever earned them, and contributors build a portable on-chain work history that projects can hire from.
+Hyphae is a proof-of-contribution layer for token communities. Members do real work for a community, an AI scores it against public guidelines and shows its reasoning, and each epoch's payouts are committed to Solana as a merkle root, next to the hash of the epoch's full audit record. Each community has a SOL vault; a contributor claims their share from it with a merkle proof, signed by their own wallet, once.
 
-Built solo for [Colosseum's Crypto World's Fair](https://colosseum.com/worldsfair) (2026-09-14 → 2026-10-12), under the Organic/MYCEL umbrella.
+Built solo for [Colosseum's Crypto World's Fair](https://colosseum.com/worldsfair) (2026-09-14 → 2026-10-12), under the Organic/MYCEL umbrella. The build log is [docs/BUILDLOG.md](docs/BUILDLOG.md).
+
+## Status
+
+| Part | State |
+|---|---|
+| Telegram bot, AI scoring and reward epochs | Live for the MYCEL community. |
+| Read API v1 and the public audit site | Built and tested; not deployed yet. |
+| Solana program (`programs/hyphae`): vaults, epoch roots, one-time claims | Deployed on **devnet** only. A publish, a claim and a refused duplicate claim are recorded in [docs/handoffs/2026-09-27-devnet-proof.md](docs/handoffs/2026-09-27-devnet-proof.md). Not on mainnet. |
+| Soulbound Token-2022 points | Planned, not built. |
+
+## Read API
+
+Public, read-only, unauthenticated JSON, to be served at `https://hyphae-api.fly.dev/v1` (not deployed yet; run it locally meanwhile, below). The reference is served at `/docs`, and the OpenAPI 3.1 document at `/v1/openapi.json`. Both are generated from the same schemas the API's tests check its responses with.
+
+- A section the API cannot confirm is `{ "status": "unavailable", "reason": … }`, never a zero.
+- Settlement and payments are read against Solana. A transaction is shown only when the chain proves it created the account it names.
+- Every response carries `RateLimit-*` headers. Past 300 requests a minute from one address, the API answers `429` with `Retry-After`.
+
+## Integrate in 10 lines
+
+Every leaf of a wallet, in every community, with its proof and its payment status (`paid` with the claim transaction, `claimable`, or `unavailable` with a reason):
+
+```js
+const API = process.env.HYPHAE_API ?? "https://hyphae-api.fly.dev/v1";
+const wallet = process.argv[2];
+const { claims } = await (await fetch(`${API}/wallets/${wallet}/claims`)).json();
+```
+
+Check each proof yourself: rebuild the 89-byte leaf, then hash up the sorted pairs to the root. It is the same computation the program runs before it pays.
+
+```js
+import { createHash } from "node:crypto";
+import { getAddressEncoder } from "@solana/kit";
+
+const sha = (...parts) => createHash("sha256").update(Buffer.concat(parts)).digest();
+const u64 = (v) => { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(v)); return b; };
+for (const c of claims) {
+  let node = sha(Buffer.of(0), Buffer.from(getAddressEncoder().encode(wallet)), u64(c.epoch.index),
+    u64(c.score), u64(c.amount_lamports), Buffer.from(c.evidence_hash, "hex"));
+  for (const p of c.proof.map((h) => Buffer.from(h, "hex")))
+    node = sha(Buffer.of(1), ...(Buffer.compare(node, p) <= 0 ? [node, p] : [p, node]));
+  console.log(c.community.mint, c.epoch.index, c.amount_lamports, c.payment.status, node.toString("hex") === c.root);
+}
+```
+
+`root` is the root of the epoch account at `epoch_address`. Read that account to check it without trusting the API. To claim, read `/v1/communities/{mint}/epochs/{index}/claims/{wallet}` right before signing: it adds a recent blockhash.
+
+## Funding a community's vault (for Organic and other integrators)
+
+A community is the pair (token mint, the admin key that publishes its epochs). Its vault is a program-derived address, so an integrator derives it without calling Hyphae, and funds it with an ordinary SOL transfer:
+
+```js
+import { address, getAddressEncoder, getProgramDerivedAddress } from "@solana/kit";
+
+const HYPHAE = address("EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E");
+const enc = getAddressEncoder();
+const [community] = await getProgramDerivedAddress({ programAddress: HYPHAE, seeds: ["community", enc.encode(mint), enc.encode(admin)] });
+const [vault] = await getProgramDerivedAddress({ programAddress: HYPHAE, seeds: ["vault", enc.encode(community)] });
+```
+
+- SOL leaves the vault only through the program. Each published epoch sends the 3% Hyphae fee to the recipient fixed when the community was created. Each claim pays one leaf of a published root, once.
+- An epoch can only allocate SOL that no earlier epoch has allocated and nobody has claimed yet.
+- The program is on devnet only. Check its address on the network you use before sending anything.
+
+Organic's bagworker sweep can target this address. Nothing in this repository changes Organic's code.
+
+## Develop
+
+Requires pnpm 10 and Node 22. The Solana program builds in WSL or Linux with Anchor 1.0.1 and Solana CLI 3.1.
+
+```sh
+pnpm install
+pnpm test && pnpm typecheck && pnpm lint
+pnpm --filter @hyphae/api test:pg          # Postgres 17 in Docker
+anchor build && cargo test -p hyphae --tests
+python3 tests/h_contract_vectors.py        # the commitment vectors, with Python's standard library
+```
+
+CI runs the same checks on every push. The program builds weekly.
+
+To run the read API locally on a disposable database with the demo community:
+
+```sh
+docker run -d --rm --name hyphae-pg -p 55433:5432 -e POSTGRES_PASSWORD=local -e POSTGRES_DB=hyphae postgres:17
+export DATABASE_URL=postgres://postgres:local@127.0.0.1:55433/hyphae
+pnpm --filter @hyphae/db exec drizzle-kit migrate
+cd apps/api && node --import tsx src/http/demo-seed.ts && pnpm build
+# The bot and scoring variables must be set but are not used by the read API.
+TELEGRAM_BOT_TOKEN=000000000:local-placeholder-token TELEGRAM_WEBHOOK_SECRET=local-placeholder \
+  ANTHROPIC_API_KEY=unused LINK_ORIGIN=https://localhost PORT=8787 \
+  READ_RPC_URL=https://api.devnet.solana.com node dist/server.js
+```
+
+Then open `http://localhost:8787/docs`. `publish.devnet.test.ts` can add a real devnet publication to the same database (`HYPHAE_DEVNET_DATABASE_URL`).
 
 ## License
 

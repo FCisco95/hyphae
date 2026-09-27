@@ -2,8 +2,10 @@
 // this initializes the community if needed, funds its vault, publishes a seeded ready epoch
 // through publishEpoch, claims one leaf, checks that a second claim of it fails, and reads the
 // public audit back from devnet. It only runs when HYPHAE_DEVNET_RUN=1, against devnet, with
-// throwaway keys; never a mainnet key.
+// throwaway keys; never a mainnet key. With HYPHAE_DEVNET_DATABASE_URL (a local Postgres, never
+// Neon) the records stay there, so a local api with READ_RPC_URL on devnet can serve them.
 import { readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   claimInstruction,
   communityAddress,
@@ -14,7 +16,7 @@ import {
   receiptAddress,
   vaultAddress,
 } from "@hyphae/core";
-import { leaves } from "@hyphae/db";
+import { createDb, type Db, leaves } from "@hyphae/db";
 import { hexToBytes } from "@noble/hashes/utils.js";
 import {
   AccountRole,
@@ -24,6 +26,7 @@ import {
   getAddressEncoder,
 } from "@solana/kit";
 import { eq } from "drizzle-orm";
+import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { describe, expect, it } from "vitest";
 import { settlementReader } from "../http/chain-reader.js";
 import { readClaim, readEpoch } from "../http/read-service.js";
@@ -54,6 +57,16 @@ function transfer(from: Awaited<ReturnType<typeof signerFromFile>>, to: Address,
     ],
     data,
   };
+}
+
+async function database(): Promise<{ db: Db; close: () => Promise<unknown> }> {
+  const url = env.HYPHAE_DEVNET_DATABASE_URL;
+  if (!url) return createTestDb();
+  const db = createDb(url);
+  await migrate(db, {
+    migrationsFolder: fileURLToPath(new URL("../../../../packages/db/drizzle", import.meta.url)),
+  });
+  return { db, close: () => db.$client.end() };
 }
 
 describe.skipIf(!RUN)("devnet run", () => {
@@ -103,7 +116,7 @@ describe.skipIf(!RUN)("devnet run", () => {
     }
     report.fundClaimant = await send([transfer(admin, claimant.address, 10_000_000n)]);
 
-    const t = await createTestDb();
+    const t = await database();
     try {
       const seed = await seedReadyEpoch(t.db, {
         now: new Date(),
