@@ -21,6 +21,7 @@ import {
   type SignatureDictionary,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
+  type TransactionModifyingSigner,
   type TransactionPartialSigner,
 } from "@solana/kit";
 import { describe, expect, it } from "vitest";
@@ -74,9 +75,18 @@ describe("publishTransaction", () => {
     };
   }
 
-  // An RPC whose history for the epoch holds `spam` older transactions that only reference it,
-  // then the publish_epoch that created it, in the second its account records.
-  async function chainWith(spam: number) {
+  // Distinct base58 signatures.
+  const sig = (n: number) => {
+    const digits = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    let out = "";
+    for (let v = n; out.length < 6; v = Math.floor(v / 58)) out += digits[v % 58];
+    return out.padEnd(87, "s");
+  };
+
+  // An RPC whose history for the epoch holds the publish_epoch that created it, in the second its
+  // account records, among transactions that only reference the address: `older` before it (in
+  // that same second with `sameSecond`) and `newer` after it.
+  async function chainWith(spam: { older?: number; newer?: number; sameSecond?: boolean }) {
     const e = await expected();
     const publish = publishEpochInstruction({ ...e, admin: createNoopSigner(address(ADMIN)) });
     const keys = [ADMIN, ...(publish.accounts ?? []).slice(1).map((a) => a.address)];
@@ -99,11 +109,17 @@ describe("publishTransaction", () => {
         },
       },
     });
+    const created = { signature: sig(0), blockTime: PUBLISHED_AT };
+    // Newest first, as a node lists them.
     const history = [
-      { signature: "P".repeat(87), blockTime: PUBLISHED_AT },
-      ...Array.from({ length: spam }, (_, i) => ({
-        signature: `${String.fromCharCode(65 + i)}${"s".repeat(86)}`,
-        blockTime: PUBLISHED_AT - 100 - i,
+      ...Array.from({ length: spam.newer ?? 0 }, (_, i) => ({
+        signature: sig(1 + i),
+        blockTime: PUBLISHED_AT + 1 + i,
+      })).reverse(),
+      created,
+      ...Array.from({ length: spam.older ?? 0 }, (_, i) => ({
+        signature: sig(20_000 + i),
+        blockTime: spam.sameSecond ? PUBLISHED_AT : PUBLISHED_AT - 100 - i,
       })),
     ];
     const epochAccount = new Uint8Array(8 + 32 + 8 + 32 + 32 + 8 * 4 + 8 + 1);
@@ -127,7 +143,9 @@ describe("publishTransaction", () => {
         };
       }
       if (method === "getSignaturesForAddress") {
-        result = history.map((h) => ({
+        const { limit, before } = params[1] as { limit: number; before?: string };
+        const from = before ? history.findIndex((h) => h.signature === before) + 1 : 0;
+        result = history.slice(from, from + limit).map((h) => ({
           signature: h.signature,
           slot: 5,
           err: null,
@@ -141,19 +159,31 @@ describe("publishTransaction", () => {
         fetched.push(signature);
         const system = Uint8Array.of(2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0);
         result =
-          signature === history[0]?.signature
+          signature === created.signature
             ? listed(publish.data as Uint8Array, keys.length - 1)
             : listed(system, keys.indexOf(SYSTEM));
       }
       return { jsonrpc: "2.0", id, result } as T;
     };
-    return { rpc: createSolanaRpcFromTransport(transport), e, fetched, publish: history[0] };
+    return { rpc: createSolanaRpcFromTransport(transport), e, fetched, publish: created };
   }
 
   it("finds the publish behind more older references than its lookup bound", async () => {
-    const { rpc, e, fetched, publish } = await chainWith(12);
-    expect(await publishTransaction(rpc, e)).toBe(publish?.signature);
-    expect(fetched[0]).toBe(publish?.signature);
+    const { rpc, e, fetched, publish } = await chainWith({ older: 12 });
+    expect(await publishTransaction(rpc, e)).toBe(publish.signature);
+    expect(fetched[0]).toBe(publish.signature);
+  });
+
+  // Recovery is an attended operator step, so it may search as long as it needs: an attacker who
+  // lands references in the same second, or floods the address afterwards, only slows it down.
+  it("finds the publish behind more references from its own second than its lookup bound", async () => {
+    const { rpc, e, publish } = await chainWith({ older: 12, sameSecond: true });
+    expect(await publishTransaction(rpc, e)).toBe(publish.signature);
+  });
+
+  it("pages back past more newer references than a public read would", async () => {
+    const { rpc, e, publish } = await chainWith({ newer: 10_001 });
+    expect(await publishTransaction(rpc, e)).toBe(publish.signature);
   });
 });
 
@@ -199,6 +229,18 @@ describe("signSimulated", () => {
     const s = setup({ InstructionError: [0, { Custom: 0 }] });
     await expect(signSimulated(s.rpc, s.message)).rejects.toThrow(/simulation.*refused/s);
     expect(s.signs()).toBe(0);
+  });
+
+  // A modifying or sending signer could change or send the transaction after the simulation.
+  it("refuses a signer that may change the message after it was simulated", async () => {
+    const s = setup(null);
+    const modifying: TransactionModifyingSigner = {
+      address: PAYER,
+      modifyAndSignTransactions: async (txs) => txs as never,
+    };
+    const message = setTransactionMessageFeePayerSigner(modifying, s.message);
+    await expect(signSimulated(s.rpc, message)).rejects.toThrow(/partial signers/);
+    expect(s.simulated).toHaveLength(0);
   });
 
   it("signs exactly the message it simulated", async () => {

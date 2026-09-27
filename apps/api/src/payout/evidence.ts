@@ -12,7 +12,10 @@ import {
 // successful transaction carries the creating instruction; anything else that touched the address
 // (lamports sent to it before or after, a later claim against an epoch) is skipped. A node lists
 // signatures newest first, so the lookup pages back and tries the oldest successful ones first,
-// preferring any from the second the account records as its creation. It gives up past its bounds.
+// preferring any from the second the account records as its creation. It gives up past its bounds,
+// unless it is `exhaustive`: then it pages to the start of the history and tries every transaction
+// from that second, so references an attacker lands there or afterwards only slow it down. Only an
+// attended operator step (publish recovery) searches exhaustively; public reads stay bounded.
 
 const PAGE = 1_000;
 const MAX_PAGES = 10;
@@ -30,7 +33,7 @@ export async function creatingTransaction(
   rpc: Rpc<SolanaRpcApi>,
   at: string,
   matches: (ix: ListedInstruction) => boolean,
-  opts: { hint?: string | null; blockTime?: bigint; signal?: Signal } = {},
+  opts: { hint?: string | null; blockTime?: bigint; signal?: Signal; exhaustive?: boolean } = {},
 ): Promise<Creation | null> {
   const signal: Signal = opts.signal ?? (() => new AbortController().signal);
   if (opts.hint) {
@@ -39,7 +42,7 @@ export async function creatingTransaction(
   }
   const history = [];
   let before: Signature | undefined;
-  for (let page = 0; page < MAX_PAGES; page += 1) {
+  for (let page = 0; opts.exhaustive || page < MAX_PAGES; page += 1) {
     const got = await rpc
       .getSignaturesForAddress(address(at), {
         limit: PAGE,
@@ -52,11 +55,12 @@ export async function creatingTransaction(
     before = got.at(-1)?.signature;
   }
   const candidates = history.filter((e) => e.err === null).reverse();
-  if (opts.blockTime !== undefined) {
-    const t = opts.blockTime;
-    candidates.sort((a, b) => Number(b.blockTime === t) - Number(a.blockTime === t));
-  }
-  for (const e of candidates.slice(0, MAX_TRANSACTIONS)) {
+  const recorded = candidates.filter((e) => e.blockTime === opts.blockTime);
+  const others = candidates.filter((e) => e.blockTime !== opts.blockTime);
+  const tried = opts.exhaustive
+    ? [...recorded, ...others.slice(0, MAX_TRANSACTIONS)]
+    : [...recorded, ...others].slice(0, MAX_TRANSACTIONS);
+  for (const e of tried) {
     const commitment = e.confirmationStatus === "finalized" ? "finalized" : "confirmed";
     const found = await creation(rpc, e.signature, commitment, matches, signal);
     if (found) return found;

@@ -20,7 +20,11 @@ import {
   getAddressDecoder,
   getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
+  getSignersFromTransactionMessage,
   type Instruction,
+  isTransactionModifyingSigner,
+  isTransactionPartialSigner,
+  isTransactionSendingSigner,
   pipe,
   type Rpc,
   type SolanaRpcApi,
@@ -71,9 +75,9 @@ export function programAccount(
   throw new Error(`chain: an account is not owned by ${programId}`);
 }
 
-// The publish_epoch that created an epoch account with exactly `expected`'s commitments. The
-// second the account records goes to the lookup first, so transactions that merely reference the
-// address from other seconds cannot crowd the creation out of the lookup's bounds.
+// The publish_epoch that created an epoch account with exactly `expected`'s commitments, for crash
+// recovery. The lookup is exhaustive and starts from the second the account records, so
+// transactions that merely reference the address cannot hide the creation, only slow the search.
 export async function publishTransaction(
   rpc: Rpc<SolanaRpcApi>,
   expected: Parameters<typeof isPublishEpoch>[1],
@@ -87,20 +91,28 @@ export async function publishTransaction(
     rpc,
     expected.epoch,
     (ix) => isPublishEpoch(ix, expected),
-    {
-      blockTime: decodeEpoch(data).publishedAt,
-    },
+    { blockTime: decodeEpoch(data).publishedAt, exhaustive: true },
   );
   if (!found) throw new Error(`chain: no publish_epoch transaction for epoch ${expected.index}`);
   return found.signature;
 }
 
 // The chain simulates the exact unsigned message first, so a transaction it would refuse never
-// reaches a signer: a Ledger is never asked to approve one.
+// reaches a signer: a Ledger is never asked to approve one. Only partial signers are accepted; a
+// modifying or sending signer could change or send the transaction after the simulation.
 export async function signSimulated(
   rpc: Rpc<SolanaRpcApi>,
   message: Parameters<typeof signTransactionMessageWithSigners>[0],
 ) {
+  for (const signer of getSignersFromTransactionMessage(message)) {
+    if (
+      !isTransactionPartialSigner(signer) ||
+      isTransactionModifyingSigner(signer) ||
+      isTransactionSendingSigner(signer)
+    ) {
+      throw new Error(`chain: ${signer.address} must sign as it is; only partial signers are used`);
+    }
+  }
   const { value } = await rpc
     .simulateTransaction(getBase64EncodedWireTransaction(compileTransaction(message)), {
       encoding: "base64",
