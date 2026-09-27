@@ -1,112 +1,103 @@
 ---
-date: 2026-09-26
-summary: B3/B5/B6 hash columns, deterministic backfill and publication refusal are implemented locally in migration 0010 and payout code. Nineteen new regression cases pass; supplemental suite totals are 518 passed, one existing CLI failure and one skipped devnet test. Real PostgreSQL verification, the other-family review, Rust confirmation and Git writes remain pending/blocked. No commit, push, Neon apply or devnet transaction.
+date: 2026-09-27
+summary: B3/B5/B6 stored hashes are committed on main (0010, backfill, strict publication, the publish job now fills a ready epoch's hashes first), gated on real Postgres 17 and reviewed across both model families. Pushing deploys nothing; Neon stays at 0000–0008. Devnet is blocked at 0 SOL. The durable publication/claim extension waits on decision 1. Oct 1 deploys 86ff258 + 0009; current main is the Oct 7–8 payout candidate and needs 0010.
 ---
 
 # Hyphae handoff
 
 ## TL;DR
 
-**The approved hash/backfill implementation is now built locally. Do not rebuild it or call it unbuilt.** Migration 0010 adds four hash columns; backfill fills them deterministically under the community lock; publication refuses required missing or mismatched hashes before sending. The 19 new cases pass on PGlite and under Vitest.
+**The hash work is done, reviewed and on `main`.** Migration 0010 stores config, evidence, decision and selected-snapshot hashes. `backfillEpochCommitments` fills them under the community lock, never overwrites, and refuses a mismatch. Publication refuses a missing or mismatched hash. The review found that nothing in production filled the hashes, so `publishEpoch` now asks the gate, and for a ready epoch runs the backfill before the strict build. Record: [2026-09-27 snapshot](handoffs/2026-09-27-hash-work-committed.md).
 
-**The release gate is incomplete and nothing is committed or pushed.** Docker access is denied, Claude review could not connect, and `git add` failed on `.git/index.lock`. Devnet remains blocked by the last observed **0 SOL** balance. Full implementation/evidence record: [hash/backfill checkpoint](handoffs/2026-09-26-hash-backfill-built.md).
+**Blocked:** devnet (admin `Fcv1xtZ6Em1m9xjGmkfinfA3XQ1sEjeCoxy3UioEv4cM` holds 0 SOL; keys present). **Parked:** durable manifest bytes, operator script, P14 and `/claim`, until Cisco answers decision 1.
 
 ## Metadata
 
-- Last Updated: 2026-09-26, 21:40Z checkpoint.
-- HEAD remains `1c7c2c6692e8fdfc74fe6adedc978fbbbd195d93`, main tracking origin/main. No branch/worktree was created.
-- Runner exposed identity: **Codex, GPT-6**; exact variant/effort unavailable. Do not claim verified Astra/xhigh.
-- Supplemental reviewer dispatched with **gpt-6-astra / xhigh**; its self-report only exposes GPT-6. Verdict: **no confirmed introduced defects**. It is same-family review and does not replace the required gate.
-- Other-family attempt: Claude CLI 2.1.283, requested **claude-fable-5-1 / xhigh**, returned **ECONNREFUSED**, zero API tokens, no model response or verdict.
-- Historical September 25 reviewers were **Luna/xhigh**, not Astra.
-- Authority: September 24 H-CONTRACT A/B and P1–P16, local/devnet R6 + Anchor approval, and the explicit September 26 hashes/backfill scope.
-- Cisco now wants **autonomous work**, superseding the earlier manual step-by-step guidance. Do not make him run routine test commands.
+- Last updated: 2026-09-27.
+- Runner: Claude Code, **Opus 5.5 (`claude-opus-5-5`)**, xhigh. Git, Docker (Postgres 17) and WSL all worked.
+- Reviewers: Claude `/code-review high` (8 findings: 4 fixed, 3 declined, 1 parked) and a fresh Claude checklist subagent (**APPROVE**, lows) on the Codex-built range; Codex CLI **`gpt-6-astra`, xhigh**, read-only and fresh, on the Claude-written fix `acd83fc`: **APPROVE**, no verified defects. Its two notes (hash writes can outlive a later blocked result; simultaneous publishers can both attempt a send, which the PDA `init` limits to one success) are design inputs for the operator script.
+- Authority: H-CONTRACT A/B and P1–P16 (`2026-09-24-contract-and-payment-rulings.md`); local/devnet R6 + Anchor, hashes/backfill and the throwaway-key devnet deploy (`2026-09-25-gate-and-r6-rulings.md` and the Sep 26 clarification). Nothing approves Neon writes, production deploys or mainnet transactions.
 
 ## Current State
 
 | Component | Stage |
 |---|---|
-| Rules test / hold gate / audit API and site | Built previously. Production last recorded at `b7bfe55`, Neon 0000–0008; not reverified live. |
-| Anchor vault / publish / claim | Built previously; Cisco confirmed baseline Anchor build exit 0 today. Separate Rust result unconfirmed. No new program changes or devnet proof. |
-| B3/B5/B6 stored hashes | **Implemented, uncommitted.** Migration `0010_reward_commitment_hashes`, deterministic per-epoch backfill and strict publication verification. |
-| Durable manifest bytes / operator signer / claim / P14 | **Not built.** Decision 3 and October 3–6 window still govern; no pull-forward approved. |
-| Commits/push | **None this arc.** Exact stage attempt failed with `.git/index.lock: Permission denied`. Pending new commit IDs: none. |
-
-Implementation files: `packages/db/src/schema.ts`, migration 0010 and metadata; `apps/api/src/payout/{commitments,commitment-store,publication,ready-seed}.ts`; shared test cases, Vitest/Pg wrappers; `tests/run-payout-commitments.mjs`.
-
-The migration journal and physical files ended at 0009 before implementation. **0010 is now the local hash migration.** The future manifest extension must use the next available number after inspecting the journal.
-
-The prepared two-line devnet approval patch was applied and verified earlier. **Throwaway-key devnet deployment remains pre-approved.** Production deployment, Neon writes, secrets, Vercel creation and mainnet actions retain their separate authorization boundaries.
+| Migration 0010 (hash columns + 5 CHECKs) | Committed `dabfb56`. **Not applied to Neon.** |
+| Backfill + strict publication | Committed `82c1c2e` (Codex), fix `acd83fc` (Claude). Not deployed; `publishEpoch` has no production caller yet. |
+| Tests | `2a9afc4`, `acd83fc`: 23 shared cases on PGlite and Postgres, a 12-round backfill/correction race. |
+| Anchor program (vault, publish, claim) | Unchanged since Sep 25. `anchor build` 0; Rust 21 + 6. **Not on devnet.** |
+| Devnet proof | **Not run.** 0 SOL (two reads, last 2026-09-27T10:38:46Z). No signatures. |
+| Durable bytes / operator script / P14 / `/claim` | **Not built.** Decision 1 open. |
+| Production | Fly `b7bfe55`, Neon 0000–0008 (last recorded, not queried). |
 
 ## Interfaces and Invariants
 
-- `backfillEpochCommitments(db, { communityId, epochId })` returns counts for configs, evidence, decisions and snapshots. It checks existing values, fills nulls, refuses mismatches and serializes with the established reward writers.
-- `epochCommitments` reconstructs deterministic payloads. `storedEpochCommitments` verifies the stored hashes and is what publication now consumes inside its repeatable-read snapshot.
-- New reward rows remain null until explicit backfill. Run it **after close and before publish**; a pre-close backfill cannot fill later snapshot entries. No production backfill caller/job was added.
-- Late revisions are hashed but do not replace frozen selections. Legitimate unscored entries retain their reason plus null decision hash; a selected decision with a null hash refuses publication.
-- Internal config digest, legacy hashes, the 89-byte leaf, program, fee/reserve/custody semantics and existing roots remain unchanged.
-- Public additive hash fields and shared capture-time parsing remain downstream HTTP work outside this arc's allowed paths. Allocation/payment still require honest unavailable states; a root or DB signature does not prove payment.
-- The existing publish recovery still recomputes manifests. Exact stored manifest bytes and pre-send durable intent are the separate extension.
+- `publishEpoch(db, chain, { communityId, epochId, grossLamports })`: refuses an unbound community; evaluates the gate and returns `blocked` with no write; for a ready epoch runs `backfillEpochCommitments`, then `buildPublication` (strict, repeatable read), then compares with any on-chain epoch (recovery, no second send) or sends, then records leaves and root.
+- `backfillEpochCommitments(db, { communityId, epochId })` → `{ configs, evidence, decisions, snapshots }` rows actually written. Null-only; a mismatch throws and writes nothing.
+- `storedEpochCommitments(tx, epochId)`: the strict check; never writes. Every decision row of the epoch must be stored, including late revisions.
+- A late correction (after close) is hashed with its predecessor's hash and never replaces the snapshot's frozen selection; the publication is deep-equal before and after it.
+- Unchanged: the 89-byte leaf, merkle root, audit manifest bytes, fee (3%, to the on-chain fee recipient) and reserve (allocated total) semantics.
 
 ## Validation
 
-**Current implementation:**
+Gate on the pushed tree (`acd83fc` code):
 
-- New cases: **19/19** in Node/PGlite and **19/19** inside Vitest (same cases, do not double-count).
-- Core **89 passed**, web **14 passed**, API **415 passed / 1 failed / 1 skipped**: total **518 passed / 1 failed / 1 skipped**.
-- API failure: `scripts/eval-scoring.test.ts`, `dry-runs the documented fixture without credentials or model calls`; its subprocess returned undefined stderr in this sandbox. It was not disabled or changed. Devnet is the explicit skipped test.
-- All five typecheck projects pass: core, DB, API, web and API link page.
-- Biome: **200 tracked/new eligible files clean**, including the new runner. Existing `pnpm lint` caveat remains the globally ignored `.claude/settings.local.json` formatting error; no exclusion added.
-- Drizzle check passes with equivalent local CJS config; migration generated with the installed Drizzle Kit API, four column additions and five constraints.
-- Python vectors: **16 hashes reproduced**. `git diff --check` passes.
-
-The actual Vitest suites ran through a local alternate profile: native config loading, in-process TypeScript transpilation, thread pool, preserved symlinks and no dependency optimization. **This is not a successful prescribed `pnpm -r test` gate.** The portable supplemental command is `node tests/run-payout-commitments.mjs`.
-
-**Outstanding:** real PostgreSQL after 0010 (Docker pipe access denied), separate Rust test confirmation, the CLI test in its normal environment, and successful other-family review. Cisco's earlier **500/500 baseline tests and 17/17 PostgreSQL tests predate this change**.
-
-## Execution and Git
-
-Use `exec_command` with `shell: C:\\Windows\\System32\\cmd.exe`, `login: false` for permitted native commands. Git, Node, Python and native Biome work there. The default Windows Store PowerShell launcher fails. Compiler subprocesses, Docker and Orca access remain denied; Orca returned `runtime_access_denied`. Do not reroute denied operations or change host security settings from within this session.
-
-`git add` failed before staging because the index lock could not be created. No hook was bypassed and no remote API write replaced a local commit/push. All changes are local/unstaged. An unrelated untracked zero-byte file `wsl` is preserved; exclude it from commits.
+- `pnpm test`: **523 passed** (core 89, web 14, api 420) + 1 skipped devnet harness. Includes the `eval-scoring` CLI test.
+- `pnpm --filter @hyphae/api test:pg` on Docker Postgres 17: **41/41**.
+- `pnpm typecheck`: exit 0. `drizzle-kit check`: pass. `git diff --check`: clean.
+- Biome on tracked + new files: **199 clean**. `pnpm lint` still exits 1 on the globally ignored `.claude/settings.local.json` only (see Open Decisions).
+- WSL: `anchor build` exit 0; `cargo test -p hyphae --tests` 21 + 6. Python vectors: 16 reproduced. (`programs/**`, `packages/core/**` unchanged since.)
+- Mutation probes: no community lock in the backfill → the race fails in round 1; no gate-first check in `publishEpoch` → the blocked-epoch case fails.
 
 ## Devnet and Deployment Readiness
 
-Program: `EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E`. Throwaway admin: `Fcv1xtZ6Em1m9xjGmkfinfA3XQ1sEjeCoxy3UioEv4cM`. Cisco's latest read: **0 devnet SOL**. Key availability remains unverified. No faucet retry, Lab-wallet use, deploy, mint, publish, claim or duplicate-claim signature this session.
+**Devnet:** when the admin holds ≥ 2.6 devnet SOL, follow `handoffs/2026-09-25-r6-anchor-built.md` § Devnet exactly and record every signature. No faucet loops, never the Lab wallet.
 
-When funded, follow `2026-09-25-r6-anchor-built.md` § Devnet exactly (at least 2.6 devnet SOL; throwaway admin is upgrade authority), and record network/program identity and every transaction outcome.
+### October 1 — attended checklist (deploy candidate `86ff258`)
 
-**October 1:** `86ff258` still requires migration 0009 first. Committed main is still `1c7c2c6`; this **dirty working candidate additionally requires 0010**, including for ordinary ORM full-row reads. Do not deploy it against only 0009. Select and gate the exact candidate in the attended session.
+Run Runbook B (`handoffs/2026-09-24-cutover-decisions.md`), one step per message, Cisco at every hard stop:
 
-Outstanding attended prerequisites: two independent mainnet hold RPCs/network proof, token re-rotation/webhook check, Vercel `HYPHAE_API_URL` and `DEFAULT_MINT`, Fly `PUBLIC_WEB_URL`, live API/worker/quiz/link checks, and Cisco's `first_paid_epoch` go/no-go before **2026-10-02T00:00Z**. Epoch 1 stays unpaid.
+1. **Gate `86ff258`** exactly: `pnpm -r test`, typecheck, tracked-file Biome, `drizzle-kit check`, `test:pg`, `git diff --check`.
+2. **Read-only Neon check** (agent): journal at 0000–0008 with matching hashes; 0009's tables absent.
+3. **Two hold RPCs** (Cisco): `fly secrets set HOLD_RPC_HELIUS_URL=… HOLD_RPC_FALLBACK_URL=… --stage`. Two independent mainnet providers; the code refuses either unless it returns mainnet's genesis hash.
+4. **Apply 0009** (Cisco), then post-checks (agent).
+5. **Deploy `86ff258`** (Cisco) and verify `/health`, `/link`, the worker's `hold-check` and `reward-recovery` queues, and `/rules` in Hyphae Lab.
+6. **Bot token re-rotation** (Runbook B step 9, still open since Sep 24): BotFather `/revoke`, token into `.env` in an editor, `fly secrets set` from `.env`, `setWebhook` with `drop_pending_updates`, `getWebhookInfo` clean.
+7. **Vercel** project for `apps/web` (Cisco): `HYPHAE_API_URL=https://hyphae-api.fly.dev`, `DEFAULT_MINT=<MYCEL mint>`.
+8. **Fly `PUBLIC_WEB_URL`** = the Vercel site's URL (the default `https://hyphae.fun` does not resolve).
+9. **`first_paid_epoch` go/no-go before 2026-10-02T00:00Z** (Cisco): on a yes, `update communities set first_paid_epoch = 2 where mint = '<MYCEL mint>' and first_paid_epoch is null;`. Epoch 1 stays unpaid.
 
-**October 6 is not ready/evidenced.** It still needs the current release gate/review, funded devnet proof and the approved/scheduled durable publication/claim extension.
+**Not on Oct 1:** current `main` needs **0010** (and 0011 if the extension is built) and is the **Oct 7–8 payout candidate**. Never deploy it against 0009 alone; the ORM's full-row reads need 0010's columns. Apply 0010 with the worker stopped (or a `lock_timeout`): it takes ACCESS EXCLUSIVE on four reward tables in one transaction.
+
+### October 6 checkpoint — not ready
+
+Needs: funded devnet proof (publish, claim, duplicate refused on-chain); decision 1 and the extension built and reviewed; Q1 and Q3 ruled; P8 named. Hash work is no longer on this list.
 
 ## Next Actions
 
-1. Finish the outstanding release checks and other-family review once authorized execution permits them. The implementation and 19 passing cases already exist; inspect the diff before changing it. Fix findings test-first.
-2. Commit verified implementation and docs milestones to main when Git writes are available; push only after the local gate and required review. Refresh exact SHAs and branch status here.
-3. Keep the devnet funding blocker separate and continue independent local work. No airdrop retry loop or Lab wallet.
-4. Keep the extension parked pending decision 3 and October 3–6 unless explicitly pulled forward.
-5. Maintain October 1 readiness for the exact selected candidate; no production/Neon/mainnet action inferred. Stop after the original step 5.
+1. On decision 1 = yes: write the extension note in `docs/`, then build test-first: migration 0011 (publication and member manifest bytes + hashes stored before any send), recovery from those exact bytes, `apps/api/scripts/publish-epoch.ts` behind a signer interface (file keypair on devnet, hardware wallet on mainnet, no key export), the P14 allocation/claim section with honest unavailable states, and `apps/web` `/claim`. Then a fresh Codex Astra xhigh review.
+2. When the admin is funded: the devnet run, signatures recorded.
+3. Oct 1: the checklist above.
 
 ## Open Decisions
 
-Still unresolved: **Q1 custody**, **Q3 reserve reuse**, **P8 fee public address**, and **decision 3 extension approval/window**. Recommendations remain in the earlier record: disclosed v1 publisher trust with hardware signing and just-in-time funding; allocated-total reservation with explicit retained accounting; a dedicated fee address; and the extension in October 3–6. These do not undo the existing local/devnet approval.
+From the vault Integration Board (27 Sep), all **open** (recommendation, no recorded answer):
+
+1. **Decision 1, completion scope** (durable bytes, operator script, `/claim`, P14 now). Recommend **yes**, built now that the hash work is pushed: it leaves slack before Oct 6.
+2. **Q1 custody.** Recommend a trusted-publisher pilot: one epoch funded just in time, hardware key, the limit disclosed. Needed by Oct 6.
+3. **Q3 reserves.** Recommend reserving allocated claims only, with cap remainder and dust tracked separately. Needed by Oct 6.
+4. **P8 fee address.** Recommend a dedicated address, separate from Lab funds. Needed by Oct 1.
+
+Minor, outside this arc's paths: add `.claude/settings.local.json` to the repo `.gitignore` so `pnpm lint` exits 0 on every clone.
 
 ## Generated Artifacts and Suggested Skills
 
-Canonical artifacts: local migration 0010/metadata, payout hash implementation/tests, `tests/run-payout-commitments.mjs`, this handoff, BUILDLOG and `docs/handoffs/2026-09-26-hash-backfill-built.md`. Temporary generation/review/execution files are in ignored `docs/plans/` and are not required for normal future test runs. No keys, credentials, deployments or jobs were generated.
+Artifacts: commits `dabfb56`, `82c1c2e`, `2a9afc4`, `acd83fc`, `a69f59f` and this session's docs commit; `docs/handoffs/2026-09-27-hash-work-committed.md`. No keys, credentials, deployments or jobs.
 
-Suggested skills: `handoff-memory`, `superpowers:test-driven-development`, `supabase:supabase-postgres-best-practices`, `context7-mcp`, `solana-dev`, `orca-cli` when its runtime is accessible, fresh other-family review, `superpowers:verification-before-completion`, `handoff`.
+Suggested skills: `superpowers:test-driven-development`, `solana-dev`, `context7-mcp` (Anchor, @solana/kit, wallet-standard, Next.js), `supabase:supabase-postgres-best-practices`, `frontend-design` for `/claim`, `superpowers:verification-before-completion`, `handoff`.
 
 ## Next-session Prompt
 
 ```text
-Resume Hyphae autonomously. Read CLAUDE.md, AGENTS.md, docs/HANDOFF.md and docs/handoffs/2026-09-26-hash-backfill-built.md. HEAD is 1c7c2c6; the uncommitted working tree implements B3/B5/B6 and migration 0010. Do not rebuild it. Nineteen new cases pass; supplemental suites total 518 pass, one existing CLI subprocess failure and one devnet skip. Typechecks, Biome, Drizzle and Python vectors pass. Real-PG/Rust confirmation, other-family review and Git writes remain pending. Claude review failed ECONNREFUSED; supplemental Astra-configured review found no confirmed defects. git add was denied on .git/index.lock. Preserve the empty untracked wsl file.
-
-Model: Fable 5.1 xhigh, or GPT-6 Astra xhigh in Codex, for reward/custody/recovery work; record actual model/effort.
-Skills: handoff-memory, test-driven-development, postgres best practices, context7-mcp, solana-dev, verification-before-completion, handoff.
-
-Continue the authorized arc from its existing implementation. Use cmd.exe for permitted native commands; do not reroute denied Docker/Orca/subprocess/Git operations. Finish the release gate and other-family review, fix findings test-first, commit milestones on main and push only when permitted and verified. Do not turn Cisco into a manual command runner. Devnet admin was 0 SOL; no faucet loops or Lab wallet. The durable manifest/operator/claim/P14 extension awaits decision 3 and October 3–6 unless explicitly pulled forward. Q1/Q3/P8 stay unresolved. Candidate 86ff258 requires 0009; this dirty candidate also requires 0010 and its own validation. No Neon apply, production deploy, mainnet transaction or vault/sibling writes. Stop after the original step 5.
+Resume Hyphae. Read CLAUDE.md, AGENTS.md, docs/HANDOFF.md and docs/handoffs/2026-09-27-hash-work-committed.md. The B3/B5/B6 hash work is committed and pushed (dabfb56..acd83fc); publishEpoch now runs the B6 backfill for a ready epoch before the strict build. Gate green on Postgres 17. Devnet admin was 0 SOL on 2026-09-27; keys present. If decision 1 is answered yes (Integration Board or Cisco), build the extension test-first (0011 durable bytes, recovery from them, publish-epoch.ts behind a signer interface, P14, /claim), then a fresh Codex Astra xhigh review. Oct 1: deploy 86ff258 + 0009 per the checklist; current main is the Oct 7–8 candidate and needs 0010. No Neon writes, production deploys or mainnet transactions without Cisco's yes.
 ```
