@@ -2,6 +2,7 @@ import type { EpochV1 } from "@hyphae/core";
 import type { Db } from "@hyphae/db";
 import { sql } from "drizzle-orm";
 import { type Context, Hono } from "hono";
+import { flyClient, type RateLimit, rateLimit } from "./rate-limit.js";
 import {
   type Page,
   readClaim,
@@ -10,6 +11,7 @@ import {
   readContributions,
   readEpoch,
   readLeaderboard,
+  readWalletClaims,
 } from "./read-service.js";
 import type { SettlementReader } from "./settlement.js";
 
@@ -39,18 +41,17 @@ const uuid = (v: string) => {
   if (!UUID.test(v)) throw new BadRequest();
   return v.toLowerCase();
 };
-function page(c: Context): Page {
+function paging(c: Context) {
   const offset = c.req.query("offset") ?? "0";
   const limit = c.req.query("limit") ?? "50";
-  const member = c.req.query("member");
   if (!COUNT.test(offset) || !COUNT.test(limit)) throw new BadRequest();
   const l = Number(limit);
   if (l < 1 || l > 100) throw new BadRequest();
-  return {
-    offset: Number(offset),
-    limit: l,
-    member: member === undefined ? undefined : uuid(member),
-  };
+  return { offset: Number(offset), limit: l };
+}
+function page(c: Context): Page {
+  const member = c.req.query("member");
+  return { ...paging(c), member: member === undefined ? undefined : uuid(member) };
 }
 
 // Database time, so `closed` and the current epoch agree with the reward writers' clock.
@@ -79,6 +80,7 @@ export function readRoutes(deps: {
   clock?: () => Promise<Date>;
   // P14's chain reads; without it the settlement sections say chain_unconfigured.
   chain?: SettlementReader | undefined;
+  limit?: RateLimit;
 }) {
   const { db } = deps;
   const now = deps.clock ?? (() => databaseNow(db));
@@ -88,6 +90,8 @@ export function readRoutes(deps: {
     await next();
     c.header("Access-Control-Allow-Origin", "*");
   });
+  // Generous for one reader; it caps what one address can make the chain reads cost.
+  app.use("*", rateLimit(deps.limit ?? { limit: 300, windowMs: 60_000 }, flyClient));
 
   const send = (c: Context, body: unknown | null, final = false) => {
     if (body === null) return c.json({ error: "not_found" }, 404);
@@ -122,6 +126,12 @@ export function readRoutes(deps: {
     c.header("Cache-Control", "no-store");
     return c.json(body);
   });
+  app.get("/wallets/:wallet/claims", async (c) =>
+    send(
+      c,
+      await readWalletClaims(db, wallet(c.req.param("wallet")), paging(c), await now(), deps.chain),
+    ),
+  );
   app.get("/communities/:mint/epochs/:index/contributions", async (c) => {
     const body = await readContributions(
       db,

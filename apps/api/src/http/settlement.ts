@@ -10,6 +10,7 @@ import {
   type PaymentV1,
   receiptAddress,
   vaultAddress,
+  type WalletClaimV1,
 } from "@hyphae/core";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { type Address, address, getAddressDecoder } from "@solana/kit";
@@ -39,7 +40,7 @@ export interface SettlementReader {
 // The chain is read after the database, under one deadline, because the web client gives up at
 // 3 s. Work still running then is abandoned, not cancelled; what it finds warms the reader's cache.
 export const CHAIN_DEADLINE_MS = 2_000;
-const LOOKUPS_AT_ONCE = 8;
+export const LOOKUPS_AT_ONCE = 8;
 
 type Unavailable = { status: "unavailable"; reason: string };
 const unavailable = (reason: string): Unavailable => ({ status: "unavailable", reason });
@@ -309,15 +310,9 @@ export async function settlementOf(
 export const firstV1Section = (section: AllocationV1 | PaymentV1): Unavailable =>
   section.status === "unavailable" ? section : unavailable("see_settlement");
 
-// One wallet's leaf, or null when the epoch has no recorded publication or the wallet no leaf.
-// The leaf is served even when the chain cannot be read; its payment status then says so. Only
-// this wallet's receipt is read, so the claim never waits on other members' payments.
-export async function claimOf(
-  facts: PublicationFacts,
-  reader: SettlementReader | undefined,
-  wallet: string,
-  deadlineMs = CHAIN_DEADLINE_MS,
-): Promise<Omit<ClaimV1, "community" | "as_of"> | null> {
+// A wallet's leaf in a recorded publication, with every address a claim needs; null when the
+// epoch has no recorded publication or the wallet no leaf in it.
+async function leafOf(facts: PublicationFacts, wallet: string) {
   const { intent } = facts;
   if (!intent || !facts.publishTx) return null;
   if (facts.firstPaidEpoch !== null && facts.index < facts.firstPaidEpoch) return null;
@@ -326,14 +321,56 @@ export async function claimOf(
   const program = address(intent.audit.program_id);
   const community = address(intent.communityAddress);
   const epoch = await epochAddress(program, community, BigInt(facts.index));
+  return {
+    leaf,
+    fields: {
+      network: intent.audit.network,
+      program_id: program,
+      community_address: community,
+      vault_address: await vaultAddress(program, community),
+      epoch_address: epoch,
+      receipt_address: await receiptAddress(program, epoch, address(wallet)),
+      score: leaf.score.toString(),
+      amount_lamports: leaf.amountLamports.toString(),
+      evidence_hash: leaf.evidenceHash,
+      proof: leaf.proof,
+      root: intent.root,
+    },
+  };
+}
 
+// Only this leaf's receipt is read, so one claim never waits on other members' payments.
+async function leafPayment(
+  facts: PublicationFacts,
+  reader: SettlementReader | undefined,
+  leaf: Leaf,
+): Promise<WalletClaimV1["payment"]> {
+  const verified = await verifyPublication(facts, reader);
+  if ("status" in verified) return verified;
+  if (!reader) return unavailable("chain_unconfigured");
+  try {
+    const [row] = await receiptsOf(verified, reader, [leaf]);
+    return row?.claimTx ? { status: "paid", claim_tx: row.claimTx } : { status: "claimable" };
+  } catch (error) {
+    return failure(error);
+  }
+}
+
+// One wallet's leaf, with a fresh blockhash when it is claimable. The leaf is served even when
+// the chain cannot be read; its payment status then says so.
+export async function claimOf(
+  facts: PublicationFacts,
+  reader: SettlementReader | undefined,
+  wallet: string,
+  deadlineMs = CHAIN_DEADLINE_MS,
+): Promise<Omit<ClaimV1, "community" | "as_of"> | null> {
+  const found = await leafOf(facts, wallet);
+  if (!found) return null;
   const paymentFor = async (): Promise<ClaimV1["payment"]> => {
-    const verified = await verifyPublication(facts, reader);
-    if ("status" in verified) return verified;
+    const payment = await leafPayment(facts, reader, found.leaf);
+    if (payment.status !== "claimable") return payment;
     if (!reader) return unavailable("chain_unconfigured");
     try {
-      const [row] = await receiptsOf(verified, reader, [leaf]);
-      if (row?.claimTx) return { status: "paid", claim_tx: row.claimTx };
       const { blockhash, lastValidBlockHeight } = await reader.latestBlockhash();
       return {
         status: "claimable",
@@ -344,21 +381,27 @@ export async function claimOf(
       return failure(error);
     }
   };
-
   return {
     epoch: { index: facts.index },
     wallet,
-    network: intent.audit.network,
-    program_id: program,
-    community_address: community,
-    vault_address: await vaultAddress(program, community),
-    epoch_address: epoch,
-    receipt_address: await receiptAddress(program, epoch, address(wallet)),
-    score: leaf.score.toString(),
-    amount_lamports: leaf.amountLamports.toString(),
-    evidence_hash: leaf.evidenceHash,
-    proof: leaf.proof,
-    root: intent.root,
+    ...found.fields,
     payment: await byDeadline(paymentFor(), Date.now() + deadlineMs, late),
+  };
+}
+
+// The same leaf for a wallet's list of claims, whose one deadline `until` (epoch ms) every entry
+// shares.
+export async function walletClaimOf(
+  facts: PublicationFacts,
+  reader: SettlementReader | undefined,
+  wallet: string,
+  until: number,
+): Promise<Omit<WalletClaimV1, "community"> | null> {
+  const found = await leafOf(facts, wallet);
+  if (!found) return null;
+  return {
+    epoch: { index: facts.index },
+    ...found.fields,
+    payment: await byDeadline(leafPayment(facts, reader, found.leaf), until, late),
   };
 }

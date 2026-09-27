@@ -11,13 +11,16 @@ import {
   type PointUnits,
   type RevisionV1,
   type SelectedV1,
+  type WalletClaimsV1,
   wholePoints,
 } from "@hyphae/core";
 import {
   communities,
   contributions,
   type Db,
+  epochPublications,
   epochs,
+  leaves,
   memberWalletLinks,
   rewardConfigs,
   rewardDecisions,
@@ -31,9 +34,11 @@ import {
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   gt,
+  gte,
   inArray,
   isNotNull,
   isNull,
@@ -51,9 +56,12 @@ import {
   CHAIN_DEADLINE_MS,
   claimOf,
   firstV1Section,
+  LOOKUPS_AT_ONCE,
+  mapLimit,
   type PublicationFacts,
   type SettlementReader,
   settlementOf,
+  walletClaimOf,
 } from "./settlement.js";
 
 // The public read API v1 (H-CONTRACT Part A). Every function selects named columns only, so no
@@ -448,22 +456,22 @@ export async function readCommunity(db: Db, mint: string, now: Date): Promise<Co
 // The recorded publication of an epoch, as the settlement sections need it.
 async function publicationFacts(
   tx: Db,
-  epoch: EpochView,
+  epoch: EpochRow,
   firstPaidEpoch: number | null,
 ): Promise<PublicationFacts> {
-  const published = epoch.row.publishTx !== null;
+  const published = epoch.publishTx !== null;
   const [row] = published
     ? await tx
         .select({ at: isoUs(epochs.publishedAt) })
         .from(epochs)
-        .where(eq(epochs.id, epoch.row.id))
+        .where(eq(epochs.id, epoch.id))
     : [];
   return {
-    index: epoch.row.index,
+    index: epoch.index,
     firstPaidEpoch,
-    publishTx: epoch.row.publishTx,
+    publishTx: epoch.publishTx,
     publishedAt: row?.at ?? null,
-    intent: published ? await loadIntent(tx, epoch.row.id) : null,
+    intent: published ? await loadIntent(tx, epoch.id) : null,
   };
 }
 
@@ -530,7 +538,7 @@ export async function readEpoch(
           }
         : { status: "not_frozen" },
     };
-    return { body, facts: await publicationFacts(tx, epoch, community.firstPaidEpoch) };
+    return { body, facts: await publicationFacts(tx, epoch.row, community.firstPaidEpoch) };
   });
   if (!read) return null;
   const settlement = await settlementOf(read.facts, chain, deadlineMs);
@@ -553,10 +561,67 @@ export async function readClaim(
 ): Promise<ClaimV1 | null> {
   const facts = await readOnly(db, async (tx) => {
     const found = await findEpoch(tx, mint, index);
-    return found ? publicationFacts(tx, found.epoch, found.community.firstPaidEpoch) : null;
+    return found ? publicationFacts(tx, found.epoch.row, found.community.firstPaidEpoch) : null;
   });
   const claim = facts && (await claimOf(facts, chain, wallet, deadlineMs));
   return claim ? { community: { mint }, ...claim, as_of: dateUs(now) } : null;
+}
+
+// Every leaf of `wallet` in a recorded publication of a served epoch, in any community, newest
+// publication first. The page bounds the chain reads; they share one deadline.
+export async function readWalletClaims(
+  db: Db,
+  wallet: string,
+  page: { offset: number; limit: number },
+  now: Date,
+  chain?: SettlementReader,
+  deadlineMs = CHAIN_DEADLINE_MS,
+): Promise<WalletClaimsV1> {
+  const { total, rows } = await readOnly(db, async (tx) => {
+    const published = and(
+      eq(leaves.wallet, wallet),
+      isNotNull(epochs.publishTx),
+      isNotNull(epochs.rewardConfigId),
+      or(isNull(communities.firstPaidEpoch), gte(epochs.index, communities.firstPaidEpoch)),
+    );
+    const [counted] = await tx
+      .select({ total: count() })
+      .from(leaves)
+      .innerJoin(epochs, eq(epochs.id, leaves.epochId))
+      .innerJoin(communities, eq(communities.id, epochs.communityId))
+      .innerJoin(epochPublications, eq(epochPublications.epochId, epochs.id))
+      .where(published);
+    const found = await tx
+      .select({ mint: communities.mint, firstPaidEpoch: communities.firstPaidEpoch, epoch: epochs })
+      .from(leaves)
+      .innerJoin(epochs, eq(epochs.id, leaves.epochId))
+      .innerJoin(communities, eq(communities.id, epochs.communityId))
+      .innerJoin(epochPublications, eq(epochPublications.epochId, epochs.id))
+      .where(published)
+      .orderBy(desc(epochs.publishedAt), asc(communities.mint), desc(epochs.index))
+      .offset(page.offset)
+      .limit(page.limit);
+    const rows: { mint: string; facts: PublicationFacts }[] = [];
+    for (const r of found) {
+      rows.push({ mint: r.mint, facts: await publicationFacts(tx, r.epoch, r.firstPaidEpoch) });
+    }
+    return { total: counted?.total ?? 0, rows };
+  });
+  const until = Date.now() + deadlineMs;
+  const claims = await mapLimit(rows, LOOKUPS_AT_ONCE, async ({ mint, facts }) => {
+    const claim = await walletClaimOf(facts, chain, wallet, until);
+    // The leaves table is recorded from the stored intent, so a leaf missing from it is corrupt.
+    if (!claim) throw new Error(`read: epoch ${facts.index} of ${mint} lacks a recorded leaf`);
+    return { community: { mint }, ...claim };
+  });
+  return {
+    wallet,
+    as_of: dateUs(now),
+    total_claims: Number(total),
+    offset: page.offset,
+    limit: page.limit,
+    claims,
+  };
 }
 
 export async function readContributions(

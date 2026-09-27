@@ -26,7 +26,7 @@ import { loadIntent, type PublicationIntent } from "../payout/intent.js";
 import { type PublishChain, publishEpoch } from "../payout/publish.js";
 import { type ReadySeed, randomAddress, seedReadyEpoch } from "../payout/ready-seed.js";
 import { createTestDb } from "../rewards/test-db.js";
-import { readClaim, readEpoch } from "./read-service.js";
+import { readClaim, readEpoch, readWalletClaims } from "./read-service.js";
 import { mapLimit, type SettlementReader } from "./settlement.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
@@ -136,14 +136,14 @@ function fakeReader(network: "solana:devnet" | "solana:mainnet" = "solana:devnet
 }
 
 // A seeded ready epoch published through the real publish job, as the chain would show it.
-async function published(): Promise<{
+async function published(wallets: Partial<ReadySeed["wallets"]> = {}): Promise<{
   seed: ReadySeed;
   intent: PublicationIntent;
   community: string;
   epoch: Address;
 }> {
   const community = randomAddress();
-  const seed = await seedReadyEpoch(t.db, { now: NOW, chainAddress: community });
+  const seed = await seedReadyEpoch(t.db, { now: NOW, chainAddress: community, wallets });
   const chain: PublishChain = {
     network: "solana:devnet",
     programId: HYPHAE_PROGRAM_ID,
@@ -164,8 +164,7 @@ type Published = Awaited<ReturnType<typeof published>>;
 
 // The publication as the chain holds it: the epoch account, created by a publish_epoch sent as
 // `signature` with exactly the intent's commitments.
-async function onChain(p: Published, claimed = 0n, signature = PUBLISH_TX) {
-  const fake = fakeReader();
+async function onChain(p: Published, claimed = 0n, signature = PUBLISH_TX, fake = fakeReader()) {
   fake.accounts.set(p.epoch, epochAccount(p.community, p.intent, claimed));
   const s = p.intent.audit.settlement;
   const community = address(p.community);
@@ -444,6 +443,116 @@ describe("mapLimit", () => {
     );
     expect(out).toEqual(Array.from({ length: 20 }, (_, i) => i * 2));
     expect(most).toBe(8);
+  });
+});
+
+describe("a wallet's claims", () => {
+  const all = { offset: 0, limit: 50 };
+  const leafOf = (p: Published, wallet: string) => {
+    const leaf = p.intent.leaves.find((l) => l.wallet === wallet);
+    if (!leaf) throw new Error("no leaf for the wallet");
+    return leaf;
+  };
+
+  it("lists its leaves in every community, newest publication first, each with a proof of the on-chain root", async () => {
+    const wallet = randomAddress();
+    const first = await published({ ordinary: wallet });
+    const second = await published({ floor: wallet });
+    const fake = await onChain(first, leafOf(first, wallet).amountLamports);
+    await onChain(second, 0n, PUBLISH_TX, fake);
+    await claimed(fake, first, leafOf(first, wallet));
+
+    const w = ReadApiV1.walletClaims.parse(
+      await readWalletClaims(t.db, wallet, all, NOW, fake.reader),
+    );
+    expect(w).toMatchObject({ wallet, total_claims: 2, offset: 0, limit: 50 });
+    // Claimable says so without a blockhash: signing reads the epoch's claim route again.
+    expect(w.claims.map((c) => [c.community.mint, c.epoch.index, c.payment])).toEqual([
+      [second.seed.mint, 1, { status: "claimable" }],
+      [first.seed.mint, 1, { status: "paid", claim_tx: CLAIM_TX }],
+    ]);
+    const [newest] = w.claims;
+    expect(newest).toMatchObject({
+      network: "solana:devnet",
+      program_id: HYPHAE_PROGRAM_ID,
+      community_address: second.community,
+      epoch_address: second.epoch,
+      receipt_address: await receiptAddress(HYPHAE_PROGRAM_ID, second.epoch, address(wallet)),
+      amount_lamports: leafOf(second, wallet).amountLamports.toString(),
+      root: second.intent.root,
+    });
+    for (const c of w.claims) {
+      const leaf = leafHash({
+        wallet: key(wallet),
+        epochIndex: BigInt(c.epoch.index),
+        score: BigInt(c.score),
+        amount: BigInt(c.amount_lamports),
+        evidenceHash: hexToBytes(c.evidence_hash),
+      });
+      expect(verifyProof(hexToBytes(c.root), leaf, c.proof.map(hexToBytes))).toBe(true);
+    }
+  });
+
+  it("pages in that order, counting every claim", async () => {
+    const wallet = randomAddress();
+    const first = await published({ effort: wallet });
+    const second = await published({ effort: wallet });
+    const fake = await onChain(first);
+    await onChain(second, 0n, PUBLISH_TX, fake);
+    const page = await readWalletClaims(t.db, wallet, { offset: 1, limit: 1 }, NOW, fake.reader);
+    expect(page).toMatchObject({ total_claims: 2, offset: 1, limit: 1 });
+    expect(page.claims.map((c) => c.community.mint)).toEqual([first.seed.mint]);
+  });
+
+  it("leaves out unpublished and retained epochs, and is empty, not missing, for an unknown wallet", async () => {
+    const wallet = randomAddress();
+    await seedReadyEpoch(t.db, { now: NOW, wallets: { floor: wallet } });
+    const retained = await published({ floor: wallet });
+    await t.db
+      .update(communities)
+      .set({ firstPaidEpoch: 2 })
+      .where(eq(communities.id, retained.seed.communityId));
+    const fake = await onChain(retained);
+    expect(await readWalletClaims(t.db, wallet, all, NOW, fake.reader)).toMatchObject({
+      total_claims: 0,
+      claims: [],
+    });
+    const nobody = await readWalletClaims(t.db, randomAddress(), all, NOW, fake.reader);
+    expect(ReadApiV1.walletClaims.parse(nobody).claims).toEqual([]);
+  });
+
+  it("serves every leaf when the chain cannot be read, each payment unavailable with its reason", async () => {
+    const wallet = randomAddress();
+    const p = await published({ ordinary: wallet });
+    const fake = await onChain(p);
+    fake.state.down = true;
+    const down = await readWalletClaims(t.db, wallet, all, NOW, fake.reader);
+    expect(down.claims.map((c) => c.payment)).toEqual([
+      { status: "unavailable", reason: "chain_unavailable" },
+    ]);
+    expect(down.claims[0]?.proof.length).toBeGreaterThan(0);
+    const unconfigured = await readWalletClaims(t.db, wallet, all, NOW);
+    expect(unconfigured.claims.map((c) => c.payment)).toEqual([
+      { status: "unavailable", reason: "chain_unconfigured" },
+    ]);
+  });
+
+  it("gives up on a slow chain by one deadline for the whole list", async () => {
+    const wallet = randomAddress();
+    const fake = fakeReader();
+    for (let i = 0; i < 3; i += 1) {
+      const p = await published({ effort: wallet });
+      await onChain(p, 0n, PUBLISH_TX, fake);
+      fake.state.slow.add(p.epoch);
+    }
+    const started = Date.now();
+    const w = await readWalletClaims(t.db, wallet, all, NOW, fake.reader, 200);
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(w.claims.map((c) => c.payment.status)).toEqual([
+      "unavailable",
+      "unavailable",
+      "unavailable",
+    ]);
   });
 });
 

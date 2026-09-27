@@ -132,6 +132,23 @@ function readApiSchemas(strict: boolean) {
         n(s.payment.claimed_lamports) + n(s.payment.unclaimed_lamports) ===
           n(s.allocation.allocated_lamports)),
   );
+  // One leaf of a published epoch, with every address and the proof a claim needs.
+  const leafShape = {
+    community: obj({ mint: z.string().min(1) }),
+    epoch: obj({ index: count }),
+    network,
+    program_id: base58,
+    community_address: base58,
+    vault_address: base58,
+    epoch_address: base58,
+    receipt_address: base58,
+    score: uint,
+    amount_lamports: uint,
+    evidence_hash: hex64,
+    proof: z.array(hex64),
+    root: hex64,
+  };
+  const paid = obj({ status: z.literal("paid"), claim_tx: signature });
   const effort = z.enum(["eligible", "ineligible", "not_nominated"]);
   const creditRules = z.enum(["none", "hard_zero", "ai_cap_mild", "ai_cap_strong", "below_floor"]);
 
@@ -306,30 +323,33 @@ function readApiSchemas(strict: boolean) {
       .refine(rowRule),
     // One wallet's leaf in a published epoch, with what the claim page needs to build the claim.
     claim: obj({
-      community: obj({ mint: z.string().min(1) }),
-      epoch: obj({ index: count }),
+      ...leafShape,
       wallet: base58,
-      network,
-      program_id: base58,
-      community_address: base58,
-      vault_address: base58,
-      epoch_address: base58,
-      receipt_address: base58,
-      score: uint,
-      amount_lamports: uint,
-      evidence_hash: hex64,
-      proof: z.array(hex64),
-      root: hex64,
       payment: z.union([
         obj({
           status: z.literal("claimable"),
           recent_blockhash: base58,
           last_valid_block_height: uint,
         }),
-        obj({ status: z.literal("paid"), claim_tx: signature }),
+        paid,
         unavailable,
       ]),
       as_of: iso,
+    }),
+    // Every leaf of one wallet in a published epoch, newest publication first. A claimable leaf
+    // carries no blockhash: the epoch's claim route is read again before signing.
+    walletClaims: obj({
+      wallet: base58,
+      as_of: iso,
+      total_claims: count,
+      offset: count,
+      limit: z.number().int().min(1).max(100),
+      claims: z.array(
+        obj({
+          ...leafShape,
+          payment: z.union([obj({ status: z.literal("claimable") }), paid, unavailable]),
+        }),
+      ),
     }),
     error: obj({ error: z.enum(["not_found", "bad_request", "unavailable"]) }),
   };
@@ -348,6 +368,8 @@ export type ContributionV1 = z.infer<typeof ReadApiV1.contribution>;
 export type RevisionV1 = ContributionV1["revisions"][number];
 export type SelectedV1 = NonNullable<ContributionRowV1["selected"]>;
 export type ClaimV1 = z.infer<typeof ReadApiV1.claim>;
+export type WalletClaimsV1 = z.infer<typeof ReadApiV1.walletClaims>;
+export type WalletClaimV1 = WalletClaimsV1["claims"][number];
 export type SettlementV1 = NonNullable<EpochV1["settlement"]>;
 export type AllocationV1 = SettlementV1["allocation"];
 export type PaymentV1 = SettlementV1["payment"];
