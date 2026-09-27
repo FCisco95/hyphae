@@ -19,8 +19,7 @@ Record: [afternoon snapshot](handoffs/2026-09-27-afternoon-arc.md).
 
 **Waiting on Cisco:**
 - the Ledger real-device devnet run (steps in [the Ledger record](handoffs/2026-09-27-ledger-transport.md));
-- the MYCEL treasury Squads is created; Cisco confirms that the app shows the same vault address;
-- copying the program keypair to the external SSD.
+- nothing else from the key rulings: the MYCEL Treasury Squads is created and confirmed, and the program keypair is on the external SSD.
 
 **For the Organic sync:** read [For Organic and other integrators](#for-organic-and-other-integrators) below and [the key rulings](handoffs/2026-09-27-keys-and-fee-rulings.md).
 
@@ -148,7 +147,7 @@ Run Runbook B (`handoffs/2026-09-24-cutover-decisions.md`), one step per message
 
 1. Cisco: the Ledger real-device devnet run, one step at a time (`handoffs/2026-09-27-ledger-transport.md`).
 2. Oct 1: the checklist above.
-3. Cisco: copy `target/deploy/hyphae-keypair.json` to the external SSD, (the MYCEL Treasury Squads is created).
+3. Done 2026-09-27: the program keypair is on the external SSD, and the MYCEL Treasury Squads is created.
 4. Before the mainnet deploy: a verifiable build, and deploy with the Ledger as upgrade authority, read back from the chain.
 
 ## For Organic and other integrators
@@ -170,7 +169,7 @@ Organic reads Hyphae only through the public read API; Hyphae never touches `org
 | P8 fee address | **Created 2026-09-27 18:17Z:** MYCEL Treasury, a Squads v4 multisig `34wSn95ZFMsvsq7w6g8Rej7GSagGmpc6Vq5aHiCebu51`, 2-of-3, with the same three members as Organic's platform multisig. **Fee address = its vault `rRceAUBNsnZKJDytjdHfCdqgTJGoDagtKujfvaBu7MK`.** | Pass the vault, never the multisig account, to `initialize_community` (Oct 7–8, its own hard stop). Squads' `isSquad` check: the vault passes (v4); the multisig account does not. |
 | Upgrade authority on mainnet | **Ruled:** Cisco's Ledger, and only Cisco. | Deploy with it, then read the ProgramData authority back before funding the vault. |
 | Verifiable build | **Ruled yes**, before the mainnet deploy. The Cargo.lock resolves `anchor-syn`/`anchor-derive-accounts` 1.2.0 under `anchor-lang` 1.0.1. | `anchor build --verifiable` (or `solana-verify`) from the reviewed commit; publish the hash. Keep the current lockfile. |
-| Program keypair backup | **Ruled yes:** Cisco copies it to an external SSD. Public key checked: `EAz8WkyU…d6E`. | Keep the SSD offline. Until the mainnet deploy, the file can deploy any program at that address. |
+| Program keypair backup | **Done 2026-09-27:** Cisco copied it to an external SSD. Public key checked: `EAz8WkyU…d6E`. | Keep the SSD offline. Until the mainnet deploy, the file can deploy any program at that address. |
 | Organic's adapter field | **Ruled:** Cisco controls Organic; the Organic sync carries it. | Read `settlement.allocation` / `settlement.payment`. See the section below. |
 
 Minor, outside this arc's writable paths: `.env.example` should list `READ_RPC_URL`, `READ_API_WEB_TOKEN` and the two hold RPC URLs.

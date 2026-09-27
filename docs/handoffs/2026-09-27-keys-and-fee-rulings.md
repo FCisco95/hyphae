@@ -56,6 +56,7 @@ Squads v4 facts that matter here, from its docs:
 - **Checked:** its public key is the program address `EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E`.
 - **Why it matters:** until the mainnet deploy, whoever holds this file can deploy *any* program at that address on mainnet. After the deploy it has no power; the upgrade key governs.
 - **How to keep it:** copy the file to the SSD, keep the SSD offline, and never put the file in cloud sync, chat or a repo.
+- **Done:** Cisco copied it to his external SSD on 2026-09-27.
 
 ## For Organic and other integrators
 
