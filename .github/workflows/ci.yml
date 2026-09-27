@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: hyphae
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hyphae"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm --filter @hyphae/db exec drizzle-kit check
+      # The same suites as `pnpm --filter @hyphae/api test:pg`, against the service instead of a
+      # local Docker container.
+      - name: test:pg (Postgres 17)
+        run: pnpm --filter @hyphae/api exec vitest run --config vitest.pg.config.ts
+        env:
+          HYPHAE_TEST_PG_URL: postgres://postgres:test@127.0.0.1:5432/hyphae
+      - name: H-CONTRACT vectors (Python standard library)
+        run: python3 tests/h_contract_vectors.py

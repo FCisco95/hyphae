@@ -21,6 +21,7 @@ docs/plans/
 docs/rubrics/eval/*.jsonl
 
 # OS / editor
+.claude/settings.local.json
 .DS_Store
 Thumbs.db
 *.stackdump
