@@ -4,30 +4,46 @@ import {
   decodeClaimReceipt,
   decodeEpoch,
   epochAddress,
+  isClaim,
+  isPublishEpoch,
+  type ListedInstruction,
   type PaymentV1,
   receiptAddress,
   vaultAddress,
 } from "@hyphae/core";
-import { bytesToHex } from "@noble/hashes/utils.js";
+import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { type Address, address, getAddressDecoder } from "@solana/kit";
 import type { PublicationIntent } from "../payout/intent.js";
 
 // P13/P14: allocation and payment are read against the chain, never from a database string. The
 // stored publication intent says what was published; the epoch account and the claim receipts say
-// it is so. Anything the chain cannot confirm is `unavailable` with a reason, never zero.
+// it is so, and each transaction shown is the one the chain shows creating them. Anything the
+// chain cannot confirm is `unavailable` with a reason, never zero.
 
 export interface SettlementReader {
   // The cluster the reader serves, proven by its genesis hash.
   network(): Promise<"solana:devnet" | "solana:mainnet">;
   // The accounts at `at`, in order, null where none exists; any owner but `owner` throws.
   accounts(owner: string, at: readonly string[]): Promise<(Uint8Array | null)[]>;
-  // The first successful transaction that touched `at`: for a receipt, the claim that made it.
-  firstSignature(at: string): Promise<string | null>;
+  // The successful transaction that created the program account `at` through an instruction
+  // `matches` accepts, or null when none is found within the reader's bounds. The hint (a
+  // recorded signature, the second the account records as its creation) is tried first.
+  creation(
+    at: string,
+    matches: (ix: ListedInstruction) => boolean,
+    hint?: { signature?: string | null; blockTime?: bigint },
+  ): Promise<string | null>;
   latestBlockhash(): Promise<{ blockhash: string; lastValidBlockHeight: bigint }>;
 }
 
+// The chain is read after the database, under one deadline, because the web client gives up at
+// 3 s. Work still running then is abandoned, not cancelled; what it finds warms the reader's cache.
+export const CHAIN_DEADLINE_MS = 2_000;
+const LOOKUPS_AT_ONCE = 8;
+
 type Unavailable = { status: "unavailable"; reason: string };
 const unavailable = (reason: string): Unavailable => ({ status: "unavailable", reason });
+const late = unavailable("chain_unavailable");
 
 // What the database knows about an epoch's publication, read inside the read-only snapshot.
 export interface PublicationFacts {
@@ -50,9 +66,49 @@ interface Verified {
 }
 
 class Mismatch extends Error {}
+// An account the chain holds without the transaction that created it, within the reader's bounds.
+class NoTransaction extends Error {}
 
-// The stored intent, confirmed by the epoch account it was published to.
-export async function verifyPublication(
+const failure = (error: unknown) =>
+  unavailable(
+    error instanceof Mismatch
+      ? "chain_mismatch"
+      : error instanceof NoTransaction
+        ? "chain_transaction_missing"
+        : "chain_unavailable",
+  );
+
+// `work`, or `fallback` once `until` (epoch ms) passes. `work` must not reject.
+function byDeadline<T>(work: Promise<T>, until: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), Math.max(0, until - Date.now()));
+  });
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer));
+}
+
+// `fn` over `items`, at most `limit` at a time, results in order.
+export async function mapLimit<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next;
+      next += 1;
+      out[i] = await fn(items[i] as T);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
+}
+
+// The stored intent, confirmed by the epoch account it was published to and the publish_epoch
+// that created that account.
+async function verifyPublication(
   facts: PublicationFacts,
   reader: SettlementReader | undefined,
 ): Promise<Verified | Unavailable> {
@@ -67,36 +123,54 @@ export async function verifyPublication(
   const program = address(intent.audit.program_id);
   const community = address(intent.communityAddress);
   const epoch = await epochAddress(program, community, BigInt(facts.index));
-  let data: Uint8Array | null | undefined;
+  const vault = await vaultAddress(program, community);
   try {
     if ((await reader.network()) !== intent.audit.network) return unavailable("chain_unconfigured");
-    [data] = await reader.accounts(program, [epoch]);
-  } catch {
-    return unavailable("chain_unavailable");
+    const [data] = await reader.accounts(program, [epoch]);
+    const e = data ? decoded(decodeEpoch, data) : null;
+    if (
+      !e ||
+      getAddressDecoder().decode(e.community) !== community ||
+      e.index !== BigInt(facts.index) ||
+      bytesToHex(e.root) !== intent.root ||
+      bytesToHex(e.auditHash) !== intent.auditHash ||
+      e.grossLamports !== BigInt(s.gross_lamports) ||
+      e.feeLamports !== BigInt(s.fee_lamports) ||
+      e.allocatedLamports !== BigInt(s.allocated_lamports)
+    ) {
+      return unavailable("chain_mismatch");
+    }
+    const publishTx = await reader.creation(
+      epoch,
+      (ix) =>
+        isPublishEpoch(ix, {
+          programId: program,
+          community,
+          vault,
+          feeRecipient: address(s.fee_recipient),
+          epoch,
+          index: BigInt(facts.index),
+          root: hexToBytes(intent.root),
+          auditHash: hexToBytes(intent.auditHash),
+          grossLamports: BigInt(s.gross_lamports),
+          allocatedLamports: BigInt(s.allocated_lamports),
+        }),
+      { signature: facts.publishTx, blockTime: e.publishedAt },
+    );
+    if (!publishTx) return unavailable("chain_transaction_missing");
+    return {
+      intent,
+      program,
+      community,
+      vault,
+      epoch,
+      claimed: e.claimedLamports,
+      publishTx,
+      publishedAt: facts.publishedAt,
+    };
+  } catch (error) {
+    return failure(error);
   }
-  const e = data ? decoded(decodeEpoch, data) : null;
-  if (
-    !e ||
-    getAddressDecoder().decode(e.community) !== community ||
-    e.index !== BigInt(facts.index) ||
-    bytesToHex(e.root) !== intent.root ||
-    bytesToHex(e.auditHash) !== intent.auditHash ||
-    e.grossLamports !== BigInt(s.gross_lamports) ||
-    e.feeLamports !== BigInt(s.fee_lamports) ||
-    e.allocatedLamports !== BigInt(s.allocated_lamports)
-  ) {
-    return unavailable("chain_mismatch");
-  }
-  return {
-    intent,
-    program,
-    community,
-    vault: await vaultAddress(program, community),
-    epoch,
-    claimed: e.claimedLamports,
-    publishTx: facts.publishTx,
-    publishedAt: facts.publishedAt,
-  };
 }
 
 // An account of the wrong type or length is not the account the publication names.
@@ -108,7 +182,7 @@ function decoded<T>(decode: (data: Uint8Array) => T, data: Uint8Array): T | null
   }
 }
 
-export function allocationOf(v: Verified | Unavailable): AllocationV1 {
+function allocationOf(v: Verified | Unavailable): AllocationV1 {
   if ("status" in v) return v;
   const { audit } = v.intent;
   const s = audit.settlement;
@@ -138,40 +212,52 @@ export function allocationOf(v: Verified | Unavailable): AllocationV1 {
 type Leaf = PublicationIntent["leaves"][number];
 type Receipted = { leaf: Leaf; receipt: Address; claimTx: string | null };
 
-// Each leaf's receipt: paid only if the account exists, matches the leaf, and its transaction is
-// found. The receipts must explain the epoch account's claimed total exactly.
+// Each leaf's receipt: paid only if the account exists, matches the leaf, and the claim that
+// created it is found. Throws Mismatch or NoTransaction otherwise.
 async function receiptsOf(v: Verified, reader: SettlementReader, leaves: readonly Leaf[]) {
   const receipts = await Promise.all(
     leaves.map((l) => receiptAddress(v.program, v.epoch, address(l.wallet))),
   );
   const data = await reader.accounts(v.program, receipts);
-  const out: Receipted[] = [];
-  for (const [i, leaf] of leaves.entries()) {
-    const receipt = receipts[i] as Address;
-    const account = data[i];
-    if (!account) {
-      out.push({ leaf, receipt, claimTx: null });
-      continue;
-    }
-    const r = decoded(decodeClaimReceipt, account);
-    if (
-      !r ||
-      getAddressDecoder().decode(r.epoch) !== v.epoch ||
-      getAddressDecoder().decode(r.wallet) !== leaf.wallet ||
-      r.amount !== leaf.amountLamports ||
-      r.score !== leaf.score ||
-      bytesToHex(r.evidenceHash) !== leaf.evidenceHash
-    ) {
-      throw new Mismatch();
-    }
-    const claimTx = await reader.firstSignature(receipt);
-    if (!claimTx) throw new Error("settlement: a receipt without its transaction");
-    out.push({ leaf, receipt, claimTx });
-  }
-  return out;
+  return mapLimit(
+    leaves.map((leaf, i) => ({ leaf, receipt: receipts[i] as Address, account: data[i] })),
+    LOOKUPS_AT_ONCE,
+    async ({ leaf, receipt, account }): Promise<Receipted> => {
+      if (!account) return { leaf, receipt, claimTx: null };
+      const r = decoded(decodeClaimReceipt, account);
+      if (
+        !r ||
+        getAddressDecoder().decode(r.epoch) !== v.epoch ||
+        getAddressDecoder().decode(r.wallet) !== leaf.wallet ||
+        r.amount !== leaf.amountLamports ||
+        r.score !== leaf.score ||
+        bytesToHex(r.evidenceHash) !== leaf.evidenceHash
+      ) {
+        throw new Mismatch();
+      }
+      const claimTx = await reader.creation(
+        receipt,
+        (ix) =>
+          isClaim(ix, {
+            programId: v.program,
+            claimant: address(leaf.wallet),
+            community: v.community,
+            vault: v.vault,
+            epoch: v.epoch,
+            receipt,
+            score: leaf.score,
+            amount: leaf.amountLamports,
+            evidenceHash: hexToBytes(leaf.evidenceHash),
+          }),
+        { blockTime: r.claimedAt },
+      );
+      if (!claimTx) throw new NoTransaction();
+      return { leaf, receipt, claimTx };
+    },
+  );
 }
 
-export async function paymentOf(
+async function paymentOf(
   v: Verified | Unavailable,
   reader: SettlementReader | undefined,
 ): Promise<PaymentV1> {
@@ -179,6 +265,7 @@ export async function paymentOf(
   if (!reader) return unavailable("chain_unconfigured");
   try {
     const rows = await receiptsOf(v, reader, v.intent.leaves);
+    // The receipts must explain the epoch account's claimed total exactly.
     const paid = rows.reduce((sum, r) => sum + (r.claimTx ? r.leaf.amountLamports : 0n), 0n);
     if (paid !== v.claimed) return unavailable("chain_mismatch");
     const allocated = BigInt(v.intent.audit.settlement.allocated_lamports);
@@ -198,16 +285,38 @@ export async function paymentOf(
         .sort((a, b) => (a.member_id < b.member_id ? -1 : 1)),
     };
   } catch (error) {
-    return unavailable(error instanceof Mismatch ? "chain_mismatch" : "chain_unavailable");
+    return failure(error);
   }
 }
 
+// The epoch's P14 sections, each unavailable once the deadline passes. The allocation is read
+// first, so slow payment lookups never hide a verified publication.
+export async function settlementOf(
+  facts: PublicationFacts,
+  reader: SettlementReader | undefined,
+  deadlineMs = CHAIN_DEADLINE_MS,
+): Promise<{ allocation: AllocationV1; payment: PaymentV1 }> {
+  const until = Date.now() + deadlineMs;
+  const verified = await byDeadline(verifyPublication(facts, reader), until, late);
+  return {
+    allocation: allocationOf(verified),
+    payment: await byDeadline(paymentOf(verified, reader), until, late),
+  };
+}
+
+// A4: v1's first `allocation` and `payment` fields stay a closed `unavailable`; once `settlement`
+// holds more, they point there.
+export const firstV1Section = (section: AllocationV1 | PaymentV1): Unavailable =>
+  section.status === "unavailable" ? section : unavailable("see_settlement");
+
 // One wallet's leaf, or null when the epoch has no recorded publication or the wallet no leaf.
-// The leaf is served even when the chain cannot be read; its payment status then says so.
+// The leaf is served even when the chain cannot be read; its payment status then says so. Only
+// this wallet's receipt is read, so the claim never waits on other members' payments.
 export async function claimOf(
   facts: PublicationFacts,
   reader: SettlementReader | undefined,
   wallet: string,
+  deadlineMs = CHAIN_DEADLINE_MS,
 ): Promise<Omit<ClaimV1, "community" | "as_of"> | null> {
   const { intent } = facts;
   if (!intent || !facts.publishTx) return null;
@@ -217,27 +326,25 @@ export async function claimOf(
   const program = address(intent.audit.program_id);
   const community = address(intent.communityAddress);
   const epoch = await epochAddress(program, community, BigInt(facts.index));
-  const verified = await verifyPublication(facts, reader);
-  let payment: ClaimV1["payment"];
-  if ("status" in verified || !reader) {
-    payment = "status" in verified ? verified : unavailable("chain_unconfigured");
-  } else {
+
+  const paymentFor = async (): Promise<ClaimV1["payment"]> => {
+    const verified = await verifyPublication(facts, reader);
+    if ("status" in verified) return verified;
+    if (!reader) return unavailable("chain_unconfigured");
     try {
       const [row] = await receiptsOf(verified, reader, [leaf]);
-      if (row?.claimTx) {
-        payment = { status: "paid", claim_tx: row.claimTx };
-      } else {
-        const { blockhash, lastValidBlockHeight } = await reader.latestBlockhash();
-        payment = {
-          status: "claimable",
-          recent_blockhash: blockhash,
-          last_valid_block_height: lastValidBlockHeight.toString(),
-        };
-      }
+      if (row?.claimTx) return { status: "paid", claim_tx: row.claimTx };
+      const { blockhash, lastValidBlockHeight } = await reader.latestBlockhash();
+      return {
+        status: "claimable",
+        recent_blockhash: blockhash,
+        last_valid_block_height: lastValidBlockHeight.toString(),
+      };
     } catch (error) {
-      payment = unavailable(error instanceof Mismatch ? "chain_mismatch" : "chain_unavailable");
+      return failure(error);
     }
-  }
+  };
+
   return {
     epoch: { index: facts.index },
     wallet,
@@ -252,6 +359,6 @@ export async function claimOf(
     evidence_hash: leaf.evidenceHash,
     proof: leaf.proof,
     root: intent.root,
-    payment,
+    payment: await byDeadline(paymentFor(), Date.now() + deadlineMs, late),
   };
 }

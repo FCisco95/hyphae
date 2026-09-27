@@ -1,4 +1,4 @@
-import { ReadApiV1 } from "@hyphae/core";
+import { ReadApiV1, ReadApiV1Loose } from "@hyphae/core";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import * as f from "./fixtures.js";
@@ -36,6 +36,7 @@ describe("fixtures", () => {
     ReadApiV1.contribution.parse(f.offTopic);
     ReadApiV1.contribution.parse(f.pendingAtClose);
     ReadApiV1.claim.parse(f.claim);
+    ReadApiV1Loose.epoch.parse(f.firstV1Epoch);
   });
 });
 
@@ -85,7 +86,7 @@ describe("EpochView", () => {
 });
 
 describe("Settlement (P14)", () => {
-  const settlement = (e: typeof f.finalEpoch) =>
+  const settlement = (e: typeof f.firstV1Epoch) =>
     text(<EpochView epoch={e} list={f.contributions} />)
       .split("Settlement")[1]
       ?.split("Contributions")[0] ?? "";
@@ -123,6 +124,10 @@ describe("Settlement (P14)", () => {
     expect(t).toContain("Retained: this epoch is before the first paid epoch.");
     // P14's own wording names the first paid epoch; no payment is shown.
     expect(t).not.toMatch(/Paid in|claimed|SOL/i);
+  });
+
+  it("an api that predates the settlement field shows its first v1 sections", () => {
+    expect(settlement(f.firstV1Epoch)).toContain("Not allocated. No payout exists for this epoch.");
   });
 
   it("an unreadable chain shows no number at all, and never paid", () => {

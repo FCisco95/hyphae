@@ -122,6 +122,16 @@ function readApiSchemas(strict: boolean) {
       sum(p.claims) === n(p.claimed_lamports) + n(p.unclaimed_lamports)
     );
   });
+  const settlement = obj({
+    allocation: z.union([published, unavailable]),
+    payment: z.union([payments, unavailable]),
+  }).refine(
+    (s) =>
+      s.payment.status !== "available" ||
+      (s.allocation.status === "published" &&
+        n(s.payment.claimed_lamports) + n(s.payment.unclaimed_lamports) ===
+          n(s.allocation.allocated_lamports)),
+  );
   const effort = z.enum(["eligible", "ineligible", "not_nominated"]);
   const creditRules = z.enum(["none", "hard_zero", "ai_cap_mild", "ai_cap_strong", "below_floor"]);
 
@@ -239,15 +249,12 @@ function readApiSchemas(strict: boolean) {
         obj({ status: z.literal("frozen"), closed_at: iso, cutoff_assumption: z.string() }),
         obj({ status: z.literal("not_frozen") }),
       ]),
-      allocation: z.union([published, unavailable]),
-      payment: z.union([payments, unavailable]),
-    }).refine(
-      (e) =>
-        e.payment.status !== "available" ||
-        (e.allocation.status === "published" &&
-          n(e.payment.claimed_lamports) + n(e.payment.unclaimed_lamports) ===
-            n(e.allocation.allocated_lamports)),
-    ),
+      // A4: these keep their first v1 shape, so they stay `unavailable`; P14 is in `settlement`.
+      allocation: unavailable,
+      payment: unavailable,
+      // Required of this api; optional for a consumer reading an older one.
+      settlement: settlement.optional(),
+    }).refine((e) => !strict || e.settlement !== undefined),
     contributions: obj({
       community: obj({ mint: z.string().min(1) }),
       epoch: obj({ index: count, closed: z.boolean(), final: z.boolean() }),
@@ -341,5 +348,8 @@ export type ContributionV1 = z.infer<typeof ReadApiV1.contribution>;
 export type RevisionV1 = ContributionV1["revisions"][number];
 export type SelectedV1 = NonNullable<ContributionRowV1["selected"]>;
 export type ClaimV1 = z.infer<typeof ReadApiV1.claim>;
-export type AllocationV1 = EpochV1["allocation"];
-export type PaymentV1 = EpochV1["payment"];
+export type SettlementV1 = NonNullable<EpochV1["settlement"]>;
+export type AllocationV1 = SettlementV1["allocation"];
+export type PaymentV1 = SettlementV1["payment"];
+// What a consumer parses: fields added later inside v1 may be absent from an older api.
+export type LooseEpochV1 = z.infer<typeof ReadApiV1Loose.epoch>;

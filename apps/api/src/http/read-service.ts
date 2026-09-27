@@ -48,12 +48,12 @@ import { RewardConfigPayload } from "../rewards/config.js";
 import { correctionRecord, effortCriteriaRecord } from "../rewards/decisions.js";
 import { selectEffective } from "../rewards/effective.js";
 import {
-  allocationOf,
+  CHAIN_DEADLINE_MS,
   claimOf,
+  firstV1Section,
   type PublicationFacts,
-  paymentOf,
   type SettlementReader,
-  verifyPublication,
+  settlementOf,
 } from "./settlement.js";
 
 // The public read API v1 (H-CONTRACT Part A). Every function selects named columns only, so no
@@ -474,6 +474,7 @@ export async function readEpoch(
   index: number,
   now: Date,
   chain?: SettlementReader,
+  deadlineMs = CHAIN_DEADLINE_MS,
 ): Promise<EpochV1 | null> {
   const read = await readOnly(db, async (tx) => {
     const found = await findEpoch(tx, mint, index);
@@ -494,7 +495,7 @@ export async function readEpoch(
     );
     const total = [...decisions.values()].reduce((sum, d) => sum + d.pointUnits, 0n);
 
-    const body: Omit<EpochV1, "allocation" | "payment"> = {
+    const body: Omit<EpochV1, "allocation" | "payment" | "settlement"> = {
       community: { mint: community.mint, name: community.name },
       index: epoch.row.index,
       opens_at: epoch.opensAt,
@@ -532,11 +533,12 @@ export async function readEpoch(
     return { body, facts: await publicationFacts(tx, epoch, community.firstPaidEpoch) };
   });
   if (!read) return null;
-  const verified = await verifyPublication(read.facts, chain);
+  const settlement = await settlementOf(read.facts, chain, deadlineMs);
   return {
     ...read.body,
-    allocation: allocationOf(verified),
-    payment: await paymentOf(verified, chain),
+    allocation: firstV1Section(settlement.allocation),
+    payment: firstV1Section(settlement.payment),
+    settlement,
   };
 }
 
@@ -547,12 +549,13 @@ export async function readClaim(
   wallet: string,
   now: Date,
   chain?: SettlementReader,
+  deadlineMs = CHAIN_DEADLINE_MS,
 ): Promise<ClaimV1 | null> {
   const facts = await readOnly(db, async (tx) => {
     const found = await findEpoch(tx, mint, index);
     return found ? publicationFacts(tx, found.epoch, found.community.firstPaidEpoch) : null;
   });
-  const claim = facts && (await claimOf(facts, chain, wallet));
+  const claim = facts && (await claimOf(facts, chain, wallet, deadlineMs));
   return claim ? { community: { mint }, ...claim, as_of: dateUs(now) } : null;
 }
 

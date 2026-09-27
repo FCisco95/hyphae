@@ -6,6 +6,7 @@ import type {
   ContributionV1,
   EpochV1,
   LeaderboardV1,
+  LooseEpochV1,
   RevisionV1,
 } from "@hyphae/core";
 
@@ -59,6 +60,10 @@ const baseEpoch: EpochV1 = {
   snapshot: { status: "frozen", closed_at: ts(2, 1), cutoff_assumption: "clock" },
   allocation: { status: "unavailable", reason: "no_settlement" },
   payment: { status: "unavailable", reason: "no_settlement" },
+  settlement: {
+    allocation: { status: "unavailable", reason: "no_settlement" },
+    payment: { status: "unavailable", reason: "no_settlement" },
+  },
 };
 export const finalEpoch = baseEpoch;
 export const openEpoch: EpochV1 = {
@@ -85,65 +90,73 @@ const addr = [
   "SysvarC1ock11111111111111111111111111111111",
 ] as const;
 // A published, partly claimed epoch: the seeded_ready_epoch numbers.
+const seeSettlement = { status: "unavailable", reason: "see_settlement" } as const;
 export const settledEpoch: EpochV1 = {
   ...baseEpoch,
   index: 2,
-  allocation: {
-    status: "published",
-    network: "solana:devnet",
-    program_id: PROGRAM,
-    community_address: addr[0],
-    vault_address: addr[1],
-    epoch_address: addr[2],
-    publish_tx: PUBLISH_TX,
-    published_at: ts(9, 1),
-    root: "a".repeat(64),
-    audit_hash: "b".repeat(64),
-    gross_lamports: "500000000",
-    fee_bps: "300",
-    fee_lamports: "15000000",
-    fee_recipient: addr[3],
-    net_lamports: "485000000",
-    allocated_lamports: "304603658",
-    cap_remainder_lamports: "180396341",
-    dust_lamports: "1",
-    payable_members: "3",
+  allocation: seeSettlement,
+  payment: seeSettlement,
+  settlement: {
+    allocation: {
+      status: "published",
+      network: "solana:devnet",
+      program_id: PROGRAM,
+      community_address: addr[0],
+      vault_address: addr[1],
+      epoch_address: addr[2],
+      publish_tx: PUBLISH_TX,
+      published_at: ts(9, 1),
+      root: "a".repeat(64),
+      audit_hash: "b".repeat(64),
+      gross_lamports: "500000000",
+      fee_bps: "300",
+      fee_lamports: "15000000",
+      fee_recipient: addr[3],
+      net_lamports: "485000000",
+      allocated_lamports: "304603658",
+      cap_remainder_lamports: "180396341",
+      dust_lamports: "1",
+      payable_members: "3",
+    },
+    payment: {
+      status: "available",
+      claimed_lamports: "121250000",
+      unclaimed_lamports: "183353658",
+      claims: [
+        {
+          member_id: id(11),
+          wallet: addr[4],
+          amount_lamports: "121250000",
+          status: "paid",
+          receipt_address: addr[5],
+          claim_tx: CLAIM_TX,
+        },
+        {
+          member_id: id(12),
+          wallet: addr[5],
+          amount_lamports: "183353658",
+          status: "claimable",
+          receipt_address: addr[4],
+          claim_tx: null,
+        },
+      ],
+    },
   },
-  payment: {
-    status: "available",
-    claimed_lamports: "121250000",
-    unclaimed_lamports: "183353658",
-    claims: [
-      {
-        member_id: id(11),
-        wallet: addr[4],
-        amount_lamports: "121250000",
-        status: "paid",
-        receipt_address: addr[5],
-        claim_tx: CLAIM_TX,
-      },
-      {
-        member_id: id(12),
-        wallet: addr[5],
-        amount_lamports: "183353658",
-        status: "claimable",
-        receipt_address: addr[4],
-        claim_tx: null,
-      },
-    ],
+};
+const unavailableEpoch = (reason: string): EpochV1 => ({
+  ...baseEpoch,
+  allocation: { status: "unavailable", reason },
+  payment: { status: "unavailable", reason },
+  settlement: {
+    allocation: { status: "unavailable", reason },
+    payment: { status: "unavailable", reason },
   },
-};
-export const retainedEpoch: EpochV1 = {
-  ...baseEpoch,
-  allocation: { status: "unavailable", reason: "before_first_paid_epoch" },
-  payment: { status: "unavailable", reason: "before_first_paid_epoch" },
-};
-export const chainDownEpoch: EpochV1 = {
-  ...baseEpoch,
-  index: 2,
-  allocation: { status: "unavailable", reason: "chain_unavailable" },
-  payment: { status: "unavailable", reason: "chain_unavailable" },
-};
+});
+export const retainedEpoch = unavailableEpoch("before_first_paid_epoch");
+export const chainDownEpoch = { ...unavailableEpoch("chain_unavailable"), index: 2 };
+// An epoch from an api that predates the settlement field: only the first v1 sections.
+const { settlement: _, ...firstV1 } = baseEpoch;
+export const firstV1Epoch: LooseEpochV1 = firstV1;
 
 const epochRef = { index: 1, closes_at: ts(2), closed: true, final: true };
 export const offTopicRow: ContributionRowV1 = {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { ReadApiV1, ReadApiV1Loose } from "./read-api.js";
 
 const ts = "2026-09-25T10:04:05.123456Z";
@@ -103,6 +104,10 @@ const epoch = {
   snapshot: { status: "not_frozen" },
   allocation: { status: "unavailable", reason: "no_settlement" },
   payment: { status: "unavailable", reason: "no_settlement" },
+  settlement: {
+    allocation: { status: "unavailable", reason: "no_settlement" },
+    payment: { status: "unavailable", reason: "no_settlement" },
+  },
 };
 
 const community = {
@@ -287,7 +292,22 @@ const payment = {
   unclaimed_lamports: "183353658",
   claims,
 };
-const settled = { ...epoch, status: "closed", closed: true, final: true, allocation, payment };
+// A4: `allocation` and `payment` keep their first v1 shape, a closed `unavailable`; P14 is additive
+// in `settlement`.
+const seeSettlement = { status: "unavailable", reason: "see_settlement" };
+const settled = {
+  ...epoch,
+  status: "closed",
+  closed: true,
+  final: true,
+  allocation: seeSettlement,
+  payment: seeSettlement,
+  settlement: { allocation, payment },
+};
+const settledWith = (over: Record<string, unknown>) => ({
+  ...settled,
+  settlement: { ...settled.settlement, ...over },
+});
 
 const claim = {
   community: { mint: "Mint1" },
@@ -321,18 +341,19 @@ describe("P14 settlement sections", () => {
       "chain_unconfigured",
       "chain_unavailable",
       "chain_mismatch",
+      "chain_transaction_missing",
     ]) {
       const unavailable = { status: "unavailable", reason };
-      expect(ok(ReadApiV1.epoch, { ...settled, payment: unavailable }), reason).toBe(true);
+      expect(ok(ReadApiV1.epoch, settledWith({ payment: unavailable })), reason).toBe(true);
       expect(
-        ok(ReadApiV1.epoch, { ...settled, allocation: unavailable, payment: unavailable }),
+        ok(ReadApiV1.epoch, settledWith({ allocation: unavailable, payment: unavailable })),
       ).toBe(true);
     }
   });
 
   it("refuse settlement numbers that do not reconcile", () => {
     const bad = (a: Partial<typeof allocation>) =>
-      ok(ReadApiV1.epoch, { ...settled, allocation: { ...allocation, ...a } });
+      ok(ReadApiV1.epoch, settledWith({ allocation: { ...allocation, ...a } }));
     expect(bad({ fee_lamports: "15000001" })).toBe(false);
     expect(bad({ net_lamports: "485000001" })).toBe(false);
     expect(bad({ dust_lamports: "2" })).toBe(false);
@@ -341,7 +362,7 @@ describe("P14 settlement sections", () => {
 
   it("never show a payment without its receipt transaction, nor claimed and unclaimed that disagree", () => {
     const withClaims = (c: typeof claims, p: Partial<typeof payment> = {}) =>
-      ok(ReadApiV1.epoch, { ...settled, payment: { ...payment, ...p, claims: c } });
+      ok(ReadApiV1.epoch, settledWith({ payment: { ...payment, ...p, claims: c } }));
     expect(withClaims([{ ...claims[0], claim_tx: null }, ...claims.slice(1)] as never)).toBe(false);
     expect(withClaims([claims[0], { ...claims[1], claim_tx: SIG }, claims[2]] as never)).toBe(
       false,
@@ -354,11 +375,28 @@ describe("P14 settlement sections", () => {
 
   it("refuse payments shown for an allocation that is not published", () => {
     expect(
-      ok(ReadApiV1.epoch, {
-        ...settled,
-        allocation: { status: "unavailable", reason: "chain_unavailable" },
-      }),
+      ok(
+        ReadApiV1.epoch,
+        settledWith({ allocation: { status: "unavailable", reason: "chain_unavailable" } }),
+      ),
     ).toBe(false);
+  });
+
+  it("keep the first v1 sections closed, so a consumer that knows only them still parses (A4)", () => {
+    // The consumer rule for these two fields before P14: a closed `unavailable` with a reason.
+    const unavailable = z.object({ status: z.literal("unavailable"), reason: z.string().min(1) });
+    const firstV1 = z.object({ allocation: unavailable, payment: unavailable });
+    expect(firstV1.safeParse(settled).success).toBe(true);
+    expect(ok(ReadApiV1Loose.epoch, settled)).toBe(true);
+    // A published allocation in the first v1 fields would be a new value in a closed enum.
+    expect(ok(ReadApiV1.epoch, { ...settled, allocation })).toBe(false);
+    expect(ok(ReadApiV1.epoch, { ...settled, payment })).toBe(false);
+  });
+
+  it("let a consumer read an api that predates the settlement field", () => {
+    const { settlement: _, ...before } = settled;
+    expect(ok(ReadApiV1Loose.epoch, before)).toBe(true);
+    expect(ok(ReadApiV1.epoch, before)).toBe(false);
   });
 });
 

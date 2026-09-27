@@ -1,4 +1,4 @@
-import { HYPHAE_PROGRAM_ID } from "@hyphae/core";
+import { HYPHAE_PROGRAM_ID, type ListedInstruction } from "@hyphae/core";
 import { createSolanaRpcFromTransport, type RpcTransport } from "@solana/kit";
 import { describe, expect, it } from "vitest";
 import { settlementReader } from "./chain-reader.js";
@@ -6,6 +6,7 @@ import { settlementReader } from "./chain-reader.js";
 const DEVNET = "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG";
 const A = "3nVsVs3QSv6Yf1XtRj2d1s2ySSeeNQbtztHwm4VhNgbk";
 const B = "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR";
+const SIG = "5".repeat(87);
 
 type Call = { method: string; params: unknown[] };
 
@@ -65,24 +66,58 @@ describe("the chain reader", () => {
     );
   });
 
-  it("finds the transaction that created an account: the oldest successful one", async () => {
-    const sig = (c: string) => `${c.repeat(87)}`;
-    const entry = (signature: string, err: unknown) => ({
-      signature,
-      slot: 1,
-      err,
-      memo: null,
-      blockTime: null,
-      confirmationStatus: "confirmed",
-    });
-    const { rpc } = rpcWith(() => [
-      entry(sig("3"), { InstructionError: [0, { Custom: 0 }] }),
-      entry(sig("2"), null),
-      entry(sig("1"), { InstructionError: [0, { Custom: 1 }] }),
-    ]);
-    expect(await settlementReader(rpc).firstSignature(A)).toBe(sig("2"));
-    const none = rpcWith(() => []);
-    expect(await settlementReader(none.rpc).firstSignature(A)).toBeNull();
+  it("finds the transaction that created an account, and remembers it once finalized", async () => {
+    const created = (finalized: boolean) =>
+      rpcWith(({ method, params }) => {
+        if (method === "getSignaturesForAddress") {
+          return [
+            {
+              signature: SIG,
+              slot: 1,
+              err: null,
+              memo: null,
+              blockTime: 1,
+              confirmationStatus: finalized ? "finalized" : "confirmed",
+            },
+          ];
+        }
+        const commitment = (params[1] as { commitment: string }).commitment;
+        if (!finalized && commitment === "finalized") return null;
+        return {
+          slot: 1,
+          blockTime: 1,
+          meta: {
+            err: null,
+            innerInstructions: [],
+            loadedAddresses: { writable: [], readonly: [] },
+          },
+          transaction: {
+            signatures: [SIG],
+            message: {
+              accountKeys: [B, A, HYPHAE_PROGRAM_ID],
+              instructions: [{ programIdIndex: 2, accounts: [0, 1], data: "2", stackHeight: null }],
+            },
+          },
+        };
+      });
+    const ours = (ix: ListedInstruction) =>
+      ix.program === HYPHAE_PROGRAM_ID && ix.accounts[1] === A;
+    const final = created(true);
+    const reader = settlementReader(final.rpc);
+    expect(await reader.creation(A, ours)).toBe(SIG);
+    const asked = final.calls.length;
+    expect(await reader.creation(A, ours)).toBe(SIG);
+    expect(final.calls).toHaveLength(asked);
+    // A remembered creation still has to be the instruction asked for.
+    expect(await reader.creation(A, () => false)).toBeNull();
+    expect(final.calls.length).toBeGreaterThan(asked);
+
+    const recent = created(false);
+    const fresh = settlementReader(recent.rpc);
+    expect(await fresh.creation(A, ours)).toBe(SIG);
+    const before = recent.calls.length;
+    expect(await fresh.creation(A, ours)).toBe(SIG);
+    expect(recent.calls.length).toBeGreaterThan(before);
   });
 
   it("gives a recent blockhash with its last valid height", async () => {

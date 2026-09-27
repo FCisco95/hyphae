@@ -69,9 +69,10 @@ async function databaseNow(db: Db): Promise<Date> {
 
 // Settlement sections read the chain, so their state can change at any time: only a final epoch
 // whose sections do not depend on the chain is cached long.
-const readsChain = (e: EpochV1) =>
-  e.allocation.status === "published" ||
-  (e.allocation.status === "unavailable" && e.allocation.reason.startsWith("chain_"));
+const readsChain = ({ settlement }: EpochV1) =>
+  settlement !== undefined &&
+  (settlement.allocation.status === "published" ||
+    settlement.allocation.reason.startsWith("chain_"));
 
 export function readRoutes(deps: {
   db: Db;

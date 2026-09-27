@@ -1,5 +1,6 @@
-import type { ClaimV1, EpochV1 } from "@hyphae/core";
+import type { ClaimV1, LooseEpochV1 } from "@hyphae/core";
 import { networkName, shortWallet, sol } from "../lib/format.js";
+import { settlementOf } from "../lib/settlement.js";
 import { ClaimPanel } from "./claim-panel.js";
 import { Tx, unavailableSentence } from "./views.js";
 
@@ -55,8 +56,8 @@ export function ClaimSummary({ claim }: { claim: ClaimV1 }) {
   );
 }
 
-export function ClaimView({ epoch }: { epoch: EpochV1 }) {
-  const a = epoch.allocation;
+export function ClaimView({ epoch }: { epoch: LooseEpochV1 }) {
+  const a = settlementOf(epoch).allocation;
   const epochPage = `/c/${epoch.community.mint}/e/${epoch.index}`;
   return (
     <>

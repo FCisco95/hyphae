@@ -5,6 +5,7 @@ import type {
   ContributionV1,
   EpochV1,
   LeaderboardV1,
+  LooseEpochV1,
   RevisionV1,
 } from "@hyphae/core";
 import {
@@ -18,6 +19,7 @@ import {
   sol,
   utc,
 } from "../lib/format.js";
+import { settlementOf } from "../lib/settlement.js";
 
 // Pure views over parsed read-API responses. Pages fetch; these only render.
 
@@ -148,8 +150,8 @@ export function Tx({ signature, network }: { signature: string; network: Network
 
 type Network = "solana:devnet" | "solana:mainnet";
 
-function SettlementPanel({ epoch }: { epoch: EpochV1 }) {
-  const a = epoch.allocation;
+function SettlementPanel({ epoch }: { epoch: LooseEpochV1 }) {
+  const { allocation: a, payment: p } = settlementOf(epoch);
   if (a.status !== "published") {
     return (
       <section className="panel">
@@ -158,7 +160,6 @@ function SettlementPanel({ epoch }: { epoch: EpochV1 }) {
       </section>
     );
   }
-  const p = epoch.payment;
   const tx = <Tx signature={a.publish_tx} network={a.network} />;
   return (
     <section className="panel">
@@ -277,7 +278,7 @@ function Pager({
   );
 }
 
-export function EpochView({ epoch, list }: { epoch: EpochV1; list: ContributionsV1 }) {
+export function EpochView({ epoch, list }: { epoch: LooseEpochV1; list: ContributionsV1 }) {
   const base = `/c/${epoch.community.mint}/e/${epoch.index}`;
   const c = epoch.counts;
   return (

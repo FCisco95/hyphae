@@ -159,7 +159,9 @@ describe("the claim route and settled epochs", () => {
       accounts: async () => {
         throw new Error("rpc down");
       },
-      firstSignature: async () => null,
+      creation: async () => {
+        throw new Error("rpc down");
+      },
       latestBlockhash: async () => {
         throw new Error("rpc down");
       },
@@ -178,6 +180,10 @@ describe("the claim route and settled epochs", () => {
     const e = await live.request(`/communities/${seed.mint}/epochs/1`);
     const body = ReadApiV1.epoch.parse(await e.json());
     expect(body.final).toBe(true);
+    expect(body.settlement?.allocation).toEqual({
+      status: "unavailable",
+      reason: "chain_unavailable",
+    });
     expect(body.allocation).toEqual({ status: "unavailable", reason: "chain_unavailable" });
     expect(e.headers.get("cache-control")).toBe("public, max-age=15");
   });

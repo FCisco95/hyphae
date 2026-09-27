@@ -1,7 +1,10 @@
 import {
+  claimInstruction,
   epochAddress,
   HYPHAE_PROGRAM_ID,
+  type ListedInstruction,
   leafHash,
+  publishEpochInstruction,
   ReadApiV1,
   receiptAddress,
   vaultAddress,
@@ -10,7 +13,13 @@ import {
 import { communities, leaves } from "@hyphae/db";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
-import { type Address, address, getAddressEncoder } from "@solana/kit";
+import {
+  type Address,
+  address,
+  createNoopSigner,
+  getAddressEncoder,
+  type Instruction,
+} from "@solana/kit";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { loadIntent, type PublicationIntent } from "../payout/intent.js";
@@ -18,7 +27,7 @@ import { type PublishChain, publishEpoch } from "../payout/publish.js";
 import { type ReadySeed, randomAddress, seedReadyEpoch } from "../payout/ready-seed.js";
 import { createTestDb } from "../rewards/test-db.js";
 import { readClaim, readEpoch } from "./read-service.js";
-import type { SettlementReader } from "./settlement.js";
+import { mapLimit, type SettlementReader } from "./settlement.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -74,10 +83,26 @@ function receiptAccount(epoch: string, leaf: PublicationIntent["leaves"][number]
   });
 }
 
+// How a confirmed transaction lists an instruction.
+const listed = (i: Instruction): ListedInstruction => ({
+  program: i.programAddress,
+  accounts: (i.accounts ?? []).map((a) => a.address),
+  data: i.data as Uint8Array,
+});
+const transfer = (to: string): ListedInstruction => ({
+  program: "11111111111111111111111111111111",
+  accounts: [FEE_RECIPIENT, to],
+  data: Uint8Array.of(2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0),
+});
+
+type Sent = { signature: string; instructions: ListedInstruction[] };
+
 function fakeReader(network: "solana:devnet" | "solana:mainnet" = "solana:devnet") {
   const accounts = new Map<string, Uint8Array>();
-  const signatures = new Map<string, string>();
-  const state = { down: false };
+  // The successful transactions that touched each account, oldest first.
+  const touched = new Map<string, Sent[]>();
+  const hints: { at: string; signature?: string | null; blockTime?: bigint }[] = [];
+  const state = { down: false, slow: new Set<string>(), inFlight: 0, maxInFlight: 0 };
   const up = () => {
     if (state.down) throw new Error("rpc down");
   };
@@ -89,18 +114,25 @@ function fakeReader(network: "solana:devnet" | "solana:mainnet" = "solana:devnet
     accounts: async (owner, at) => {
       up();
       expect(owner).toBe(HYPHAE_PROGRAM_ID);
+      if (at.some((a) => state.slow.has(a))) await new Promise(() => {});
       return at.map((a) => accounts.get(a) ?? null);
     },
-    firstSignature: async (at) => {
+    creation: async (at, matches, hint = {}) => {
       up();
-      return signatures.get(at) ?? null;
+      hints.push({ at, ...hint });
+      state.inFlight += 1;
+      state.maxInFlight = Math.max(state.maxInFlight, state.inFlight);
+      if (state.slow.has(at)) await new Promise(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      state.inFlight -= 1;
+      return (touched.get(at) ?? []).find((t) => t.instructions.some(matches))?.signature ?? null;
     },
     latestBlockhash: async () => {
       up();
       return { blockhash: BLOCKHASH, lastValidBlockHeight: 1000n };
     },
   };
-  return { reader, accounts, signatures, state };
+  return { reader, accounts, touched, hints, state };
 }
 
 // A seeded ready epoch published through the real publish job, as the chain would show it.
@@ -128,16 +160,74 @@ async function published(): Promise<{
   return { seed, intent, community, epoch };
 }
 
-async function onChain(p: Awaited<ReturnType<typeof published>>, claimed = 0n) {
+type Published = Awaited<ReturnType<typeof published>>;
+
+// The publication as the chain holds it: the epoch account, created by a publish_epoch sent as
+// `signature` with exactly the intent's commitments.
+async function onChain(p: Published, claimed = 0n, signature = PUBLISH_TX) {
   const fake = fakeReader();
   fake.accounts.set(p.epoch, epochAccount(p.community, p.intent, claimed));
+  const s = p.intent.audit.settlement;
+  const community = address(p.community);
+  const publish = publishEpochInstruction({
+    programId: HYPHAE_PROGRAM_ID,
+    admin: createNoopSigner(address(randomAddress())),
+    community,
+    vault: await vaultAddress(HYPHAE_PROGRAM_ID, community),
+    feeRecipient: address(s.fee_recipient),
+    epoch: p.epoch,
+    index: 1n,
+    root: hexToBytes(p.intent.root),
+    auditHash: hexToBytes(p.intent.auditHash),
+    grossLamports: BigInt(s.gross_lamports),
+    allocatedLamports: BigInt(s.allocated_lamports),
+  });
+  fake.touched.set(p.epoch, [
+    { signature: `2${"T".repeat(86)}`, instructions: [transfer(p.epoch)] },
+    { signature, instructions: [listed(publish)] },
+  ]);
   return fake;
 }
 
-const epochOf = async (seed: ReadySeed, reader?: SettlementReader) => {
-  const e = await readEpoch(t.db, seed.mint, 1, NOW, reader);
+type Leaf = PublicationIntent["leaves"][number];
+
+// A leaf claimed on-chain: its receipt, created by a claim sent as CLAIM_TX, after a transfer to
+// the receipt's address that is not the claim.
+async function claimed(fake: ReturnType<typeof fakeReader>, p: Published, leaf: Leaf) {
+  const receipt = await receiptAddress(HYPHAE_PROGRAM_ID, p.epoch, address(leaf.wallet));
+  fake.accounts.set(receipt, receiptAccount(p.epoch, leaf));
+  const community = address(p.community);
+  const claim = claimInstruction({
+    programId: HYPHAE_PROGRAM_ID,
+    claimant: createNoopSigner(address(leaf.wallet)),
+    community,
+    vault: await vaultAddress(HYPHAE_PROGRAM_ID, community),
+    epoch: p.epoch,
+    receipt,
+    score: leaf.score,
+    amount: leaf.amountLamports,
+    evidenceHash: hexToBytes(leaf.evidenceHash),
+    proof: leaf.proof.map(hexToBytes),
+  });
+  fake.touched.set(receipt, [
+    { signature: `3${"T".repeat(86)}`, instructions: [transfer(receipt)] },
+    { signature: CLAIM_TX, instructions: [listed(claim)] },
+  ]);
+  return receipt;
+}
+
+const epochOf = async (seed: ReadySeed, reader?: SettlementReader, deadlineMs?: number) => {
+  const e = await readEpoch(t.db, seed.mint, 1, NOW, reader, deadlineMs);
   if (!e) throw new Error("no epoch");
-  return ReadApiV1.epoch.parse(e);
+  const parsed = ReadApiV1.epoch.parse(e);
+  const { settlement } = parsed;
+  if (!settlement) throw new Error("no settlement");
+  // A4: the first v1 fields stay `unavailable`, pointing to `settlement` once it has more.
+  const firstV1 = (x: { status: string }) =>
+    x.status === "unavailable" ? x : { status: "unavailable", reason: "see_settlement" };
+  expect(parsed.allocation).toEqual(firstV1(settlement.allocation));
+  expect(parsed.payment).toEqual(firstV1(settlement.payment));
+  return settlement;
 };
 
 describe("P14 allocation and payment", () => {
@@ -180,7 +270,7 @@ describe("P14 allocation and payment", () => {
     const p = await published();
     const missing = await epochOf(p.seed, fakeReader().reader);
     expect(missing.allocation).toEqual({ status: "unavailable", reason: "chain_mismatch" });
-    const fake = fakeReader();
+    const fake = await onChain(p);
     fake.accounts.set(p.epoch, epochAccount(p.community, p.intent, 0n, { root: "ab".repeat(32) }));
     const other = await epochOf(p.seed, fake.reader);
     expect(other.allocation).toEqual({ status: "unavailable", reason: "chain_mismatch" });
@@ -217,6 +307,12 @@ describe("P14 allocation and payment", () => {
       dust_lamports: "1",
       payable_members: "3",
     });
+    // The recorded signature is only a hint, tried with the second the epoch account records.
+    expect(fake.hints).toContainEqual({
+      at: p.epoch,
+      signature: PUBLISH_TX,
+      blockTime: 1_790_000_000n,
+    });
     if (e.payment.status !== "available") throw new Error(e.payment.reason);
     expect(e.payment.claimed_lamports).toBe("0");
     expect(e.payment.unclaimed_lamports).toBe("304603658");
@@ -227,14 +323,28 @@ describe("P14 allocation and payment", () => {
     ]);
   });
 
-  it("a receipt on-chain is paid, with the transaction that created it", async () => {
+  it("shows the publish transaction the chain proves, never the recorded one unproven", async () => {
+    const p = await published();
+    const proven = `6${"R".repeat(86)}`;
+    const elsewhere = await onChain(p, 0n, proven);
+    expect((await epochOf(p.seed, elsewhere.reader)).allocation).toMatchObject({
+      status: "published",
+      publish_tx: proven,
+    });
+    // An unrelated transaction recorded as the publication, and no publish_epoch on-chain.
+    const unproven = await onChain(p);
+    unproven.touched.set(p.epoch, [{ signature: PUBLISH_TX, instructions: [transfer(p.epoch)] }]);
+    const e = await epochOf(p.seed, unproven.reader);
+    const missing = { status: "unavailable", reason: "chain_transaction_missing" };
+    expect([e.allocation, e.payment]).toEqual([missing, missing]);
+  });
+
+  it("a receipt on-chain is paid, with the claim transaction that created it", async () => {
     const p = await published();
     const leaf = p.intent.leaves.find((l) => l.memberId === p.seed.members.effort);
     if (!leaf) throw new Error("no effort leaf");
     const fake = await onChain(p, leaf.amountLamports);
-    const receipt = await receiptAddress(HYPHAE_PROGRAM_ID, p.epoch, address(leaf.wallet));
-    fake.accounts.set(receipt, receiptAccount(p.epoch, leaf));
-    fake.signatures.set(receipt, CLAIM_TX);
+    const receipt = await claimed(fake, p, leaf);
     const e = await epochOf(p.seed, fake.reader);
     if (e.payment.status !== "available") throw new Error(e.payment.reason);
     expect(e.payment.claimed_lamports).toBe(leaf.amountLamports.toString());
@@ -247,16 +357,30 @@ describe("P14 allocation and payment", () => {
       receipt_address: receipt,
       claim_tx: CLAIM_TX,
     });
+    // The receipt records the second it was claimed; the lookup tries that second first.
+    expect(fake.hints).toContainEqual({ at: receipt, blockTime: 0n });
+  });
+
+  it("a transaction that touched a receipt but is not its claim is not shown as one", async () => {
+    const p = await published();
+    const leaf = p.intent.leaves.find((l) => l.memberId === p.seed.members.effort);
+    if (!leaf) throw new Error("no effort leaf");
+    const fake = await onChain(p, leaf.amountLamports);
+    const receipt = await claimed(fake, p, leaf);
+    fake.touched.set(receipt, [{ signature: CLAIM_TX, instructions: [transfer(receipt)] }]);
+    const missing = { status: "unavailable", reason: "chain_transaction_missing" };
+    expect((await epochOf(p.seed, fake.reader)).payment).toEqual(missing);
+    const c = await readClaim(t.db, p.seed.mint, 1, leaf.wallet, NOW, fake.reader);
+    expect(c?.payment).toEqual(missing);
   });
 
   it("a receipt for another amount, or a claimed total the receipts do not explain, is a mismatch", async () => {
     const p = await published();
     const leaf = p.intent.leaves[0];
     if (!leaf) throw new Error("no leaf");
-    const receipt = await receiptAddress(HYPHAE_PROGRAM_ID, p.epoch, address(leaf.wallet));
     const wrongAmount = await onChain(p, 1n);
+    const receipt = await claimed(wrongAmount, p, leaf);
     wrongAmount.accounts.set(receipt, receiptAccount(p.epoch, leaf, 1n));
-    wrongAmount.signatures.set(receipt, CLAIM_TX);
     expect((await epochOf(p.seed, wrongAmount.reader)).payment).toEqual({
       status: "unavailable",
       reason: "chain_mismatch",
@@ -265,6 +389,61 @@ describe("P14 allocation and payment", () => {
     const e = await epochOf(p.seed, unexplained.reader);
     expect(e.allocation.status).toBe("published");
     expect(e.payment).toEqual({ status: "unavailable", reason: "chain_mismatch" });
+  });
+
+  it("looks up the receipts' transactions several at a time", async () => {
+    const p = await published();
+    const total = p.intent.leaves.reduce((sum, l) => sum + l.amountLamports, 0n);
+    const fake = await onChain(p, total);
+    for (const leaf of p.intent.leaves) await claimed(fake, p, leaf);
+    const e = await epochOf(p.seed, fake.reader);
+    expect(e.payment.status).toBe("available");
+    expect(fake.state.maxInFlight).toBeGreaterThan(1);
+  });
+
+  it("gives up on a slow chain by the deadline, keeping a published allocation when only payments are slow", async () => {
+    const p = await published();
+    const leaf = p.intent.leaves[0];
+    if (!leaf) throw new Error("no leaf");
+    const fake = await onChain(p, leaf.amountLamports);
+    const receipt = await claimed(fake, p, leaf);
+    fake.state.slow.add(receipt);
+    const started = Date.now();
+    const e = await epochOf(p.seed, fake.reader, 200);
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(e.allocation.status).toBe("published");
+    expect(e.payment).toEqual({ status: "unavailable", reason: "chain_unavailable" });
+    // Another member's claim does not wait on that receipt.
+    const other = p.intent.leaves[1];
+    if (!other) throw new Error("no second leaf");
+    const c = await readClaim(t.db, p.seed.mint, 1, other.wallet, NOW, fake.reader, 200);
+    expect(c?.payment.status).toBe("claimable");
+    const mine = await readClaim(t.db, p.seed.mint, 1, leaf.wallet, NOW, fake.reader, 200);
+    expect(mine?.payment).toEqual({ status: "unavailable", reason: "chain_unavailable" });
+    fake.state.slow.add(p.epoch);
+    const stuck = await epochOf(p.seed, fake.reader, 200);
+    const down = { status: "unavailable", reason: "chain_unavailable" };
+    expect([stuck.allocation, stuck.payment]).toEqual([down, down]);
+  });
+});
+
+describe("mapLimit", () => {
+  it("runs at most `limit` at a time and keeps the order", async () => {
+    let inFlight = 0;
+    let most = 0;
+    const out = await mapLimit(
+      Array.from({ length: 20 }, (_, i) => i),
+      8,
+      async (i) => {
+        inFlight += 1;
+        most = Math.max(most, inFlight);
+        await new Promise((resolve) => setTimeout(resolve, 2));
+        inFlight -= 1;
+        return i * 2;
+      },
+    );
+    expect(out).toEqual(Array.from({ length: 20 }, (_, i) => i * 2));
+    expect(most).toBe(8);
   });
 });
 
@@ -305,9 +484,7 @@ describe("the claim route", () => {
     const leaf = p.intent.leaves.find((l) => l.memberId === p.seed.members.ordinary);
     if (!leaf) throw new Error("no leaf");
     const fake = await onChain(p, leaf.amountLamports);
-    const receipt = await receiptAddress(HYPHAE_PROGRAM_ID, p.epoch, address(leaf.wallet));
-    fake.accounts.set(receipt, receiptAccount(p.epoch, leaf));
-    fake.signatures.set(receipt, CLAIM_TX);
+    await claimed(fake, p, leaf);
     const c = await readClaim(t.db, p.seed.mint, 1, leaf.wallet, NOW, fake.reader);
     expect(c?.payment).toEqual({ status: "paid", claim_tx: CLAIM_TX });
   });

@@ -168,7 +168,8 @@ describe.skipIf(!RUN)("devnet run", () => {
       const intent = await loadIntent(t.db, seed.epochId);
       expect(intent?.root).toBe(published.root);
       expect(intent?.auditHash).toBe(published.auditHash);
-      const audit = await readEpoch(t.db, seed.mint, 1, new Date(), settlementReader(rpc));
+      const audit = (await readEpoch(t.db, seed.mint, 1, new Date(), settlementReader(rpc)))
+        ?.settlement;
       expect(audit?.allocation).toMatchObject({
         status: "published",
         publish_tx: published.signature,

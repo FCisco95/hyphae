@@ -1,18 +1,22 @@
 import { address, type Rpc, type SolanaRpcApi } from "@solana/kit";
 import { GENESIS } from "../payout/chain.js";
+import { type Creation, creatingTransaction } from "../payout/evidence.js";
 import type { SettlementReader } from "./settlement.js";
 
-// P14's chain reads over one RPC, each bounded by a timeout so a slow node makes a section
-// unavailable instead of hanging the read API. Read-only: it holds no key.
+// P14's chain reads over one RPC, each bounded by a timeout well inside the read's deadline, so a
+// slow node makes a section unavailable instead of hanging the read API. Read-only: it holds no key.
 
 const NETWORK_OF = new Map(
   Object.entries(GENESIS).map(([network, genesis]) => [genesis, network as keyof typeof GENESIS]),
 );
 const PAGE = 100; // getMultipleAccounts' limit
+const PROVEN = 10_000;
 
-export function settlementReader(rpc: Rpc<SolanaRpcApi>, timeoutMs = 3_000): SettlementReader {
+export function settlementReader(rpc: Rpc<SolanaRpcApi>, timeoutMs = 1_500): SettlementReader {
   const abortSignal = () => AbortSignal.timeout(timeoutMs);
   let network: Promise<keyof typeof GENESIS> | undefined;
+  // A finalized creation never changes, so it is looked up once per account.
+  const proven = new Map<string, Creation>();
   return {
     network() {
       network ??= rpc
@@ -50,12 +54,19 @@ export function settlementReader(rpc: Rpc<SolanaRpcApi>, timeoutMs = 3_000): Set
       }
       return out;
     },
-    async firstSignature(at) {
-      const signatures = await rpc
-        .getSignaturesForAddress(address(at), { limit: 1000, commitment: "confirmed" })
-        .send({ abortSignal: abortSignal() });
-      // Newest first; the oldest successful one created the account.
-      return signatures.filter((s) => s.err === null).at(-1)?.signature ?? null;
+    async creation(at, matches, hint = {}) {
+      const known = proven.get(at);
+      if (known?.instructions.some(matches)) return known.signature;
+      const found = await creatingTransaction(rpc, at, matches, {
+        hint: hint.signature ?? null,
+        ...(hint.blockTime === undefined ? {} : { blockTime: hint.blockTime }),
+        signal: abortSignal,
+      });
+      if (found?.finalized) {
+        if (proven.size >= PROVEN) proven.delete(proven.keys().next().value as string);
+        proven.set(at, found);
+      }
+      return found?.signature ?? null;
     },
     async latestBlockhash() {
       const { value } = await rpc
