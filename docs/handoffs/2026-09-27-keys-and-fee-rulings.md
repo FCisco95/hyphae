@@ -17,7 +17,9 @@ Cisco's answers, in-session, after the afternoon arc. Cisco controls Organic, so
 | 4 | Program keypair backup | **Yes**: Cisco copies it to an external SSD. | See below. |
 | 5 | Organic's adapter field | Cisco controls Organic; the Organic sync carries it. | Organic reads `epoch.settlement`, never the top-level `allocation`/`payment`. See the contract below. |
 
-### Open: the fee address shape (1)
+### The fee address shape (1): ruled Squads
+
+Cisco chose the Squads multisig recommended below: "we can create a squad wallet". Only its vault address is still open.
 
 The address is permanent, but "the Ledger for now" implies a change of control later.
 
@@ -27,7 +29,11 @@ A plain Ledger address works for the pilot. Moving MYCEL's fees to a multisig la
 
 Checked in the program: `publish_epoch` credits `fee_recipient` with `add_lamports` and needs nothing from it but its address. Any system-owned address can receive the fee, including a Squads vault.
 
-Waiting on: Cisco's choice, then the address. Nothing uses it until MYCEL's community is initialized on mainnet (Oct 7–8, its own hard stop).
+Waiting on: the vault address, once Cisco creates the Squads. Squads v4 facts that matter here, from its docs:
+- Deposit to the **vault** (index 0), a PDA. The multisig account is a different address.
+- Creating it costs about 0.103 SOL (a one-time 0.1 SOL fee plus rent).
+- A Ledger connects through Phantom or Solflare, with blind signing on.
+- Squads advises against 1-of-1. It is accepted here because the fees are small (0.015 SOL per 0.5 SOL epoch) and the Ledger's recovery phrase backs up the only member. It moves to 2-of-3 with Organic's design. Nothing uses it until MYCEL's community is initialized on mainnet (Oct 7–8, its own hard stop).
 
 ### The program keypair (4)
 
