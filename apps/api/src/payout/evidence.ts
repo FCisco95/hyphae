@@ -13,8 +13,8 @@ import {
 // (lamports sent to it before or after, a later claim against an epoch) is skipped. A node lists
 // signatures newest first, so the lookup pages back and tries the oldest successful ones first,
 // preferring any from the second the account records as its creation. It gives up past its bounds,
-// unless it is `exhaustive`: then it pages to the start of the history and tries every transaction
-// from that second, so references an attacker lands there or afterwards only slow it down. Only an
+// unless it is `exhaustive`: then it pages to the start of the history and tries every successful
+// transaction, that second's first, so references an attacker lands only slow it down. Only an
 // attended operator step (publish recovery) searches exhaustively; public reads stay bounded.
 
 const PAGE = 1_000;
@@ -57,8 +57,9 @@ export async function creatingTransaction(
   const candidates = history.filter((e) => e.err === null).reverse();
   const recorded = candidates.filter((e) => e.blockTime === opts.blockTime);
   const others = candidates.filter((e) => e.blockTime !== opts.blockTime);
+  // A node may list a transaction without its block time, so an exhaustive search tries them all.
   const tried = opts.exhaustive
-    ? [...recorded, ...others.slice(0, MAX_TRANSACTIONS)]
+    ? [...recorded, ...others]
     : [...recorded, ...others].slice(0, MAX_TRANSACTIONS);
   for (const e of tried) {
     const commitment = e.confirmationStatus === "finalized" ? "finalized" : "confirmed";

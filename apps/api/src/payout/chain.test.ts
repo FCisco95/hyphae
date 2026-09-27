@@ -86,7 +86,13 @@ describe("publishTransaction", () => {
   // An RPC whose history for the epoch holds the publish_epoch that created it, in the second its
   // account records, among transactions that only reference the address: `older` before it (in
   // that same second with `sameSecond`) and `newer` after it.
-  async function chainWith(spam: { older?: number; newer?: number; sameSecond?: boolean }) {
+  async function chainWith(spam: {
+    older?: number;
+    newer?: number;
+    sameSecond?: boolean;
+    // A node may list a transaction without its block time.
+    untimed?: boolean;
+  }) {
     const e = await expected();
     const publish = publishEpochInstruction({ ...e, admin: createNoopSigner(address(ADMIN)) });
     const keys = [ADMIN, ...(publish.accounts ?? []).slice(1).map((a) => a.address)];
@@ -109,7 +115,7 @@ describe("publishTransaction", () => {
         },
       },
     });
-    const created = { signature: sig(0), blockTime: PUBLISHED_AT };
+    const created = { signature: sig(0), blockTime: spam.untimed ? null : PUBLISHED_AT };
     // Newest first, as a node lists them.
     const history = [
       ...Array.from({ length: spam.newer ?? 0 }, (_, i) => ({
@@ -119,7 +125,7 @@ describe("publishTransaction", () => {
       created,
       ...Array.from({ length: spam.older ?? 0 }, (_, i) => ({
         signature: sig(20_000 + i),
-        blockTime: spam.sameSecond ? PUBLISHED_AT : PUBLISHED_AT - 100 - i,
+        blockTime: spam.untimed ? null : spam.sameSecond ? PUBLISHED_AT : PUBLISHED_AT - 100 - i,
       })),
     ];
     const epochAccount = new Uint8Array(8 + 32 + 8 + 32 + 32 + 8 * 4 + 8 + 1);
@@ -178,6 +184,11 @@ describe("publishTransaction", () => {
   // lands references in the same second, or floods the address afterwards, only slows it down.
   it("finds the publish behind more references from its own second than its lookup bound", async () => {
     const { rpc, e, publish } = await chainWith({ older: 12, sameSecond: true });
+    expect(await publishTransaction(rpc, e)).toBe(publish.signature);
+  });
+
+  it("tries every transaction when the node lists them without block times", async () => {
+    const { rpc, e, publish } = await chainWith({ older: 12, untimed: true });
     expect(await publishTransaction(rpc, e)).toBe(publish.signature);
   });
 
