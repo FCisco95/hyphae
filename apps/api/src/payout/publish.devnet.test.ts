@@ -171,6 +171,8 @@ describe.skipIf(!RUN)("devnet run", () => {
       // Correctness, not page latency: the public devnet RPC gets the time it needs.
       const reader = settlementReader(rpc, 15_000);
       const audit = (await readEpoch(t.db, seed.mint, 1, new Date(), reader, 60_000))?.settlement;
+      // Recorded before any assertion, so an unavailable read keeps its reason in the report.
+      report.audit = audit;
       expect(audit?.allocation).toMatchObject({
         status: "published",
         publish_tx: published.signature,
@@ -192,12 +194,8 @@ describe.skipIf(!RUN)("devnet run", () => {
         reader,
         60_000,
       );
+      report.claimRead = mine?.payment;
       expect(mine?.payment).toEqual({ status: "paid", claim_tx: report.claim });
-      report.audit = {
-        allocation: audit.allocation.status,
-        claimed: audit.payment.claimed_lamports,
-        unclaimed: audit.payment.unclaimed_lamports,
-      };
     } finally {
       await t.close();
       const out = JSON.stringify(report, (_k, v) => (typeof v === "bigint" ? v.toString() : v), 2);
