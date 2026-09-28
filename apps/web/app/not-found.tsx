@@ -1,5 +1,8 @@
 export default function NotFound() {
   return (
-    <p className="empty">Not found. It may not be a reward epoch or contribution Hyphae serves.</p>
+    <header className="page-head">
+      <h1>Not found</h1>
+      <p className="muted">It may not be a reward epoch or contribution Hyphae serves.</p>
+    </header>
   );
 }

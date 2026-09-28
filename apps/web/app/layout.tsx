@@ -1,31 +1,33 @@
 import type { Metadata } from "next";
+import { Kumbh_Sans } from "next/font/google";
+import { BrandSprite } from "../components/brand.js";
+import { SiteFooter, SiteHeader } from "../components/site.js";
 import "./globals.css";
 
+const kumbh = Kumbh_Sans({ subsets: ["latin"], variable: "--font-kumbh", display: "swap" });
+
 export const metadata: Metadata = {
-  title: { default: "Hyphae audit", template: "%s · Hyphae audit" },
-  description: "Every contribution, its score, why, and which decision counted.",
+  title: {
+    default: "Hyphae: proof of contribution for token communities",
+    template: "%s · Hyphae",
+  },
+  description:
+    "Members do real work for a community, an AI scores it against public guidelines and shows its reasoning, and each epoch's payouts are committed to Solana.",
+  openGraph: { siteName: "Hyphae", type: "website" },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={kumbh.variable}>
       <body>
-        <nav className="top">
-          <a href="/" className="brand">
-            hyphae<span className="muted"> / audit</span>
-          </a>
-          <a
-            href="https://github.com/FCisco95/hyphae/tree/main/docs/rubrics"
-            rel="noopener noreferrer"
-          >
-            Rubrics
-          </a>
-        </nav>
-        <main>{children}</main>
-        <footer className="muted">
-          Points are not money. An allocation or payment appears only once the chain confirms it.
-          All times UTC.
-        </footer>
+        <BrandSprite />
+        <a className="skip" href="#main">
+          Skip to content
+        </a>
+        <SiteHeader />
+        <main id="main">{children}</main>
+        <SiteFooter />
       </body>
     </html>
   );

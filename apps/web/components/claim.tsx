@@ -2,57 +2,55 @@ import type { ClaimV1, LooseEpochV1 } from "@hyphae/core";
 import { networkName, shortWallet, sol } from "../lib/format.js";
 import { settlementOf } from "../lib/settlement.js";
 import { ClaimPanel } from "./claim-panel.js";
+import { Panel, Stat, Stats } from "./ui.js";
 import { Tx, unavailableSentence } from "./views.js";
 
 // What the wallet will be asked to sign, shown before it signs.
 export function ClaimSummary({ claim }: { claim: ClaimV1 }) {
   const p = claim.payment;
   return (
-    <section className="panel">
-      <h2>{sol(claim.amount_lamports)}</h2>
-      <dl className="facts">
-        <div>
-          <dt>Epoch</dt>
-          <dd>{claim.epoch.index}</dd>
-        </div>
-        <div>
-          <dt>Network</dt>
-          <dd>{networkName(claim.network)}</dd>
-        </div>
-        <div>
-          <dt>Wallet</dt>
-          <dd className="mono" title={claim.wallet}>
-            {shortWallet(claim.wallet)}
-          </dd>
-        </div>
-        <div>
-          <dt>Program</dt>
-          <dd className="mono" title={claim.program_id}>
-            {shortWallet(claim.program_id)}
-          </dd>
-        </div>
-        <div>
-          <dt>Status</dt>
-          <dd>
-            {p.status === "paid" ? (
-              <>
+    <Panel title={sol(claim.amount_lamports)}>
+      <Stats compact>
+        <Stat label="Epoch" value={claim.epoch.index} />
+        <Stat label="Network" value={networkName(claim.network)} />
+        <Stat
+          label="Wallet"
+          value={
+            <span className="mono" title={claim.wallet}>
+              {shortWallet(claim.wallet)}
+            </span>
+          }
+        />
+        <Stat
+          label="Program"
+          value={
+            <span className="mono" title={claim.program_id}>
+              {shortWallet(claim.program_id)}
+            </span>
+          }
+        />
+        <Stat
+          label="Status"
+          value={
+            p.status === "paid" ? (
+              <span className="paid">
                 Paid in <Tx signature={p.claim_tx} network={claim.network} />
-              </>
+              </span>
             ) : p.status === "claimable" ? (
               "Claimable"
             ) : (
               unavailableSentence(p.reason)
-            )}
-          </dd>
-        </div>
-      </dl>
+            )
+          }
+        />
+      </Stats>
       {p.status === "claimable" && (
         <p className="muted">
           Your wallet pays the network fee and the claim receipt's rent, and signs. The program pays{" "}
           {sol(claim.amount_lamports)} from the community vault and refuses a second claim.
         </p>
       )}
-    </section>
+    </Panel>
   );
 }
 

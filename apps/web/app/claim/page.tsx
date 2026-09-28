@@ -1,7 +1,10 @@
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation.js";
 import { UnavailableView } from "../../components/views.js";
 import { readCommunity, readEpoch } from "../../lib/reads.js";
 import { claimTarget } from "../../lib/settlement.js";
+
+export const metadata: Metadata = { title: "Claim" };
 
 // Read DEFAULT_MINT per request, not once at build time.
 export const dynamic = "force-dynamic";
@@ -17,7 +20,14 @@ export default async function Claim() {
   const target = await claimTarget(closed, (index) => readEpoch(mint, String(index)));
   if (target === "unavailable") return <UnavailableView />;
   if (target === "none") {
-    return <p className="banner">No epoch has been published yet, so there is nothing to claim.</p>;
+    return (
+      <>
+        <header className="page-head">
+          <h1>Claim</h1>
+        </header>
+        <p className="banner">No epoch has been published yet, so there is nothing to claim.</p>
+      </>
+    );
   }
   redirect(`/c/${mint}/e/${target.index}/claim`);
 }

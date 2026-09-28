@@ -36,25 +36,11 @@ export function BrandSprite() {
   );
 }
 
-export function Mark({
-  size,
-  small = false,
-  className,
-}: {
-  size: number;
-  // The optical size for 16–32 px, where the full glyph's branches blur.
-  small?: boolean;
-  className?: string;
-}) {
+// The mark's shapes in its 512 box, for a page to place inside a larger drawing.
+export function MarkShapes({ small = false }: { small?: boolean }) {
   const href = small ? "#hyphae-glyph-small" : "#hyphae-glyph";
   return (
-    <svg
-      viewBox="0 0 512 512"
-      width={size}
-      height={size}
-      className={["mark", className].filter(Boolean).join(" ")}
-      aria-hidden="true"
-    >
+    <>
       <circle className="mark-disc" cx="256" cy="256" r="256" />
       <circle className="mark-ring" cx="256" cy="256" r="249" fill="none" strokeWidth="14" />
       <g
@@ -65,6 +51,29 @@ export function Mark({
         <use href={href} />
         <use href={href} transform={MIRROR} />
       </g>
+    </>
+  );
+}
+
+export function Mark({
+  size,
+  small = false,
+  className,
+}: {
+  size: number;
+  // The optical size for 16–32 px, where the full glyph's branches blur.
+  small?: boolean;
+  className?: string;
+}) {
+  return (
+    <svg
+      viewBox="0 0 512 512"
+      width={size}
+      height={size}
+      className={["mark", className].filter(Boolean).join(" ")}
+      aria-hidden="true"
+    >
+      <MarkShapes small={small} />
     </svg>
   );
 }

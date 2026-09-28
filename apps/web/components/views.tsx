@@ -21,6 +21,7 @@ import {
   utc,
 } from "../lib/format.js";
 import { settlementOf } from "../lib/settlement.js";
+import { ButtonLink, EvidenceLink, Panel, Stat, Stats, StatusPill, type Tone } from "./ui.js";
 
 // Pure views over parsed read-API responses. Pages fetch; these only render.
 
@@ -29,7 +30,7 @@ type Wallet = Pick<ContributionRowV1, "wallet" | "wallet_status">;
 function WalletCell({ w }: { w: Wallet }) {
   if (w.wallet_status === "verified" && w.wallet) {
     return (
-      <span className="mono" title={w.wallet}>
+      <span className="mono wallet-verified" title={`${w.wallet}, verified by signature`}>
         {shortWallet(w.wallet)}
       </span>
     );
@@ -39,14 +40,16 @@ function WalletCell({ w }: { w: Wallet }) {
   );
 }
 
+const EPOCH_STATUS: Record<EpochV1["status"], [string, Tone]> = {
+  scheduled: ["Scheduled", "open"],
+  open: ["Open", "open"],
+  closing: ["Closing", "open"],
+  closed: ["Final", "final"],
+};
+
 function StatusBadge({ epoch }: { epoch: Pick<EpochV1, "status" | "final"> }) {
-  const label = {
-    scheduled: "Scheduled",
-    open: "Open",
-    closing: "Closing",
-    closed: "Final",
-  }[epoch.status];
-  return <span className={`badge badge-${epoch.status}`}>{label}</span>;
+  const [label, tone] = EPOCH_STATUS[epoch.status];
+  return <StatusPill tone={tone}>{label}</StatusPill>;
 }
 
 // A cached page can outlive a failed refresh; the read time makes its age visible.
@@ -57,6 +60,7 @@ function AsOf({ at }: { at: string }) {
 export function UnavailableView() {
   return (
     <section className="notice">
+      <h1 className="state-title">Unavailable right now</h1>
       <p>
         The audit data can't be read right now. Nothing is shown rather than a guess. Reload the
         page in a minute.
@@ -146,9 +150,11 @@ export function unavailableSentence(reason: string): string {
 
 export function Tx({ signature, network }: { signature: string; network: Network }) {
   return (
-    <a className="mono" href={explorerTx(signature, network)} rel="noopener noreferrer">
-      {shortWallet(signature)}
-    </a>
+    <EvidenceLink
+      href={explorerTx(signature, network)}
+      value={signature}
+      shown={shortWallet(signature)}
+    />
   );
 }
 
@@ -170,67 +176,47 @@ function SettlementPanel({ epoch }: { epoch: LooseEpochV1 }) {
   const { allocation: a, payment: p } = settlementOf(epoch);
   if (a.status !== "published") {
     return (
-      <section className="panel">
-        <h2>Settlement</h2>
+      <Panel title="Settlement">
         <p>{unavailableSentence(a.reason)}</p>
         <CustodyNote />
-      </section>
+      </Panel>
     );
   }
   const tx = <Tx signature={a.publish_tx} network={a.network} />;
   return (
-    <section className="panel">
-      <h2>Settlement</h2>
+    <Panel title="Settlement">
       <p className="muted">
         Published on {networkName(a.network)} at {utc(a.published_at)} in {tx}. Root{" "}
         <span className="mono">{a.root.slice(0, 12)}</span>, audit hash{" "}
         <span className="mono">{a.audit_hash.slice(0, 12)}</span>.
       </p>
-      <dl className="facts">
-        <div>
-          <dt>Gross pot</dt>
-          <dd>{sol(a.gross_lamports)}</dd>
-        </div>
-        <div>
-          <dt>Fee</dt>
-          <dd>
-            {sol(a.fee_lamports)} ({Number(a.fee_bps) / 100}%) to{" "}
-            <span className="mono" title={a.fee_recipient}>
-              {shortWallet(a.fee_recipient)}
-            </span>
-          </dd>
-        </div>
-        <div>
-          <dt>Net pot</dt>
-          <dd>{sol(a.net_lamports)}</dd>
-        </div>
-        <div>
-          <dt>Allocated</dt>
-          <dd>
-            {sol(a.allocated_lamports)} to {a.payable_members} payable members
-          </dd>
-        </div>
-        <div>
-          <dt>Retained: cap remainder</dt>
-          <dd>{sol(a.cap_remainder_lamports)}</dd>
-        </div>
-        <div>
-          <dt>Retained: dust</dt>
-          <dd>{sol(a.dust_lamports)}</dd>
-        </div>
+      <Stats compact>
+        <Stat label="Gross pot" value={sol(a.gross_lamports)} />
+        <Stat
+          label="Fee"
+          value={
+            <>
+              {sol(a.fee_lamports)} ({Number(a.fee_bps) / 100}%) to{" "}
+              <span className="mono" title={a.fee_recipient}>
+                {shortWallet(a.fee_recipient)}
+              </span>
+            </>
+          }
+        />
+        <Stat label="Net pot" value={sol(a.net_lamports)} />
+        <Stat
+          label="Allocated"
+          value={`${sol(a.allocated_lamports)} to ${a.payable_members} payable members`}
+        />
+        <Stat label="Retained: cap remainder" value={sol(a.cap_remainder_lamports)} />
+        <Stat label="Retained: dust" value={sol(a.dust_lamports)} />
         {p.status === "available" && (
           <>
-            <div>
-              <dt>Claimed</dt>
-              <dd>{sol(p.claimed_lamports)}</dd>
-            </div>
-            <div>
-              <dt>Unclaimed</dt>
-              <dd>{sol(p.unclaimed_lamports)}</dd>
-            </div>
+            <Stat label="Claimed" value={sol(p.claimed_lamports)} />
+            <Stat label="Unclaimed" value={sol(p.unclaimed_lamports)} />
           </>
         )}
-      </dl>
+      </Stats>
       {p.status === "available" ? (
         <table className="stack">
           <thead>
@@ -255,9 +241,9 @@ function SettlementPanel({ epoch }: { epoch: LooseEpochV1 }) {
                 </td>
                 <td data-label="Status">
                   {c.claim_tx ? (
-                    <>
+                    <span className="paid">
                       Paid in <Tx signature={c.claim_tx} network={a.network} />
-                    </>
+                    </span>
                   ) : (
                     "Claimable"
                   )}
@@ -269,11 +255,13 @@ function SettlementPanel({ epoch }: { epoch: LooseEpochV1 }) {
       ) : (
         <p>Payments: {unavailableSentence(p.reason)}</p>
       )}
-      <p>
-        <a href={`/c/${epoch.community.mint}/e/${epoch.index}/claim`}>Claim with your wallet →</a>
-      </p>
+      <div className="actions">
+        <ButtonLink href={`/c/${epoch.community.mint}/e/${epoch.index}/claim`}>
+          Claim with your wallet
+        </ButtonLink>
+      </div>
       <CustodyNote />
-    </section>
+    </Panel>
   );
 }
 
@@ -318,38 +306,30 @@ export function EpochView({ epoch, list }: { epoch: LooseEpochV1; list: Contribu
         <AsOf at={epoch.as_of} />
       </header>
       <EpochBanner epoch={epoch} />
-      <dl className="facts">
-        <div>
-          <dt>Rubric</dt>
-          <dd>{epoch.config.rubric_version}</dd>
-        </div>
-        <div>
-          <dt>Effort multiplier</dt>
-          <dd>{multiplier(epoch.config.effort_multiplier_bps)}</dd>
-        </div>
-        <div>
-          <dt>Effort slots</dt>
-          <dd>{epoch.config.slot_limit} per member</dd>
-        </div>
-        <div>
-          <dt>Contributions</dt>
-          <dd>
-            {c.contributions} ({c.counted} counted
-            {c.pending ? `, ${c.pending} not scored yet` : ""}
-            {c.pending_at_close + c.pending_reconciliation + c.excluded
-              ? `, ${c.pending_at_close + c.pending_reconciliation + c.excluded} not counted`
-              : ""}
-            )
-          </dd>
-        </div>
-        <div>
-          <dt>Exact points</dt>
-          <dd>{epoch.totals.points}</dd>
-        </div>
-      </dl>
-      <p>
-        <a href={`/c/${epoch.community.mint}/e/${epoch.index}/leaderboard`}>Leaderboard →</a>
-      </p>
+      <Stats compact>
+        <Stat label="Rubric" value={epoch.config.rubric_version} />
+        <Stat label="Effort multiplier" value={multiplier(epoch.config.effort_multiplier_bps)} />
+        <Stat label="Effort slots" value={`${epoch.config.slot_limit} per member`} />
+        <Stat
+          label="Contributions"
+          value={
+            <>
+              {c.contributions} ({c.counted} counted
+              {c.pending ? `, ${c.pending} not scored yet` : ""}
+              {c.pending_at_close + c.pending_reconciliation + c.excluded
+                ? `, ${c.pending_at_close + c.pending_reconciliation + c.excluded} not counted`
+                : ""}
+              )
+            </>
+          }
+        />
+        <Stat label="Exact points" value={epoch.totals.points} />
+      </Stats>
+      <div className="actions">
+        <ButtonLink href={`/c/${epoch.community.mint}/e/${epoch.index}/leaderboard`} secondary>
+          Leaderboard
+        </ButtonLink>
+      </div>
       <SettlementPanel epoch={epoch} />
       <h2>Contributions</h2>
       {list.contributions.length === 0 ? (
@@ -374,7 +354,12 @@ export function EpochView({ epoch, list }: { epoch: LooseEpochV1; list: Contribu
                   {r.url && (
                     <>
                       {" "}
-                      <a className="muted" href={r.url} rel="noopener noreferrer">
+                      <a
+                        className="muted out-link"
+                        href={r.url}
+                        rel="noopener noreferrer"
+                        aria-label="The original post"
+                      >
                         ↗
                       </a>
                     </>
@@ -470,16 +455,18 @@ export function LeaderboardView({ board }: { board: LeaderboardV1 }) {
   );
 }
 
+const REVISION_STATUS: Record<RevisionV1["status"], [string, Tone]> = {
+  selected: ["Selected", "final"],
+  superseded: ["Superseded", "absent"],
+  late: ["Late (after the close; changes nothing)", "absent"],
+};
+
 function Revision({ r }: { r: RevisionV1 }) {
-  const status = {
-    selected: "Selected",
-    superseded: "Superseded",
-    late: "Late (after the close; changes nothing)",
-  }[r.status];
+  const [status, tone] = REVISION_STATUS[r.status];
   return (
     <article className="revision">
       <h3>
-        Revision {r.revision} <span className={`badge badge-${r.status}`}>{status}</span>
+        Revision {r.revision} <StatusPill tone={tone}>{status}</StatusPill>
       </h3>
       <p>{creditSentence(r)}</p>
       <p className="muted">
@@ -547,8 +534,7 @@ export function ContributionView({ c }: { c: ContributionV1 }) {
         </p>
       </header>
       <p className="banner">{STATE[c.state]}</p>
-      <section className="panel">
-        <h2>The work</h2>
+      <Panel title="The work">
         <blockquote>{c.text}</blockquote>
         <p className="muted">
           Captured {utc(c.capture.captured_at)} from{" "}
@@ -564,7 +550,7 @@ export function ContributionView({ c }: { c: ContributionV1 }) {
           {c.capture.limitations.length > 0 &&
             ` · limitations: ${c.capture.limitations.join(", ")}`}
         </p>
-      </section>
+      </Panel>
       <h2>Decisions</h2>
       {c.revisions.length === 0 ? (
         <p className="empty">No decision was recorded.</p>

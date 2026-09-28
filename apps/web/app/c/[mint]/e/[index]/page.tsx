@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation.js";
 import { EpochView, UnavailableView } from "../../../../../components/views.js";
 import { readContributions, readEpoch } from "../../../../../lib/reads.js";
+
+export async function generateMetadata(props: {
+  params: Promise<{ index: string }>;
+}): Promise<Metadata> {
+  return { title: `Epoch ${(await props.params).index}` };
+}
 
 export default async function EpochPage(props: {
   params: Promise<{ mint: string; index: string }>;
