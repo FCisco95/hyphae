@@ -57,7 +57,15 @@ export interface AdmitInput {
 export type AdmitResult =
   | { status: "admitted"; intake: RewardIntake; created: boolean }
   | { status: "duplicate_artifact"; intake: RewardIntake }
-  | { status: "paused" | "not_open" | "legacy_epoch" | "before_task_open" | "task_closed" };
+  | {
+      status:
+        | "paused"
+        | "not_open"
+        | "legacy_epoch"
+        | "before_task_open"
+        | "task_closed"
+        | "kind_taken";
+    };
 
 // Canonical artifact identity (O2): the provider's status id or the text itself, never the URL.
 export function artifactKeyFor(ref: { statusId: string } | { text: string }): string {
@@ -127,6 +135,22 @@ export async function admitContribution(
         ),
       );
     if (duplicate) return { status: "duplicate_artifact", intake: duplicate };
+    // One reply and one quote per member per raid, decided here under the lock: /submit's own
+    // check runs before the post is fetched, so two submissions at once can both pass it.
+    if (taskId) {
+      const [taken] = await tx
+        .select({ id: contributions.id })
+        .from(contributions)
+        .where(
+          and(
+            eq(contributions.memberId, input.memberId),
+            eq(contributions.taskId, taskId),
+            eq(contributions.kind, input.contribution.kind),
+          ),
+        )
+        .limit(1);
+      if (taken) return { status: "kind_taken" };
+    }
 
     const [contribution] = await tx
       .insert(contributions)

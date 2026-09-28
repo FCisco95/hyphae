@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import type { RewardPurpose } from "@hyphae/core";
 import {
+  contributions,
   createDb,
   epochs,
   members,
@@ -9,16 +10,17 @@ import {
   rewardNominations,
   rewardSlots,
 } from "@hyphae/db";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { bindMemberHandle } from "../bot/commands/handles.js";
 import { closeEpoch } from "./close.js";
 import { withCommunityLock } from "./config.js";
 import { appendCorrection } from "./decisions.js";
 import { beginDispatch, completeDispatch, runEvaluation } from "./evaluation.js";
 import { admitContribution } from "./intake.js";
 import { nominate } from "./slots.js";
-import { later, seedRewardLane, T0 } from "./test-db.js";
+import { later, seedRewardLane, seedTask, T0 } from "./test-db.js";
 
 // Two independent pools against a disposable Postgres 17 (scripts/test-pg.sh). Races are asserted
 // on final rows, repeated, never on timing.
@@ -338,5 +340,60 @@ describe("completion versus close (P2)", rounds, () => {
     // Both sides of the boundary must actually have been raced.
     expect(seen.selected).toBeGreaterThan(0);
     expect(seen.excluded + seen.pending_reconciliation).toBeGreaterThan(0);
+  });
+});
+
+describe("one reply and one quote per member per raid (security review HYP-01)", rounds, () => {
+  it(`two replies to one raid on two connections admit one (${ROUNDS} rounds)`, async () => {
+    for (let i = 0; i < ROUNDS; i += 1) {
+      const lane = await seedRewardLane(a);
+      const task = await seedTask(a, lane.community.id, T0);
+      const reply = (db: typeof a, n: number) =>
+        admitContribution(
+          db,
+          {
+            communityId: lane.community.id,
+            memberId: lane.member.id,
+            taskId: task.id,
+            contribution: {
+              kind: "reply",
+              url: `https://x.com/a/status/${task.id}${n}`,
+              text: `take ${n}`,
+              oembed: null,
+              telegramMessageId: n,
+            },
+            artifactKey: `x:status:${task.id}:${n}`,
+            idempotencyKey: `tg:race:${task.id}:${n}`,
+            capture: { source: "x_oembed", capturedAt: T0.toISOString(), limitations: [] },
+          },
+          { clock: later(60_000) },
+        );
+      const results = await Promise.all([reply(a, 1), reply(b, 2)]);
+      expect(results.map((r) => r.status).sort()).toEqual(["admitted", "kind_taken"]);
+      const stored = await a
+        .select()
+        .from(contributions)
+        .where(and(eq(contributions.memberId, lane.member.id), eq(contributions.taskId, task.id)));
+      expect(stored).toHaveLength(1);
+    }
+  });
+
+  it(`two new handles bound at once never exceed three (${ROUNDS} rounds)`, async () => {
+    for (let i = 0; i < ROUNDS; i += 1) {
+      const lane = await seedRewardLane(a);
+      await a
+        .update(members)
+        .set({ xHandles: ["a", "b"] })
+        .where(eq(members.id, lane.member.id));
+      const results = await Promise.all([
+        bindMemberHandle(a, lane.member.id, "c"),
+        bindMemberHandle(b, lane.member.id, "d"),
+      ]);
+      expect(results.map((r) => r.ok).sort()).toEqual([false, true]);
+      const [row] = await a.select().from(members).where(eq(members.id, lane.member.id));
+      expect(row?.xHandles).toHaveLength(3);
+      const bound = results.find((r) => r.ok);
+      expect(row?.xHandles).toEqual(bound?.handles);
+    }
   });
 });

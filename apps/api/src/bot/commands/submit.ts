@@ -14,7 +14,7 @@ import { routeSubmission } from "../../rewards/submission.js";
 import { fetchPost, parsePostUrl } from "../../x/oembed.js";
 import { reply } from "../reply.js";
 import { parseSubmitArgs, type SubmitArgs } from "./args.js";
-import { bindHandle, MAX_HANDLES } from "./handles.js";
+import { bindMemberHandle, MAX_HANDLES } from "./handles.js";
 
 const USAGE =
   "Usage: /submit <link to your reply>, /submit quote <link to your quote>, or /submit <text of your work>";
@@ -95,13 +95,10 @@ export async function preflight(
 
   const post = await fetchPost(args.url);
   if (!post) return "Could not read that post. Is it public?";
-  const bind = bindHandle(member.xHandles, post.handle);
+  const bind = await bindMemberHandle(db, member.id, post.handle);
   if (!bind.ok) {
     const known = bind.handles.map((h) => `@${h}`).join(", ");
     return `That post is by @${post.handle}; you submit as ${known} (max ${MAX_HANDLES}).`;
-  }
-  if (bind.bound) {
-    await db.update(members).set({ xHandles: bind.handles }).where(eq(members.id, member.id));
   }
   const { contribution, capture } = capturedEvidence({ post }, messageId, new Date());
   return {
@@ -120,6 +117,7 @@ export const ADMIT_REFUSAL: Record<Exclude<AdmitResult["status"], "admitted">, s
   legacy_epoch: "This community's epochs predate reward intake.",
   before_task_open: "That raid has not opened yet.",
   task_closed: "That raid has closed.",
+  kind_taken: "You already submitted one of those for this raid.",
 };
 
 export async function submit(ctx: CommandContext<Context>) {

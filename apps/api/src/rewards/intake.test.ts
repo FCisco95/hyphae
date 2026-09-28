@@ -2,6 +2,7 @@ import {
   communities,
   contributions,
   epochs,
+  members,
   rewardConfigProposals,
   rewardIntakes,
   tasks,
@@ -337,6 +338,68 @@ describe("admitContribution", () => {
       .from(contributions)
       .where(eq(contributions.communityId, community.id));
     expect(stored).toHaveLength(0);
+  });
+
+  it("admits one reply and one quote per member per raid, decided under the community lock", async () => {
+    const { community, member } = await seedCommunity(t.db);
+    await boot(community.id);
+    const task = await seedTask(t.db, community.id, T0);
+    const clock = { clock: at(plus(T0, 60)) };
+    const post = (n: number, kind: "reply" | "quote", memberId = member.id) =>
+      admit({
+        communityId: community.id,
+        memberId,
+        taskId: task.id,
+        contribution: {
+          kind,
+          url: `https://x.com/a/status/${n}`,
+          text: `take ${n}`,
+          oembed: null,
+          telegramMessageId: n,
+        },
+        artifactKey: `x:status:${n}`,
+        idempotencyKey: `tg:-1:${n}`,
+      });
+
+    const first = await admitContribution(t.db, post(201, "reply"), clock);
+    if (first.status !== "admitted") throw new Error(first.status);
+    expect(await admitContribution(t.db, post(202, "reply"), clock)).toEqual({
+      status: "kind_taken",
+    });
+    expect((await admitContribution(t.db, post(203, "quote"), clock)).status).toBe("admitted");
+    // A redelivered message is still the first admission, and the same post again is still a
+    // duplicate artifact, which /effort relies on to nominate work already admitted.
+    expect(await admitContribution(t.db, post(201, "reply"), clock)).toMatchObject({
+      status: "admitted",
+      created: false,
+    });
+    expect(
+      (await admitContribution(t.db, { ...post(201, "reply"), idempotencyKey: "tg:-1:299" }, clock))
+        .status,
+    ).toBe("duplicate_artifact");
+
+    const [peer] = await t.db
+      .insert(members)
+      .values({
+        communityId: community.id,
+        telegramUserId: 43n,
+        wallet: `Peer${community.id}`,
+        linkMethod: "paste",
+      })
+      .returning();
+    if (!peer) throw new Error("seed: peer");
+    expect((await admitContribution(t.db, post(204, "reply", peer.id), clock)).status).toBe(
+      "admitted",
+    );
+    // Outside a raid there is no quota.
+    expect(
+      (await admitContribution(t.db, { ...post(205, "reply"), taskId: null }, clock)).status,
+    ).toBe("admitted");
+    const stored = await t.db
+      .select()
+      .from(contributions)
+      .where(eq(contributions.communityId, community.id));
+    expect(stored).toHaveLength(4);
   });
 
   it("refuses a legacy epoch that carries no pinned configuration", async () => {
