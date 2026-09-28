@@ -1,6 +1,7 @@
 import { creditedScore, RubricSchema, type ScoringInput, timingMultiplier } from "@hyphae/core";
 import { communities, contributions, members, scoringRuns, tasks } from "@hyphae/db";
 import { eq } from "drizzle-orm";
+import { telegramCall } from "../bot/errors.js";
 import { bot } from "../bot/index.js";
 import { db } from "../db.js";
 import { env } from "../env.js";
@@ -98,13 +99,15 @@ export async function scoreContribution({ contributionId, force }: ScoreJob): Pr
 
   // The score is stored; a Telegram hiccup must not fail the job into a second paid run.
   try {
-    await bot.api.sendMessage(
-      Number(community.telegramChatId),
-      scoreMessage({ output: result.output, multiplier, url: `${env.PUBLIC_WEB_URL}/x/${c.id}` }),
-      {
-        reply_parameters: { message_id: c.telegramMessageId, allow_sending_without_reply: true },
-        link_preview_options: { is_disabled: true },
-      },
+    await telegramCall(bot.token, () =>
+      bot.api.sendMessage(
+        Number(community.telegramChatId),
+        scoreMessage({ output: result.output, multiplier, url: `${env.PUBLIC_WEB_URL}/x/${c.id}` }),
+        {
+          reply_parameters: { message_id: c.telegramMessageId, allow_sending_without_reply: true },
+          link_preview_options: { is_disabled: true },
+        },
+      ),
     );
   } catch (err) {
     console.error("score: notify failed", { contributionId: c.id, err });
@@ -113,9 +116,11 @@ export async function scoreContribution({ contributionId, force }: ScoreJob): Pr
 
 export async function notifyScoringFailed(contributionId: string): Promise<void> {
   const { c, community } = await loadContribution(contributionId);
-  await bot.api.sendMessage(
-    Number(community.telegramChatId),
-    "Scoring failed for this submission. It is saved; an admin will re-run it.",
-    { reply_parameters: { message_id: c.telegramMessageId, allow_sending_without_reply: true } },
+  await telegramCall(bot.token, () =>
+    bot.api.sendMessage(
+      Number(community.telegramChatId),
+      "Scoring failed for this submission. It is saved; an admin will re-run it.",
+      { reply_parameters: { message_id: c.telegramMessageId, allow_sending_without_reply: true } },
+    ),
   );
 }

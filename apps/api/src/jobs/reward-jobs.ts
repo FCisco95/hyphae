@@ -1,5 +1,6 @@
 import { communities, contributions, rewardNominations } from "@hyphae/db";
 import { eq } from "drizzle-orm";
+import { telegramCall } from "../bot/errors.js";
 import { bot } from "../bot/index.js";
 import { db } from "../db.js";
 import { env } from "../env.js";
@@ -188,9 +189,11 @@ export async function notifyReward(job: RewardNotifyJob): Promise<void> {
     .innerJoin(communities, eq(communities.id, contributions.communityId))
     .where(eq(contributions.id, job.contributionId));
   if (!row) throw new Error(`reward: contribution ${job.contributionId} missing`);
-  await bot.api.sendMessage(Number(row.chatId), job.text, {
-    reply_parameters: { message_id: row.messageId, allow_sending_without_reply: true },
-    link_preview_options: { is_disabled: true },
-  });
+  await telegramCall(bot.token, () =>
+    bot.api.sendMessage(Number(row.chatId), job.text, {
+      reply_parameters: { message_id: row.messageId, allow_sending_without_reply: true },
+      link_preview_options: { is_disabled: true },
+    }),
+  );
   if (job.decisionId) await markNotified(db, job.decisionId, new Date());
 }

@@ -1,7 +1,8 @@
+import { inspect } from "node:util";
 import { Api, Bot, BotError, Context, GrammyError, HttpError } from "grammy";
 import type { Update, UserFromGetMe } from "grammy/types";
 import { describe, expect, it, vi } from "vitest";
-import { botErrorFields, containBotError } from "./errors.js";
+import { botErrorFields, containBotError, telegramCall } from "./errors.js";
 
 const TOKEN = "1234567890:AAH-test-token-that-must-never-be-logged";
 const me = {
@@ -76,6 +77,49 @@ describe("botErrorFields", () => {
   it("redacts the token from a thrown non-Error", () => {
     const fields = botErrorFields(botError(`bad ${TOKEN}`));
     expect(fields).toEqual({ update: 42, kind: "app", message: "bad <redacted>" });
+  });
+});
+
+// node-fetch's network error, as grammY keeps it inside an HttpError: its message is the request
+// URL, which holds the token, and its fields are enumerable, so serializers walk into it.
+function networkFailure(method: string) {
+  const fetchError = Object.assign(
+    new Error(
+      `request to https://api.telegram.org/bot${TOKEN}/${method} failed, reason: ECONNRESET`,
+    ),
+    { type: "system", code: "ECONNRESET" },
+  );
+  return new HttpError(`Network request for '${method}' failed!`, fetchError);
+}
+
+describe("telegramCall", () => {
+  it("passes a successful call's result through", async () => {
+    await expect(telegramCall(TOKEN, async () => 7)).resolves.toBe(7);
+  });
+
+  it("rethrows a network failure with nothing nested, so no log or queue record holds the token", async () => {
+    const err = await telegramCall(TOKEN, () => Promise.reject(networkFailure("sendMessage"))).then(
+      () => null,
+      (e: unknown) => e as Error,
+    );
+    expect(err).toBeInstanceOf(Error);
+    expect(err?.message).toContain("Network request for 'sendMessage' failed!");
+    expect(err?.cause).toBeUndefined();
+    expect(Object.keys(err as object)).toEqual([]);
+    expect(inspect(err, { depth: null })).not.toContain(TOKEN);
+  });
+
+  it("keeps a Telegram API failure's method, code and description", async () => {
+    const e = new GrammyError(
+      "Call to 'sendMessage' failed!",
+      { ok: false, error_code: 403, description: "Forbidden: bot was kicked" },
+      "sendMessage",
+      { chat_id: -100, text: "hi" },
+    );
+    const err = await telegramCall(TOKEN, () => Promise.reject(e)).catch((x: Error) => x);
+    expect(err.message).toContain('"method":"sendMessage"');
+    expect(err.message).toContain('"code":403');
+    expect(err.message).toContain("Forbidden: bot was kicked");
   });
 });
 
