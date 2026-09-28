@@ -82,7 +82,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 **Say:** "The member claims with their proof and gets exactly their share. A receipt is left on-chain, so a second claim of the same share fails on-chain. The page marks someone paid only when the chain holds that receipt."
 
 **Evidence:**
-- run 7 claim `5ccGT1xLySoRKjUZftCooXmbxk35WrJ71XFVuH8rfXxaKNiufPkzgLRdAbywRoLjoTL4DvFv3daYTgGyp8a3SmK`, 12,125,000 lamports;
+- run 7 claim `5ccGT1yLxySoRKjUZftCooXmbxk35WrJ71XFVuH8rfXxaKNiufPkzgLRdAbywRoLjoTL4DvFv3daYTgGyp8a3SmK`, 12,125,000 lamports;
 - the duplicate, refused on-chain: `5ob9A3Sg7DYoxCAMLDyX5EpuT2jSF6QBsruPRLf4tdTdTCSkfZCdXSkMuWLuqkFEPQC3eQJVGgzosxdLQbA2EknP`;
 - the claim page: commit `44c495d`; screenshot `docs/screenshots/claim-390.png` (`ffdfac0`).
 
