@@ -14,17 +14,32 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 1. Read the newest build-log entries. If Runbook C's steps C12–C22 ran (`docs/handoffs/2026-09-28-runbook-c.md`), use the **mainnet swap-ins** below with the signatures that entry records. Otherwise every chain beat says "devnet" on screen.
 2. `git switch main && git pull --ff-only`. Note the SHA and the latest CI run; say those, not the numbers in this file.
-3. Open in tabs:
-   - the Hyphae Lab thread from 2026-09-17 with the founder's test reply;
-   - the devnet explorer links in beats 4–6;
-   - the audit site (the Vercel URL, or `pnpm --filter @hyphae/web dev` against a local api);
-   - `docs/screenshots/epoch-1180.png` and `claim-390.png` as a fallback;
-   - `/docs` on the api;
-   - the README sections "Funding a community's vault" and "Custody during the pilot".
+3. Open the tabs in the order of the recording guide below. The site is the Vercel URL recorded in `docs/handoffs/2026-10-01-cutover.md` (step 15's run log).
+4. Fallbacks, if the site can't be reached: `docs/showcase/` has every page in both themes. Its settled-epoch and claim pages show the web tests' fixture data, so don't present them as real numbers. A real devnet settlement panel, in the earlier design, is `git show ffdfac0:docs/screenshots/epoch-1180.png`.
+
+## Recording guide
+
+- **Window:** the page area exactly 1920 × 1080: Chrome in full screen (F11) on a 1080p display, or DevTools' device toolbar set to 1920 × 1080. Zoom 100%. A clean profile: no bookmarks bar, no extensions in view.
+- **Theme:** dark (the operating system's setting; the site follows it). It is the brand banner's look, and every page is built for it.
+- **Motion:** reload `/` just before beat 1, so the filaments grow on camera; they grow once per load, in about three seconds.
+- **Scrolling:** each landing section starts at the top of the window when opened from its anchor (`/#how`, `/#proof`, `/#trust`, `/#integrate`).
+- **Pages, in order** (`<site>` is the Vercel URL, `<mint>` MYCEL's mint, `<n>` the epoch the beat names):
+
+| Beat | Page on the site | Also on screen |
+|---|---|---|
+| 1 | `<site>/` (the hero) | — |
+| 2 | `<site>/#how`, step 2 | the Hyphae Lab reply of 2026-09-17 |
+| 3 | `<site>/c/<mint>/e/<n>`, the Wallet column | `/link`, Phantom's prompt, `/me` in Hyphae Lab |
+| 4 | `<site>/#proof`, the first two devnet rows | the explorer on `2xkfBY…` and `2Af95f…` |
+| 5 | `<site>/#proof`, the publish row; after Runbook C, `<site>/c/<mint>/e/2`'s settlement panel | the explorer on the publish |
+| 6 | `<site>/#proof`, the claim and the refused claim; after Runbook C, `<site>/c/<mint>/e/2/claim` | the explorer on both |
+| 7 | `<site>/#trust` (the build hash and the custody policy) | the terminal's `solana-verify` |
+| 8 | `<site>/#integrate` | the README's vault section; `/docs` on the api only if Runbook C's C7 ran |
+| Close | `<site>/` | — |
 
 ## Beat 1 — who this is for (framing) · ~15 s
 
-**Show:** the README's first paragraph.
+**Show:** the landing page's hero at `<site>/`, reloaded so its filaments grow.
 
 **Say:** "Every coin has people doing its work: replying, quoting, explaining. They get paid in vibes, or by whoever the admin remembers. Hyphae pays them from a community vault, by published rules, and anyone can check every payout."
 
@@ -32,7 +47,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 ## Beat 2 — the bot grades a reply and shows why (historical, 2026-09-17) · ~25 s
 
-**Show:** the Hyphae Lab reply to "I post this to test the scoring bot": raw 3, credited 0, `off_topic`, with the reasoning.
+**Show:** the Hyphae Lab reply to "I post this to test the scoring bot": raw 3, credited 0, `off_topic`, with the reasoning. Then the site's `<site>/#how`, step 2.
 
 **Say:** "A member sends the bot their reply. It's graded against a public rubric, and the reasoning is posted back. My own test reply scored raw 3, credited zero: off-topic. The raw score, the rules version and the prompt hash are stored with every grade."
 
@@ -43,7 +58,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 ## Beat 3 — only a wallet that signed gets paid (historical, 2026-09-24) · ~20 s
 
-**Show:** `/link` in Hyphae Lab, then Phantom's signing prompt, then `/me` showing "verified".
+**Show:** `/link` in Hyphae Lab, then Phantom's signing prompt, then `/me` showing "verified". Then an epoch page, `<site>/c/<mint>/e/<n>`: a verified wallet is shown in green, any other as "unverified".
 
 **Say:** "To be paid, a member proves their wallet by signing a message. Pasting an address isn't enough. A closed week always pays the wallet that was verified at its close."
 
@@ -53,7 +68,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 ## Beat 4 — a community's vault on Solana, set up from a hardware wallet (devnet) · ~25 s
 
-**Show:** the explorer on `initialize_community`, then the vault deposit.
+**Show:** the site's `<site>/#proof`, the first two rows of the devnet run, then each row's explorer link: `initialize_community`, then the vault deposit.
 
 **Say:** "Each community gets a vault that only the program controls. Here, Hyphae's admin key on my Ledger sets one up and funds it. There's no withdraw instruction. Money leaves the vault only as the 3% fee or as a valid claim."
 
@@ -65,26 +80,26 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 ## Beat 5 — the week's payout list goes on-chain as one root (devnet) · ~25 s
 
-**Show:** the explorer on `publish_epoch`, then the audit page's settlement panel for that epoch.
+**Show:** the publish row in `<site>/#proof` and its explorer link on `publish_epoch`. After Runbook C, the settlement panel on `<site>/c/<mint>/e/2`.
 
 **Say:** "When the week closes, every member's payout goes into a merkle root, and the root goes on-chain with the hash of the full audit record. The 3% fee goes to a fixed address set when the community was created. Only what's allocated is reserved; the rest stays for next week."
 
 **Evidence:**
 - run 7 `publish_epoch` `3oJ4T6NeYonVRgi1JBfofsRHEkd5RfuTKaEhUc7AHqFL8Pio2r2s6o4n7YtLm7zMPpLCw38mDa1efEzBBpAgy6DD`: gross 50,000,000 lamports, fee 1,500,000, 30,460,365 allocated across 3 payable members;
-- the settlement panel: commit `4ca3abf`; screenshot `docs/screenshots/epoch-1180.png` (`ffdfac0`).
+- the settlement panel: commit `4ca3abf`; a real devnet publication in it: `git show ffdfac0:docs/screenshots/epoch-1180.png` (the earlier design).
 
 **Mainnet swap-in:** C20's `publish_epoch`, with C19's printed numbers.
 
 ## Beat 6 — a member claims, and can't claim twice (devnet) · ~25 s
 
-**Show:** the claim transaction, then the refused duplicate, then the member shown as "paid" on the audit page.
+**Show:** the claim and refused-claim rows in `<site>/#proof`, and their explorer links. After Runbook C: the claim page `<site>/c/<mint>/e/2/claim`, then the member shown as "paid" on `<site>/c/<mint>/e/2`.
 
 **Say:** "The member claims with their proof and gets exactly their share. A receipt is left on-chain, so a second claim of the same share fails on-chain. The page marks someone paid only when the chain holds that receipt."
 
 **Evidence:**
 - run 7 claim `5ccGT1yLxySoRKjUZftCooXmbxk35WrJ71XFVuH8rfXxaKNiufPkzgLRdAbywRoLjoTL4DvFv3daYTgGyp8a3SmK`, 12,125,000 lamports;
 - the duplicate, refused on-chain: `5ob9A3Sg7DYoxCAMLDyX5EpuT2jSF6QBsruPRLf4tdTdTCSkfZCdXSkMuWLuqkFEPQC3eQJVGgzosxdLQbA2EknP`;
-- the claim page: commit `44c495d`; screenshot `docs/screenshots/claim-390.png` (`ffdfac0`).
+- the claim page: commit `44c495d`; its phone layout in `docs/showcase/claim-390-dark.png` (fixture data).
 
 **Mainnet swap-in:** C21's claim and C22's P14 read.
 
@@ -95,7 +110,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 **Show:**
 1. The terminal: `solana-verify get-program-hash -u devnet EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E` prints `7e902d1b…43ac`.
 2. The same hash from `anchor build --verifiable`.
-3. The README's custody section.
+3. The site's `<site>/#trust`: the same hash, and the custody policy word for word.
 
 **Say:** "The program on chain is byte for byte what this repo builds in Anchor's pinned Docker image. The custody rules are public. The key that publishes each root decides where that week's pot goes, and the program can be upgraded. The policy keeps both keys on a hardware wallet."
 
@@ -109,9 +124,9 @@ No traction number is said unless the build log recorded it. Nothing is called l
 ## Beat 8 — any project can fund a vault, and read everything (locally tested) · ~20 s
 
 **Show:**
-1. The README section "Funding a community's vault": the PDA seeds.
-2. `/docs`, the OpenAPI reference.
-3. One `GET /v1/wallets/{wallet}/claims` response.
+1. The site's `<site>/#integrate`: the read API and the proof check.
+2. The README section "Funding a community's vault": the PDA seeds.
+3. Only if Runbook C's C7 ran: `/docs`, the OpenAPI reference, and one `GET /v1/wallets/{wallet}/claims` response.
 
 **Say:** "A vault's address comes from the coin and its admin, so any project can find it and fund it. Everything on the page is in a public API: communities, weeks, every score with its reasons, and every claim with its proof."
 
@@ -123,6 +138,8 @@ Say "deployed" only if Runbook C's C7 ran: production `b7bfe55` has no `/v1` (`d
 
 ## Close · ~5 s
 
+**Show:** `<site>/`.
+
 **Say:** "Hyphae: pay the people who do the work, and show everyone how."
 
 ## Out of the video
@@ -131,5 +148,6 @@ These were not built or are not live; the video must not imply them:
 - soulbound Token-2022 points;
 - the Codama client;
 - the web `/admin` page (plan Week 4 #3, dropped by Cisco on 2026-09-27);
+- the fixture data in `docs/showcase/`'s settled-epoch and claim pages, as if it were real;
 - tester or member counts past what the build log records;
 - any mainnet transaction that Runbook C did not record.
