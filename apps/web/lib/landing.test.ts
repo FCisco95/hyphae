@@ -50,6 +50,25 @@ describe("loadLiveProof", () => {
     expect(r.reads).toEqual([1]);
   });
 
+  it("counts an epoch past its close but not yet frozen as closed", async () => {
+    const closing = {
+      ...f.community,
+      current_epoch: null,
+      epochs: [
+        {
+          index: 2,
+          opens_at: f.closingEpoch.opens_at,
+          closes_at: f.closingEpoch.closes_at,
+          status: "closing" as const,
+        },
+      ],
+    };
+    const r = readers(ok(closing), { 2: ok(f.closingEpoch) });
+    const live = await loadLiveProof("MintAbc", r.community, r.epoch);
+    expect(live).toMatchObject({ state: "ready", epoch: f.closingEpoch, closed: f.closingEpoch });
+    expect(r.reads).toEqual([2]);
+  });
+
   it("keeps an epoch it couldn't read as unavailable, never as absent", async () => {
     const r = readers(ok(f.community), { 2: down, 1: ok(f.finalEpoch) });
     const live = await loadLiveProof("MintAbc", r.community, r.epoch);

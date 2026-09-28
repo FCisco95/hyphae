@@ -54,6 +54,22 @@ describe("Proof", () => {
     expect(t).toContain("Epoch 2 was published on devnet: 0.304603658 SOL allocated to 3 members");
   });
 
+  // W3 of the Sep 28 site review: between the close and the snapshot, the epoch has closed.
+  it("says a closing epoch's numbers are on their way, never that nothing has closed", () => {
+    const t = liveColumn(
+      <Proof
+        live={{
+          state: "ready",
+          community: f.community,
+          epoch: f.closingEpoch,
+          closed: f.closingEpoch,
+        }}
+      />,
+    );
+    expect(t).toContain("Final numbers appear when the snapshot is written");
+    expect(t).not.toContain("No epoch has closed yet.");
+  });
+
   it("says why nothing was paid, in the audit page's own words", () => {
     const t = liveColumn(
       <Proof
@@ -116,6 +132,13 @@ describe("Trust", () => {
 });
 
 describe("Integrate", () => {
+  // W1 of the Sep 28 site review: the example and the funding note say what isn't deployed.
+  it("says what is not deployed beside the example and the funding note", () => {
+    const t = text(<Integrate />);
+    expect(t).toContain("The production API does not serve this example's wallet-claims route yet");
+    expect(t).toContain("The program is on devnet only.");
+  });
+
   it("shows the README's integration code unchanged", () => {
     const readme = repo("README.md");
     for (const block of INTEGRATION.split("\n\n")) expect(readme).toContain(block);

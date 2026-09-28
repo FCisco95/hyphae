@@ -204,6 +204,14 @@ function Payout({ closed }: { closed: LooseEpochV1 | "unavailable" | null }) {
       <p className="notice">The newest closed epoch can't be read right now. Nothing is guessed.</p>
     );
   }
+  if (closed.status === "closing") {
+    return (
+      <p className="banner">
+        Epoch {closed.index} closed at {utc(closed.closes_at)}. Final numbers appear when the
+        snapshot is written (within minutes).
+      </p>
+    );
+  }
   const a = settlementOf(closed).allocation;
   if (a.status !== "published") {
     return (
@@ -342,7 +350,7 @@ export function Trust() {
     <Section
       id="trust"
       title="What you trust, in writing"
-      lead="The code, the keys and the custody rules are public."
+      lead="The code, who holds each key, and the custody rules are all public."
     >
       <div className="trust-grid">
         <article>
@@ -414,13 +422,15 @@ export function Integrate() {
           <p>
             Public, read-only JSON: communities, weeks, every score with its reasons, and every
             claim with its proof. A section the API cannot confirm is marked unavailable, never a
-            zero.
+            zero. The production API does not serve this example's wallet-claims route yet; the
+            README says how to run the whole API locally meanwhile.
           </p>
           <h3>Fund a vault</h3>
           <p>
             A vault's address comes from the coin and its admin, so any project can find it and fund
             it with an ordinary SOL transfer. SOL leaves the vault only through the program: the 3%
-            fee, and one claim per leaf of a published root.
+            fee, and one claim per leaf of a published root. The program is on devnet only. Check
+            its address on the network you use before sending anything.
           </p>
           <div className="actions">
             <ButtonLink href={API_DOCS} secondary>

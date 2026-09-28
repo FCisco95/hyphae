@@ -11,7 +11,8 @@ export type LiveProof =
       community: CommunityV1;
       // The open epoch, or the newest one; null before the first.
       epoch: LooseEpochV1 | "unavailable" | null;
-      // The newest closed epoch, whose settlement says what was paid; null before the first close.
+      // The newest epoch past its close (frozen or still closing), whose settlement says what was
+      // paid; null before the first close.
       closed: LooseEpochV1 | "unavailable" | null;
     };
 
@@ -26,7 +27,7 @@ export async function loadLiveProof(
   // The community lists its epochs newest first.
   const { current_epoch, epochs } = community.data;
   const shown = current_epoch ?? epochs[0]?.index ?? null;
-  const closed = epochs.find((e) => e.status === "closed")?.index ?? null;
+  const closed = epochs.find((e) => e.status === "closed" || e.status === "closing")?.index ?? null;
   const read = async (index: number | null) => {
     if (index === null) return null;
     const r = await readEpoch(mint, index);

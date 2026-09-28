@@ -10,8 +10,11 @@ type Props = { params: Promise<{ id: string }> };
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const { id } = await props.params;
   const r = await readContribution(id);
-  const { context, title } = contributionCard(r.ok ? r.data : null);
-  return { title, description: `${context}. Every revision and its reasoning, on Hyphae.` };
+  const { context, title } = contributionCard(r);
+  return {
+    title,
+    description: r.ok ? `${context}. Every revision and its reasoning, on Hyphae.` : title,
+  };
 }
 
 export default async function ContributionPage(props: Props) {
