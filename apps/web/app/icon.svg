@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<title>Hyphae</title>
+<style>.d{fill:#000}.g{stroke:#fff}@media (prefers-color-scheme:dark){.d{fill:#fff}.g{stroke:#000}}</style>
+<circle class="d" cx="256" cy="256" r="256"/>
+<g class="g" fill="none" stroke-width="48"><path id="h" d="M214 34C204 80 166 118 164 176C162 222 186 234 190 249C186 264 162 276 164 322C166 380 204 418 214 478M190 249H256M167 128L112 58M167 370L112 454"/><use href="#h" transform="matrix(-1 0 0 1 512 0)"/></g>
+</svg>
