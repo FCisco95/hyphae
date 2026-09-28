@@ -72,7 +72,7 @@ Gate at `14e42f7` (the code is unchanged since `747faa7`):
 - Python vectors: 16;
 - no program change, so no Rust rerun; the verifiable build ran twice.
 
-CI on the push is recorded in the snapshot.
+CI on the push of `45c632f`: **green** (`36454626075`). The weekly `Program` run passed the same day on `a375066` (`36425801254`).
 
 ## Devnet and Deployment Readiness
 
