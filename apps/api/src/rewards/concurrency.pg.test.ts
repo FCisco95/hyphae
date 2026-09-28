@@ -27,6 +27,11 @@ if (!url) throw new Error("HYPHAE_TEST_PG_URL is not set; run `pnpm test:pg`");
 const a = createDb(url);
 const b = createDb(url);
 const ROUNDS = 50;
+// A round is real Postgres work (P2 adds up to 0.9 s of designed waiting), so a round loop's time
+// scales with host load. Measured 2026-09-28: 0.05-0.1 s a round idle (P2 0.47 s); with the host
+// saturated by the unit suite and 32 CPU hogs, up to 2 s (P2 2.3 s on average, 4.5 s at worst),
+// which put a 50-round loop past the file's 60 s default. Every round's assertions still held.
+const rounds = { timeout: ROUNDS * 4_000 };
 
 beforeAll(async () => {
   await migrate(a, {
@@ -86,7 +91,7 @@ describe("community lock mode (review observation 1)", () => {
   });
 });
 
-describe("races on one member's effort slot", () => {
+describe("races on one member's effort slot", rounds, () => {
   it(`two linked handles nominating at once get one reservation (${ROUNDS} rounds)`, async () => {
     for (let i = 0; i < ROUNDS; i += 1) {
       const lane = await seedRewardLane(a);
@@ -187,7 +192,7 @@ describe("races on one member's effort slot", () => {
   });
 });
 
-describe("races on one decision lineage (O6)", () => {
+describe("races on one decision lineage (O6)", rounds, () => {
   const decided = async () => {
     const lane = await seedRewardLane(a);
     const intake = await lane.admitOne();
@@ -256,7 +261,7 @@ describe("races on one decision lineage (O6)", () => {
   });
 });
 
-describe("completion versus close (P2)", () => {
+describe("completion versus close (P2)", rounds, () => {
   it(`a decision is selected exactly when accepted before closesAt (${ROUNDS} rounds)`, async () => {
     const seen = { selected: 0, excluded: 0, pending_reconciliation: 0 };
     for (let i = 0; i < ROUNDS; i += 1) {
