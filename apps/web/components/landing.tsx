@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { LooseEpochV1 } from "@hyphae/core";
 import { CUSTODY_POLICY, CUSTODY_POLICY_URL } from "@hyphae/core";
 import { growFilaments } from "../lib/filaments.js";
@@ -392,23 +394,12 @@ export function Trust() {
   );
 }
 
-// The README's "Integrate in 10 lines", word for word (landing.test.tsx holds them together).
-export const INTEGRATION = `const API = process.env.HYPHAE_API ?? "https://hyphae-api.fly.dev/v1";
-const wallet = process.argv[2];
-const { claims } = await (await fetch(\`\${API}/wallets/\${wallet}/claims?limit=100\`)).json();
-
-import { createHash } from "node:crypto";
-import { getAddressEncoder } from "@solana/kit";
-
-const sha = (...parts) => createHash("sha256").update(Buffer.concat(parts)).digest();
-const u64 = (v) => { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(v)); return b; };
-for (const c of claims) {
-  let node = sha(Buffer.of(0), Buffer.from(getAddressEncoder().encode(wallet)), u64(c.epoch.index),
-    u64(c.score), u64(c.amount_lamports), Buffer.from(c.evidence_hash, "hex"));
-  for (const p of c.proof.map((h) => Buffer.from(h, "hex")))
-    node = sha(Buffer.of(1), ...(Buffer.compare(node, p) <= 0 ? [node, p] : [p, node]));
-  console.log(c.community.mint, c.epoch.index, c.amount_lamports, c.payment.status, node.toString("hex") === c.root);
-}`;
+// The README's "Integrate in 10 lines", word for word (landing.test.tsx holds them together). It
+// lives in a text file because it is code on display, not code this app runs.
+export const INTEGRATION = readFileSync(
+  join(process.cwd(), "content/integration.txt"),
+  "utf8",
+).trimEnd();
 
 export function Integrate() {
   return (

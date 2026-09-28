@@ -1,0 +1,16 @@
+const API = process.env.HYPHAE_API ?? "https://hyphae-api.fly.dev/v1";
+const wallet = process.argv[2];
+const { claims } = await (await fetch(`${API}/wallets/${wallet}/claims?limit=100`)).json();
+
+import { createHash } from "node:crypto";
+import { getAddressEncoder } from "@solana/kit";
+
+const sha = (...parts) => createHash("sha256").update(Buffer.concat(parts)).digest();
+const u64 = (v) => { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(v)); return b; };
+for (const c of claims) {
+  let node = sha(Buffer.of(0), Buffer.from(getAddressEncoder().encode(wallet)), u64(c.epoch.index),
+    u64(c.score), u64(c.amount_lamports), Buffer.from(c.evidence_hash, "hex"));
+  for (const p of c.proof.map((h) => Buffer.from(h, "hex")))
+    node = sha(Buffer.of(1), ...(Buffer.compare(node, p) <= 0 ? [node, p] : [p, node]));
+  console.log(c.community.mint, c.epoch.index, c.amount_lamports, c.payment.status, node.toString("hex") === c.root);
+}
