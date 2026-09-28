@@ -19,7 +19,7 @@ summary: The Sep 28 arc is pushed; nothing is deployed. The program's verifiable
 2. **Oct 2–6:** the next-arc list below.
 3. **Oct 7–9:** Runbook C, one step per message.
 
-**Waiting on Cisco:** Questions 1–3 in `handoffs/2026-09-28-arc.md` (handle attestation, the pot's source, a Ledger devnet deploy). Answers are needed by Oct 6 for Question 3, and by Oct 8 for Questions 1 and 2.
+**Cisco ruled Questions 1–3 and `first_paid_epoch` on 2026-09-28** (Open Decisions below); Runbook C follows them.
 
 Snapshot: [the Sep 28 arc](handoffs/2026-09-28-arc.md).
 
@@ -78,24 +78,19 @@ CI on the push of `45c632f`: **green** (`36454626075`). The weekly `Program` run
 
 **Devnet:** the throwaway admin `Fcv1xtZ6…` holds 1.99 devnet SOL (2026-09-28). The devnet program `EAz8…` and the rehearsal program `6opWf…` stay deployed as evidence.
 
-### October 1 — attended checklist (deploy candidate `86ff258`)
+### October 1 — the cutover (deploy candidate `86ff258` + 0009)
 
-**Unchanged by this arc.** Rehearsed read-only on 2026-09-27; its gate passed. Run Runbook B (`handoffs/2026-09-24-cutover-decisions.md`), one step per message, with Cisco at every hard stop:
+**`handoffs/2026-10-01-cutover.md`**, steps 10–16, one step per message with Cisco. Each step names who runs it, its command, its check and its rollback:
 
-1. **Gate `86ff258`** exactly: `pnpm -r test`, typecheck, tracked-file Biome, `drizzle-kit check`, `test:pg`, `git diff --check`.
-2. **Read-only Neon check** (agent): journal at 0000–0008 with matching hashes; 0009's tables absent.
-3. **Two hold RPCs** (Cisco): `fly secrets set HOLD_RPC_HELIUS_URL=… HOLD_RPC_FALLBACK_URL=… --stage`. They must be two independent mainnet providers.
-4. **Apply 0009** (Cisco), then post-checks (agent). **Only 0009.**
-5. **Deploy `86ff258`** (Cisco) and verify:
-   - `/health` and `/link`;
-   - the worker's `hold-check` and `reward-recovery` queues;
-   - `/rules` in Hyphae Lab.
-6. **Bot token re-rotation** (Runbook B step 9).
-7. **Vercel** project for `apps/web` (Cisco): `HYPHAE_API_URL=https://hyphae-api.fly.dev`, `DEFAULT_MINT=<MYCEL mint>`.
-8. **Fly `PUBLIC_WEB_URL`** = the Vercel site's URL.
-9. **`first_paid_epoch` go/no-go before 2026-10-02T00:00Z** (Cisco). On a yes: `update communities set first_paid_epoch = 2 where mint = '<MYCEL mint>' and first_paid_epoch is null;`.
+10. Cisco reviews the site's copy (`docs/showcase/`); the agent applies his edits, gates and pushes.
+11. Read-only Neon check: journal 0000–0008 with matching hashes, 0009's objects absent.
+12. Cisco stages the two hold RPCs (the agent then runs a read-only hold check through the candidate's own code), and applies **only 0009** from a worktree of `86ff258`; the agent runs the post-checks.
+13. Cisco deploys `86ff258` from that worktree; `/health`, `/link`, the worker's queues and `/rules` are verified.
+14. The bot token re-rotation (Runbook B step 9), with a check that the old token is refused.
+15. Cisco creates the Vercel project for `apps/web` and sets Fly `PUBLIC_WEB_URL`.
+16. `first_paid_epoch = 2` before 2026-10-02T00:00Z, on Cisco's ruling, if 12–14 passed.
 
-`86ff258` does not have the HYP-01 and HYP-02 fixes. Epoch 2 is covered by Runbook C's C18b before it closes. The token exposure needs a Telegram network failure in a worker notice, and ends with C7.
+The candidate's gate passed again on 2026-09-28 (step 1: 453 tests, `test:pg` 15/15). `86ff258` does not have the HYP-01 and HYP-02 fixes. Epoch 2 is covered by Runbook C's C18b before it closes. The token exposure needs a Telegram network failure in a worker notice, and ends with C7.
 
 ### October 7–9 — Runbook C
 
@@ -105,18 +100,17 @@ CI on the push of `45c632f`: **green** (`36454626075`). The weekly `Program` run
 - **Part 3:** `init-community` with fee recipient `rRceAUBNsnZKJDytjdHfCdqgTJGoDagtKujfvaBu7MK` (never `34wSn…`); `chain_address`; one epoch's funding; C18b before 2026-10-09T00:00Z.
 - **Part 4**, after the close: plan, publish, one claim, the P14 read.
 
-**Ledger approvals:** 1 each for the deploy, the init, the funding and the publish; readiness reads need none.
+**Ledger approvals:** 1 each for the deploy, the init and the publish; the vault's funding is Cisco's own transfer from his funding wallet (ruled 2026-09-28); readiness reads need none.
 
-**Not rehearsed:** the Ledger through the Solana CLI (Question 3), and a browser claim.
+**Not rehearsed:** the Ledger through the Solana CLI (the devnet deploy Cisco approved for Oct 2–6), and a browser claim.
 
 ## Next Actions
 
 1. **Oct 1:** the checklist above, attended.
 2. **Oct 2–6 arc** (after the Oct 1 deploy):
    1. **Jev offline eval (Cisco's ruling 2026-09-28, pre-approved):** branch `feat/jev-eval`, merged into `main` only after the Oct 7–8 payout is confirmed; no change to the scorer, `jobs/score.ts` or the payout candidate.
-   2. **Ledger-signed devnet deploy** (Question 3, on Cisco's yes): the step-3 sequence with `usb://ledger?key=2/0` from the Windows CLI, then close the program to recover the devnet SOL.
-   3. **Install the Windows Solana CLI 3.1.10** at `%USERPROFILE%\solana-3.1.10` and check its sha256 (Runbook C, C8).
-   4. **Read-only check of epoch 1's close** (Oct 2, 00:00Z) and of the hold checks.
+   2. **Ledger-signed devnet deploy** (ruled yes 2026-09-28, early in the window): the step-3 sequence with `usb://ledger?key=2/0` from the Windows CLI, then close the program to recover the devnet SOL.
+   3. **Read-only check of epoch 1's close** (Oct 2, 00:00Z) and of the hold checks.
 3. **Oct 7–9:** Runbook C.
 4. **Oct 10:** `docs/demo/2026-10-10-submission-checklist.md`. The Oct 9 video script is `docs/demo/2026-10-09-final-video.md`.
 
@@ -134,9 +128,10 @@ Unchanged: Organic reads Hyphae only through the public read API. Contract: [the
 
 | Item | Status | Recommendation |
 |---|---|---|
-| Q1 HYP-03: X handle ownership | **Open (Cisco).** The 2026-09-17 ruling auto-binds handles on first submit; it predates money payouts. | For epoch 2, an operator attestation before its close (Runbook C, C18b), with posts from a borrowed account corrected to zero. After the hackathon, verified X linking. |
-| Q2 The pot's source | **Open (Cisco).** | On Oct 8 send 0.52 SOL to `2kz1Zq…`, which funds the exact top-up: one account, a plain transfer on the device. |
-| Q3 Ledger-signed devnet deploy | **Open (Cisco's device).** | Yes, Oct 2–6: it is the only untested link in the mainnet deploy. |
+| Q1 HYP-03: X handle ownership | **Ruled 2026-09-28** (Cisco, board, "Yes to all"). | Operator attestation at Runbook C's C18b: any epoch-2 post whose author Cisco can't confirm as the member's own account is corrected to zero. Verified X linking after the hackathon. |
+| Q2 The pot's source | **Ruled 2026-09-28.** | C14 sends 0.02 SOL to the admin `2kz1Zq…` for fees and rent. C18's exact top-up goes from Cisco's funding wallet straight to the vault. |
+| Q3 Ledger-signed devnet deploy | **Ruled 2026-09-28: yes.** | Early in Oct 2–6, from the Windows CLI with `usb://ledger?key=2/0`, program closed afterwards. |
+| `first_paid_epoch = 2` | **Ruled 2026-09-28: go if Oct 1 steps 12–14 pass.** | Set before 2026-10-02T00:00Z (`handoffs/2026-10-01-cutover.md`, step 16). A failed 12–14 check is recorded as the reason it isn't set. |
 | Verifiable build | **Done 2026-09-28.** | Rebuild at the deploy commit on Oct 7 (C9); any hash change stops the deploy. |
 | Upgrade authority, admin, fee address, keypair backup | Ruled 2026-09-27. | As in Runbook C. |
 
@@ -148,7 +143,7 @@ Unchanged: Organic reads Hyphae only through the public read API. Contract: [the
 | Rehearsal program `6opWfFKk…e1ox`; community `FEZVaW6h…`, vault `G6E2XtUa…`, mint `8qrC4kBs…` | Solana devnet | Evidence; closing the program returns about 1.167 devnet SOL. |
 | Verifiable build clones | WSL `~/vb/run1`, `~/vb/run2` | Disposable. |
 | `solana-verify` 0.5.2 | WSL `~/.cargo/bin` | Installed with `cargo install solana-verify --locked`. |
-| Windows Solana CLI 3.1.10 | Session scratchpad (temporary) | Reinstall at `%USERPROFILE%\solana-3.1.10` for Oct 7 (next action 2.3). |
+| Windows Solana CLI 3.1.10 | `%USERPROFILE%\solana-3.1.10\solana-release\bin` | Installed 2026-09-28 (evening); the archive's sha256 `84abbbf2…c06b` matches the release's published digest, and `solana.exe --version` reads `3.1.10 (src:7bc9c805)`. |
 
 Commits: `328e3dd` … this record. Nothing deployed, no Neon write, no secret changed, no mainnet transaction, and Cisco's Ledger was not used.
 
