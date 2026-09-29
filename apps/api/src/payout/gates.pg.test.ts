@@ -28,6 +28,7 @@ const tests: RulesTest[] = [
   {
     id: "demo-rules-1",
     covers: [{ community: "DEMO", version: "1.2.0" }],
+    study: "/rules",
     questions: [{ text: "?", options: ["a", "b"], answer: 0, why: "because" }],
   },
 ];

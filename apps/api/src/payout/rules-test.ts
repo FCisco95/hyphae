@@ -7,6 +7,7 @@ import { isoUs } from "../pg.js";
 export interface RulesTest {
   id: string; // at most 13 characters, so a button payload stays within Telegram's 64 bytes
   covers: { community: string; version: string }[];
+  study: string; // the public site's page for these rules and their graded examples
   questions: { text: string; options: string[]; answer: number; why: string }[];
 }
 
@@ -14,6 +15,7 @@ export interface RulesTest {
 const MYCEL_RULES_1: RulesTest = {
   id: "mycel-rules-1",
   covers: [{ community: "MYCEL", version: "1.2.0" }],
+  study: "/rules",
   questions: [
     {
       text: "Which reply to a raid post earns points?",
@@ -70,7 +72,77 @@ const MYCEL_RULES_1: RulesTest = {
   ],
 };
 
-export const RULES_TESTS: readonly RulesTest[] = [MYCEL_RULES_1];
+// Rubric 1.3.0's test: worked examples, each reply quoted from a founder-graded case in
+// docs/rubrics/eval/mycel-synthetic-review.json. A pass of mycel-rules-1 does not count for it.
+const MYCEL_RULES_2: RulesTest = {
+  id: "mycel-rules-2",
+  covers: [{ community: "MYCEL", version: "1.3.0" }],
+  study: "/rules",
+  questions: [
+    {
+      text: "Rate this reply.\nPost: every score now has a public receipt, and admin corrections are added beside the original grade.\nReply: “Receipts show how a score was produced, but they don't explain why a submission was rejected before scoring. Can the public page include those rejection reasons too?”",
+      options: [
+        "Low: it criticises the project",
+        "High: a specific, useful question about the post",
+        "0: criticism is off-topic",
+      ],
+      answer: 1,
+      why: "Criticism with substance gets the same chance as praise. It engages the post and asks for something new. The founder graded it 90.",
+    },
+    {
+      text: "Rate this reply.\nPost: fees doubled to 12 SOL this epoch, and MYCEL's supply is unchanged.\nReply: “If fee growth holds while supply stays flat, a higher MYCEL valuation could make sense. Two epochs still isn't enough to call it a trend though.”",
+      options: [
+        "Earns points: it grounds a price view in the post's numbers and says it is uncertain",
+        "0: it talks about MYCEL's price",
+        "Earns points because it says “could”",
+      ],
+      answer: 0,
+      why: "From rubric 1.3.0, price talk is allowed when it gives a concrete basis and is framed as uncertain. The word “could” alone would not be enough. The founder graded it 85.",
+    },
+    {
+      text: "Rate this reply to the same post.\nReply: “MYCEL to $1 easy, NFA.”",
+      options: [
+        "Earns points: “NFA” makes it an opinion",
+        "Low, but it still earns something",
+        "0: a price target with no reasoning breaks the rules",
+      ],
+      answer: 2,
+      why: "A forecast for a specific coin with no basis is a breach, and a breach earns 0 whatever the effort. “NFA” or “could” does not turn a bare target into reasoning.",
+    },
+    {
+      text: "Good, fake or bot engagement?\nPost: a receipt keeps the model's output, the rubric version and any admin correction in one public audit trail.\nReply: “This groundbreaking initiative serves as a testament to Hyphae's pivotal role in the evolving Web3 landscape, highlighting its commitment to transparency, innovation, and community empowerment.”",
+      options: [
+        "Good: detailed praise of the post",
+        "Fake: stacked AI phrases and no real reaction",
+        "Bot: automated spam",
+      ],
+      answer: 1,
+      why: "“Testament”, “pivotal”, “evolving landscape” and a list of three buzzwords read like an unedited AI draft. That caps the grade at 40 when it is this obvious, and below 60 earns nothing.",
+    },
+    {
+      text: "Good, fake or bot engagement? Same post.\nReply: “This transparency is crucial for contributors because they can match each score to the receipt and see every later correction.”",
+      options: [
+        "Good: a specific reason, in a normal voice",
+        "Fake: “crucial” is an AI word",
+        "Bot: too short to be real",
+      ],
+      answer: 0,
+      why: "One common word like “crucial” does not make a reply AI-written. It gives a concrete reason tied to the post. The founder graded it 75.",
+    },
+    {
+      text: "Rate this reply.\nPost: each epoch's scores are committed to Solana, and rewards settle from the epoch's allocation.\nReply: “I hold MYCEL.”",
+      options: [
+        "0 because it breaks the rules: you can't mention your holdings",
+        "Earns points: holders' support counts",
+        "Allowed, but it adds nothing to the post, so it earns 0",
+      ],
+      answer: 2,
+      why: "Saying you hold a coin is allowed and is not telling anyone to buy. But it adds nothing to the post, so it earns nothing. The founder graded it 0.",
+    },
+  ],
+};
+
+export const RULES_TESTS: readonly RulesTest[] = [MYCEL_RULES_1, MYCEL_RULES_2];
 
 export function rulesTestFor(
   rubric: { community: string; version: string },

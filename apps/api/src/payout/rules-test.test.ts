@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { rulesTestPasses } from "@hyphae/db";
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -41,6 +42,7 @@ describe("the registered rules tests", () => {
         );
         expect(q.why.length).toBeGreaterThan(0);
       }
+      expect(test.study).toMatch(/^\/[a-z0-9/-]*$/);
     }
     expect(new Set(RULES_TESTS.map((x) => x.id)).size).toBe(RULES_TESTS.length);
   });
@@ -52,9 +54,50 @@ describe("the registered rules tests", () => {
 
   it("is looked up by the pinned rubric's community label and version", () => {
     expect(rulesTestFor({ community: "MYCEL", version: "1.2.0" })?.id).toBe("mycel-rules-1");
-    expect(rulesTestFor({ community: "MYCEL", version: "1.3.0" })).toBeUndefined();
+    expect(rulesTestFor({ community: "MYCEL", version: "1.3.0" })?.id).toBe("mycel-rules-2");
+    expect(rulesTestFor({ community: "MYCEL", version: "1.4.0" })).toBeUndefined();
     expect(rulesTestFor({ community: "DEMO", version: "1.2.0" })).toBeUndefined();
     expect(rulesTestById("nope")).toBeUndefined();
+  });
+});
+
+describe("mycel-rules-2", () => {
+  const v2 = () => {
+    const test = rulesTestById("mycel-rules-2");
+    if (!test) throw new Error("mycel-rules-2 is not registered");
+    return test;
+  };
+  const review = JSON.parse(
+    readFileSync(
+      new URL("../../../../docs/rubrics/eval/mycel-synthetic-review.json", import.meta.url),
+      "utf8",
+    ),
+  ) as { cases: { id: string; contribution: { text: string } }[] };
+  const replyOf = (id: string) => review.cases.find((c) => c.id === id)?.contribution.text;
+
+  it("is six questions of three options, for rubric 1.3.0 only, with the study page", () => {
+    expect(v2().covers).toEqual([{ community: "MYCEL", version: "1.3.0" }]);
+    expect(v2().questions.map((q) => q.options.length)).toEqual([3, 3, 3, 3, 3, 3]);
+    expect(v2().study).toBe("/rules");
+    expect(mycel().study).toBe("/rules");
+  });
+
+  // Worked examples: each question quotes a founder-graded reply word for word.
+  it.each([
+    [0, "synthetic-receipt-specific-criticism"],
+    [1, "synthetic-grounded-uncertain-price"],
+    [2, "synthetic-unsupported-price-with-hedge"],
+    [3, "synthetic-multiple-ai-writing-signals"],
+    [4, "synthetic-single-ai-word-false-positive-control"],
+    [5, "synthetic-holder-only"],
+  ])("question %i quotes the founder-graded reply %s", (i, id) => {
+    const reply = replyOf(id);
+    if (!reply) throw new Error(`no case ${id}`);
+    expect(v2().questions[i]?.text).toContain(`“${reply}”`);
+  });
+
+  it("does not keep its right answers in one position", () => {
+    expect(new Set(v2().questions.map((q) => q.answer)).size).toBe(3);
   });
 });
 

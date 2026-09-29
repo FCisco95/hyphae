@@ -66,6 +66,8 @@ function result(test: RulesTest, communityId: string, answers: readonly number[]
   return { passed, text: [head, "", ...review].join("\n\n"), keyboard };
 }
 
+const studyUrl = (test: RulesTest, webUrl: string) => new URL(test.study, webUrl).toString();
+
 const memberOf = (db: Db, communityId: string, telegramUserId: number) =>
   db.query.members.findFirst({
     where: and(
@@ -88,7 +90,11 @@ async function currentTest(db: Db, communityId: string): Promise<RulesTest | und
 }
 
 // The private chat opened by the /rules deep link.
-export async function rulesStart(db: Db, ctx: CommandContext<Context>): Promise<boolean> {
+export async function rulesStart(
+  db: Db,
+  ctx: CommandContext<Context>,
+  webUrl: string,
+): Promise<boolean> {
   const communityId = parseRulesStartPayload(ctx.match);
   if (!ctx.from || !communityId) return false;
   const community = await db.query.communities.findFirst({
@@ -110,13 +116,13 @@ export async function rulesStart(db: Db, ctx: CommandContext<Context>): Promise<
   const n = test.questions.length;
   const first = question(test, community.id, []);
   await ctx.reply(
-    `Rules test for ${community.name}: ${n} questions, and all ${n} must be right to pass. A pass is one of the conditions for being paid.\n\n${first.text}`,
+    `Rules test for ${community.name}: ${n} questions, and all ${n} must be right to pass. A pass is one of the conditions for being paid.\n\nStudy the rules first: ${studyUrl(test, webUrl)}\n\n${first.text}`,
     { reply_markup: first.keyboard },
   );
   return true;
 }
 
-export function rulesTest(db: Db): Composer<Context> {
+export function rulesTest(db: Db, webUrl: string): Composer<Context> {
   const composer = new Composer<Context>();
 
   composer.command("rules", async (ctx) => {
@@ -125,12 +131,12 @@ export function rulesTest(db: Db): Composer<Context> {
       where: eq(communities.telegramChatId, BigInt(ctx.chat.id)),
     });
     if (!community) return reply(ctx, "This chat is not a registered Hyphae community.");
-    return reply(
-      ctx,
-      `Take the rules test privately: https://t.me/${ctx.me.username}?start=${rulesStartPayload(community.id)}
-
-${CUSTODY_POLICY}`,
-    );
+    const test = await currentTest(db, community.id);
+    const link = `https://t.me/${ctx.me.username}?start=${rulesStartPayload(community.id)}`;
+    const take = test
+      ? `Study the rules and graded examples first: ${studyUrl(test, webUrl)}\n\nThen take the rules test privately: ${link}`
+      : `Take the rules test privately: ${link}`;
+    return reply(ctx, `${take}\n\n${CUSTODY_POLICY}`);
   });
 
   composer.callbackQuery(/^rt:/, async (ctx) => {

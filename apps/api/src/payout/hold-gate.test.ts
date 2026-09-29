@@ -239,6 +239,7 @@ const NOW = new Date("2026-11-20T12:00:00.000Z");
 const DEMO_TEST: RulesTest = {
   id: "demo-rules-1",
   covers: [{ community: "DEMO", version: "1.2.0" }],
+  study: "/rules",
   questions: [{ text: "?", options: ["a", "b"], answer: 0, why: "because" }],
 };
 const tests = [DEMO_TEST];

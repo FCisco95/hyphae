@@ -17,7 +17,10 @@ const commands = bot.errorBoundary(containBotError);
 commands.use(chatMigration(db));
 
 commands.command("start", async (ctx) => {
-  if (ctx.chat.type === "private" && ((await linkStart(ctx)) || (await rulesStart(db, ctx)))) {
+  if (
+    ctx.chat.type === "private" &&
+    ((await linkStart(ctx)) || (await rulesStart(db, ctx, env.PUBLIC_WEB_URL)))
+  ) {
     return;
   }
   return ctx.reply(
@@ -31,4 +34,4 @@ commands.command("me", me);
 commands.command("submit", submit);
 commands.command("effort", effort);
 commands.command("raid", raid);
-commands.use(rulesTest(db));
+commands.use(rulesTest(db, env.PUBLIC_WEB_URL));

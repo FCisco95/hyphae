@@ -38,6 +38,7 @@ const THRESHOLD = "100000000000";
 const DEMO_TEST: RulesTest = {
   id: "demo-rules-1",
   covers: [{ community: "DEMO", version: "1.2.0" }],
+  study: "/rules",
   questions: [{ text: "?", options: ["a", "b"], answer: 0, why: "because" }],
 };
 const tests = [DEMO_TEST];
@@ -428,7 +429,11 @@ const fakeModel = async (_prompt: unknown, _purpose: RewardPurpose) => ({
 });
 
 let laneSeq = 0;
-async function closedLane(wallets: string[], laneRubric: Rubric = rubric) {
+async function closedLane(
+  wallets: string[],
+  laneRubric: Rubric = rubric,
+  passedTestId = "mycel-rules-1",
+) {
   const lane = await seedRewardLane(t.db, buildRewardConfigPayload(laneRubric));
   const communityId = lane.community.id;
   const memberIds = [lane.member.id];
@@ -466,7 +471,7 @@ async function closedLane(wallets: string[], laneRubric: Rubric = rubric) {
     await t.db.insert(rulesTestPasses).values({
       communityId,
       memberId,
-      testId: "mycel-rules-1",
+      testId: passedTestId,
       passedAt: new Date(T0.getTime() + 60 * MIN),
     });
   }
@@ -518,6 +523,25 @@ describe("payout gate on a MYCEL epoch", () => {
       status: "ready",
       payable: 1,
       hold: { thresholdRaw: 0n },
+    });
+  });
+
+  it("under rubric 1.3.0 needs a pass of mycel-rules-2; one of mycel-rules-1 does not count", async () => {
+    const v13 = { ...rubric, version: "1.3.0" };
+    const old = await closedLane(["LaneWalletV1"], v13);
+    const gate = await evaluatePayoutGate(t.db, old.ref);
+    expect(gate).toMatchObject({
+      status: "blocked",
+      blockers: ["no_payable_members"],
+      testId: "mycel-rules-2",
+    });
+    expect(gate.members.map((m) => m.reasons)).toEqual([["no_rules_test"]]);
+
+    const passed = await closedLane(["LaneWalletV2"], v13, "mycel-rules-2");
+    expect(await evaluatePayoutGate(t.db, passed.ref)).toMatchObject({
+      status: "ready",
+      payable: 1,
+      testId: "mycel-rules-2",
     });
   });
 });

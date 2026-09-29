@@ -44,12 +44,13 @@ function harness() {
     return { ok: true, result: method === "sendMessage" ? message : true } as never;
   });
   bot.command("start", async (ctx) => {
-    if (ctx.chat.type === "private" && (await rulesStart(t.db, ctx))) return;
+    if (ctx.chat.type === "private" && (await rulesStart(t.db, ctx, WEB))) return;
     await ctx.reply("start");
   });
-  bot.use(rulesTest(t.db));
+  bot.use(rulesTest(t.db, WEB));
   return { bot, out };
 }
+const WEB = "https://web.example";
 
 let updateId = 0;
 const command = (text: string, chat: { id: number; type: "private" | "group" }, from = MEMBER) =>
@@ -153,7 +154,9 @@ describe("/rules", () => {
       command("/rules", { id: Number(community.telegramChatId), type: "group" }),
     );
     expect(last(h.out)?.text).toBe(
-      `Take the rules test privately: https://t.me/t_bot?start=rules_${community.id}
+      `Study the rules and graded examples first: https://web.example/rules
+
+Then take the rules test privately: https://t.me/t_bot?start=rules_${community.id}
 
 ${CUSTODY_POLICY}`,
     );
@@ -161,6 +164,19 @@ ${CUSTODY_POLICY}`,
     expect(last(h.out)?.text).toBe("Send /rules in your community chat.");
     await h.bot.handleUpdate(command("/rules", { id: -123456789, type: "group" }));
     expect(last(h.out)?.text).toBe("This chat is not a registered Hyphae community.");
+  });
+
+  it("links no study page when the current rules have no test", async () => {
+    const bare = await seedCommunity(t.db);
+    const h = harness();
+    await h.bot.handleUpdate(
+      command("/rules", { id: Number(bare.community.telegramChatId), type: "group" }),
+    );
+    expect(last(h.out)?.text).toBe(
+      `Take the rules test privately: https://t.me/t_bot?start=rules_${bare.community.id}
+
+${CUSTODY_POLICY}`,
+    );
   });
 });
 
@@ -190,7 +206,9 @@ describe("the private test", () => {
     );
     const first = last(h.out);
     expect(first?.method).toBe("sendMessage");
-    expect(first?.text).toContain("Question 1 of 6");
+    expect(first?.text).toMatch(
+      /^Rules test for Community \d+: 6 questions, and all 6 must be right to pass\. A pass is one of the conditions for being paid\.\n\nStudy the rules first: https:\/\/web\.example\/rules\n\nQuestion 1 of 6/,
+    );
     expect(first?.text).toContain(mycel().questions[0]?.text);
     expect(buttons(first).map((d) => parseRulesData(d))).toEqual([
       { testId: "mycel-rules-1", communityId: lane.community.id, answers: [0] },
@@ -211,6 +229,28 @@ describe("the private test", () => {
     expect(await passesOf(lane.member.id)).toHaveLength(1);
     expect(h.out.filter((o) => o.method === "answerCallbackQuery")).toHaveLength(6);
     expect(buttons(result).map((d) => parseRulesData(d)?.answers)).toEqual([[]]);
+  });
+
+  it("gives rubric 1.3.0 its own test, in messages within Telegram's 4096 characters", async () => {
+    const v2 = rulesTestById("mycel-rules-2");
+    if (!v2) throw new Error("mycel-rules-2 is not registered");
+    const lane = await seedRewardLane(
+      t.db,
+      buildRewardConfigPayload({ ...rubric, version: "1.3.0" }),
+    );
+    const h = harness();
+    const wrong = await answerAll(
+      h,
+      lane.community.id,
+      (i) => ((v2.questions[i]?.answer ?? 0) + 1) % 3,
+    );
+    expect(wrong?.text).toMatch(/^0\/6\. You need 6\/6 to pass\./);
+    const right = await answerAll(h, lane.community.id, (i) => v2.questions[i]?.answer ?? 0);
+    expect(right?.text).toMatch(
+      /^Passed: 6\/6\. Your pass counts for epochs under the MYCEL 1\.3\.0 rules\./,
+    );
+    expect(await passesOf(lane.member.id)).toMatchObject([{ testId: "mycel-rules-2" }]);
+    for (const o of h.out) expect(o.text.length).toBeLessThanOrEqual(4096);
   });
 
   it("records nothing on five of six, and shows the right answers", async () => {
