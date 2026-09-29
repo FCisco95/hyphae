@@ -1,6 +1,6 @@
 ---
 date: 2026-09-29
-summary: The cutover planned for Oct 1 ran on Sep 29 with Cisco, and every check passed. Production runs the frozen candidate 86ff258 (image deployment-01M3P9QRW519BGZY986E1GV539) on Neon 0000–0009 with its two hold RPCs; the bot token is re-rotated and the old one refused; the public site is live at https://hyphae-delta.vercel.app; and first_paid_epoch reads 2, so epoch 1 closes unpaid on Oct 2 and epoch 2 is the first paid week. Neon moved to the Launch plan at a fixed 0.25 CU after its free compute hit 80%. The two parked apps/api test fixes shipped test-first. Open for Cisco: whether the GitHub repo goes public, the keypair .gitignore guard, and rules test v2 with rubric 1.3.0 for epoch 3.
+summary: The cutover planned for Oct 1 ran on Sep 29 with Cisco, and every check passed. Production runs the frozen candidate 86ff258 (image deployment-01M3P9QRW519BGZY986E1GV539) on Neon 0000–0009 with its two hold RPCs; the bot token is re-rotated and the old one refused; the public site is live at https://hyphae-delta.vercel.app; and first_paid_epoch reads 2, so epoch 1 closes unpaid on Oct 2 and epoch 2 is the first paid week. Neon moved to the Launch plan at a fixed 0.25 CU after its free compute hit 80%. The two parked apps/api test fixes shipped test-first. Later the same day, on Cisco's ruling: the app repo stays private, the program and rubrics are public in FCisco95/hyphae-program (rebuilt from a fresh clone to the recorded hash), both are BUSL 1.1, and the site's links and licence copy point there; the keypair .gitignore guard landed. Open for Cisco: Colosseum's reviewer access, and rules test v2 with rubric 1.3.0 for epoch 3.
 ---
 
 # Hyphae handoff
@@ -17,7 +17,7 @@ summary: The cutover planned for Oct 1 ran on Sep 29 with Cisco, and every check
 
 **What to do next:**
 1. **Oct 2, after 00:00Z (read-only):** epoch 1 is `closed` with its snapshot, epoch 2 is open, `reward-close` logged no error, and the payout gate refuses epoch 1 as `before_first_paid_epoch`.
-2. **Cisco's open decisions** below: the repo's visibility first, because the site links to it.
+2. **Before submitting:** Cisco adds `hackathon@colosseum.com` as a collaborator on the private repo.
 3. **Oct 2–6 arc:** the Ledger-signed devnet deploy, the Jev offline eval, then rules test v2 and the study page (if ruled).
 4. **Oct 7–9:** Runbook C.
 
@@ -42,7 +42,7 @@ Run record: [the cutover run log](handoffs/2026-10-01-cutover.md#run-log). Snaps
 | MYCEL `first_paid_epoch` | `communities` | **2.** |
 | Program | devnet `EAz8WkyU…` | Devnet only. |
 | Migrations 0010–0012, `main`'s API, HYP-01/02 | `main` | Not applied or deployed; Runbook C's C7. |
-| GitHub repo | `FCisco95/hyphae` | **Private.** See Open Decisions. |
+| GitHub repos | `FCisco95/hyphae` (private), `FCisco95/hyphae-program` (public: program + rubrics) | BUSL 1.1. |
 
 ## Interfaces and Invariants
 
@@ -70,7 +70,7 @@ Local gate before the push: `pnpm test` **721 passed** (core 106, web 75, api 54
 
 | Item | Status | Recommendation |
 |---|---|---|
-| Repo visibility and licence | **Ruled 2026-09-29, not yet done.** Cisco: keep `FCisco95/hyphae` private; publish only the program (with its tests and vectors) and the rubrics in a new public repo `FCisco95/hyphae-program`; relicense to BUSL 1.1 (Change Date 2028-10-12, Change License GPL-2.0-or-later, an Additional Use Grant for verifying and interacting); give Colosseum read access (`hackathon@colosseum.com`, per the rules as summarised publicly; confirm on the official page); point the site's GitHub links and licence copy at the public repo. The agent staged the public repo's content (program, tests, vectors, rubrics, README, LICENSE) in its session scratchpad, but the harness's permission classifier refused creating the public repo ("Create Public Surface"). The licence and site copy change together with it, so none of it shipped. Next: Cisco allows it (or runs it), then the agent verifies the build hash from the public tree, pushes it, and changes LICENSE, README and site copy in one commit. | Earlier analysis, kept for the record: **Open.** The site links to GitHub (rubrics, build log, licence, devnet proof, "API docs"); each link is a 404 while the repo is private. A read-only scan of all 306 commits found no secret, keypair, `.env` or vault content ever committed; visible if public are Cisco's author email, local paths in 5 handoffs, and one mention of third-party coaching screenshots (never committed). | **Public, MIT**, before the site's URL is shared or submitted: "the program is its source", "every line is on GitHub" and the public rubrics only hold if anyone can read and rebuild it. Fallback if Cisco wants it closed: stay private, give judges read access, and cut "MIT", "Every line is on GitHub" and the byte-for-byte claim from the site and README. |
+| Repo visibility and licence | **Ruled and done 2026-09-29, except Colosseum access.** `FCisco95/hyphae` stays private. The program (with its tests and vectors) and the rubrics are public at **`FCisco95/hyphae-program`** (`cfff7f4`; Cisco created it with `!` after the harness refused the agent). A fresh clone rebuilds to sha256 `cb4ffdd8…8d79` and `solana-verify` `7e902d1b…43ac`, equal to devnet; its tests pass (24 + 6). Both repos are BUSL 1.1 (Change Date 2028-10-12, Change License GPL-2.0-or-later). The site's GitHub links, licence copy and custody link point at the public repo. **Keep it in sync:** any change to `programs/hyphae` or `docs/rubrics/*.json` must be copied there, and the build re-verified. | Cisco adds `hackathon@colosseum.com` as a collaborator on `FCisco95/hyphae` before submitting (personal repos grant write, not read-only). |
 | `.gitignore` guard for keypairs | **Done 2026-09-29** on Cisco's yes. | Add `*-keypair.json`, `id.json` and `admin-*.json`: today only `target/` is covered, and the runbooks' Solana commands write keypairs elsewhere. |
 | Rules test v2, a study page, rubric 1.3.0 | **Open**, raised by Cisco after passing `/rules` 6/6: members need material to study, and questions built from examples ("rate this reply", "good, fake or bot engagement?"); price talk should allow reasoned, hedged opinion. | Rubric 1.3.0 (`docs/rubrics/mycel-1.3.0.json`) already allows grounded, uncertain price speculation and bans guarantees, "buy" instructions and unsupported hype. Evaluate it in the Jev offline eval; then build `mycel-rules-2` for 1.3.0 from worked examples, plus a public `/rules` page with graded examples that the bot links before the test. Activate all three for **epoch 3 (2026-10-09T00:00Z)**, not mid-epoch-2, the first paid week; they ship with `main`'s deploy in Runbook C. |
 | The site's domain | Open. | Keep `hyphae-delta.vercel.app` until a domain is bought. If Cisco buys `hyphae.fun`: add it in Vercel, set `PUBLIC_WEB_URL`, and the code default becomes right. |
@@ -89,7 +89,7 @@ Ruled 2026-09-28 and now applied or scheduled: Q1 HYP-03 (C18b), Q2 the pot's so
 ## Next Actions
 
 1. Oct 2 read-only check of epoch 1's close (above).
-2. Cisco rules on the repo's visibility; if public, re-check every GitHub link on the site.
+2. Keep `FCisco95/hyphae-program` in sync with `programs/hyphae` and `docs/rubrics/*.json` (re-verify the build after any program change).
 3. Oct 2–6: the Ledger devnet deploy; the Jev offline eval on `feat/jev-eval`; rules test v2 and the study page if ruled.
 4. Oct 7–9: Runbook C (`handoffs/2026-09-28-runbook-c.md`).
 5. Oct 9–10: the video and the submission checklist (`docs/demo/`).
