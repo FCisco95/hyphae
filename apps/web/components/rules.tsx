@@ -36,16 +36,25 @@ const NEW_TEST =
 // 1.3.0 is planned for epoch 4 (ruled 2026-09-29) through an O4 proposal the page cannot read. It
 // names that epoch only while it is still ahead, and never asserts when 1.3.0 took effect.
 const PLANNED_EPOCH = 4;
-const planAhead = (status: RulesStatus) =>
-  status.state === "unknown" || status.epoch < PLANNED_EPOCH;
 
 function title(v: Version, status: RulesStatus): string {
   if (status.state !== "known") return `Rubric ${v}`;
   if (status.now === v) return `The rules now: rubric ${v}`;
   if (v === "1.2.0") return `Earlier rules: rubric ${v}`;
-  return planAhead(status)
+  return status.epoch < PLANNED_EPOCH
     ? `Planned for epoch ${PLANNED_EPOCH}: rubric ${v}`
     : `Planned: rubric ${v}`;
+}
+
+// When 1.3.0 is not read as in force: planned while 1.2.0 is read as now, and otherwise a
+// sentence true whether or not it has taken effect.
+function plan(status: RulesStatus): string {
+  if (status.state !== "known") {
+    return `Rubric 1.3.0 replaces 1.2.0 from the epoch its proposal activates; the plan is epoch ${PLANNED_EPOCH}, from 2026-10-16.`;
+  }
+  return status.epoch < PLANNED_EPOCH
+    ? `Planned for epoch ${PLANNED_EPOCH}, from 2026-10-16, once the change is proposed and accepted.`
+    : "Planned, and not in force yet.";
 }
 
 const Bullets = ({ items }: { items: string[] }) => (
@@ -91,12 +100,7 @@ function RubricSection({ version, status }: { version: Version; status: RulesSta
         <Bullets items={[...BASICS, ...CHANGES_1_3_0]} />
       ) : (
         <>
-          <p>
-            {planAhead(status)
-              ? `Planned for epoch ${PLANNED_EPOCH}, from 2026-10-16, once the change is proposed and accepted.`
-              : "Planned, and not in force yet."}{" "}
-            Each epoch keeps the rubric it opened with. What changes:
-          </p>
+          <p>{plan(status)} Each epoch keeps the rubric it opened with. What changes:</p>
           <Bullets items={CHANGES_1_3_0} />
           <p>Everything else stays as above.</p>
         </>

@@ -10,11 +10,13 @@ describe("rulesStatus", () => {
     { index: 3, status: "open" as const },
     { index: 2, status: "closed" as const },
   ];
-  const reading = (version: string) => async (index: number) =>
-    ({
-      ok: true,
-      data: { index, config: { rubric_version: version } },
-    }) as unknown as Result<LooseEpochV1>;
+  const reading =
+    (version: string, status = "open") =>
+    async (index: number) =>
+      ({
+        ok: true,
+        data: { index, status, config: { rubric_version: version } },
+      }) as unknown as Result<LooseEpochV1>;
 
   it("names the rules of the open epoch", async () => {
     expect(await rulesStatus(epochs, reading("1.2.0"))).toEqual({
@@ -44,6 +46,11 @@ describe("rulesStatus", () => {
     expect(await rulesStatus([{ index: 2, status: "closed" as const }], reading("1.2.0"))).toEqual({
       state: "unknown",
     });
+  });
+
+  // The list and the epoch are two reads; an epoch can close between them.
+  it("claims nothing when the open epoch has closed by the time it is read", async () => {
+    expect(await rulesStatus(epochs, reading("1.2.0", "closing"))).toEqual({ state: "unknown" });
   });
 });
 

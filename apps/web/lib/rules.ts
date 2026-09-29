@@ -20,7 +20,7 @@ export async function rulesStatus(
   const open = epochs?.find((e) => e.status === "open");
   if (!open) return { state: "unknown" };
   const epoch = await read(open.index);
-  if (!epoch.ok) return { state: "unknown" };
+  if (!epoch.ok || epoch.data.status !== "open") return { state: "unknown" };
   const version = epoch.data.config.rubric_version;
   return covered(version)
     ? { state: "known", epoch: open.index, now: version }

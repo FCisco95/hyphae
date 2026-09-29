@@ -68,8 +68,15 @@ describe("the rules study page", () => {
     ],
   ])("says so when it cannot tell which rules apply (%#)", (status, banner) => {
     const page = <RulesView status={status} />;
-    expect(text(page)).toContain(banner);
+    const t = text(page);
+    expect(t).toContain(banner);
     expect(versionHeadings(page)).toEqual(["Rubric 1.2.0", "Rubric 1.3.0"]);
+    // True whether or not 1.3.0 has taken effect.
+    expect(t).toContain(
+      "Rubric 1.3.0 replaces 1.2.0 from the epoch its proposal activates; the plan is epoch 4, from 2026-10-16.",
+    );
+    expect(t).not.toContain(PLAN_13);
+    expect(t).not.toContain("not in force yet");
   });
 
   it("shows every graded example with the founder's grade and its credit", () => {
