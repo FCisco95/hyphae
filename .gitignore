@@ -15,6 +15,10 @@ test-ledger/
 .env
 .env.*
 !.env.example
+# Solana keypairs: the runbooks' CLI commands write them outside target/
+*-keypair.json
+id.json
+admin-*.json
 
 # Local plan mirror — canonical copy lives in the vault, never committed here
 docs/plans/
