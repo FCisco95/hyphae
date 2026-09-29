@@ -100,7 +100,7 @@ const MYCEL_RULES_2: RulesTest = {
       why: "From rubric 1.3.0, price talk is allowed when it gives a concrete basis and is framed as uncertain. The word “could” alone would not be enough. The founder graded it 85.",
     },
     {
-      text: "Rate this reply to the same post.\nReply: “MYCEL to $1 easy, NFA.”",
+      text: "Rate this reply.\nPost: fees doubled to 12 SOL this epoch, and MYCEL's supply is unchanged.\nReply: “MYCEL to $1 easy, NFA.”",
       options: [
         "Earns points: “NFA” makes it an opinion",
         "Low, but it still earns something",
@@ -120,7 +120,7 @@ const MYCEL_RULES_2: RulesTest = {
       why: "“Testament”, “pivotal”, “evolving landscape” and a list of three buzzwords read like an unedited AI draft. That caps the grade at 40 when it is this obvious, and below 60 earns nothing.",
     },
     {
-      text: "Good, fake or bot engagement? Same post.\nReply: “This transparency is crucial for contributors because they can match each score to the receipt and see every later correction.”",
+      text: "Good, fake or bot engagement?\nPost: a receipt keeps the model's output, the rubric version and any admin correction in one public audit trail.\nReply: “This transparency is crucial for contributors because they can match each score to the receipt and see every later correction.”",
       options: [
         "Good: a specific reason, in a normal voice",
         "Fake: “crucial” is an AI word",

@@ -33,10 +33,19 @@ const CHANGES_1_3_0: string[] = [
 const NEW_TEST =
   "Rubric 1.3.0 has its own rules test: a pass of the rubric 1.2.0 test does not count for epochs under 1.3.0.";
 
+// 1.3.0 is planned for epoch 4 (ruled 2026-09-29) through an O4 proposal the page cannot read. It
+// names that epoch only while it is still ahead, and never asserts when 1.3.0 took effect.
+const PLANNED_EPOCH = 4;
+const planAhead = (status: RulesStatus) =>
+  status.state === "unknown" || status.epoch < PLANNED_EPOCH;
+
 function title(v: Version, status: RulesStatus): string {
   if (status.state !== "known") return `Rubric ${v}`;
   if (status.now === v) return `The rules now: rubric ${v}`;
-  return v === "1.3.0" ? `From epoch 4: rubric ${v}` : `Before epoch 4: rubric ${v}`;
+  if (v === "1.2.0") return `Earlier rules: rubric ${v}`;
+  return planAhead(status)
+    ? `Planned for epoch ${PLANNED_EPOCH}: rubric ${v}`
+    : `Planned: rubric ${v}`;
 }
 
 const Bullets = ({ items }: { items: string[] }) => (
@@ -83,8 +92,10 @@ function RubricSection({ version, status }: { version: Version; status: RulesSta
       ) : (
         <>
           <p>
-            Planned from epoch 4, which opens 2026-10-16. Each epoch keeps the rubric it opened
-            with. What changes:
+            {planAhead(status)
+              ? `Planned for epoch ${PLANNED_EPOCH}, from 2026-10-16, once the change is proposed and accepted.`
+              : "Planned, and not in force yet."}{" "}
+            Each epoch keeps the rubric it opened with. What changes:
           </p>
           <Bullets items={CHANGES_1_3_0} />
           <p>Everything else stays as above.</p>

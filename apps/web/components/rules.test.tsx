@@ -17,29 +17,48 @@ const headings = (el: React.ReactElement) =>
 const PRICE_120 = "say where its price is going or name targets, even with reasons";
 const NOTE_120 = "Under rubric 1.2.0 this reply is a breach and earns 0";
 
+const versionHeadings = (el: React.ReactElement) =>
+  headings(el).filter((h) => /1\.[23]\.0/.test(h ?? ""));
+const PLAN_13 = "Planned for epoch 4, from 2026-10-16, once the change is proposed and accepted.";
+
 describe("the rules study page", () => {
-  it("before epoch 4, keeps the rules now apart from the rules from epoch 4", () => {
+  it("before epoch 4, keeps the rules now apart from the rules planned for epoch 4", () => {
     const page = <RulesView status={{ state: "known", epoch: 3, now: "1.2.0" }} />;
-    expect(headings(page).filter((h) => /1\.[23]\.0/.test(h ?? ""))).toEqual([
+    expect(versionHeadings(page)).toEqual([
       "The rules now: rubric 1.2.0",
-      "From epoch 4: rubric 1.3.0",
+      "Planned for epoch 4: rubric 1.3.0",
     ]);
     const t = text(page);
     expect(t).toContain("Epoch 3 is open now and scored under rubric 1.2.0.");
     expect(t).toContain(PRICE_120);
+    expect(t).toContain(PLAN_13);
     expect(t).toContain(NOTE_120);
   });
 
-  it("once 1.3.0 is in force, shows it as the rules now and 1.2.0 as history", () => {
-    const page = <RulesView status={{ state: "known", epoch: 4, now: "1.3.0" }} />;
-    expect(headings(page).filter((h) => /1\.[23]\.0/.test(h ?? ""))).toEqual([
-      "The rules now: rubric 1.3.0",
-      "Before epoch 4: rubric 1.2.0",
-    ]);
+  // The page never asserts the activation it has not read: a slipped O4 proposal leaves epoch 4
+  // on 1.2.0, and 1.3.0 may take effect at any later epoch.
+  it("if epoch 4 opens under 1.2.0, still shows 1.2.0 as now and 1.3.0 as only planned", () => {
+    const page = <RulesView status={{ state: "known", epoch: 4, now: "1.2.0" }} />;
+    expect(versionHeadings(page)).toEqual(["The rules now: rubric 1.2.0", "Planned: rubric 1.3.0"]);
     const t = text(page);
-    expect(t).toContain("Epoch 4 is open now and scored under rubric 1.3.0.");
-    expect(t).not.toContain(NOTE_120);
+    expect(t).toContain("Planned, and not in force yet.");
+    expect(t).not.toContain(PLAN_13);
   });
+
+  it.each([4, 6])(
+    "once 1.3.0 is in force (epoch %i), shows it as now and 1.2.0 as earlier",
+    (epoch) => {
+      const page = <RulesView status={{ state: "known", epoch, now: "1.3.0" }} />;
+      expect(versionHeadings(page)).toEqual([
+        "The rules now: rubric 1.3.0",
+        "Earlier rules: rubric 1.2.0",
+      ]);
+      const t = text(page);
+      expect(t).toContain(`Epoch ${epoch} is open now and scored under rubric 1.3.0.`);
+      expect(t).not.toContain(NOTE_120);
+      expect(t).not.toMatch(/(before|from|planned for) epoch 4/i);
+    },
+  );
 
   it.each([
     [{ state: "unknown" } as const, "Could not read which rubric the open epoch uses"],
@@ -50,10 +69,7 @@ describe("the rules study page", () => {
   ])("says so when it cannot tell which rules apply (%#)", (status, banner) => {
     const page = <RulesView status={status} />;
     expect(text(page)).toContain(banner);
-    expect(headings(page).filter((h) => /1\.[23]\.0/.test(h ?? ""))).toEqual([
-      "Rubric 1.2.0",
-      "Rubric 1.3.0",
-    ]);
+    expect(versionHeadings(page)).toEqual(["Rubric 1.2.0", "Rubric 1.3.0"]);
   });
 
   it("shows every graded example with the founder's grade and its credit", () => {

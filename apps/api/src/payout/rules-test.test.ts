@@ -96,6 +96,11 @@ describe("mycel-rules-2", () => {
     expect(v2().questions[i]?.text).toContain(`“${reply}”`);
   });
 
+  // Each question's message replaces the one before, so none can point back to an earlier post.
+  it("shows the post in every question", () => {
+    for (const q of v2().questions) expect(q.text).toMatch(/\nPost: .+\nReply: “/);
+  });
+
   it("does not keep its right answers in one position", () => {
     expect(new Set(v2().questions.map((q) => q.answer)).size).toBe(3);
   });
