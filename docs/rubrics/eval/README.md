@@ -32,7 +32,7 @@ This is an illustrative format example, **not a founder-labelled calibration cas
 ]
 ```
 
-`founderGrade` is 0–5 for display. The raw and credited ranges are explicit, inclusive 0–100 ranges; the harness does not infer them from the founder grade. Credited scores use production hard-zero rules, AI caps, and the floor, before timing decay. Both ranges and every specified flag assertion must pass. Omitted flag lists default to empty.
+`founderGrade` is 0–5 for display and optional. `target`, also optional, holds the founder's own raw and credited scores as ranges (`[t, t]` for a single score); when present, each record reports `error`, the absolute distance from that target (0 inside a range). The raw and credited ranges are explicit, inclusive 0–100 ranges; the harness does not infer them from the founder grade. Credited scores use production hard-zero rules, AI caps, and the floor, before timing decay. Both ranges and every specified flag assertion must pass. Omitted flag lists default to empty.
 
 From the repository root, validate all fixtures without credentials or model calls:
 
@@ -54,6 +54,13 @@ No real labelled dataset is included yet. The previous session's Organic_Bonk ex
 
 ## Synthetic review set
 
-`mycel-synthetic-review.json` contains assistant-authored policy cases for founder review. It is intentionally **not** a harness fixture: every numeric founder label and range is `null`, and the file records its source as synthetic. Its qualitative flag expectations come from the locked policy direction, not from observed model behavior.
+`mycel-synthetic-review.json` holds 16 assistant-authored policy cases with the founder's target scores and reasons. It stays byte-for-byte as reviewed (SHA-256 `1b851fa0…6afd936`), as provenance; its top-level `status` and `founderScalePolicy` predate the review.
 
-Before a paid run, review each case, fill the founder grade, reason, raw range, and credited range, then copy only the approved cases into a harness-compatible JSON array. Keep real founder-labelled contributions in a separate private fixture until their text is cleared for this public repository. Never combine the Masterblox screenshot pairs with this synthetic set or infer grades for them from their original/rewrite relationship.
+`mycel-synthetic.json` is the runnable fixture made from it by `apps/api/scripts/founder-grades.ts` (then Biome's formatter), under the founder's range rule of 2026-09-28:
+
+- Raw and credited scores each land within the founder target ±5, clamped to 0–100.
+- The credited target is the production credit rule (hard zeros, AI caps, the 60 floor) applied to the founder's raw target and the case's required flags. The expected AI signals stand in for `aiSlop.patterns`, so three or more take the strong cap.
+- A credited score is either 0 or at least 60, so a credited target of 0 is exact: every hard-zero and below-floor case must credit exactly 0.
+- Case 12 (`synthetic-polished-strong-original-control`) keeps the founder's own 75–80, raw and credited.
+
+A test keeps the fixture equal to the generator's output. Keep real founder-labelled contributions in a separate private fixture until their text is cleared for this repository, and never combine the Masterblox screenshot pairs with this synthetic set.

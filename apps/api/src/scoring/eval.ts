@@ -8,7 +8,9 @@ const range = z
 
 const ExpectedSchema = z
   .strictObject({
-    founderGrade: z.number().min(0).max(5),
+    founderGrade: z.number().min(0).max(5).optional(),
+    // The founder's own score, for the absolute error; a point target is [t, t].
+    target: z.strictObject({ raw: range, credited: range }).optional(),
     reason: text,
     raw: range,
     credited: range,
@@ -46,6 +48,9 @@ export const EvalCasesSchema = z
 
 export type EvalCase = z.infer<typeof EvalCasesSchema>[number];
 
+const distance = (score: number, [min, max]: readonly [number, number]) =>
+  score < min ? min - score : score > max ? score - max : 0;
+
 export function compareScore(output: ScoreOutput, expected: EvalCase["expected"]) {
   const raw = output.score;
   const credited = creditedScore(output);
@@ -63,5 +68,9 @@ export function compareScore(output: ScoreOutput, expected: EvalCase["expected"]
   for (const flag of expected.forbiddenFlags) {
     if (output.flags.includes(flag)) failures.push(`forbidden flag ${flag}`);
   }
-  return { raw, credited, passed: failures.length === 0, failures };
+  const error = expected.target && {
+    raw: distance(raw, expected.target.raw),
+    credited: distance(credited, expected.target.credited),
+  };
+  return { raw, credited, passed: failures.length === 0, failures, ...(error && { error }) };
 }
