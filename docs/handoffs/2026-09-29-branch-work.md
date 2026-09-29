@@ -94,3 +94,18 @@ Round 3 confirmed: eligibility unchanged for 1.2.0, no pass crosses tests, the s
 ## Next
 
 After 2026-10-02T00:00Z: step 1 (epoch 1's close, read-only), steps 2b–2d once the question set exists, step 3 with Cisco and the Ledger, then the final handoff with the three receipts.
+
+## Later: Cisco's rulings on the four questions (2026-09-29, about 21:40Z)
+
+Cisco: "Let's do your recommendations."
+
+| # | Ruling | Done |
+|---|---|---|
+| 1 | Rubric 1.3.1: 1.3.0 without its sentence on strikes, which are not built. It replaces 1.3.0 as the epoch-4 candidate; 1.3.0 stays published as it was. | `9273508` on `feat/rules-v2`: `docs/rubrics/mycel-1.3.1.json` (a core test holds it to 1.3.0 minus that sentence and the version), a changelog entry, `mycel-rules-2` covers 1.3.1 only (an epoch pinned to 1.3.0 now fails closed), `/rules` names and links 1.3.1. Gate: 772 passed + 1 skipped (core 107, web 111, api 554), typecheck 0, Biome clean, `drizzle-kit check` pass, `test:pg` 44/44. |
+| 2 | The quiz stays all worked examples; timing and limits stay on the study page. | Nothing to change. |
+| 3 | Cisco reads `/rules` on a preview before the merge. | Vercel preview of `9273508`, behind Vercel's login: https://hyphae-po203lhbl-ciscos-projects-c3b3be54.vercel.app/rules |
+| 4 | Merge and deploy during epoch 3, after the Oct 9 payout, then the O4 proposal. | Recorded in `docs/HANDOFF.md`; nothing to do before Oct 9. |
+
+**Review round 4** (fresh Codex `gpt-6-astra`, xhigh, over `9273508`): **SHIP**. It confirmed 1.3.1 differs from 1.3.0 only by the version and the strike sentence, eligibility is unchanged for 1.2.0, fails closed for 1.3.0 and requires `mycel-rules-2` for 1.3.1, and every question and page statement still holds. Two minors: this handoff's `main` copy still said 1.3.0 (fixed in the refresh), and a question for Cisco below.
+
+**Parked, one question:** 1.3.1's "What earns zero" still lists "text that reads like an unedited AI draft", but the code caps a mild AI-writing flag at 79, and only the strong cap (40) falls below the 60 floor; the founder's own case 1 credits 70. 1.2.0 and 1.3.0 say the same. Changing the rubric text is Cisco's call, and once 1.3.1 is public it can only change as 1.3.2, so the copy to `hyphae-program` waits for the answer. **Recommended:** fix it in 1.3.1 before it goes public: move the line out of "What earns zero" and say an unedited AI draft is capped at 79, or at 40 when obvious. Then sync. Nothing needs the public file before the merge.
