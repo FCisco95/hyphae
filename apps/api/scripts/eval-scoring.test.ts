@@ -4,7 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
 
-it("dry-runs the documented fixture without credentials or model calls", () => {
+// A child process that boots tsx: alone it takes under 1 s, but under the full parallel suite it
+// once took 8.5 s, past vitest's 5 s default.
+it("dry-runs the documented fixture without credentials or model calls", {
+  timeout: 30_000,
+}, () => {
   const readme = readFileSync(
     new URL("../../../docs/rubrics/eval/README.md", import.meta.url),
     "utf8",
@@ -31,7 +35,7 @@ it("dry-runs the documented fixture without credentials or model calls", () => {
         cwd: new URL("../", import.meta.url),
         encoding: "utf8",
         env: { ...process.env, ANTHROPIC_API_KEY: "", DEEPSEEK_API_KEY: "" },
-        timeout: 10_000,
+        timeout: 25_000,
       },
     );
     expect(result.stderr).toBe("");

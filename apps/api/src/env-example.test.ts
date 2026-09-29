@@ -1,10 +1,12 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
-const SKIP = new Set(["node_modules", ".next", "dist"]);
+// content/ holds text on display (the landing's copy of the README snippet), not code that runs.
+const SKIP = new Set(["node_modules", ".next", "dist", "content"]);
 
 function sources(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -37,5 +39,24 @@ describe(".env.example", () => {
     const read = namesRead();
     expect(read.size).toBeGreaterThan(20);
     expect([...read].filter((name) => !listed.has(name)).sort()).toEqual([]);
+  });
+});
+
+describe("sources", () => {
+  it("skips content/, which holds text on display rather than code the app runs", () => {
+    const dir = mkdtempSync(join(tmpdir(), "hyphae-env-"));
+    try {
+      mkdirSync(join(dir, "content"));
+      mkdirSync(join(dir, "lib"));
+      // Split, so this file doesn't itself read as a use of either name.
+      const env = "process.env.";
+      writeFileSync(join(dir, "content", "snippet.js"), `${env}SHOWN;`);
+      writeFileSync(join(dir, "lib", "read.ts"), `${env}READ;`);
+      expect(sources(dir).map((f) => relative(dir, f).split(sep).join("/"))).toEqual([
+        "lib/read.ts",
+      ]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
