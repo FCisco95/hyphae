@@ -9,3 +9,5 @@ export const LICENSE = `${GITHUB}/blob/main/LICENSE`;
 export const RUBRICS = `${GITHUB}/tree/main/rubrics`;
 export const BOT = "https://t.me/hyphaeprotocol_bot";
 export const COLOSSEUM = "https://colosseum.com/worldsfair";
+export const RUBRIC_1_2_0 = `${GITHUB}/blob/main/rubrics/mycel-1.2.0.json`;
+export const RUBRIC_1_3_0 = `${GITHUB}/blob/main/rubrics/mycel-1.3.0.json`;

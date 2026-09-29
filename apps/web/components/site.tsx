@@ -17,6 +17,7 @@ export function SiteHeader() {
             Proof
           </a>
           <a href="/community">Community</a>
+          <a href="/rules">Rules</a>
           <a href="/claim">Claim</a>
           <a className="roomy" href={GITHUB} rel="noopener noreferrer">
             GitHub
