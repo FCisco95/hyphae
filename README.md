@@ -105,4 +105,4 @@ Then open `http://localhost:8787/docs`. `publish.devnet.test.ts` can add a real 
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+[Business Source License 1.1](LICENSE), converting to the GPL v2.0 or later on 2028-10-12. This repository is private; the program, its verifiable build and the rubrics are published at [FCisco95/hyphae-program](https://github.com/FCisco95/hyphae-program) under the same licence.

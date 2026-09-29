@@ -6,4 +6,5 @@ export const CUSTODY_SUMMARY =
 
 export const CUSTODY_POLICY = `${CUSTODY_SUMMARY} The program has no withdraw instruction: SOL leaves the vault only through member claims and the 3% fee. The program can still be upgraded. The upgrade key is held the same way, and any upgrade is announced here before it is used.`;
 
-export const CUSTODY_POLICY_URL = "https://github.com/FCisco95/hyphae#custody-during-the-pilot";
+export const CUSTODY_POLICY_URL =
+  "https://github.com/FCisco95/hyphae-program#custody-during-the-pilot";

@@ -5,7 +5,15 @@ import { CUSTODY_POLICY, CUSTODY_POLICY_URL } from "@hyphae/core";
 import { growFilaments } from "../lib/filaments.js";
 import { explorerTx, networkName, shortWallet, sol, utc } from "../lib/format.js";
 import type { LiveProof } from "../lib/landing.js";
-import { API_DOCS, BUILDLOG, doc, GITHUB, LICENSE, README_STATUS, RUBRICS } from "../lib/links.js";
+import {
+  API_DOCS,
+  DEVNET_RECORD,
+  GITHUB,
+  LICENSE,
+  README_STATUS,
+  RUBRICS,
+  VERIFY_BUILD,
+} from "../lib/links.js";
 import { settlementOf } from "../lib/settlement.js";
 import { MarkShapes } from "./brand.js";
 import { ButtonLink, EvidenceLink, Section, Stat, Stats } from "./ui.js";
@@ -106,7 +114,7 @@ export function Hero({ communityHref }: { communityHref: string }) {
           <p className="hero-note">
             Built solo for Colosseum's Crypto World's Fair.{" "}
             <a href={LICENSE} rel="noopener noreferrer">
-              MIT licensed
+              Source available (BUSL 1.1)
             </a>
             .
           </p>
@@ -327,13 +335,13 @@ export function Proof({ live }: { live: ProofState }) {
           <p className="muted small">
             These transactions are on devnet.{" "}
             <a href={README_STATUS} rel="noopener noreferrer">
-              The README's status
+              The program's README
             </a>{" "}
-            says what is deployed where;{" "}
-            <a href={doc("docs/handoffs/2026-09-27-devnet-proof.md")} rel="noopener noreferrer">
-              the full record
-            </a>{" "}
-            has every account and signature.
+            says what is deployed where, and{" "}
+            <a href={DEVNET_RECORD} rel="noopener noreferrer">
+              lists this run
+            </a>
+            .
           </p>
         </div>
       </div>
@@ -350,18 +358,18 @@ export function Trust() {
     <Section
       id="trust"
       title="What you trust, in writing"
-      lead="The code, who holds each key, and the custody rules are all public."
+      lead="The program, the custody rules and the grading rubrics are all public."
     >
       <div className="trust-grid">
         <article>
           <h3>The program is its source</h3>
           <p>
-            The program on devnet is byte for byte what this repository builds in Anchor's pinned
-            Docker image.
+            The program on devnet is byte for byte what its public repository builds in Anchor's
+            pinned Docker image.
           </p>
           <p className="muted small">solana-verify hash</p>
           <EvidenceLink
-            href={doc("docs/handoffs/2026-09-28-verifiable-build-and-deploy-rehearsal.md")}
+            href={VERIFY_BUILD}
             value={VERIFIED_HASH}
             shown={`${VERIFIED_HASH.slice(0, 8)}…${VERIFIED_HASH.slice(-4)}`}
           />
@@ -384,17 +392,13 @@ export function Trust() {
           </p>
         </article>
         <article>
-          <h3>Open source, MIT</h3>
+          <h3>The rules are public</h3>
           <p>
-            Every line is{" "}
+            The program and every rubric are{" "}
             <a href={GITHUB} rel="noopener noreferrer">
               on GitHub
             </a>
-            , and{" "}
-            <a href={BUILDLOG} rel="noopener noreferrer">
-              the build log
-            </a>{" "}
-            records every session.
+            , so you can rebuild one and read the other before you do the work.
           </p>
         </article>
       </div>
@@ -422,8 +426,7 @@ export function Integrate() {
           <p>
             Public, read-only JSON: communities, weeks, every score with its reasons, and every
             claim with its proof. A section the API cannot confirm is marked unavailable, never a
-            zero. The production API does not serve this example's wallet-claims route yet; the
-            README says how to run the whole API locally meanwhile.
+            zero. The production API does not serve this example's wallet-claims route yet.
           </p>
           <h3>Fund a vault</h3>
           <p>

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { CUSTODY_POLICY, CUSTODY_POLICY_URL } from "@hyphae/core";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { DEVNET_RECORD, LICENSE, VERIFY_BUILD } from "../lib/links.js";
 import * as f from "./fixtures.js";
 import {
   DEVNET_RUN,
@@ -12,6 +13,7 @@ import {
   Trust,
   VERIFIED_HASH,
 } from "./landing.js";
+import { SiteFooter } from "./site.js";
 
 const text = (el: React.ReactElement) =>
   renderToStaticMarkup(el)
@@ -33,6 +35,28 @@ describe("Hero", () => {
     expect(text(<Hero communityHref="/c/MintAbc" />)).toContain(
       "Proof of contribution for token communities.",
     );
+  });
+
+  it("names the program's licence, with a link to it", () => {
+    const html = renderToStaticMarkup(<Hero communityHref="/c/MintAbc" />);
+    expect(text(<Hero communityHref="/c/MintAbc" />)).toContain("Source available (BUSL 1.1)");
+    expect(html).toContain(`href="${LICENSE}"`);
+  });
+});
+
+describe("the site's licence claims", () => {
+  it("never calls Hyphae MIT or open source", () => {
+    const all = [
+      <Hero key="h" communityHref="/c/MintAbc" />,
+      <Proof key="p" live={{ state: "unavailable" }} />,
+      <Trust key="t" />,
+      <Integrate key="i" />,
+      <SiteFooter key="f" />,
+    ]
+      .map(text)
+      .join(" ");
+    expect(all).not.toMatch(/\bMIT\b|open source/i);
+    expect(text(<SiteFooter />)).toContain("Source available under BUSL 1.1.");
   });
 });
 
@@ -113,6 +137,7 @@ describe("Proof", () => {
       expect(html).toContain(`https://explorer.solana.com/tx/${signature}?cluster=devnet`);
     }
     expect(html.match(/class="net">devnet</g)).toHaveLength(DEVNET_RUN.length);
+    expect(html).toContain(`href="${DEVNET_RECORD}"`);
   });
 });
 
@@ -128,6 +153,7 @@ describe("Trust", () => {
       VERIFIED_HASH,
     );
     expect(renderToStaticMarkup(<Trust />)).toContain(`title="${VERIFIED_HASH}"`);
+    expect(renderToStaticMarkup(<Trust />)).toContain(`href="${VERIFY_BUILD}"`);
   });
 });
 
@@ -137,6 +163,8 @@ describe("Integrate", () => {
     const t = text(<Integrate />);
     expect(t).toContain("The production API does not serve this example's wallet-claims route yet");
     expect(t).toContain("The program is on devnet only.");
+    // The README that explains running the API locally is in the private repo.
+    expect(t).not.toContain("run the whole API locally");
   });
 
   it("shows the README's integration code unchanged", () => {

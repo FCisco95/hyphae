@@ -1,6 +1,6 @@
 # CLAUDE.md — hyphae
 
-Colosseum Crypto World's Fair entry (2026-09-14 → 2026-10-12). Solo build under the Organic/MYCEL umbrella. Public repo, MIT.
+Colosseum Crypto World's Fair entry (2026-09-14 → 2026-10-12). Solo build under the Organic/MYCEL umbrella. Private repo, BUSL 1.1 (ruled 2026-09-29); the program and the rubrics are published in the public repo `FCisco95/hyphae-program`, which must be updated whenever `programs/hyphae` or `docs/rubrics/*.json` change.
 
 <!-- ORGANIC-SYNC:WORKING-AGREEMENT:BEGIN v1 — managed by cisco-brain /organic-sync; edit the canonical copy there, not here -->
 ## Working agreement (solo founder)

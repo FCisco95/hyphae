@@ -64,7 +64,7 @@ export function SiteFooter() {
         </ul>
         <p className="fine">
           Points are not money. An allocation or payment appears only once the chain confirms it.
-          All times UTC. MIT licensed, built for Colosseum's Crypto World's Fair.
+          All times UTC. Source available under BUSL 1.1. Built for Colosseum's Crypto World's Fair.
         </p>
       </div>
     </footer>
