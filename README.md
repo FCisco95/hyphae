@@ -9,7 +9,8 @@ Built solo for [Colosseum's Crypto World's Fair](https://colosseum.com/worldsfai
 | Part | State |
 |---|---|
 | Telegram bot, AI scoring and reward epochs | Live for the MYCEL community. |
-| Read API v1 and the public audit site | Built and tested; not deployed yet. |
+| Public audit site | Live at **[hyphae-delta.vercel.app](https://hyphae-delta.vercel.app)**, reading the production API. |
+| Read API v1 | The community and epoch routes are live at `https://hyphae-api.fly.dev/v1`. The wallet-claims route, `/docs` and `/v1/openapi.json` are built and tested, not deployed yet. |
 | Solana program (`programs/hyphae`): vaults, epoch roots, one-time claims | Deployed on **devnet** only. A publish, a claim and a refused duplicate claim are recorded in [docs/handoffs/2026-09-27-devnet-proof.md](docs/handoffs/2026-09-27-devnet-proof.md). Not on mainnet. |
 | Soulbound Token-2022 points | Planned, not built. |
 
