@@ -2,7 +2,13 @@
 
 Every rubric a Hyphae community scores against is public here. A community's `rubric_version` points at one of these files; the epoch commits its hash on-chain.
 
-## MYCEL 1.3.0 — 2026-09-18 (candidate, not applied)
+## MYCEL 1.3.1 — 2026-09-29 (candidate, not applied)
+
+- Rubric 1.3.0 without its sentence on strikes ("Strikes: first = warning, second = you lose this epoch's points, third = 30 days out of paid raids. Every strike shows you why."). Strikes are not built, so the rubric no longer promises them. Every other rule is 1.3.0's, word for word.
+- Founder ruling 2026-09-29: 1.3.1 replaces 1.3.0 as the candidate planned for epoch 4. 1.3.0 was never pinned by an epoch and stays published unchanged.
+- Its rules test is `mycel-rules-2`; a pass of the 1.2.0 test does not count for it.
+
+## MYCEL 1.3.0 — 2026-09-18 (candidate, superseded by 1.3.1 before use)
 
 - Founder ruling: price discussion and speculation are allowed when supported by a concrete basis. A price, market-cap figure, or target is not automatically a guideline breach. The forecast must be framed as uncertain and connected to the supplied evidence; a token hedge such as "could" does not substitute for reasoning.
 - Unsupported hype such as "we are going up to 100M easy", guarantees, promised gains, and direct buy/hold instructions remain hard-zero breaches. The basis may come from the target post; every short reply need not repeat a full analysis or include a separate citation.

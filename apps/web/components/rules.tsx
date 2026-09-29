@@ -1,4 +1,4 @@
-import { RUBRIC_1_2_0, RUBRIC_1_3_0 } from "../lib/links.js";
+import { RUBRIC_1_2_0, RUBRIC_1_3_1 } from "../lib/links.js";
 import {
   EXAMPLES,
   exampleGroup,
@@ -22,7 +22,7 @@ const BASICS: string[] = [
 const PRICE_1_2_0 =
   "About MYCEL or any specific coin, never: tell anyone to buy, ape, get in or hold it; say where its price is going or name targets, even with reasons; promise gains or claim returns. Each earns 0, whatever the effort. General market talk is opinion and allowed (“holding usually beats trading”).";
 
-const CHANGES_1_3_0: string[] = [
+const CHANGES_1_3_1: string[] = [
   "Price talk about a specific coin is allowed when it gives a concrete basis (the post's own numbers are enough) and is framed as uncertain. “Could” or “NFA” does not turn a bare target into reasoning.",
   "Still 0 whatever the effort: telling anyone to buy, ape, get in or hold a coin; promising gains, guaranteed returns or a certain price; unsupported price hype.",
   "You may say you hold a coin. That is not telling anyone to buy, and on its own it earns nothing.",
@@ -31,10 +31,10 @@ const CHANGES_1_3_0: string[] = [
 ];
 
 const NEW_TEST =
-  "Rubric 1.3.0 has its own rules test: a pass of the rubric 1.2.0 test does not count for epochs under 1.3.0.";
+  "Rubric 1.3.1 has its own rules test: a pass of the rubric 1.2.0 test does not count for epochs under 1.3.1.";
 
-// 1.3.0 is planned for epoch 4 (ruled 2026-09-29) through an O4 proposal the page cannot read. It
-// names that epoch only while it is still ahead, and never asserts when 1.3.0 took effect.
+// 1.3.1 is planned for epoch 4 (ruled 2026-09-29) through an O4 proposal the page cannot read. It
+// names that epoch only while it is still ahead, and never asserts when 1.3.1 took effect.
 const PLANNED_EPOCH = 4;
 
 function title(v: Version, status: RulesStatus): string {
@@ -46,11 +46,11 @@ function title(v: Version, status: RulesStatus): string {
     : `Planned: rubric ${v}`;
 }
 
-// When 1.3.0 is not read as in force: planned while 1.2.0 is read as now, and otherwise a
+// When 1.3.1 is not read as in force: planned while 1.2.0 is read as now, and otherwise a
 // sentence true whether or not it has taken effect.
 function plan(status: RulesStatus): string {
   if (status.state !== "known") {
-    return `Rubric 1.3.0 replaces 1.2.0 from the epoch its proposal activates; the plan is epoch ${PLANNED_EPOCH}, from 2026-10-16.`;
+    return `Rubric 1.3.1 replaces 1.2.0 from the epoch its proposal activates; the plan is epoch ${PLANNED_EPOCH}, from 2026-10-16.`;
   }
   return status.epoch < PLANNED_EPOCH
     ? `Planned for epoch ${PLANNED_EPOCH}, from 2026-10-16, once the change is proposed and accepted.`
@@ -86,7 +86,7 @@ function RubricSection({ version, status }: { version: Version; status: RulesSta
           <Bullets items={[...BASICS, PRICE_1_2_0]} />
         ) : (
           <>
-            <p>What was different from rubric 1.3.0:</p>
+            <p>What was different from rubric 1.3.1:</p>
             <Bullets items={[PRICE_1_2_0]} />
           </>
         )}
@@ -96,17 +96,17 @@ function RubricSection({ version, status }: { version: Version; status: RulesSta
   }
   return (
     <Panel title={title(version, status)}>
-      {now === "1.3.0" ? (
-        <Bullets items={[...BASICS, ...CHANGES_1_3_0]} />
+      {now === "1.3.1" ? (
+        <Bullets items={[...BASICS, ...CHANGES_1_3_1]} />
       ) : (
         <>
           <p>{plan(status)} Each epoch keeps the rubric it opened with. What changes:</p>
-          <Bullets items={CHANGES_1_3_0} />
+          <Bullets items={CHANGES_1_3_1} />
           <p>Everything else stays as above.</p>
         </>
       )}
       <p>{NEW_TEST}</p>
-      <Source href={RUBRIC_1_3_0} version={version} />
+      <Source href={RUBRIC_1_3_1} version={version} />
     </Panel>
   );
 }
@@ -160,8 +160,8 @@ const GROUPS = [
 
 export function RulesView({ status }: { status: RulesStatus }) {
   const order: Version[] =
-    status.state === "known" && status.now === "1.3.0" ? ["1.3.0", "1.2.0"] : ["1.2.0", "1.3.0"];
-  const show120 = !(status.state === "known" && status.now === "1.3.0");
+    status.state === "known" && status.now === "1.3.1" ? ["1.3.1", "1.2.0"] : ["1.2.0", "1.3.1"];
+  const show120 = !(status.state === "known" && status.now === "1.3.1");
   return (
     <>
       <header className="page-head">
@@ -179,7 +179,7 @@ export function RulesView({ status }: { status: RulesStatus }) {
       ))}
       <h2>Graded examples</h2>
       <p className="muted">
-        The founder graded these replies for rubric 1.3.0, to check the AI grader against. The AI
+        The founder graded these replies for rubric 1.3.1, to check the AI grader against. The AI
         grades real replies and can differ; the community admin can correct any grade, and
         corrections are public.
       </p>

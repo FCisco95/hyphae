@@ -1,8 +1,8 @@
 import type { LooseEpochV1 } from "@hyphae/core";
 import type { Result } from "./api.js";
 
-// The MYCEL rubrics the study page covers: 1.2.0 since epoch 1, 1.3.0 planned from epoch 4.
-export const VERSIONS = ["1.2.0", "1.3.0"] as const;
+// The MYCEL rubrics the study page covers: 1.2.0 since epoch 1, 1.3.1 planned from epoch 4.
+export const VERSIONS = ["1.2.0", "1.3.1"] as const;
 export type Version = (typeof VERSIONS)[number];
 
 export type RulesStatus =
@@ -32,7 +32,7 @@ export interface GradedExample {
   post: string;
   reply: string;
   note?: string;
-  grade: [number, number]; // the founder's grade, for rubric 1.3.0
+  grade: [number, number]; // the founder's grade, for the rules rubric 1.3.1 carries
   credited: [number, number]; // what production credits for that grade and the case's flags
   reason: string | null; // why credited differs from the grade (creditReason)
   why: string;
@@ -44,7 +44,8 @@ const HARD_ZERO = ["guideline breach", "off topic", "spam"];
 export const exampleGroup = (e: GradedExample): "earns" | "nothing" | "never" =>
   e.credited[0] >= 60 ? "earns" : e.reason && HARD_ZERO.includes(e.reason) ? "never" : "nothing";
 
-// Sixteen replies the founder graded for rubric 1.3.0, word for word from the review file.
+// Sixteen replies the founder graded for the rules in rubric 1.3.1, word for word from the
+// review file.
 export const EXAMPLES: readonly GradedExample[] = [
   {
     id: "synthetic-receipt-specific-criticism",

@@ -231,12 +231,12 @@ describe("the private test", () => {
     expect(buttons(result).map((d) => parseRulesData(d)?.answers)).toEqual([[]]);
   });
 
-  it("gives rubric 1.3.0 its own test, in messages within Telegram's 4096 characters", async () => {
+  it("gives rubric 1.3.1 its own test, in messages within Telegram's 4096 characters", async () => {
     const v2 = rulesTestById("mycel-rules-2");
     if (!v2) throw new Error("mycel-rules-2 is not registered");
     const lane = await seedRewardLane(
       t.db,
-      buildRewardConfigPayload({ ...rubric, version: "1.3.0" }),
+      buildRewardConfigPayload({ ...rubric, version: "1.3.1" }),
     );
     const h = harness();
     const wrong = await answerAll(
@@ -247,7 +247,7 @@ describe("the private test", () => {
     expect(wrong?.text).toMatch(/^0\/6\. You need 6\/6 to pass\./);
     const right = await answerAll(h, lane.community.id, (i) => v2.questions[i]?.answer ?? 0);
     expect(right?.text).toMatch(
-      /^Passed: 6\/6\. Your pass counts for epochs under the MYCEL 1\.3\.0 rules\./,
+      /^Passed: 6\/6\. Your pass counts for epochs under the MYCEL 1\.3\.1 rules\./,
     );
     expect(await passesOf(lane.member.id)).toMatchObject([{ testId: "mycel-rules-2" }]);
     for (const o of h.out) expect(o.text.length).toBeLessThanOrEqual(4096);

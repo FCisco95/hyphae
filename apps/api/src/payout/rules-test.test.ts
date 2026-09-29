@@ -54,7 +54,8 @@ describe("the registered rules tests", () => {
 
   it("is looked up by the pinned rubric's community label and version", () => {
     expect(rulesTestFor({ community: "MYCEL", version: "1.2.0" })?.id).toBe("mycel-rules-1");
-    expect(rulesTestFor({ community: "MYCEL", version: "1.3.0" })?.id).toBe("mycel-rules-2");
+    expect(rulesTestFor({ community: "MYCEL", version: "1.3.1" })?.id).toBe("mycel-rules-2");
+    expect(rulesTestFor({ community: "MYCEL", version: "1.3.0" })).toBeUndefined();
     expect(rulesTestFor({ community: "MYCEL", version: "1.4.0" })).toBeUndefined();
     expect(rulesTestFor({ community: "DEMO", version: "1.2.0" })).toBeUndefined();
     expect(rulesTestById("nope")).toBeUndefined();
@@ -75,8 +76,8 @@ describe("mycel-rules-2", () => {
   ) as { cases: { id: string; contribution: { text: string } }[] };
   const replyOf = (id: string) => review.cases.find((c) => c.id === id)?.contribution.text;
 
-  it("is six questions of three options, for rubric 1.3.0 only, with the study page", () => {
-    expect(v2().covers).toEqual([{ community: "MYCEL", version: "1.3.0" }]);
+  it("is six questions of three options, for rubric 1.3.1 only, with the study page", () => {
+    expect(v2().covers).toEqual([{ community: "MYCEL", version: "1.3.1" }]);
     expect(v2().questions.map((q) => q.options.length)).toEqual([3, 3, 3, 3, 3, 3]);
     expect(v2().study).toBe("/rules");
     expect(mycel().study).toBe("/rules");
@@ -96,7 +97,7 @@ describe("mycel-rules-2", () => {
     expect(v2().questions[i]?.text).toContain(`“${reply}”`);
   });
 
-  // Pinned apart from the key, so a wrong key cannot pass: each is what rubric 1.3.0 and the
+  // Pinned apart from the key, so a wrong key cannot pass: each is what rubric 1.3.1 and the
   // credit rules make true for the founder-graded reply.
   it("keys the right answers", () => {
     expect(v2().questions.map((q) => q.options[q.answer])).toEqual([

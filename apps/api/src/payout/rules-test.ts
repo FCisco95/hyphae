@@ -72,11 +72,11 @@ const MYCEL_RULES_1: RulesTest = {
   ],
 };
 
-// Rubric 1.3.0's test: worked examples, each reply quoted from a founder-graded case in
+// Rubric 1.3.1's test: worked examples, each reply quoted from a founder-graded case in
 // docs/rubrics/eval/mycel-synthetic-review.json. A pass of mycel-rules-1 does not count for it.
 const MYCEL_RULES_2: RulesTest = {
   id: "mycel-rules-2",
-  covers: [{ community: "MYCEL", version: "1.3.0" }],
+  covers: [{ community: "MYCEL", version: "1.3.1" }],
   study: "/rules",
   questions: [
     {
@@ -97,7 +97,7 @@ const MYCEL_RULES_2: RulesTest = {
         "Earns points because it says “could”",
       ],
       answer: 0,
-      why: "From rubric 1.3.0, price talk is allowed when it gives a concrete basis and is framed as uncertain. The word “could” alone would not be enough. The founder graded it 85.",
+      why: "Under rubric 1.3.1, price talk is allowed when it gives a concrete basis and is framed as uncertain. The word “could” alone would not be enough. The founder graded it 85.",
     },
     {
       text: "Rate this reply.\nPost: fees doubled to 12 SOL this epoch, and MYCEL's supply is unchanged.\nReply: “MYCEL to $1 easy, NFA.”",

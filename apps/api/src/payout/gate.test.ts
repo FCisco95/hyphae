@@ -526,9 +526,9 @@ describe("payout gate on a MYCEL epoch", () => {
     });
   });
 
-  it("under rubric 1.3.0 needs a pass of mycel-rules-2; one of mycel-rules-1 does not count", async () => {
-    const v13 = { ...rubric, version: "1.3.0" };
-    const old = await closedLane(["LaneWalletV1"], v13);
+  it("under rubric 1.3.1 needs a pass of mycel-rules-2; one of mycel-rules-1 does not count", async () => {
+    const v131 = { ...rubric, version: "1.3.1" };
+    const old = await closedLane(["LaneWalletV1"], v131);
     const gate = await evaluatePayoutGate(t.db, old.ref);
     expect(gate).toMatchObject({
       status: "blocked",
@@ -537,7 +537,7 @@ describe("payout gate on a MYCEL epoch", () => {
     });
     expect(gate.members.map((m) => m.reasons)).toEqual([["no_rules_test"]]);
 
-    const passed = await closedLane(["LaneWalletV2"], v13, "mycel-rules-2");
+    const passed = await closedLane(["LaneWalletV2"], v131, "mycel-rules-2");
     expect(await evaluatePayoutGate(t.db, passed.ref)).toMatchObject({
       status: "ready",
       payable: 1,

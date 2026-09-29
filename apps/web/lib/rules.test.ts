@@ -24,10 +24,10 @@ describe("rulesStatus", () => {
       epoch: 3,
       now: "1.2.0",
     });
-    expect(await rulesStatus(epochs, reading("1.3.0"))).toEqual({
+    expect(await rulesStatus(epochs, reading("1.3.1"))).toEqual({
       state: "known",
       epoch: 3,
-      now: "1.3.0",
+      now: "1.3.1",
     });
   });
 
