@@ -96,6 +96,19 @@ describe("mycel-rules-2", () => {
     expect(v2().questions[i]?.text).toContain(`“${reply}”`);
   });
 
+  // Pinned apart from the key, so a wrong key cannot pass: each is what rubric 1.3.0 and the
+  // credit rules make true for the founder-graded reply.
+  it("keys the right answers", () => {
+    expect(v2().questions.map((q) => q.options[q.answer])).toEqual([
+      "High: a specific, useful question about the post",
+      "Earns points: it grounds a price view in the post's numbers and says it is uncertain",
+      "0: a price target with no reasoning breaks the rules",
+      "Fake: stacked AI phrases and no real reaction",
+      "Good: a specific reason, in a normal voice",
+      "Allowed, but it adds nothing to the post, so it earns 0",
+    ]);
+  });
+
   // Each question's message replaces the one before, so none can point back to an earlier post.
   it("shows the post in every question", () => {
     for (const q of v2().questions) expect(q.text).toMatch(/\nPost: .+\nReply: “/);
