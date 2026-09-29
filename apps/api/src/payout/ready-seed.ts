@@ -72,7 +72,8 @@ export async function seedReadyEpoch(
     .values({
       mint,
       name: "Hyphae Ready",
-      telegramChatId: -BigInt(Date.now()) - BigInt(Math.floor(Math.random() * 1e6)),
+      // 48 random bits: a clock-based id clashed when two seeds ran in the same millisecond.
+      telegramChatId: -BigInt(`0x${randomBytes(6).toString("hex")}`) - 1n,
       adminTelegramUserId: 1n,
       rubricVersion: rubric.version,
       rubric,
