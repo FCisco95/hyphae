@@ -32,11 +32,18 @@ Record of the arc's step 2. Part A and step 1 are in [Part A](2026-09-30-part-a.
 
 Cisco labeled 48 replies I wrote (session 1 tuned; session 2 was the holdout; the files and answer keys are local and gitignored under `docs/plans/`). He amended ruling 5: the backwards shape alone is not the tell. `feat/jev-eval` `9f822f2` and `7b8c605` carry question set v2 with that wording. On the holdout it cleared one false flag (0.69 to 0.19), lowered another reply already under the threshold (0.44 to 0.16) and kept his AI calls flagged (one fell from 0.80 to 0.58); it still flags the reply he could not explain and still misses fixture case 1. A second construct showed up: replies he marked "?" for overshilling or repeating the post, which is `low_effort`/`value_angle` territory, not AI authorship. Jev's `low_effort` flags several replies he called human, and ruling 1 makes that a hard zero. Review: Codex `gpt-6.1-sol` high, two findings (an overstated "stopped flagging" and a stale title), both fixed in `7b8c605`. The v1 recordings replay only at `4fe3815`.
 
+## Cisco's own replies and rulings 6 to 9
+
+Cisco supplied screenshots of 11 of his own replies (local, gitignored transcription). Jev never passed 0.17 `ai_slop` on any, but `low_effort` or `off_topic` zeroed seven of the twelve scored items (jokes, banter, a link to his Hyphae article whose quoted text Jev could not see). His rulings: jokes and short opinions are not low effort (6); the scorer needs a maintained, published and pinned project brief (7); answering with the project's own material is good engagement, so intake must pass quoted-post text and image descriptions (8); an organic reaction earns the low end, about 60 to 70 raw, of the same scale, with no flat participation credit (9). `feat/jev-eval` `6246763` carries v3 (rulings 6 and 9 in the questions). A scratch experiment with a draft project brief removed false `link_mismatch` flags and raised substantive replies a few points; worked examples in the state raised banter raws 3 to 10 points, with the flags unchanged and banter still under the floor. Nothing was sent to a provider beyond these and the synthetic sets, with Cisco's yes for the real replies. Review: Codex `gpt-6.1-sol` high, two further rounds, five findings in all across the day's later commits (overstated "stopped flagging", stale titles, "no regression" overclaim, README replay text), all fixed. Next: Cisco approves the brief, grades his replies and more, then a calibration is fit and tested on a holdout.
+
 ## Parked, with recommendations
 
 - Rewrite the criteria questions so raw scores on flagged cases stop being double-counted, then one live run (about $0.003). Recommend: yes.
 - A deterministic backwards-sentence check, measured on new cases. Recommend: only as a feature for a trained classifier; a plain regex fires on the same replies Jev does, including the ones Cisco called human.
 - A third, larger holdout and a second labeler before any further wording change. Recommend: yes.
+- A calibration from Jev's answers to Cisco's grades (a few hundred, including jokes and short opinions), tested on a holdout. Recommend: yes; prompt text and examples did not deliver ruling 9.
+- A project brief (ruling 7): Cisco approves its content; then decide whether it is part of the rubric version or a separately pinned document. Recommend: pin it per epoch and publish it.
+- Intake (ruling 8): pass quoted-post text and a description of any image with each submission. Recommend: yes; it alone took his article reply from 11 to 60.
 - Real labelled replies (private fixture) instead of ones I wrote. Recommend: yes when available; my own writing carries my blind spots.
 - Ritual posts and the production low_effort zero: rubric version after 1.3.1.
 
