@@ -278,6 +278,19 @@ The tell that separates case 1 from case 12 is a sentence built backwards: the t
 
 **Amended the same day, after labeling session 1 and a holdout (session 2).** The shape alone is not the tell: "Sometimes people do sentences like this." It reads as AI when the reply is polished, complete and praises an abstract quality, or when two such sentences are stacked. It reads human when it is unforced, about a concrete thing, or ends on a tossed-off human reaction ("nice"). Question set v2 says so. On the holdout the amended wording cleared one flag on a reply with the shape that Cisco could not call (0.69 to 0.19) and lowered another such reply that was already under the threshold (0.44 to 0.16), and kept Cisco's clear AI calls flagged, though one fell from 0.80 to 0.58. It still flags a reply Cisco first called human and later could not explain, and still misses fixture case 1.
 
+## Rulings 6 to 8 (Cisco, 2026-09-30, after scoring his own replies)
+
+Recorded, not yet in the questions. The scratch experiment behind them is in the report's second addendum.
+
+### Ruling 6
+Do not be too critical. A funny joke is not low effort, and a personal opinion is not low effort even when short. What matters is an organic reaction to the post; demanding the best engagement from everyone would look like paid shilling. Generic hype that fits under any post stays low effort (the rubric's own words).
+
+### Ruling 7
+The scorer needs a maintained memory of the project. Cisco created the project, so when he answers a post with something else he knows, he is bringing project information the scorer lacks, and it must not read as off topic. Direction: a project brief, kept up to date by the community admin, passed to the scorer as state (`project_context`), and published and pinned per epoch like the rubric so the audit trail covers it.
+
+### Ruling 8
+Answering a post about the project with the project's own material (for example a link to the article on Hyphae) is good, organic engagement and plainly not a bot. The scorer must see the quoted or linked material, so intake has to pass the quoted post's text (and, ideally, a description of any image) along with the member's words.
+
 ## Later, not in this eval
 
 - Train or calibrate Jev on the founder's labels once there are a few hundred to a thousand of them (admin corrections and appeals are the source). Supervised calibration, not RLHF.

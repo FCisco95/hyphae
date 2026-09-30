@@ -78,3 +78,18 @@ After this run Cisco labeled 48 replies as human (H), AI (A) or unsure (?). I wr
 - **Session 2 (24 replies, including repeats of two session-1 replies), v1 vs the amended wording.** Both caught the two replies he called AI (and the one he called AI-or-unsure). The amended wording cleared one flag on a reply with the shape that Cisco could not call (0.69 to 0.19), lowered another such reply that was already under the threshold (0.44 to 0.16), and kept the AI calls flagged, though one fell from 0.80 to 0.58. Both still flag the repeat of the reply he could not explain (0.55 and 0.62). His repeats stayed close (HH then H; H? then ?).
 - **A second construct shows up.** Cisco marked replies "?" for overshilling or repeating the post. That is low-value hype, which the rubric already covers with `low_effort` and `value_angle`, not AI authorship. Jev's `low_effort` also flagged several replies he called human (including a terse restatement of the post at 0.82); under ruling 1 that is a hard zero, so it matters.
 - **Result:** the branch now carries question set v2 (the amended wording). Fixture case 1 is still missed. With 2 or 3 replies changing side, treat this as a direction, not a proof. Next: a third, larger holdout before any further wording change, and a labeled set with more than one labeler.
+
+## Second addendum: Cisco's own replies and a project brief (scratch experiment, not committed)
+
+Cisco supplied screenshots of 11 of his own replies (12 scored items), known human. With question set v2 and no project context, Jev's `ai_slop` never passed 0.17 on any of them, but `low_effort` or `off_topic` (both hard zeros) fired on seven, including jokes, a short opinion and a link to his own Hyphae article. He ruled that jokes and short opinions are not low effort, that the scorer needs a maintained project brief, and that replying with the project's own material is good engagement (rulings 6 to 8 in `docs/evals/jev-questions.md`).
+
+The experiment added a draft project brief (written from his public statements, not yet approved by him) to the state and amended the `low_effort`, `off_topic`, `link_mismatch` and `value_angle` wording:
+
+- False `link_mismatch` flags on his substantive replies disappeared and their raw scores rose a few points; one `off_topic` flag cleared.
+- Pure banter was unchanged: the flags still fired on three or four replies, and raw scores of 17 to 34 would credit 0 under the 60 floor with no flag at all.
+- The link-to-article reply scored 60 to 65 once the quoted article's text was in the input and 11 when it was not. Intake, not the brief, is the main fix.
+- Fixture: 4 of 16 against 5 of 16 before; the only change is one control's raw moving 71 to 68. The required low-effort, spam and breach cases stayed caught.
+- Jev reads text only, so replies whose punchline is an image are undervalued.
+
+Nothing here changes the committed question set. The open design question is what a short organic reaction should earn, since the quality scale and the 60 floor, not the flags, decide that.
+
