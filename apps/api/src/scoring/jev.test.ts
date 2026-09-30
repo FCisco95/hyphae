@@ -164,6 +164,27 @@ describe("composeJev", () => {
 
   it("refuses a quality level outside the question's levels", () => {
     expect(() => compose(allCriteria(1), 4.5)).toThrow(/quality/);
+    expect(() => compose(allCriteria(1), -0.1)).toThrow(/quality/);
+  });
+
+  it.each([
+    [2, 100],
+    [-1, 0],
+  ])("clamps a quality weight of %s to score %s", (weight, expected) => {
+    const output = composeJev(JevResponseSchema.parse(response(allCriteria(1), 4)), rubric, {
+      ...set,
+      weights: { quality: weight, criteria: 0 },
+    });
+    expect(output.score).toBe(expected);
+  });
+
+  it("takes the strong AI cap at exactly the obviousness threshold", () => {
+    expect(creditedScore(compose({ ...allCriteria(1), ai_slop: 1, ai_slop_obvious: 0.5 }, 4))).toBe(
+      0,
+    );
+    expect(
+      creditedScore(compose({ ...allCriteria(1), ai_slop: 1, ai_slop_obvious: 0.499 }, 4)),
+    ).toBe(79);
   });
 
   it("refuses a response missing an answer", () => {
@@ -176,13 +197,23 @@ describe("composeJev", () => {
 describe("runJev", () => {
   const backend =
     (body: unknown, latencyMs = 12): JevBackend =>
-    async () => ({ response: body, latencyMs });
+    async () => ({ response: body, latencyMs, mode: "live" });
 
   it("records the pinned model, the request hash, usage and cost", async () => {
     const run = await runJev(input, set, backend(response(allCriteria(1), 4)));
     expect(run).toMatchObject({
       model: "jev-1.13.0",
       questionSet: "test-set",
+      rubricVersion: "1.2.0",
+      mode: "live",
+      metricsSource: "current-call",
+      composition: {
+        version: "1",
+        weights: { quality: 0.5, criteria: 0.5 },
+        criterionWeights: { context_fit: 0.35, own_voice: 0.3, value_angle: 0.35 },
+        threshold: 0.5,
+        qualityMax: 4,
+      },
       requestHash: requestHash(jevRequest(input, set)),
       latencyMs: 12,
       usage: { input_tokens: 1000, output_tokens: 40 },
@@ -190,6 +221,46 @@ describe("runJev", () => {
       costMicroUsd: 42,
     });
     expect(run.output.score).toBe(100);
+    expect(run.configurationHash).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("identifies changed composition even when the recorded request stays the same", async () => {
+    const live = recordingJev(
+      backend(response({ context_fit: 1, own_voice: 1, value_angle: 0 }, 3)),
+    );
+    const first = await runJev(input, set, live.backend);
+    const replay = recordedJev(live.recording(set));
+    const changed = await runJev(
+      {
+        ...input,
+        rubric: {
+          ...rubric,
+          criteria: rubric.criteria.map((c) => ({ ...c, weight: c.key === "value_angle" ? 1 : 0 })),
+        },
+      },
+      set,
+      replay,
+    );
+    expect(first.output.score).toBe(70);
+    expect(changed.output.score).toBe(38);
+    expect(changed.requestHash).toBe(first.requestHash);
+    expect(changed.configurationHash).not.toBe(first.configurationHash);
+    expect(changed.composition.criterionWeights).toEqual({
+      context_fit: 0,
+      own_voice: 0,
+      value_angle: 1,
+    });
+    const recomposed = await runJev(
+      input,
+      { ...set, weights: { quality: 0.25, criteria: 0.75 }, threshold: 0.8 },
+      replay,
+    );
+    expect(recomposed.requestHash).toBe(first.requestHash);
+    expect(recomposed.configurationHash).not.toBe(first.configurationHash);
+    expect(recomposed.composition).toMatchObject({
+      weights: { quality: 0.25, criteria: 0.75 },
+      threshold: 0.8,
+    });
   });
 
   it("refuses an answer from any model but the pinned one", async () => {
@@ -208,19 +279,40 @@ describe("recorded mode", () => {
     const live = recordingJev(async () => ({
       response: response(allCriteria(1), 4),
       latencyMs: 87,
+      mode: "live",
     }));
     const first = await runJev(input, set, live.backend);
     const replayed = await runJev(input, set, recordedJev(live.recording(set)));
-    expect(replayed).toEqual(first);
+    expect(first.mode).toBe("live");
+    expect(replayed).toEqual({ ...first, mode: "replay", metricsSource: "recorded-call" });
     expect(replayed.latencyMs).toBe(87);
   });
 
   it("refuses to replay a request that was never recorded", async () => {
-    const live = recordingJev(async () => ({ response: response(), latencyMs: 1 }));
+    const live = recordingJev(async () => ({ response: response(), latencyMs: 1, mode: "live" }));
     await runJev(input, set, live.backend);
     const changed = { ...input, contribution: { kind: "reply" as const, text: "gm" } };
     await expect(runJev(changed, set, recordedJev(live.recording(set)))).rejects.toThrow(
       /no recorded Jev answer/,
     );
   });
+
+  it.each(["model", "questions"] as const)(
+    "refuses a replay after changing only %s",
+    async (field) => {
+      const live = recordingJev(async () => ({ response: response(), latencyMs: 1, mode: "live" }));
+      const request = jevRequest(input, set);
+      await live.backend(request);
+      const changed =
+        field === "model"
+          ? { ...request, model: "jev-1.14.0" }
+          : {
+              ...request,
+              questions: { ...request.questions, context_fit: yesNo("a different condition") },
+            };
+      await expect(recordedJev(live.recording(set))(changed)).rejects.toThrow(
+        /no recorded Jev answer/,
+      );
+    },
+  );
 });

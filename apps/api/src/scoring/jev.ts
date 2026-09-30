@@ -130,12 +130,30 @@ export function composeJev(res: JevResponse, rubric: Rubric, set: JevQuestionSet
 }
 
 // One Jev call: live through the SDK, or replayed from a recording.
-export type JevBackend = (request: Request) => Promise<{ response: unknown; latencyMs: number }>;
+export type JevBackend = (request: Request) => Promise<{
+  response: unknown;
+  latencyMs: number;
+  mode: "live" | "replay";
+}>;
+
+interface JevComposition {
+  version: "1";
+  weights: JevQuestionSet["weights"];
+  criterionWeights: Record<string, number>;
+  threshold: number;
+  qualityMax: number;
+}
 
 export interface JevRun {
   model: string;
   questionSet: string;
+  rubricVersion: string;
+  composition: JevComposition;
+  configurationHash: string;
   requestHash: string;
+  mode: "live" | "replay";
+  // Replay preserves the original call's timing, token usage and estimated cost.
+  metricsSource: "current-call" | "recorded-call";
   latencyMs: number;
   usage: JevResponse["usage"];
   costMicroUsd: number;
@@ -149,14 +167,26 @@ export async function runJev(
   backend: JevBackend,
 ): Promise<JevRun> {
   const request = jevRequest(input, set);
-  const { response, latencyMs } = await backend(request);
+  const { response, latencyMs, mode } = await backend(request);
   const res = JevResponseSchema.parse(response);
   if (res.model !== JEV_MODEL)
     throw new Error(`jev: answered by ${res.model}, pinned ${JEV_MODEL}`);
+  const composition: JevComposition = {
+    version: "1",
+    weights: { ...set.weights },
+    criterionWeights: Object.fromEntries(input.rubric.criteria.map((c) => [c.key, c.weight])),
+    threshold: set.threshold,
+    qualityMax: set.quality.criteria.length - 1,
+  };
   return {
     model: res.model,
     questionSet: set.id,
+    rubricVersion: input.rubric.version,
+    composition,
+    configurationHash: sha256Hex(canonicalJson({ rubric: input.rubric, composition })),
     requestHash: requestHash(request),
+    mode,
+    metricsSource: mode === "replay" ? "recorded-call" : "current-call",
     latencyMs,
     usage: res.usage,
     // tokens × $/1M tokens = µ$
@@ -170,7 +200,7 @@ export function liveJev(client: TypeSafeClient): JevBackend {
   return async (request) => {
     const started = Date.now();
     const response = await client.systemOne(request);
-    return { response, latencyMs: Date.now() - started };
+    return { response, latencyMs: Date.now() - started, mode: "live" };
   };
 }
 
@@ -190,7 +220,7 @@ export function recordingJev(backend: JevBackend) {
   return {
     backend: (async (request) => {
       const answer = await backend(request);
-      responses[requestHash(request)] = answer;
+      responses[requestHash(request)] = { response: answer.response, latencyMs: answer.latencyMs };
       return answer;
     }) satisfies JevBackend,
     recording: (set: JevQuestionSet): JevRecording => ({
@@ -207,6 +237,6 @@ export function recordedJev(recording: JevRecording): JevBackend {
     const hash = requestHash(request);
     const answer = recording.responses[hash];
     if (!answer) throw new Error(`jev: no recorded Jev answer for request ${hash}`);
-    return { response: answer.response, latencyMs: answer.latencyMs };
+    return { response: answer.response, latencyMs: answer.latencyMs, mode: "replay" };
   };
 }

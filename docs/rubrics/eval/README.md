@@ -73,6 +73,9 @@ A test keeps the fixture equal to the generator's output. Keep real founder-labe
 - The questions come from `apps/api/src/scoring/jev-questions.ts`. The default is the DRAFT set written out in `docs/evals/jev-questions-draft.md` (a test holds the code to that document, word for word) until Cisco's own set is added there. `--questions <id>` picks another set.
 - Jev answers yes/no probabilities and one quality level. `apps/api/src/scoring/jev.ts` composes them to 0–100 (half the quality level, half the rubric's weighted criteria) and sets each flag at P(yes) ≥ 0.5; the harness then applies the production credit rule unchanged.
 - Cost is $0.042 per million input tokens (output tokens are free), reported per case in micro-dollars.
+- `--questions`, `--record`, and `--recorded` require `--backend jev` and a nonempty value. `--record` and `--recorded` are mutually exclusive; invalid combinations stop before any provider call.
+- Every Jev result records the rubric version, composition version, criterion weights, quality/criteria weights, yes-threshold, and quality maximum. `configurationHash` fingerprints the full rubric and that composition; `requestHash` separately fingerprints the model input.
+- `mode` is `live` or `replay`. In replay mode, `metricsSource` is `recorded-call`: latency, usage, per-case cost and the stderr cost total describe the original calls, not new API spending. Live results use `current-call`.
 
 ```sh
 # Check the cases and the question set: no key, no call.
@@ -83,4 +86,4 @@ pnpm --filter @hyphae/api exec node --env-file=../../.env --import tsx scripts/e
 pnpm --filter @hyphae/api eval:scoring --backend jev --cases ../../docs/rubrics/eval/mycel-synthetic.json --rubric ../../docs/rubrics/mycel-1.2.0.json --recorded jev-1.2.0.json
 ```
 
-A recording keeps each answer under the hash of its exact request (model, state and questions), so a replay refuses any case whose rubric, text or questions changed since it was recorded.
+A recording keeps each answer under the hash of its exact request (model, state and questions), so a replay refuses changed model inputs. Rubric weights and composition settings are applied locally: they may change without another API call, and the result's configuration fingerprint and recorded settings make that change visible.

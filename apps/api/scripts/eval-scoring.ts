@@ -27,6 +27,16 @@ const { values } = parseArgs({
     "dry-run": { type: "boolean", default: false },
   },
 });
+for (const option of ["questions", "recorded", "record"] as const) {
+  if (values[option] === undefined) continue;
+  if (values.backend !== "jev") {
+    throw new Error(`eval-scoring: --${option} requires --backend jev`);
+  }
+  if (!values[option]) throw new Error(`eval-scoring: --${option} must not be empty`);
+}
+if (values.recorded !== undefined && values.record !== undefined) {
+  throw new Error("eval-scoring: --record and --recorded are mutually exclusive");
+}
 if (!values.cases || !values.rubric) {
   throw new Error(
     "usage: eval-scoring --cases <json> --rubric <json> [--backend sonnet|jev] [--model <id>] [--questions <set>] [--recorded <file> | --record <file>] [--dry-run]",

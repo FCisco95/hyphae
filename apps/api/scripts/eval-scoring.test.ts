@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { RubricSchema } from "@hyphae/core";
@@ -20,14 +20,67 @@ function documentedFixture(): string {
 
 // Boots tsx in a child process: alone it takes under 1 s, but under the full parallel suite it
 // once took 8.5 s, past vitest's 5 s default.
-function evalScoring(args: string[], env: Record<string, string>) {
-  return spawnSync(process.execPath, ["--import", "tsx", "scripts/eval-scoring.ts", ...args], {
-    cwd: new URL("../", import.meta.url),
-    encoding: "utf8",
-    env: { ...process.env, ...env },
-    timeout: 25_000,
-  });
+function evalScoring(args: string[], env: Record<string, string>, preload?: string) {
+  return spawnSync(
+    process.execPath,
+    [
+      "--import",
+      "tsx",
+      ...(preload ? ["--import", preload] : []),
+      "scripts/eval-scoring.ts",
+      ...args,
+    ],
+    {
+      cwd: new URL("../", import.meta.url),
+      encoding: "utf8",
+      env: { ...process.env, ...env },
+      timeout: 25_000,
+    },
+  );
 }
+
+it.each([
+  ["--recorded", "recording.json"],
+  ["--record", "recording.json"],
+  ["--questions", "draft-2026-09-30"],
+  ["--backend", "sonnet", "--recorded", "recording.json"],
+  ["--backend", "sonnet", "--record", "recording.json"],
+  ["--backend", "sonnet", "--questions", "draft-2026-09-30"],
+  ["--backend", "jev", "--recorded", "input.json", "--record", "output.json"],
+  ["--backend", "jev", "--recorded", ""],
+])(
+  "rejects incompatible eval options before any provider call: %j",
+  { timeout: 30_000 },
+  (...args) => {
+    const dir = mkdtempSync(join(tmpdir(), "hyphae-eval-"));
+    try {
+      const calls = join(dir, "provider-calls");
+      // Intercept the real providers' network boundary; even a regression cannot spend money.
+      const preload = `data:text/javascript,${encodeURIComponent(
+        `import { appendFileSync } from 'node:fs'; globalThis.fetch = async () => { appendFileSync(${JSON.stringify(calls)}, 'call\\n'); throw new Error('network disabled in eval test'); };`,
+      )}`;
+      const result = evalScoring(
+        [
+          "--cases",
+          "../../docs/rubrics/eval/mycel-synthetic.json",
+          "--rubric",
+          "../../docs/rubrics/mycel-1.2.0.json",
+          ...args,
+        ],
+        { ANTHROPIC_API_KEY: "test-only", TYPESAFE_API_KEY: "test-only", DEEPSEEK_API_KEY: "" },
+        preload,
+      );
+      expect(result.status).not.toBe(0);
+      expect(existsSync(calls)).toBe(false);
+      expect(result.stderr).toMatch(
+        /eval-scoring:.*(requires --backend jev|mutually exclusive|must not be empty)/,
+      );
+      expect(result.stdout).toBe("");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  },
+);
 
 it("dry-runs the documented fixture without credentials or model calls", {
   timeout: 30_000,
@@ -61,6 +114,7 @@ it("replays a recorded Jev run of the documented fixture without a key", {
   // A made-up answer, not a real Jev response: every criterion yes, quality 2.8 of 4, no flags.
   const live = recordingJev(async (request) => ({
     latencyMs: 140,
+    mode: "live",
     response: {
       model: JEV_MODEL,
       answers: Object.fromEntries(
@@ -102,7 +156,16 @@ it("replays a recorded Jev run of the documented fixture without a key", {
       raw: 85,
       credited: 85,
       passed: true,
-      run: { model: "jev-1.13.0", questionSet: "draft-2026-09-30", latencyMs: 140 },
+      run: {
+        model: "jev-1.13.0",
+        questionSet: "draft-2026-09-30",
+        latencyMs: 140,
+        mode: "replay",
+        metricsSource: "recorded-call",
+        rubricVersion: "1.2.0",
+        configurationHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        composition: { weights: { quality: 0.5, criteria: 0.5 }, threshold: 0.5 },
+      },
     });
   } finally {
     rmSync(dir, { recursive: true, force: true });
