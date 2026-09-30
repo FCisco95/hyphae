@@ -10,13 +10,13 @@ Built solo for [Colosseum's Crypto World's Fair](https://colosseum.com/worldsfai
 |---|---|
 | Telegram bot, AI scoring and reward epochs | Live for the MYCEL community. |
 | Public audit site | Live at **[hyphae-delta.vercel.app](https://hyphae-delta.vercel.app)**, reading the production API. |
-| Read API v1 | The community and epoch routes are live at `https://hyphae-api.fly.dev/v1`. The wallet-claims route, `/docs` and `/v1/openapi.json` are built and tested, not deployed yet. |
+| Read API v1 | Live at `https://hyphae-api.fly.dev/v1`, every route included, a wallet's claims among them. The reference is at [`/docs`](https://hyphae-api.fly.dev/docs) and the OpenAPI 3.1 document at [`/v1/openapi.json`](https://hyphae-api.fly.dev/v1/openapi.json). |
 | Solana program (`programs/hyphae`): vaults, epoch roots, one-time claims | Deployed on **devnet** only. A publish, a claim and a refused duplicate claim are recorded in [docs/handoffs/2026-09-27-devnet-proof.md](docs/handoffs/2026-09-27-devnet-proof.md). Not on mainnet. |
 | Soulbound Token-2022 points | Planned, not built. |
 
 ## Read API
 
-Public, read-only, unauthenticated JSON, to be served at `https://hyphae-api.fly.dev/v1` (not deployed yet; run it locally meanwhile, below). The reference is served at `/docs`, and the OpenAPI 3.1 document at `/v1/openapi.json`. Both are generated from the same schemas the API's tests check its responses with.
+Public, read-only, unauthenticated JSON at `https://hyphae-api.fly.dev/v1`. The reference is at [`/docs`](https://hyphae-api.fly.dev/docs), which renders the OpenAPI 3.1 document at [`/v1/openapi.json`](https://hyphae-api.fly.dev/v1/openapi.json). The document is generated from the same schemas the API's tests check its responses with. To run it locally, see [Develop](#develop).
 
 - A section the API cannot confirm is `{ "status": "unavailable", "reason": … }`, never a zero.
 - Settlement and payments are read against Solana. A transaction is shown only when the chain proves it created the account it names.
@@ -24,7 +24,7 @@ Public, read-only, unauthenticated JSON, to be served at `https://hyphae-api.fly
 
 ## Integrate in 10 lines
 
-A wallet's leaves in every community, newest first, each with its proof and its payment status (`paid` with the claim transaction, `claimable`, or `unavailable` with a reason). This reads the first 100; `total_claims` counts them all, and `offset` pages on.
+A wallet's leaves in every community, newest first, each with its proof and its payment status (`paid` with the claim transaction, `claimable`, or `unavailable` with a reason). This reads the first 100; `total_claims` counts them all, and `offset` pages on. A wallet with no leaf in a published epoch gets `total_claims: 0` and an empty `claims`, not a `404`.
 
 ```js
 const API = process.env.HYPHAE_API ?? "https://hyphae-api.fly.dev/v1";
@@ -64,6 +64,7 @@ const [community] = await getProgramDerivedAddress({ programAddress: HYPHAE, see
 const [vault] = await getProgramDerivedAddress({ programAddress: HYPHAE, seeds: ["vault", enc.encode(community)] });
 ```
 
+- The vault's seeds are `["vault", community]`, where `community` is the program-derived address of `["community", mint, admin]`. The admin is a seed, so a community is the pair, not the mint alone.
 - SOL leaves the vault only through the program: each published epoch sends the 3% Hyphae fee to the recipient fixed when the community was created, and each claim pays one leaf of a published root, once. Who is trusted with what is under [Custody during the pilot](#custody-during-the-pilot).
 - An epoch can only allocate SOL that no earlier epoch has allocated and nobody has claimed yet.
 - The program is on devnet only. Check its address on the network you use before sending anything.

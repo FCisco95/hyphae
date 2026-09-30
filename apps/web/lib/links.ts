@@ -1,7 +1,7 @@
 // Where the site points outside itself. The application repo is private; the program, its
 // verifiable build and the rubrics are public in hyphae-program.
 export const GITHUB = "https://github.com/FCisco95/hyphae-program";
-export const API_DOCS = `${GITHUB}#read-api`;
+export const API_DOCS = "https://hyphae-api.fly.dev/docs";
 export const README_STATUS = `${GITHUB}#status`;
 export const VERIFY_BUILD = `${GITHUB}#verify-the-build`;
 export const DEVNET_RECORD = `${GITHUB}#a-full-run-on-devnet`;

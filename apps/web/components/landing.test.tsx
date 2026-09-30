@@ -158,10 +158,13 @@ describe("Trust", () => {
 });
 
 describe("Integrate", () => {
-  // W1 of the Sep 28 site review: the example and the funding note say what isn't deployed.
-  it("says what is not deployed beside the example and the funding note", () => {
+  // W1 of the Sep 28 site review: the funding note says what isn't deployed. The example's
+  // wallet-claims route went live with Runbook C's C7, so it no longer carries that caveat.
+  it("says what is not deployed beside the funding note, and where the API docs are", () => {
     const t = text(<Integrate />);
-    expect(t).toContain("The production API does not serve this example's wallet-claims route yet");
+    expect(t).not.toContain("does not serve");
+    expect(t).toContain("A wallet with no leaf in a published epoch gets an empty list");
+    expect(renderToStaticMarkup(<Integrate />)).toContain('href="https://hyphae-api.fly.dev/docs"');
     expect(t).toContain("The program is on devnet only.");
     // The README that explains running the API locally is in the private repo.
     expect(t).not.toContain("run the whole API locally");

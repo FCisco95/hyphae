@@ -11,6 +11,10 @@ describe("links", () => {
     for (const url of github) expect(url.startsWith(PUBLIC_REPO)).toBe(true);
   });
 
+  it("sends the API docs to the API's own reference page", () => {
+    expect(links.API_DOCS).toBe("https://hyphae-api.fly.dev/docs");
+  });
+
   it("points at the program repo's licence, rubrics and verification", () => {
     expect(links.LICENSE).toBe(`${PUBLIC_REPO}/blob/main/LICENSE`);
     expect(links.RUBRICS).toBe(`${PUBLIC_REPO}/tree/main/rubrics`);

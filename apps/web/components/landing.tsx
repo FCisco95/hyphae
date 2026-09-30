@@ -426,7 +426,7 @@ export function Integrate() {
           <p>
             Public, read-only JSON: communities, weeks, every score with its reasons, and every
             claim with its proof. A section the API cannot confirm is marked unavailable, never a
-            zero. The production API does not serve this example's wallet-claims route yet.
+            zero. A wallet with no leaf in a published epoch gets an empty list, not an error.
           </p>
           <h3>Fund a vault</h3>
           <p>
