@@ -48,7 +48,7 @@ pnpm --filter @hyphae/api exec node --env-file=../../.env --import tsx scripts/e
 
 On PowerShell use `pnpm.cmd` if execution policy blocks `pnpm.ps1`. Paths are relative to `apps/api`, where the filtered command runs. `--model provider:model` overrides `SCORING_MODEL`; otherwise the existing Sonnet default is used.
 
-Stdout is one JSON record per case: expected labels, raw/credited scores, failures, and the complete scoring run (input, output/reasoning/flags, model, rubric version, prompt hash, evidence hash, latency, cost). Stderr ends with passed/total and cost in micro-dollars. Exit status is nonzero for any mismatch, invalid fixture, or provider error. Provider errors stop the run; preceding case records remain available. Redirect stdout to a local `.jsonl` file to compare a baseline and candidate. Results are gitignored because they contain the full input text; deliberately review any real examples before committing them to this public repository.
+Stdout is one JSON record per case: expected labels, raw/credited scores, failures, and the complete scoring run (input, output/reasoning/flags, model, rubric version, prompt hash, evidence hash, latency, cost). Stderr ends with passed/total and cost in micro-dollars. Exit status is nonzero for any mismatch, invalid fixture, or provider error. Provider errors stop the run; preceding case records remain available. Redirect stdout to a local `.jsonl` file to compare a baseline and candidate. Results are gitignored because they contain the full input text; deliberately review any real examples before committing them to this repository.
 
 No real labelled dataset is included yet. The previous session's Organic_Bonk example has a founder grade of 4/5 and an observed raw score of 38, but the full target and reply text still need to be supplied. Do not reconstruct them from the abbreviated handoff.
 
@@ -64,3 +64,23 @@ No real labelled dataset is included yet. The previous session's Organic_Bonk ex
 - Case 12 (`synthetic-polished-strong-original-control`) keeps the founder's own 75–80, raw and credited.
 
 A test keeps the fixture equal to the generator's output. Keep real founder-labelled contributions in a separate private fixture until their text is cleared for this repository, and never combine the Masterblox screenshot pairs with this synthetic set.
+
+## Jev backend
+
+`--backend jev` scores each case with TypeSafe's Jev instead of the Sonnet scorer. It is offline only: production scoring never calls it, and it writes nothing.
+
+- The model is pinned to `jev-1.13.0`; an answer from any other model is refused.
+- The questions come from `apps/api/src/scoring/jev-questions.ts`. The default is the DRAFT set written out in `docs/evals/jev-questions-draft.md` (a test holds the code to that document, word for word) until Cisco's own set is added there. `--questions <id>` picks another set.
+- Jev answers yes/no probabilities and one quality level. `apps/api/src/scoring/jev.ts` composes them to 0–100 (half the quality level, half the rubric's weighted criteria) and sets each flag at P(yes) ≥ 0.5; the harness then applies the production credit rule unchanged.
+- Cost is $0.042 per million input tokens (output tokens are free), reported per case in micro-dollars.
+
+```sh
+# Check the cases and the question set: no key, no call.
+pnpm --filter @hyphae/api eval:scoring --backend jev --cases ../../docs/rubrics/eval/mycel-synthetic.json --rubric ../../docs/rubrics/mycel-1.2.0.json --dry-run
+# Live, with TYPESAFE_API_KEY in .env, keeping every answer for replay.
+pnpm --filter @hyphae/api exec node --env-file=../../.env --import tsx scripts/eval-scoring.ts --backend jev --cases ../../docs/rubrics/eval/mycel-synthetic.json --rubric ../../docs/rubrics/mycel-1.2.0.json --record jev-1.2.0.json
+# Replay that recording with no key and no network.
+pnpm --filter @hyphae/api eval:scoring --backend jev --cases ../../docs/rubrics/eval/mycel-synthetic.json --rubric ../../docs/rubrics/mycel-1.2.0.json --recorded jev-1.2.0.json
+```
+
+A recording keeps each answer under the hash of its exact request (model, state and questions), so a replay refuses any case whose rubric, text or questions changed since it was recorded.
