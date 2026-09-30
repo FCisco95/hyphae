@@ -349,8 +349,8 @@ export function Proof({ live }: { live: ProofState }) {
   );
 }
 
-// `solana-verify get-program-hash` of the devnet program, reproduced by two clean builds
-// (docs/handoffs/2026-09-28-verifiable-build-and-deploy-rehearsal.md).
+// `solana-verify get-program-hash` of the mainnet and devnet programs, reproduced by two clean
+// builds (docs/handoffs/2026-09-28-verifiable-build-and-deploy-rehearsal.md).
 export const VERIFIED_HASH = "7e902d1b5f8d8c49dfd199ec2e7bf44139b56524d98408f1556e14f4e9ab43ac";
 
 export function Trust() {
@@ -364,8 +364,8 @@ export function Trust() {
         <article>
           <h3>The program is its source</h3>
           <p>
-            The program on devnet is byte for byte what its public repository builds in Anchor's
-            pinned Docker image.
+            The program on mainnet and on devnet is byte for byte what its public repository builds
+            in Anchor's pinned Docker image.
           </p>
           <p className="muted small">solana-verify hash</p>
           <EvidenceLink
@@ -432,8 +432,9 @@ export function Integrate() {
           <p>
             A vault's address comes from the coin and its admin, so any project can find it and fund
             it with an ordinary SOL transfer. SOL leaves the vault only through the program: the 3%
-            fee, and one claim per leaf of a published root. The program is on devnet only. Check
-            its address on the network you use before sending anything.
+            fee, and one claim per leaf of a published root. The program is on mainnet and on devnet
+            at the same address, and a vault exists only on a network where its community was
+            created. Check that the community exists on the network you use before sending anything.
           </p>
           <div className="actions">
             <ButtonLink href={API_DOCS} secondary>

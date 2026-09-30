@@ -11,7 +11,7 @@ Built solo for [Colosseum's Crypto World's Fair](https://colosseum.com/worldsfai
 | Telegram bot, AI scoring and reward epochs | Live for the MYCEL community. |
 | Public audit site | Live at **[hyphae-delta.vercel.app](https://hyphae-delta.vercel.app)**, reading the production API. |
 | Read API v1 | Live at `https://hyphae-api.fly.dev/v1`, every route included, a wallet's claims among them. The reference is at [`/docs`](https://hyphae-api.fly.dev/docs) and the OpenAPI 3.1 document at [`/v1/openapi.json`](https://hyphae-api.fly.dev/v1/openapi.json). |
-| Solana program (`programs/hyphae`): vaults, epoch roots, one-time claims | Deployed on **devnet** only. A publish, a claim and a refused duplicate claim are recorded in [docs/handoffs/2026-09-27-devnet-proof.md](docs/handoffs/2026-09-27-devnet-proof.md). Not on mainnet. |
+| Solana program (`programs/hyphae`): vaults, epoch roots, one-time claims | Deployed on **mainnet** and on **devnet**, at the same address, `EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E`. On mainnet its upgrade authority is a Ledger hardware wallet, `2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR`, and its hash is the verified build's. No community, vault or payout exists on mainnet yet. A publish, a claim and a refused duplicate claim are recorded on devnet in [docs/handoffs/2026-09-27-devnet-proof.md](docs/handoffs/2026-09-27-devnet-proof.md). |
 | Soulbound Token-2022 points | Planned, not built. |
 
 ## Read API
@@ -67,7 +67,7 @@ const [vault] = await getProgramDerivedAddress({ programAddress: HYPHAE, seeds: 
 - The vault's seeds are `["vault", community]`, where `community` is the program-derived address of `["community", mint, admin]`. The admin is a seed, so a community is the pair, not the mint alone.
 - SOL leaves the vault only through the program: each published epoch sends the 3% Hyphae fee to the recipient fixed when the community was created, and each claim pays one leaf of a published root, once. Who is trusted with what is under [Custody during the pilot](#custody-during-the-pilot).
 - An epoch can only allocate SOL that no earlier epoch has allocated and nobody has claimed yet.
-- The program is on devnet only. Check its address on the network you use before sending anything.
+- The program is on mainnet and on devnet at the same address, so a vault's address is the same on both, and it exists only on a network where its community was created. Check that the community exists on the network you use before sending anything.
 
 Organic's bagworker sweep can target this address. Nothing in this repository changes Organic's code.
 

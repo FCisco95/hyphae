@@ -153,19 +153,24 @@ describe("Trust", () => {
       VERIFIED_HASH,
     );
     expect(renderToStaticMarkup(<Trust />)).toContain(`title="${VERIFIED_HASH}"`);
+    expect(text(<Trust />)).toContain("The program on mainnet and on devnet is byte for byte");
     expect(renderToStaticMarkup(<Trust />)).toContain(`href="${VERIFY_BUILD}"`);
   });
 });
 
 describe("Integrate", () => {
-  // W1 of the Sep 28 site review: the funding note says what isn't deployed. The example's
-  // wallet-claims route went live with Runbook C's C7, so it no longer carries that caveat.
-  it("says what is not deployed beside the funding note, and where the API docs are", () => {
+  // W1 of the Sep 28 site review: the funding note says where the program is. The example's
+  // wallet-claims route went live with Runbook C's C7, and the program reached mainnet with its
+  // C13, so neither carries a not-deployed caveat now. No mainnet community exists yet, so the
+  // note tells a funder to check for one.
+  it("says where the program is beside the funding note, and where the API docs are", () => {
     const t = text(<Integrate />);
     expect(t).not.toContain("does not serve");
     expect(t).toContain("A wallet with no leaf in a published epoch gets an empty list");
     expect(renderToStaticMarkup(<Integrate />)).toContain('href="https://hyphae-api.fly.dev/docs"');
-    expect(t).toContain("The program is on devnet only.");
+    expect(t).toContain("The program is on mainnet and on devnet at the same address");
+    expect(t).toContain("Check that the community exists on the network you use");
+    expect(t).not.toContain("devnet only");
     // The README that explains running the API locally is in the private repo.
     expect(t).not.toContain("run the whole API locally");
   });
