@@ -51,9 +51,14 @@ export type EvalCase = z.infer<typeof EvalCasesSchema>[number];
 const distance = (score: number, [min, max]: readonly [number, number]) =>
   score < min ? min - score : score > max ? score - max : 0;
 
+// Cisco's ruling 1 (2026-09-30): low_effort is a hard zero. Only the eval applies it so far;
+// creditedScore in packages/core changes with a rubric version, not with an offline comparison.
+const evalCredited = (output: ScoreOutput): number =>
+  output.flags.includes("low_effort") ? 0 : creditedScore(output);
+
 export function compareScore(output: ScoreOutput, expected: EvalCase["expected"]) {
   const raw = output.score;
-  const credited = creditedScore(output);
+  const credited = evalCredited(output);
   const failures: string[] = [];
   for (const [name, score] of [
     ["raw", raw],

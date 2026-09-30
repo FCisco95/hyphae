@@ -90,6 +90,13 @@ describe("score comparison", () => {
     ]);
   });
 
+  it("credits zero for low_effort, whatever the raw score (Cisco's ruling 1, eval only)", () => {
+    const result = compareScore({ ...output, flags: ["low_effort"] }, expected);
+    expect(result.raw).toBe(84);
+    expect(result.credited).toBe(0);
+    expect(result.failures).toEqual(["credited 0 outside 80-90"]);
+  });
+
   it("applies the AI cap and floor before comparison", () => {
     const result = compareScore(
       { ...output, flags: ["ai_slop"], aiSlop: { patterns: [], templateRhythm: true } },

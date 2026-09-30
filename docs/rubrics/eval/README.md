@@ -70,8 +70,8 @@ A test keeps the fixture equal to the generator's output. Keep real founder-labe
 `--backend jev` scores each case with TypeSafe's Jev instead of the Sonnet scorer. It is offline only: production scoring never calls it, and it writes nothing.
 
 - The model is pinned to `jev-1.13.0`; an answer from any other model is refused.
-- The questions come from `apps/api/src/scoring/jev-questions.ts`. The default is the DRAFT set written out in `docs/evals/jev-questions-draft.md` (a test holds the code to that document, word for word) until Cisco's own set is added there. `--questions <id>` picks another set.
-- Jev answers yes/no probabilities and one quality level. `apps/api/src/scoring/jev.ts` composes them to 0–100 (half the quality level, half the rubric's weighted criteria) and sets each flag at P(yes) ≥ 0.5; the harness then applies the production credit rule unchanged.
+- The questions come from `apps/api/src/scoring/jev-questions.ts`. The default is set `v1-2026-09-30`, written out in `docs/evals/jev-questions.md` (a test holds the code to that document, word for word): agent-drafted, then ruled on and amended by Cisco on 2026-09-30. `--questions <id>` picks another set. The eval's credited score also zeroes `low_effort` (Cisco's ruling 1); production's credit rule does not yet.
+- Jev answers yes/no probabilities and one quality level. `apps/api/src/scoring/jev.ts` composes them to 0–100 (half the quality level, half the rubric's weighted criteria) and sets each flag at P(yes) ≥ 0.5; the harness then applies the production credit rule plus the eval-only `low_effort` zero.
 - Cost is $0.042 per million input tokens (output tokens are free), reported per case in micro-dollars.
 - `--questions`, `--record`, and `--recorded` require `--backend jev` and a nonempty value. `--record` and `--recorded` are mutually exclusive; invalid combinations stop before any provider call.
 - Every Jev result records the rubric version, composition version, criterion weights, quality/criteria weights, yes-threshold, and quality maximum. `configurationHash` fingerprints the full rubric and that composition; `requestHash` separately fingerprints the model input.
