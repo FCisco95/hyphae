@@ -50,15 +50,28 @@ async function evaluate(
   score: (test: EvalCase) => Promise<{ output: ScoreOutput; costMicroUsd: number }>,
 ) {
   let passed = 0;
+  let errored = 0;
   let costMicroUsd = 0;
   for (const test of cases) {
-    const run = await score(test);
+    // A scorer that throws (a reply that breaks the output schema, say) fails its case; the
+    // remaining cases still run, so one bad answer can't hide the rest of the comparison.
+    let run: Awaited<ReturnType<typeof score>>;
+    try {
+      run = await score(test);
+    } catch (error) {
+      errored++;
+      const runError = (error instanceof Error ? error.message : String(error)).split("\n")[0];
+      console.log(
+        JSON.stringify({ id: test.id, expected: test.expected, passed: false, runError }),
+      );
+      continue;
+    }
     const comparison = compareScore(run.output, test.expected);
     if (comparison.passed) passed++;
     costMicroUsd += run.costMicroUsd;
     console.log(JSON.stringify({ id: test.id, expected: test.expected, ...comparison, run }));
   }
-  console.error(JSON.stringify({ passed, total: cases.length, costMicroUsd }));
+  console.error(JSON.stringify({ passed, total: cases.length, errored, costMicroUsd }));
   if (passed !== cases.length) process.exitCode = 1;
 }
 

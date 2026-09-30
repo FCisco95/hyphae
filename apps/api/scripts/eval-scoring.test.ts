@@ -150,7 +150,12 @@ it("replays a recorded Jev run of the documented fixture without a key", {
       { TYPESAFE_API_KEY: "" },
     );
     expect(result.status).toBe(0);
-    expect(JSON.parse(result.stderr)).toEqual({ passed: 1, total: 1, costMicroUsd: 84 });
+    expect(JSON.parse(result.stderr)).toEqual({
+      passed: 1,
+      total: 1,
+      errored: 0,
+      costMicroUsd: 84,
+    });
     expect(JSON.parse(result.stdout)).toMatchObject({
       id: "example-only",
       raw: 85,
@@ -166,6 +171,76 @@ it("replays a recorded Jev run of the documented fixture without a key", {
         configurationHash: expect.stringMatching(/^[a-f0-9]{64}$/),
         composition: { weights: { quality: 0.5, criteria: 0.5 }, threshold: 0.5 },
       },
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+it("counts a case whose scoring throws as a failure and scores the rest", {
+  timeout: 30_000,
+}, async () => {
+  const [example] = EvalCasesSchema.parse(JSON.parse(documentedFixture()));
+  if (!example) throw new Error("documented fixture is empty");
+  const rubric = RubricSchema.parse(
+    JSON.parse(
+      readFileSync(new URL("../../../docs/rubrics/mycel-1.2.0.json", import.meta.url), "utf8"),
+    ),
+  );
+  const live = recordingJev(async (request) => ({
+    latencyMs: 10,
+    mode: "live",
+    response: {
+      model: JEV_MODEL,
+      answers: Object.fromEntries(
+        Object.keys(request.questions).map((id) => [
+          id,
+          id === "quality"
+            ? { type: "score", score: 2.8, confidence: 0.7, probabilities: { "2": 0.2, "3": 0.8 } }
+            : { type: "noul", noul: id in DEFAULT_QUESTION_SET.criteria ? 1 : 0 },
+        ]),
+      ),
+      usage: { input_tokens: 1000, output_tokens: 10 },
+    },
+  }));
+  const { task, contribution } = example;
+  await runJev({ rubric, task, contribution }, DEFAULT_QUESTION_SET, live.backend);
+  // The second case was never recorded, so replaying it throws.
+  const unrecorded = {
+    ...example,
+    id: "never-recorded",
+    contribution: { ...contribution, text: "Another reply." },
+  };
+  const dir = mkdtempSync(join(tmpdir(), "hyphae-eval-"));
+  try {
+    const cases = join(dir, "cases.json");
+    const recording = join(dir, "recording.json");
+    writeFileSync(cases, JSON.stringify([example, unrecorded]));
+    writeFileSync(recording, JSON.stringify(live.recording(DEFAULT_QUESTION_SET)));
+    const result = evalScoring(
+      [
+        "--backend",
+        "jev",
+        "--cases",
+        cases,
+        "--rubric",
+        "../../docs/rubrics/mycel-1.2.0.json",
+        "--recorded",
+        recording,
+      ],
+      { TYPESAFE_API_KEY: "" },
+    );
+    expect(result.status).toBe(1);
+    expect(JSON.parse(result.stderr)).toMatchObject({ passed: 1, total: 2, errored: 1 });
+    const lines = result.stdout
+      .trim()
+      .split(/\r?\n/)
+      .map((line) => JSON.parse(line));
+    expect(lines[0]).toMatchObject({ id: example.id, passed: true });
+    expect(lines[1]).toMatchObject({
+      id: "never-recorded",
+      passed: false,
+      runError: expect.stringMatching(/no recorded Jev answer/),
     });
   } finally {
     rmSync(dir, { recursive: true, force: true });
