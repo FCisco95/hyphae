@@ -12,9 +12,9 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 ## Before recording
 
-1. Read the newest build-log entries. If Runbook C's steps C12–C22 ran (`docs/handoffs/2026-09-28-runbook-c.md`), use the **mainnet swap-ins** below with the signatures that entry records. Otherwise every chain beat says "devnet" on screen.
+1. Read the newest build-log entries. Runbook C (`docs/handoffs/2026-09-28-runbook-c.md`) runs in two blocks: Parts 1–2 (C1–C13, the candidate on Fly and Vercel, then the program on mainnet) on Oct 2–3, and Parts 3–4 (C14–C22, MYCEL's community and vault, then the first payout) on Oct 8–9. Use each **mainnet swap-in** below only if the steps it names ran, with the signatures the build log records for them. Otherwise that beat says "devnet" on screen.
 2. `git switch main && git pull --ff-only`. Note the SHA and the latest CI run; say those, not the numbers in this file.
-3. Open the tabs in the order of the recording guide below. The site is the Vercel URL recorded in `docs/handoffs/2026-10-01-cutover.md` (step 15's run log).
+3. Open the tabs in the order of the recording guide below. The site is https://hyphae-delta.vercel.app, live since the Sep 29 cutover (`docs/handoffs/2026-09-29-cutover-run.md`, step 15).
 4. Fallbacks, if the site can't be reached: `docs/showcase/` has every page in both themes. Its settled-epoch and claim pages show the web tests' fixture data, so don't present them as real numbers. A real devnet settlement panel, in the earlier design, is `git show ffdfac0:docs/screenshots/epoch-1180.png`.
 
 ## Recording guide
@@ -23,7 +23,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 - **Theme:** dark (the operating system's setting; the site follows it). It is the brand banner's look, and every page is built for it.
 - **Motion:** reload `/` just before beat 1, so the filaments grow on camera; they grow once per load, in about three seconds.
 - **Scrolling:** each landing section starts at the top of the window when opened from its anchor (`/#how`, `/#proof`, `/#trust`, `/#integrate`).
-- **Pages, in order** (`<site>` is the Vercel URL, `<mint>` MYCEL's mint, `<n>` the epoch the beat names):
+- **Pages, in order** (`<site>` is https://hyphae-delta.vercel.app, `<mint>` MYCEL's mint, `<n>` the epoch the beat names):
 
 | Beat | Page on the site | Also on screen |
 |---|---|---|
@@ -34,7 +34,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 | 5 | `<site>/#proof`, the publish row; after Runbook C, `<site>/c/<mint>/e/2`'s settlement panel | the explorer on the publish |
 | 6 | `<site>/#proof`, the claim and the refused claim; after Runbook C, `<site>/c/<mint>/e/2/claim` | the explorer on both |
 | 7 | `<site>/#trust` (the build hash and the custody policy) | the terminal's `solana-verify` |
-| 8 | `<site>/#integrate` | the README's vault section; `/docs` on the api only if Runbook C's C7 ran |
+| 8 | `<site>/#integrate` | the public README's vault section; `/docs` on the api only if Runbook C's C7 ran |
 | Close | `<site>/` | — |
 
 ## Beat 1 — who this is for (framing) · ~15 s
@@ -109,10 +109,10 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 **Show:**
 1. The terminal: `solana-verify get-program-hash -u devnet EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E` prints `7e902d1b…43ac`.
-2. The same hash from `anchor build --verifiable`.
+2. The same hash from `anchor build --verifiable`, in a fresh clone of the public program repo, `FCisco95/hyphae-program`.
 3. The site's `<site>/#trust`: the same hash, and the custody policy word for word.
 
-**Say:** "The program on chain is byte for byte what this repo builds in Anchor's pinned Docker image. The custody rules are public. The key that publishes each root decides where that week's pot goes, and the program can be upgraded. The policy keeps both keys on a hardware wallet."
+**Say:** "The program on chain is byte for byte what its public repository builds in Anchor's pinned Docker image. The custody rules are public. The key that publishes each root decides where that week's pot goes, and the program can be upgraded. The policy keeps both keys on a hardware wallet."
 
 **Evidence:**
 - the verifiable build and its readback: `docs/handoffs/2026-09-28-verifiable-build-and-deploy-rehearsal.md`, commit `a6da160`;
@@ -125,7 +125,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 **Show:**
 1. The site's `<site>/#integrate`: the read API and the proof check.
-2. The README section "Funding a community's vault": the PDA seeds.
+2. The section "Funding a community's vault" of the public `hyphae-program` README: the PDA seeds.
 3. Only if Runbook C's C7 ran: `/docs`, the OpenAPI reference, and one `GET /v1/wallets/{wallet}/claims` response.
 
 **Say:** "A vault's address comes from the coin and its admin, so any project can find it and fund it. Everything on the page is in a public API: communities, weeks, every score with its reasons, and every claim with its proof."
@@ -134,7 +134,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 - the wallet-claims route and rate limits: `d712289`, `6e48b12`; OpenAPI and `/docs`: `135a80f`;
 - the README integration: `1d56e5d`.
 
-Say "deployed" only if Runbook C's C7 ran: production `b7bfe55` has no `/v1` (`docs/HANDOFF.md`).
+Say "deployed" for the community and epoch routes: production has run `86ff258` since the Sep 29 cutover (`docs/HANDOFF.md`). For a wallet's claims, `/v1/openapi.json` and `/docs`, say it only if Runbook C's C7 ran (Oct 2–3): until then they answer 404.
 
 ## Close · ~5 s
 
@@ -149,5 +149,6 @@ These were not built or are not live; the video must not imply them:
 - the Codama client;
 - the web `/admin` page (plan Week 4 #3, dropped by Cisco on 2026-09-27);
 - the fixture data in `docs/showcase/`'s settled-epoch and claim pages, as if it were real;
+- "open source" (both repositories are BUSL 1.1, source available; the application repo is private, and the program and rubrics are public in `FCisco95/hyphae-program`);
 - tester or member counts past what the build log records;
 - any mainnet transaction that Runbook C did not record.

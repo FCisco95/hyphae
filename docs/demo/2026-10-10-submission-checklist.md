@@ -19,41 +19,50 @@ Plan Week 4 #7. The deadline is 2026-10-12 23:59 PDT; Oct 11–12 are buffer. On
 1. **Freeze `main` (agent).**
    - Run the full gate on the final commit: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `drizzle-kit check`, `test:pg`, and `git diff --check`. If the program changed, also the WSL `anchor build` and `cargo test`.
    - Check the latest `CI` run on that commit is green.
+   - Check the public repo `FCisco95/hyphae-program` holds the same `programs/hyphae` and `docs/rubrics/*.json` as that commit; if either changed, copy it there and re-verify the build.
    - Closes when: every check passes, recorded with the SHA and the CI run id.
 2. **README status matches reality (agent writes, Cisco reads).**
-   - The README's "Status" says exactly what is deployed: the api image, the Vercel site, and whether the program is on mainnet. It is updated from the build log, not from this file.
-   - If Runbook C ran:
+   - The README's "Status" says exactly what is deployed: the api image, the Vercel site (https://hyphae-delta.vercel.app, live since the Sep 29 cutover), and whether the program is on mainnet. It is updated from the build log, not from this file.
+   - If Runbook C's Parts 1–2 ran (C1–C13, Oct 2–3):
+     - the api routes that went live with C7: a wallet's claims, `/v1/openapi.json` and `/docs`;
      - the mainnet program id and its upgrade authority `2kz1Zq…`;
-     - the verified hash `7e902d1b…43ac` and how to reproduce it;
+     - the verified hash `7e902d1b…43ac` and how to reproduce it.
+   - If Parts 3–4 ran (C14–C22, Oct 8–9):
      - MYCEL's community and vault addresses;
      - the publish and claim signatures.
-   - If it did not: say devnet only, with the devnet proof's signatures.
+   - If only Parts 1–2 ran: the program is on mainnet, and MYCEL has no community, vault or payout there. Say that, not "mainnet payouts".
+   - If neither ran: say devnet only, with the devnet proof's signatures.
    - Closes when: every status line cites a build-log entry or a signature.
 3. **Public-safe pass (agent).**
    - `git grep` for key material, `.env` values and private paths finds nothing.
    - No private plan or vault text is in the repo.
    - The untracked `wsl` file is not committed.
    - Closes when: all three finds are empty.
-4. **Links work (agent).**
-   - Each of these opens from a clean browser: the repo; the site's `/`, `/claim` and an epoch page; the api's `/health`, `/docs` and `/v1/openapi.json`; each explorer link in the README and the video.
+4. **Colosseum reviewer access (Cisco).**
+   - The app repo `FCisco95/hyphae` is private. Add `hackathon@colosseum.com` as a collaborator (GitHub: Settings, Collaborators) before submitting. A collaborator on a personal repo gets write access; there is no read-only role.
+   - Closes when: the repo's collaborator list shows `hackathon@colosseum.com`, pending or accepted.
+5. **Links work (agent).**
+   - Each of these opens from a clean browser: the public program repo `FCisco95/hyphae-program`; the site's `/`, `/claim` and an epoch page; the api's `/health`, and its `/docs` and `/v1/openapi.json` once Runbook C's C7 ran (Oct 2–3; they answer 404 until then); each explorer link in the README and the video.
+   - The private app repo does not open without access. Check it from a signed-in account that has it.
    - Closes when: every link answers; a dead one is fixed or removed.
-5. **Video (Cisco).**
+6. **Video (Cisco).**
    - Upload the Oct 9 recording (Loom). Check it is under 3 minutes and viewable without a login.
    - Closes when: the link plays from a private window.
-6. **Colosseum project page (Cisco).**
+7. **Colosseum project page (Cisco).**
    - Fields:
-     - the repo link;
+     - the repo link: the private `FCisco95/hyphae`, which reviewers can open only once step 4 is done (the public program and rubrics repo is `FCisco95/hyphae-program`);
      - the video link;
      - a description consistent with the README's first paragraph;
      - the category, which stays **Governance & DAOs**.
    - The "anything else judges should know" field keeps the no-token disclosure and the prior-work disclosure (build log 2026-09-17, afternoon).
+   - State the licence as the README does: Business Source License 1.1 on both repositories (Change Date 2028-10-12, Change License GPL-2.0-or-later). Never "open source".
    - Say mainnet only if step 2 did.
    - Closes when: the page is saved and reads back.
-7. **Submit (Cisco).**
+8. **Submit (Cisco).**
    - Closes when: Colosseum shows the submission.
-8. **Record it (agent).**
+9. **Record it (agent).**
    - Add a build-log entry: what was submitted, the SHA, the video link, and what was deliberately left out (the rows above).
    - Refresh the handoff and push.
    - Closes when: `git status -sb` shows `main` even with `origin/main`.
-9. **Weekly video #4 (Cisco):** "submitted, here's what changed". From the same build-log entry.
-10. **Oct 11–12 (both): buffer.** Do not touch the deployed program. Fix only a broken link or a wrong README line, each as its own commit.
+10. **Weekly video #4 (Cisco):** "submitted, here's what changed". From the same build-log entry.
+11. **Oct 11–12 (both): buffer.** Do not touch the deployed program. Fix only a broken link or a wrong README line, each as its own commit.
