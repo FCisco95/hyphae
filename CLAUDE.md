@@ -39,4 +39,4 @@ pnpm workspace · Anchor 1.0.1 at root (`programs/hyphae`, `tests/` LiteSVM, `cl
 ## Standards
 Comments only for non-obvious why. No speculative abstractions, no dead code, no placeholder scaffolding. Ecosystem-standard layouts. Pure modules have tests. Conventional commits. `Cargo.lock` is committed. Pull current docs via Context7 before writing against Anchor, Token-2022, grammY, pg-boss, AI SDK, or Drizzle.
 
-**Local gate before every push to `main`:** `pnpm test`, `pnpm typecheck`, `pnpm lint` (check the exit code). When `packages/db` or reward jobs change, also `pnpm --filter @hyphae/db exec drizzle-kit check` and `pnpm --filter @hyphae/api test:pg` (Docker). There is no CI, so this gate is the only one.
+**Local gate before every push to `main`:** `pnpm test`, `pnpm typecheck`, `pnpm lint` (check the exit code). When `packages/db` or reward jobs change, also `pnpm --filter @hyphae/db exec drizzle-kit check` and `pnpm --filter @hyphae/api test:pg` (Docker). CI runs the gate on every push; the local gate still runs before each push.
