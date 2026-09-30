@@ -6,7 +6,7 @@
 
 | | Jev | Sonnet |
 |---|---|---|
-| Model | `jev-1.13.0`, question set `v1-2026-09-30` (`docs/evals/jev-questions.md`) | `anthropic:claude-sonnet-5` (the harness default), production scoring prompt |
+| Model | `jev-1.13.0`, question set `v1-2026-09-30` (written out in `docs/evals/jev-questions.md` at `4fe3815`; the branch now carries v2, see the addendum) | `anthropic:claude-sonnet-5` (the harness default), production scoring prompt |
 | Rubrics | 1.2.0 (`docs/rubrics/mycel-1.2.0.json`), 1.3.1 (`feat/rules-v2` `158452f`, sha256 `56e5fad1…`) | same |
 | Mode | live, `current-call` metrics; every answer recorded in `docs/evals/recordings/jev-<version>.json` and replays to the same 4/16 and 5/16 with no key | live |
 | Code | `feat/jev-eval` `f7a3919` (Jev runs, Sonnet 1.2.0) and `58fa5d4` (Sonnet 1.3.1) | |
@@ -68,3 +68,13 @@ Error is the distance in points from the founder's target, 0 inside it. A pass n
 1. Fix the double count: rewrite the three criteria questions to judge the writing as a person would before any flag, so raw stays near the founder's raw on flagged cases. Then replay is impossible (the questions change), so it needs one live run at about $0.003.
 2. Add a deterministic backwards-sentence check for Ruling 5, and measure it on new cases, not these 16.
 3. Ask Cisco for 30 or more real, labelled AI-sounding and natural replies (a private fixture) before tuning anything else against these 16.
+
+## Addendum: two labeling sessions and question set v2
+
+After this run Cisco labeled 48 replies as human (H), AI (A) or unsure (?). I wrote all 48, so none is a member's text, and the labels are one person's: an observation, not a measurement. The answer keys stayed hidden until he had answered, and session 2 was kept as a holdout.
+
+- **Session 1 (24 replies), v1 wording.** Jev's `ai_slop` reached 0.5 on the three replies Cisco called AI. It also flagged two he called human (one of which he later said he could not explain). His calls matched what I meant on 15 of 24. He called none of my twelve human-written replies AI. He did not treat my AI-vocabulary or "not just X, but Y" replies as AI (human or unsure), so his tell is structure, not vocabulary.
+- **Cisco amended ruling 5:** "Sometimes people do sentences like this." The backwards shape alone is not enough; it reads as AI when polished and abstract or stacked, and human when unforced or ended by a tossed-off reaction.
+- **Session 2 (24 replies, including repeats of two session-1 replies), v1 vs the amended wording.** Both caught the two replies he called AI (and the one he called AI-or-unsure). The amended wording stopped flagging the human replies with the shape (0.69 to 0.19, 0.44 to 0.16) and kept the AI calls flagged, though one fell from 0.80 to 0.58. Both still flag the repeat of the reply he could not explain (0.55 and 0.62). His repeats stayed close (HH then H; H? then ?).
+- **A second construct shows up.** Cisco marked replies "?" for overshilling or repeating the post. That is low-value hype, which the rubric already covers with `low_effort` and `value_angle`, not AI authorship. Jev's `low_effort` also flagged several replies he called human (including a terse restatement of the post at 0.82); under ruling 1 that is a hard zero, so it matters.
+- **Result:** the branch now carries question set v2 (the amended wording). Fixture case 1 is still missed. With 2 or 3 replies changing side, treat this as a direction, not a proof. Next: a third, larger holdout before any further wording change, and a labeled set with more than one labeler.

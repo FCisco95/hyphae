@@ -42,10 +42,10 @@ function evalScoring(args: string[], env: Record<string, string>, preload?: stri
 it.each([
   ["--recorded", "recording.json"],
   ["--record", "recording.json"],
-  ["--questions", "v1-2026-09-30"],
+  ["--questions", "v2-2026-09-30"],
   ["--backend", "sonnet", "--recorded", "recording.json"],
   ["--backend", "sonnet", "--record", "recording.json"],
-  ["--backend", "sonnet", "--questions", "v1-2026-09-30"],
+  ["--backend", "sonnet", "--questions", "v2-2026-09-30"],
   ["--backend", "jev", "--recorded", "input.json", "--record", "output.json"],
   ["--backend", "jev", "--recorded", ""],
 ])(
@@ -163,7 +163,7 @@ it("replays a recorded Jev run of the documented fixture without a key", {
       passed: true,
       run: {
         model: "jev-1.13.0",
-        questionSet: "v1-2026-09-30",
+        questionSet: "v2-2026-09-30",
         latencyMs: 140,
         mode: "replay",
         metricsSource: "recorded-call",
