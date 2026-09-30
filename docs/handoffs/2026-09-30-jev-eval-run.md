@@ -28,11 +28,16 @@ Record of the arc's step 2. Part A and step 1 are in [Part A](2026-09-30-part-a.
 - Review: Codex `gpt-6.1-sol`, reasoning high, read-only, fresh session, range `7c00629..0a33384`: four findings (three P2, one P3), all fixed test-first in `4fe3815`. No re-review of the fixes.
 - Spend: Jev about $0.006; Sonnet $0.464 recorded plus about $0.19 for one crashed attempt whose calls were not recorded.
 
+## Labeling sessions and question set v2
+
+Cisco labeled 48 replies I wrote (session 1 tuned; session 2 was the holdout; the files and answer keys are local and gitignored under `docs/plans/`). He amended ruling 5: the backwards shape alone is not the tell. `feat/jev-eval` `9f822f2` and `7b8c605` carry question set v2 with that wording. On the holdout it cleared one false flag (0.69 to 0.19), lowered another reply already under the threshold (0.44 to 0.16) and kept his AI calls flagged (one fell from 0.80 to 0.58); it still flags the reply he could not explain and still misses fixture case 1. A second construct showed up: replies he marked "?" for overshilling or repeating the post, which is `low_effort`/`value_angle` territory, not AI authorship. Jev's `low_effort` flags several replies he called human, and ruling 1 makes that a hard zero. Review: Codex `gpt-6.1-sol` high, two findings (an overstated "stopped flagging" and a stale title), both fixed in `7b8c605`. The v1 recordings replay only at `4fe3815`.
+
 ## Parked, with recommendations
 
 - Rewrite the criteria questions so raw scores on flagged cases stop being double-counted, then one live run (about $0.003). Recommend: yes.
-- A deterministic backwards-sentence check, measured on new cases. Recommend: yes.
-- Cisco supplies 30+ real labelled replies (private fixture) before tuning against the 16. Recommend: yes; tuning further on these 16 would overfit.
+- A deterministic backwards-sentence check, measured on new cases. Recommend: only as a feature for a trained classifier; a plain regex fires on the same replies Jev does, including the ones Cisco called human.
+- A third, larger holdout and a second labeler before any further wording change. Recommend: yes.
+- Real labelled replies (private fixture) instead of ones I wrote. Recommend: yes when available; my own writing carries my blind spots.
 - Ritual posts and the production low_effort zero: rubric version after 1.3.1.
 
 ## Models
