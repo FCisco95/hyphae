@@ -4,7 +4,9 @@ Every rubric a Hyphae community scores against is public here. A community's `ru
 
 ## MYCEL 1.3.1 — 2026-09-29 (candidate, not applied)
 
-- Rubric 1.3.0 without its sentence on strikes ("Strikes: first = warning, second = you lose this epoch's points, third = 30 days out of paid raids. Every strike shows you why."). Strikes are not built, so the rubric no longer promises them. Every other rule is 1.3.0's, word for word.
+- Rubric 1.3.0 without its sentence on strikes ("Strikes: first = warning, second = you lose this epoch's points, third = 30 days out of paid raids. Every strike shows you why."). Strikes are not built, so the rubric no longer promises them.
+- "Text that reads like an unedited AI draft" leaves "What earns zero" and moves to "How grading works" as "Text that reads like an unedited AI draft: capped at 79, or at 40 when obvious, and a score under 60 earns zero." That is the credit rule the code has always applied; 1.2.0 and 1.3.0 list the line under zero, yet a mildly AI-written reply graded 70 earns 70. Founder ruling 2026-09-29 ("fix it").
+- Every other rule is 1.3.0's, word for word.
 - Founder ruling 2026-09-29: 1.3.1 replaces 1.3.0 as the candidate planned for epoch 4. 1.3.0 was never pinned by an epoch and stays published unchanged.
 - Its rules test is `mycel-rules-2`; a pass of the 1.2.0 test does not count for it.
 
