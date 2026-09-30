@@ -3,7 +3,7 @@ import { RubricSchema, ScoreFlag, type ScoringInput } from "@hyphae/core";
 import type { Question } from "@typesafe-ai/sdk";
 import { describe, expect, it } from "vitest";
 import { jevRequest } from "./jev.js";
-import { DEFAULT_QUESTION_SET, QUESTION_SETS, QUESTIONS_V2 } from "./jev-questions.js";
+import { DEFAULT_QUESTION_SET, QUESTION_SETS, QUESTIONS_V3 } from "./jev-questions.js";
 
 const repo = (path: string) =>
   readFileSync(new URL(`../../../../${path}`, import.meta.url), "utf8");
@@ -39,7 +39,7 @@ function quotes(asked: string[], reply: string[]): boolean {
   return false;
 }
 
-const questions = (set: typeof QUESTIONS_V2): Record<string, Question> => ({
+const questions = (set: typeof QUESTIONS_V3): Record<string, Question> => ({
   ...set.criteria,
   ...set.flags,
   ai_slop_obvious: set.aiSlopObvious,
@@ -47,15 +47,15 @@ const questions = (set: typeof QUESTIONS_V2): Record<string, Question> => ({
 });
 
 describe("the draft question set", () => {
-  const markdown = repo(QUESTIONS_V2.source);
+  const markdown = repo(QUESTIONS_V3.source);
 
   it("is the document's questions, word for word", () => {
-    expect(QUESTIONS_V2.source).toBe("docs/evals/jev-questions.md");
-    expect(questions(QUESTIONS_V2)).toEqual(documented(markdown));
+    expect(QUESTIONS_V3.source).toBe("docs/evals/jev-questions.md");
+    expect(questions(QUESTIONS_V3)).toEqual(documented(markdown));
   });
 
   it("says who wrote it and who ruled on it", () => {
-    expect(QUESTIONS_V2.id).toBe("v2-2026-09-30");
+    expect(QUESTIONS_V3.id).toBe("v3-2026-09-30");
     expect(markdown).toContain(
       "Drafted by an agent, then ruled on and amended by Cisco in session on 2026-09-30",
     );
@@ -63,7 +63,7 @@ describe("the draft question set", () => {
   });
 
   it("names the backwards-sentence tell in both AI-writing questions (ruling 5)", () => {
-    const asked = questions(QUESTIONS_V2);
+    const asked = questions(QUESTIONS_V3);
     for (const id of ["own_voice", "ai_slop"]) {
       expect(asked[id]?.instructions).toContain("built backwards");
       expect(asked[id]?.instructions).toContain("Buying the coin is what I'm going to do");
@@ -71,14 +71,26 @@ describe("the draft question set", () => {
   });
 
   it("says one backwards sentence is not enough for ai_slop (ruling 5, amended)", () => {
-    const { instructions } = QUESTIONS_V2.flags.ai_slop;
+    const { instructions } = QUESTIONS_V3.flags.ai_slop;
     expect(instructions).toContain("one such sentence is not enough by itself");
     expect(instructions).not.toContain("One such sentence is enough");
     expect(instructions).toContain("tossed-off human reaction");
   });
 
+  it("treats a joke or short opinion that responds to the post as organic, not low effort (rulings 6 and 9)", () => {
+    const asked = questions(QUESTIONS_V3);
+    expect(asked.low_effort?.instructions).toContain(
+      "A joke, a playful reaction or a short personal opinion that responds to the post is not low effort",
+    );
+    expect(asked.value_angle?.instructions).toContain("A joke that lands");
+    expect(asked.context_fit?.instructions).toContain("A joke or personal opinion that responds");
+    const ladder = QUESTIONS_V3.quality.criteria;
+    expect(ladder[2]).toContain("organic reaction");
+    expect(ladder[0]).toContain("reusable hype");
+  });
+
   it("never quotes a fixture reply, so the eval cannot leak its answers", () => {
-    const asked = words(JSON.stringify(questions(QUESTIONS_V2)));
+    const asked = words(JSON.stringify(questions(QUESTIONS_V3)));
     const cases = JSON.parse(repo("docs/rubrics/eval/mycel-synthetic.json")) as {
       id: string;
       contribution: { text: string };
@@ -97,30 +109,30 @@ describe("the draft question set", () => {
   });
 
   it("asks one question per flag, per criterion, the obvious-AI cap and quality", () => {
-    expect(Object.keys(QUESTIONS_V2.flags)).toEqual(ScoreFlag.options);
+    expect(Object.keys(QUESTIONS_V3.flags)).toEqual(ScoreFlag.options);
     for (const version of ["1.2.0", "1.3.0"]) {
       const rubric = RubricSchema.parse(JSON.parse(repo(`docs/rubrics/mycel-${version}.json`)));
-      expect(Object.keys(QUESTIONS_V2.criteria)).toEqual(rubric.criteria.map((c) => c.key));
+      expect(Object.keys(QUESTIONS_V3.criteria)).toEqual(rubric.criteria.map((c) => c.key));
     }
-    expect(QUESTIONS_V2.quality.criteria).toHaveLength(5);
+    expect(QUESTIONS_V3.quality.criteria).toHaveLength(5);
   });
 
   it("weighs quality and criteria to a whole and counts yes from 0.5", () => {
-    const { quality, criteria } = QUESTIONS_V2.weights;
+    const { quality, criteria } = QUESTIONS_V3.weights;
     expect(quality + criteria).toBe(1);
-    expect(QUESTIONS_V2.threshold).toBe(0.5);
+    expect(QUESTIONS_V3.threshold).toBe(0.5);
   });
 
   it("builds a request for the synthetic cases under rubric 1.2.0", () => {
     const rubric = RubricSchema.parse(JSON.parse(repo("docs/rubrics/mycel-1.2.0.json")));
     const [first] = JSON.parse(repo("docs/rubrics/eval/mycel-synthetic.json")) as ScoringInput[];
     if (!first) throw new Error("fixture is empty");
-    const request = jevRequest({ ...first, rubric }, QUESTIONS_V2);
+    const request = jevRequest({ ...first, rubric }, QUESTIONS_V3);
     expect(Object.keys(request.questions)).toHaveLength(11);
   });
 });
 
 it("defaults to the ruled set", () => {
-  expect(DEFAULT_QUESTION_SET).toBe(QUESTIONS_V2);
-  expect(Object.keys(QUESTION_SETS)).toEqual([QUESTIONS_V2.id]);
+  expect(DEFAULT_QUESTION_SET).toBe(QUESTIONS_V3);
+  expect(Object.keys(QUESTION_SETS)).toEqual([QUESTIONS_V3.id]);
 });

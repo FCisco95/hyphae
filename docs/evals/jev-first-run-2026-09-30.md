@@ -6,7 +6,7 @@
 
 | | Jev | Sonnet |
 |---|---|---|
-| Model | `jev-1.13.0`, question set `v1-2026-09-30` (written out in `docs/evals/jev-questions.md` at `4fe3815`; the branch now carries v2, see the addendum) | `anthropic:claude-sonnet-5` (the harness default), production scoring prompt |
+| Model | `jev-1.13.0`, question set `v1-2026-09-30` (written out in `docs/evals/jev-questions.md` at `4fe3815`; the branch now carries v3, see the addenda) | `anthropic:claude-sonnet-5` (the harness default), production scoring prompt |
 | Rubrics | 1.2.0 (`docs/rubrics/mycel-1.2.0.json`), 1.3.1 (`feat/rules-v2` `158452f`, sha256 `56e5fad1…`) | same |
 | Mode | live, `current-call` metrics; every answer recorded in `docs/evals/recordings/jev-<version>.json` and replays to the same 4/16 and 5/16 with no key | live |
 | Code | `feat/jev-eval` `f7a3919` (Jev runs, Sonnet 1.2.0) and `58fa5d4` (Sonnet 1.3.1) | |
@@ -92,4 +92,15 @@ The experiment added a draft project brief (written from his public statements, 
 - Jev reads text only, so replies whose punchline is an image are undervalued.
 
 Nothing here changes the committed question set. The open design question is what a short organic reaction should earn, since the quality scale and the 60 floor, not the flags, decide that.
+
+## Third addendum: ruling 9 in the questions (v3), and why prompting is not enough
+
+Cisco ruled that a short organic reaction (a joke that lands, a short personal opinion that responds to the post) earns the low end of the same scale, about 60 to 70 raw (ruling 9, `docs/evals/jev-questions.md`). Question set v3 writes that into the `low_effort`, `context_fit` and `value_angle` questions and the quality ladder's "passable" level.
+
+Measured on Cisco's 12 real replies, the 16 fixture cases and the 48 labeled replies:
+
+- **The effect is small.** His banter replies moved up about 3 to 5 raw points (from 25 to 42 before, 29 to 47 after) and kept their `low_effort` or `off_topic` flags on four of them; one `low_effort` flag cleared, but its raw (47) is still under the 60 floor. None reached the 60 to 70 that ruling 9 intends.
+- **Worked examples did not change that.** A scratch run with seven example replies in the state (judged organic or low effort; written by me, none from the fixture or his replies) raised those raws another 3 to 10 points and left the flags on the same replies. The fixture stayed at 4 of 16 and the required low-effort, spam and breach cases stayed caught.
+- **No regression, and no claim of success.** The fixture's 5 to 4 is one control's raw moving from 80 to 81, one point past its range. One of his substantive replies fell from 60 to 59 and so under the floor: that is run-to-run noise, since Jev's answers are not deterministic.
+- **Reading:** Jev follows its own reading of a question more than instructions or examples, and its linear composition (half the quality level, half the weighted criteria) puts any reply it rates as thin around 30 to 50. Delivering ruling 9 takes a calibration learned from Cisco's own grades (a few hundred graded replies, including jokes and short opinions), or a different mapping from Jev's answers to raw, not more wording.
 
