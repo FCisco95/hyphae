@@ -575,16 +575,24 @@ describe("a wallet's claims", () => {
       fake.state.slow.add(p.epoch);
     }
     const reads = { accounts: 0 };
+    const clock = vi.spyOn(Date, "now").mockReturnValue(NOW.getTime());
     const { accounts } = fake.reader;
     fake.reader.accounts = (owner, at) => {
       reads.accounts += 1;
+      // A real timer may fire just before Date.now() reaches its target on Linux. Advance
+      // the wall clock explicitly once the first batch starts; this tests the deadline guard.
+      if (reads.accounts === LOOKUPS_AT_ONCE) clock.mockReturnValue(NOW.getTime() + 150);
       return accounts(owner, at);
     };
-    const w = await readWalletClaims(t.db, wallet, all, NOW, fake.reader, 150);
-    expect(w.claims).toHaveLength(LOOKUPS_AT_ONCE + 4);
-    expect(w.claims.every((c) => c.payment.status === "unavailable")).toBe(true);
-    // The first batch waits out the deadline; nothing after it reaches the chain.
-    expect(reads.accounts).toBe(LOOKUPS_AT_ONCE);
+    try {
+      const w = await readWalletClaims(t.db, wallet, all, NOW, fake.reader, 150);
+      expect(w.claims).toHaveLength(LOOKUPS_AT_ONCE + 4);
+      expect(w.claims.every((c) => c.payment.status === "unavailable")).toBe(true);
+      // The first batch waits out the deadline; nothing after it reaches the chain.
+      expect(reads.accounts).toBe(LOOKUPS_AT_ONCE);
+    } finally {
+      clock.mockRestore();
+    }
   }, 60_000);
 
   it("gives up on a slow chain by one deadline for the whole list", async () => {
