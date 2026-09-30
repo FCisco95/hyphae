@@ -26,6 +26,19 @@ function documented(markdown: string) {
   );
 }
 
+const words = (text: string) => text.toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? [];
+
+// True when the questions contain the reply's run of words: any five in a row for a longer reply,
+// all of it for a shorter one.
+function quotes(asked: string[], reply: string[]): boolean {
+  const size = Math.min(5, reply.length);
+  const haystack = ` ${asked.join(" ")} `;
+  for (let i = 0; size > 0 && i + size <= reply.length; i++) {
+    if (haystack.includes(` ${reply.slice(i, i + size).join(" ")} `)) return true;
+  }
+  return false;
+}
+
 const questions = (set: typeof QUESTIONS_V1): Record<string, Question> => ({
   ...set.criteria,
   ...set.flags,
@@ -58,20 +71,22 @@ describe("the draft question set", () => {
   });
 
   it("never quotes a fixture reply, so the eval cannot leak its answers", () => {
-    const words = (text: string) => text.toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? [];
     const asked = words(JSON.stringify(questions(QUESTIONS_V1)));
-    const grams = new Set<string>();
-    for (let i = 0; i + 5 <= asked.length; i++) grams.add(asked.slice(i, i + 5).join(" "));
     const cases = JSON.parse(repo("docs/rubrics/eval/mycel-synthetic.json")) as {
       id: string;
       contribution: { text: string };
     }[];
     for (const { id, contribution } of cases) {
-      const reply = words(contribution.text);
-      for (let i = 0; i + 5 <= reply.length; i++) {
-        expect(grams.has(reply.slice(i, i + 5).join(" ")), `${id} is quoted`).toBe(false);
-      }
+      expect(quotes(asked, words(contribution.text)), `${id} is quoted`).toBe(false);
     }
+  });
+
+  it("catches a quote of five words or a whole reply shorter than that", () => {
+    const asked = words("Ask whether the author says I hold MYCEL and when do claims close, ok?");
+    expect(quotes(asked, words("I hold MYCEL."))).toBe(true);
+    expect(quotes(asked, words("When do claims close?"))).toBe(true);
+    expect(quotes(asked, words("Nothing like it in the questions."))).toBe(false);
+    expect(quotes(asked, words("Author says I hold MYCEL and when do claims"))).toBe(true);
   });
 
   it("asks one question per flag, per criterion, the obvious-AI cap and quality", () => {

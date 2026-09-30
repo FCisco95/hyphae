@@ -46,6 +46,20 @@ const cases = EvalCasesSchema.parse(JSON.parse(await readFile(values.cases, "utf
 const rubric = RubricSchema.parse(JSON.parse(await readFile(values.rubric, "utf8")));
 const input = (test: EvalCase) => ({ rubric, task: test.task, contribution: test.contribution });
 
+// The whole message and its causes: a schema error's own first line is just "[", and the AI SDK
+// keeps the invalid field in the cause.
+function describeError(error: unknown): string {
+  const parts: string[] = [];
+  for (
+    let e = error;
+    e !== undefined && parts.length < 4;
+    e = e instanceof Error ? e.cause : undefined
+  ) {
+    parts.push(e instanceof Error ? e.message : String(e));
+  }
+  return parts.join(" | ").replace(/\s+/g, " ");
+}
+
 async function evaluate(
   score: (test: EvalCase) => Promise<{ output: ScoreOutput; costMicroUsd: number }>,
 ) {
@@ -60,7 +74,7 @@ async function evaluate(
       run = await score(test);
     } catch (error) {
       errored++;
-      const runError = (error instanceof Error ? error.message : String(error)).split("\n")[0];
+      const runError = describeError(error);
       console.log(
         JSON.stringify({ id: test.id, expected: test.expected, passed: false, runError }),
       );
@@ -71,7 +85,11 @@ async function evaluate(
     costMicroUsd += run.costMicroUsd;
     console.log(JSON.stringify({ id: test.id, expected: test.expected, ...comparison, run }));
   }
-  console.error(JSON.stringify({ passed, total: cases.length, errored, costMicroUsd }));
+  // A call that was billed but whose answer failed validation returns no usage to count.
+  const costNote = errored ? { costNote: "costMicroUsd excludes the errored cases" } : {};
+  console.error(
+    JSON.stringify({ passed, total: cases.length, errored, costMicroUsd, ...costNote }),
+  );
   if (passed !== cases.length) process.exitCode = 1;
 }
 

@@ -200,11 +200,25 @@ it("counts a case whose scoring throws as a failure and scores the rest", {
             : { type: "noul", noul: id in DEFAULT_QUESTION_SET.criteria ? 1 : 0 },
         ]),
       ),
-      usage: { input_tokens: 1000, output_tokens: 10 },
+      usage: JSON.stringify(request.state).includes("Third reply.")
+        ? "not a usage record"
+        : { input_tokens: 1000, output_tokens: 10 },
     },
   }));
   const { task, contribution } = example;
   await runJev({ rubric, task, contribution }, DEFAULT_QUESTION_SET, live.backend);
+  // The third case's recorded answer breaks the schema, so replaying it throws a multi-line
+  // validation error whose first line is only "[".
+  const broken = {
+    ...example,
+    id: "broken-usage",
+    contribution: { ...contribution, text: "Third reply." },
+  };
+  await runJev(
+    { rubric, task, contribution: broken.contribution },
+    DEFAULT_QUESTION_SET,
+    live.backend,
+  ).catch(() => undefined);
   // The second case was never recorded, so replaying it throws.
   const unrecorded = {
     ...example,
@@ -215,7 +229,7 @@ it("counts a case whose scoring throws as a failure and scores the rest", {
   try {
     const cases = join(dir, "cases.json");
     const recording = join(dir, "recording.json");
-    writeFileSync(cases, JSON.stringify([example, unrecorded]));
+    writeFileSync(cases, JSON.stringify([example, unrecorded, broken]));
     writeFileSync(recording, JSON.stringify(live.recording(DEFAULT_QUESTION_SET)));
     const result = evalScoring(
       [
@@ -231,7 +245,7 @@ it("counts a case whose scoring throws as a failure and scores the rest", {
       { TYPESAFE_API_KEY: "" },
     );
     expect(result.status).toBe(1);
-    expect(JSON.parse(result.stderr)).toMatchObject({ passed: 1, total: 2, errored: 1 });
+    expect(JSON.parse(result.stderr)).toMatchObject({ passed: 1, total: 3, errored: 2 });
     const lines = result.stdout
       .trim()
       .split(/\r?\n/)
@@ -241,6 +255,12 @@ it("counts a case whose scoring throws as a failure and scores the rest", {
       id: "never-recorded",
       passed: false,
       runError: expect.stringMatching(/no recorded Jev answer/),
+    });
+    // The whole message survives, not just its first line.
+    expect(lines[2]).toMatchObject({
+      id: "broken-usage",
+      passed: false,
+      runError: expect.stringMatching(/usage/),
     });
   } finally {
     rmSync(dir, { recursive: true, force: true });

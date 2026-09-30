@@ -75,6 +75,7 @@ A test keeps the fixture equal to the generator's output. Keep real founder-labe
 - Cost is $0.042 per million input tokens (output tokens are free), reported per case in micro-dollars.
 - `--questions`, `--record`, and `--recorded` require `--backend jev` and a nonempty value. `--record` and `--recorded` are mutually exclusive; invalid combinations stop before any provider call.
 - Every Jev result records the rubric version, composition version, criterion weights, quality/criteria weights, yes-threshold, and quality maximum. `configurationHash` fingerprints the full rubric and that composition; `requestHash` separately fingerprints the model input.
+- A case whose scorer throws (a reply that breaks the output schema, a missing recording) prints a `runError` line with the full message and its causes, counts as failed and as `errored`, and the remaining cases still run. Its cost is unknown, so the stderr summary's `costMicroUsd` excludes it and says so.
 - `mode` is `live` or `replay`. In replay mode, `metricsSource` is `recorded-call`: latency, usage, per-case cost and the stderr cost total describe the original calls, not new API spending. Live results use `current-call`.
 
 ```sh
