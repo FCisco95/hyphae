@@ -1,11 +1,13 @@
 ---
 date: 2026-09-30
-summary: Part A and the late Jev review fixes are complete and pushed. feat/jev-eval is at 7c00629, with all three findings addressed and its full local gate and CI green. docs/runbook-c-truths is pushed at b95d0ab after its full gate. The optional Claude follow-up review returned HTTP 429 twice, including after the reported credit reset; no follow-up verdict exists. fix/timing-budgets is at 02ee74e with ten continuation full-suite passes and green CI. Later on 2026-09-30 Cisco ruled on the Jev questions and the first live Jev vs Sonnet run happened (feat/jev-eval 4fe3815; docs/handoffs/2026-09-30-jev-eval-run.md). Part B waits for 2026-10-02T00:00Z and Cisco. Production remains 86ff258 on Neon 0000-0009, first_paid_epoch 2; Runbook C's candidate remains b3c82c7. Nothing merged, deployed or written to production.
+summary: Session closed 2026-09-30 evening (record: docs/handoffs/2026-09-30-session-close.md). Part A and the late Jev review fixes are complete and pushed. feat/jev-eval is at 7c00629, with all three findings addressed and its full local gate and CI green. docs/runbook-c-truths is pushed at b95d0ab after its full gate. The optional Claude follow-up review returned HTTP 429 twice, including after the reported credit reset; no follow-up verdict exists. fix/timing-budgets is at 02ee74e with ten continuation full-suite passes and green CI. Later on 2026-09-30 Cisco ruled nine times on the Jev questions, the first live Jev vs Sonnet run happened, and feat/jev-eval is now at 707d7da with question set v3 (docs/handoffs/2026-09-30-jev-eval-run.md). Part B waits for 2026-10-02T00:00Z and Cisco. Production remains 86ff258 on Neon 0000-0009, first_paid_epoch 2; Runbook C's candidate remains b3c82c7. Nothing merged, deployed or written to production.
 ---
 
 # Hyphae handoff
 
 ## TL;DR
+
+**Session close, 2026-09-30 evening** (receipt: [session close](handoffs/2026-09-30-session-close.md), written for `/organic-sync`). The pre-Oct-2 work is finished: the CLAUDE.md CI note is corrected on `main`, and the Jev eval ran live with nine rulings from Cisco, pushed on `feat/jev-eval` `707d7da`. The production path is untouched (production `86ff258`, Neon 0000 to 0009, Runbook C candidate `b3c82c7`, API tree equals the candidate). **Next gate: 2026-10-02T00:00Z, with Cisco** (Part B below). The Jev follow-ups are optional and need Cisco's grades and two answers about the project brief.
 
 **Part A of the Oct 2 arc is done** (2026-09-30; record: [2026-09-30 Part A](handoffs/2026-09-30-part-a.md)). Next is **Part B, after 2026-10-02T00:00Z, with Cisco**: epoch 1's close check, the Ledger devnet deploy, then Runbook C Parts 1–2 on mainnet.
 
@@ -30,14 +32,15 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 
 **What to do next:**
 1. **Cisco, any time before Oct 2 (dashboard):** Vercel Pro with usage alerts (board decision 4, ruled yes).
-2. **Cisco, when ready:** write `13 Jev Question Set` in the vault. H1's DRAFT is a starting point; its "Open for Cisco" section has five questions. Then 2c–2d run in one session.
+2. **Optional, whenever Cisco has time (Jev eval):** answer the project brief's two open questions and confirm its flagged sentence (`docs/evals/project-brief-mycel.md` on `feat/jev-eval`); grade more replies, including jokes and short opinions, so a calibration can be fit and tested on a holdout. The `13 Jev Question Set` vault note is no longer needed: the set is `docs/evals/jev-questions.md`.
 3. **Oct 2 after 00:00Z (read-only):** epoch 1 `closed` with its snapshot, epoch 2 open, `reward-close` logged no error, the payout gate refuses epoch 1 as `before_first_paid_epoch`.
 4. **Oct 2, attended (~30 min):** the Ledger-signed devnet deploy (Runbook C's C8–C13 at a fresh throwaway address, Windows CLI 3.1.10, `usb://ledger?key=2/0`), then one `/claim` from a real browser wallet against that devnet program.
 5. **Oct 2–3, attended:** Runbook C C1–C13 on mainnet, one step per message. After C7 passes, merge `ad40b77`; after C13, merge `b95d0ab` (rebase, fast-forward).
 
 ## Metadata
 
-- Last updated: 2026-09-30, final handoff requested by Cisco; remote branch heads and all ten timing-run logs verified.
+- Last updated: 2026-09-30 evening, session close requested by Cisco; `origin` branch heads re-verified (`feat/jev-eval` `707d7da`, `feat/rules-v2` `158452f`, `fix/timing-budgets` `02ee74e`, `docs/runbook-c-truths` `b95d0ab`).
+- This session's runner: Claude Code **Sonnet 5.5**, effort **high**, no helpers; reviewer Codex `gpt-6.1-sol` high, read-only, three rounds (eight findings, all fixed). Usage was not exposed (budget counter about 45k, unverified). Spend: Sonnet $0.464 recorded plus about $0.19 estimated; Jev about $0.07 estimated. Full accounting in the session-close receipt.
 - Continuation runner: Codex, GPT-6 (specific variant and effort not exposed by this runtime); no helpers. The original Orca/provider session was read only, never resumed or modified.
 - Runner: Claude Code, **Opus 5.5 (`claude-opus-5-5`)**, effort **xhigh**, unattended. Helpers: three Claude **Sonnet** subagents (H1–H3), each writing only its own files; the main session reviewed and committed every diff. Reviews: Codex `gpt-6-astra`, reasoning xhigh, read-only.
 - Authority: the session prompt's Part A and Cisco's rulings on the vault's Integration Board (2026-09-29, "I agree with them"): decision 2 "fix it", decision 3 yes, decision 4 yes.
@@ -54,7 +57,7 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 | Runbook C candidate | `b3c82c7` (CI `36596228282`) | Pinned. Migrations 0010–0012, HYP-01/02 and the full `/v1` arrive at C4 and C7. |
 | `main` | docs after `b3c82c7`; API tree equals the candidate | `2302224` (CLAUDE.md CI note) pushed on top of `f902a64`. |
 | `feat/rules-v2` | `158452f` (CI `36694552444` green) | Pushed. Rubric 1.3.1 final. Merges during epoch 3. |
-| `feat/jev-eval` | `5882fb3` | Pushed. Ruled question set v3 (v1 for the first live run), report with three addenda; gate green (test run 1 of 3 failed on the known settlement flake, see the run record). Merges during epoch 3. |
+| `feat/jev-eval` | `707d7da` | Pushed. Ruled question set v3 (v1 for the first live run), report with three addenda, approved project brief (not wired in); gate green (test run 1 of 3 failed on the known settlement flake, see the run record). Merges during epoch 3. |
 | `fix/timing-budgets` | `02ee74e` on `8d9acfc` | Pushed; CI `36708435237` passed. Merge after C7 (test files of the frozen API). |
 | `docs/runbook-c-truths` | `ad40b77` (C7), `b95d0ab` (C13) | Pushed. Merge each commit when its step has passed. |
 | `FCisco95/hyphae-program` | `9999bfa` | Public: program, rubrics 1.0.0–1.3.1. |
@@ -117,6 +120,10 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 4. Jev eval follow-up: see the Jev eval run record's recommended next steps; needs Cisco's real labelled replies.
 5. Oct 8–9: Runbook C Parts 3–4 (unchanged). Oct 9–10: the video and the submission checklist. During epoch 3, after the payout: merge `feat/rules-v2` and `feat/jev-eval`, deploy, then the O4 proposal of 1.3.1.
 
+## For /organic-sync
+
+Everything downstream is listed in [session close](handoffs/2026-09-30-session-close.md), "Downstream changes": the applied CI patch, the nine rulings to record, the missing `13 Jev Question Set` note (superseded by `docs/evals/jev-questions.md`), the rubric-level ideas for a version after 1.3.1, the approved brief and Cisco's description of Organic. Nothing changed in `organic-app`, the public `hyphae-program` repo, the vault or any sibling.
+
 ## For Organic and other integrators
 
 Organic reads Hyphae only through the public read API. Production serves the community and epoch routes; the wallet-claims route, `/docs` and `/v1/openapi.json` arrive with Runbook C's C7 (planned Oct 2–3). To find a community's vault, derive the PDA of `["vault", community]`, where `community` is the PDA of `["community", mint, admin]`, on the program `EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E`.
@@ -127,6 +134,7 @@ Organic reads Hyphae only through the public read API. Production serves the com
 3. `solana-dev`: the Ledger devnet deploy and C8–C13.
 4. `typesafe:typesafe-ai` and `superpowers:test-driven-development`: 2c–2d once Cisco's set exists.
 5. `handoff` at the end.
+6. Only if the Jev follow-ups start: `typesafe:typesafe-ai` and `superpowers:test-driven-development`; read `docs/handoffs/2026-09-30-jev-eval-run.md` first.
 
 ## Generated artifacts this session
 
@@ -143,7 +151,7 @@ No keys, credentials, secrets, services, on-chain accounts or scheduled jobs wer
 ## Next-session prompt
 
 ```
-Hyphae Part B, after 2026-10-02T00:00Z, with Cisco. Production runs 86ff258 on Neon 0000-0009 (site https://hyphae-delta.vercel.app, first_paid_epoch = 2). Part A is done (docs/handoffs/2026-09-30-part-a.md); its late Jev review findings are fixed in 7c00629 (docs/handoffs/2026-09-30-orca-continuation.md). Pushed, unmerged: feat/rules-v2 158452f and feat/jev-eval 7c00629 (merge during epoch 3), fix/timing-budgets 02ee74e (CI 36708435237 passed; merge after C7), docs/runbook-c-truths ad40b77 (C7) and b95d0ab (C13). Runbook C's candidate is b3c82c7.
+Hyphae Part B, after 2026-10-02T00:00Z, with Cisco. Production runs 86ff258 on Neon 0000-0009 (site https://hyphae-delta.vercel.app, first_paid_epoch = 2). Part A is done (docs/handoffs/2026-09-30-part-a.md); its late Jev review findings are fixed in 7c00629 (docs/handoffs/2026-09-30-orca-continuation.md). Pushed, unmerged: feat/rules-v2 158452f and feat/jev-eval 707d7da (merge during epoch 3; docs/handoffs/2026-09-30-session-close.md), fix/timing-budgets 02ee74e (CI 36708435237 passed; merge after C7), docs/runbook-c-truths ad40b77 (C7) and b95d0ab (C13). Runbook C's candidate is b3c82c7.
 
 Read: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-09-30-part-a.md, docs/handoffs/2026-09-28-runbook-c.md (its first section lists Oct 2's preconditions), docs/handoffs/2026-09-28-verifiable-build-and-deploy-rehearsal.md, docs/handoffs/2026-09-27-ledger-transport.md.
 Model: claude-opus-5-5 (high) - production checks and a Ledger-signed deploy.
