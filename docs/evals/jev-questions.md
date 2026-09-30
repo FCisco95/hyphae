@@ -1,4 +1,4 @@
-# Jev question set v1
+# Jev question set v2
 
 **Question set `v2-2026-09-30`. Drafted by an agent, then ruled on and amended by Cisco in session on 2026-09-30 (five rulings at the end; ruling 5 was amended after the first labeling session). The questions are the agent's wording plus Cisco's amendment to the AI-writing questions; Cisco did not write them from scratch.**
 
@@ -276,7 +276,7 @@ Check both `raw` and `credited` on every case, including the flagged cases 3, 7,
 ### Ruling 5
 The tell that separates case 1 from case 12 is a sentence built backwards: the thing first, then the speaker's verb after it ("Buying the coin is what I'm going to do", where a person writes "I'm going to buy the coin"). One such sentence is enough for `ai_slop`. Cisco's words: "no one talks like this." The `ai_slop` and `own_voice` questions say so without quoting a fixture case.
 
-**Amended the same day, after labeling session 1 and a holdout (session 2).** The shape alone is not the tell: "Sometimes people do sentences like this." It reads as AI when the reply is polished, complete and praises an abstract quality, or when two such sentences are stacked. It reads human when it is unforced, about a concrete thing, or ends on a tossed-off human reaction ("nice"). Question set v2 says so. On the holdout the amended wording stopped flagging the human replies with the shape (probabilities 0.69 to 0.19 and 0.44 to 0.16) and kept Cisco's clear AI calls flagged, though one fell from 0.80 to 0.58. It still flags a reply Cisco first called human and later could not explain, and still misses fixture case 1.
+**Amended the same day, after labeling session 1 and a holdout (session 2).** The shape alone is not the tell: "Sometimes people do sentences like this." It reads as AI when the reply is polished, complete and praises an abstract quality, or when two such sentences are stacked. It reads human when it is unforced, about a concrete thing, or ends on a tossed-off human reaction ("nice"). Question set v2 says so. On the holdout the amended wording cleared one flag on a reply with the shape that Cisco could not call (0.69 to 0.19) and lowered another such reply that was already under the threshold (0.44 to 0.16), and kept Cisco's clear AI calls flagged, though one fell from 0.80 to 0.58. It still flags a reply Cisco first called human and later could not explain, and still misses fixture case 1.
 
 ## Later, not in this eval
 
