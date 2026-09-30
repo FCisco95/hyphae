@@ -1,6 +1,6 @@
 ---
 date: 2026-09-30
-summary: Recovered the prior Orca session's late Jev FIX review and addressed its three findings on feat/jev-eval. The offline harness rejects unsafe CLI combinations and records configuration and replay provenance. The timing branch's original CI failure was also recovered; its test-only correction is being verified. Production and the frozen candidate are unchanged.
+summary: Recovered the prior Orca session's late Jev FIX review and addressed its three findings on feat/jev-eval. The offline harness rejects unsafe CLI combinations and records configuration and replay provenance. The timing branch's original CI failure was also recovered; its test-only correction passed local verification and CI. Production and the frozen candidate are unchanged.
 ---
 
 # Sep 30 Orca continuation
@@ -9,7 +9,7 @@ summary: Recovered the prior Orca session's late Jev FIX review and addressed it
 
 `feat/jev-eval` **`7c00629` is pushed** after the full local gate. All three findings from the late review of `4a4f4ec..0894335` are addressed. No live scoring evaluation ran; Cisco's `13 Jev Question Set` is still absent. Part B remains after **2026-10-02T00:00Z**, with Cisco.
 
-The timing branch's first CI run failed after the prior session ended. Test-only correction `02ee74e` is pushed; five additional full-suite passes and a focused mutation check are complete. CI run `36708435237` is queued or running; its final receipt still needs to be added before this continuation closes.
+The timing branch's first CI run failed after the prior session ended. Test-only correction `02ee74e` is pushed; five additional full-suite passes and a focused mutation check are complete. CI run `36708435237` passed, including the full test, typecheck, lint, migration, Postgres and contract-vector gates.
 
 ## Authority and scope
 
@@ -48,7 +48,7 @@ The original Codex review's findings were checked against the code and fixed tes
 - Original `fix/timing-budgets` `8d9acfc` had 12 local full-suite passes, but CI **`36696829889` failed**: `settlement.test.ts`, "starts no chain read for an entry once the list's deadline has passed", expected eight reads and observed nine.
 - The test assumed a timer completing meant `Date.now()` had reached the shared deadline. A controlled-clock experiment reproduced that dependency (12 reads while the wall clock remained before the deadline).
 - The test now advances a scoped `Date.now()` spy to the exact deadline after the first eight reads start, and restores it in `finally`. It keeps the real service, database, concurrency limit, timeout path and assertions. No production code or deadline changed. The existing real-time slow-chain test still covers elapsed response time.
-- Five additional full-suite passes completed locally after `02ee74e`; the weakened `Date.now() > until` mutation failed the focused test as expected. CI `36708435237` for `02ee74e` is pending; no CI result is claimed yet.
+- Five additional full-suite passes completed locally after `02ee74e`; the weakened `Date.now() > until` mutation failed the focused test as expected. CI `36708435237` for `02ee74e` passed all jobs.
 
 ## Repository state and next actions
 
@@ -71,7 +71,7 @@ The original Codex review's findings were checked against the code and fixed tes
 | What | Where it lives | Notes |
 |---|---|---|
 | Jev correction | `feat/jev-eval`, `7c00629` | Pushed, unmerged. |
-| Timing correction | `fix/timing-budgets`, `02ee74e` | Pushed; five full-suite passes and mutation check recorded; CI pending. |
+| Timing correction | `fix/timing-budgets`, `02ee74e` | Pushed; five full-suite passes, mutation check and CI `36708435237` recorded. |
 | Durable continuation receipt | This document; `docs/HANDOFF.md`; `docs/BUILDLOG.md` | Public-safe, portable records. |
 | Gate logs, mutation config, denied-review result | Local scratch only | Outcomes are recorded here; scratch paths are not required to resume. |
 
