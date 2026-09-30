@@ -1,6 +1,6 @@
 ---
 date: 2026-09-30
-summary: Part A and the late Jev review fixes are complete and pushed. feat/jev-eval is at 7c00629, with all three findings addressed and its full local gate and CI green. docs/runbook-c-truths is pushed at b95d0ab after its full gate. The optional Claude follow-up review returned HTTP 429 twice, including after the reported credit reset; no follow-up verdict exists. fix/timing-budgets is at 02ee74e with ten continuation full-suite passes and green CI. No live Jev evaluation ran; Cisco's question set is still needed. Part B waits for 2026-10-02T00:00Z and Cisco. Production remains 86ff258 on Neon 0000-0009, first_paid_epoch 2; Runbook C's candidate remains b3c82c7. Nothing merged, deployed or written to production.
+summary: Part A and the late Jev review fixes are complete and pushed. feat/jev-eval is at 7c00629, with all three findings addressed and its full local gate and CI green. docs/runbook-c-truths is pushed at b95d0ab after its full gate. The optional Claude follow-up review returned HTTP 429 twice, including after the reported credit reset; no follow-up verdict exists. fix/timing-budgets is at 02ee74e with ten continuation full-suite passes and green CI. Later on 2026-09-30 Cisco ruled on the Jev questions and the first live Jev vs Sonnet run happened (feat/jev-eval 4fe3815; docs/handoffs/2026-09-30-jev-eval-run.md). Part B waits for 2026-10-02T00:00Z and Cisco. Production remains 86ff258 on Neon 0000-0009, first_paid_epoch 2; Runbook C's candidate remains b3c82c7. Nothing merged, deployed or written to production.
 ---
 
 # Hyphae handoff
@@ -10,6 +10,8 @@ summary: Part A and the late Jev review fixes are complete and pushed. feat/jev-
 **Part A of the Oct 2 arc is done** (2026-09-30; record: [2026-09-30 Part A](handoffs/2026-09-30-part-a.md)). Next is **Part B, after 2026-10-02T00:00Z, with Cisco**: epoch 1's close check, the Ledger devnet deploy, then Runbook C Parts 1–2 on mainnet.
 
 **The quoted prior-session open items are complete:** all three Jev findings are fixed on `feat/jev-eval` at **`7c00629`**, pushed, and `docs/runbook-c-truths` is pushed at **`b95d0ab`** after its full gate. Jev now rejects unsafe options before provider calls, records scoring configuration and live/replay provenance, and tests request identity and composition boundaries. Its full local gate passed (792 tests + 1 skipped; Postgres 44/44), and CI `36707618974` passed. The runbook branch's CI `36697228485` passed. Do not reopen these as unfinished implementation or an unpushed branch.
+
+**The Jev eval ran live, in the same day's later session** (record: [Jev eval run](handoffs/2026-09-30-jev-eval-run.md)). Cisco ruled on the five open questions in session; `feat/jev-eval` is at **`4fe3815`**, pushed, with the ruled question set v1, the eval-only `low_effort` zero, the first run's report and recordings. Jev passed 4 of 16 (rubric 1.2.0) and 5 of 16 (1.3.1), Sonnet 3 and 2; no superiority claim from 16 cases. Ruling 5's "backwards sentence" tell did not fire (ai_slop P(yes) 0.09 on case 1), and raw scores on flagged cases miss the founder's targets in both directions. Next: rewrite the criteria questions, add a deterministic backwards-sentence check, and get real labelled examples from Cisco.
 
 **Optional follow-up review remains pending:** both fresh Claude attempts, including the retry after Cisco reported resetting credits, returned HTTP 429 with zero review tokens and a reported reset of 14:20 Lisbon. No follow-up SHIP verdict is claimed. The original mandatory rubric review remains SHIP. Details: [continuation receipt](handoffs/2026-09-30-orca-continuation.md).
 
@@ -52,7 +54,7 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 | Runbook C candidate | `b3c82c7` (CI `36596228282`) | Pinned. Migrations 0010–0012, HYP-01/02 and the full `/v1` arrive at C4 and C7. |
 | `main` | docs after `b3c82c7`; API tree equals the candidate | `2302224` (CLAUDE.md CI note) pushed on top of `f902a64`. |
 | `feat/rules-v2` | `158452f` (CI `36694552444` green) | Pushed. Rubric 1.3.1 final. Merges during epoch 3. |
-| `feat/jev-eval` | `7c00629` | Pushed. Late review findings fixed; 2c–2d wait for Cisco's set. Merges during epoch 3. |
+| `feat/jev-eval` | `4fe3815` | Pushed. Ruled question set v1, first live run and its report; gate green (test run 1 of 3 failed on the known settlement flake, see the run record). Merges during epoch 3. |
 | `fix/timing-budgets` | `02ee74e` on `8d9acfc` | Pushed; CI `36708435237` passed. Merge after C7 (test files of the frozen API). |
 | `docs/runbook-c-truths` | `ad40b77` (C7), `b95d0ab` (C13) | Pushed. Merge each commit when its step has passed. |
 | `FCisco95/hyphae-program` | `9999bfa` | Public: program, rubrics 1.0.0–1.3.1. |
@@ -90,7 +92,8 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 
 | Item | Status | Recommendation |
 |---|---|---|
-| The Jev question set | **Needed** for 2c–2d. | Cisco writes `13 Jev Question Set` from H1's DRAFT; the next session adds it to `jev-questions.ts` as the default, then runs Jev and Sonnet on 1.2.0 and 1.3.1. |
+| The Jev question set | **Ruled 2026-09-30** (five rulings, `docs/evals/jev-questions.md`); first run done. | Next: fix the raw-score double count in the criteria questions, add a deterministic backwards-sentence check, and have Cisco supply 30+ real labelled replies before tuning against the 16. |
+| Ritual posts and the `low_effort` pre-filter | New, Cisco's ideas 2026-09-30. | Rubric-level design for a version after 1.3.1: an admin tags ritual (greeting) posts at intake with a small fixed credit and no AI call, and a no-AI pre-filter zeroes a bare gm or emoji-only reply. Production's `creditedScore` does not zero `low_effort` yet; only the eval does. |
 | When `fix/timing-budgets` merges | Open. | After C7: its files are tests of `main`'s frozen API; merging before C1 would change the candidate's tree. |
 | The public `hyphae-program` README at C7 and C13 | Open. | Allow the C7 and C13 sessions to edit that README's status, Read API and funding lines (the same changes as `docs/runbook-c-truths`); this session could write only `rubrics/**`. |
 | `CLAUDE.md` says "There is no CI" | **Done** 2026-09-30 (`2302224`). | CI runs the gate on every push; the local gate still runs before each push. |
@@ -104,14 +107,14 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 
 - **Optional fresh Claude review of `0894335..7c00629`:** two HTTP 429 responses, zero review tokens, no verdict. Retry when Claude CLI access is available; the three original findings are already fixed and pushed.
 - **`gates.pg.test.ts` "concurrent runs settle on one row…" hung to its 60 s timeout** in 2 of 8 `test:pg` runs on 2026-09-30, both under heavy parallel load; it passes in about 4 s otherwise, on `main` too. `main`'s API is frozen before C1; read `runHoldChecks`'s pool and lock path after the payout. Production runs one worker, so the multi-pool race doesn't arise there.
-- **H1's draft notes** for the eval: no case tests `link_mismatch` positively; the composed raw scores of flagged cases 3, 7, 11 and 13 will land below their founder raw targets while their credit (0) is right; a perfect reply composes to 100 where the founder caps ordinary replies at 90. All are in the draft's "Open for Cisco".
+- **Jev eval, remaining:** no case tests `link_mismatch` positively; flagged-case raw scores miss in both directions (Ruling 4 says fix the questions, not the check); no cap on a perfect reply (Ruling 3). Details in the run report `docs/evals/jev-first-run-2026-09-30.md` on `feat/jev-eval`.
 
 ## Next Actions
 
 1. Oct 2 after 00:00Z, read-only: epoch 1's close (the Next-session prompt's step 6). A failure there stops Part B: report, don't repair.
 2. Oct 2, attended: the Ledger devnet deploy and one browser-wallet `/claim` on devnet.
 3. Oct 2–3, attended: Runbook C C1–C13, one step per message; merge `ad40b77` after C7 and `b95d0ab` after C13; sync the public README if allowed.
-4. Once Cisco's question set exists: 2c–2d on `feat/jev-eval`.
+4. Jev eval follow-up: see the Jev eval run record's recommended next steps; needs Cisco's real labelled replies.
 5. Oct 8–9: Runbook C Parts 3–4 (unchanged). Oct 9–10: the video and the submission checklist. During epoch 3, after the payout: merge `feat/rules-v2` and `feat/jev-eval`, deploy, then the O4 proposal of 1.3.1.
 
 ## For Organic and other integrators
