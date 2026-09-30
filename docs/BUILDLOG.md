@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-09-30 · continuation — the late Jev review is fixed, and the timing race is isolated
+
+**Shipped:** the late review of `feat/jev-eval` found one unsafe CLI path and two provenance gaps. Commit `7c00629` now rejects Jev-only options unless `--backend jev` is explicit, rejects empty or conflicting recording flags before provider construction, records composition and configuration fingerprints separately from request identity, and labels live versus historical replay metrics. The review’s missing model/question and boundary tests were added. A test-only timing correction, `02ee74e`, controls the settlement deadline clock after CI exposed a nine-versus-eight read race in `8d9acfc`.
+**Decision:** keep the Jev question set draft-only until Cisco writes `13 Jev Question Set`; do not spend on a live comparison. Keep the timing change test-only and wait for CI before calling it ready to merge.
+**Numbers:** Jev branch full gate: 792 tests + 1 skipped, typecheck clean, Biome 275 files, drizzle check pass, Postgres 44/44; 8 invalid CLI cases rejected with zero provider calls; timing correction: 5 additional full-suite passes, weakened-guard mutation failed as expected; 0 live model calls, 0 deployments, 0 production writes.
+**Commits:** `feat/jev-eval` `7c00629` pushed; `fix/timing-budgets` `02ee74e` pushed; CI `36707618974` for Jev passed, CI `36708435237` for timing is pending. A fresh Claude follow-up review was unavailable because the account returned HTTP 429; no follow-up verdict is claimed.
+**Next:** after 2026-10-02T00:00Z, with Cisco, perform the read-only epoch 1 close check before the Ledger devnet deploy and Runbook C.
+
 ## 2026-09-30 · Day 17 of 28 — the rules say what the code does, and the mainnet runbook moves up
 
 **Shipped:** the planned rubric used to say that a reply reading like an unedited AI draft earns zero. The code never did that: it caps such a reply at 79, or at 40 when it's obvious, and only then does the 60 floor bite. The founder's own graded example earns 70. On Cisco's ruling, rubric 1.3.1 now says exactly that, a test ties the sentence to the credit rule's numbers, and a second model family reviewed it: ship, no findings. It is published in the public program repo, byte for byte. The scoring harness gained a second judge: TypeSafe's Jev, a model that answers typed yes/no and scale questions instead of writing text. Code turns its answers into a 0–100 score and then applies the same credit rules as production. It is pinned to one model version and can replay a recorded run without a key. It has not been run for real yet: the questions it asks are a draft, waiting for Cisco's own. And the mainnet runbook now runs its first half on Oct 2–3 instead of Oct 7–8.
