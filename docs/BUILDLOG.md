@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-09-30 · Oct 2 arc, Part A follow-up: the CI note is corrected, the eval still waits for questions
+
+**Shipped:** `CLAUDE.md` no longer says "There is no CI". CI runs the gate on every push; the local gate still runs before each push. Start state re-verified first: `main` = `origin/main` `f902a64`, CI `36714442447` green, the four branch tips unchanged, and the API tree identical to Runbook C's candidate `b3c82c7`.
+**Decision:** do not run the Jev comparison yet. Cisco's `13 Jev Question Set` doesn't exist in the vault, and the draft's five open questions are Cisco's to answer; running 16 synthetic cases against a draft would produce a result nobody could rely on. The change touches only docs, so the candidate tree stays untouched before C7.
+**Numbers:** full local gate on the commit: `pnpm test`, `pnpm typecheck`, `pnpm lint` all exit 0 · 0 live scoring calls, 0 deployments, 0 production writes.
+**Commits:** `2302224` pushed to `main`.
+**Next:** when Cisco supplies the question set, record the five rulings and run 2c–2d on `feat/jev-eval`. After 2026-10-02T00:00Z, with Cisco: the read-only epoch 1 close check, then the Ledger devnet rehearsal, then Runbook C.
+
 ## 2026-09-30 · continuation — the late Jev review is fixed, and the timing race is isolated
 
 **Shipped:** the late review of `feat/jev-eval` found one unsafe CLI path and two provenance gaps. Commit `7c00629` now rejects Jev-only options unless `--backend jev` is explicit, rejects empty or conflicting recording flags before provider construction, records composition and configuration fingerprints separately from request identity, and labels live versus historical replay metrics. The review’s missing model/question and boundary tests were added. A test-only timing correction, `02ee74e`, controls the settlement deadline clock after CI exposed a nine-versus-eight read race in `8d9acfc`.

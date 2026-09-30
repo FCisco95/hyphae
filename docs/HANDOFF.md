@@ -50,7 +50,7 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 | Public site | Vercel project `hyphae`, https://hyphae-delta.vercel.app | **Live** from `main`. Hobby plan until Cisco moves it to Pro. |
 | Program | devnet `EAz8WkyU…`, upgrade authority the throwaway `Fcv1xtZ6…` | Devnet only; mainnet `AccountNotFound`. |
 | Runbook C candidate | `b3c82c7` (CI `36596228282`) | Pinned. Migrations 0010–0012, HYP-01/02 and the full `/v1` arrive at C4 and C7. |
-| `main` | docs after `b3c82c7` | Prior handoff commits `e34d7fe`, `ce99c4e` pushed; this final refresh follows them. |
+| `main` | docs after `b3c82c7`; API tree equals the candidate | `2302224` (CLAUDE.md CI note) pushed on top of `f902a64`. |
 | `feat/rules-v2` | `158452f` (CI `36694552444` green) | Pushed. Rubric 1.3.1 final. Merges during epoch 3. |
 | `feat/jev-eval` | `7c00629` | Pushed. Late review findings fixed; 2c–2d wait for Cisco's set. Merges during epoch 3. |
 | `fix/timing-budgets` | `02ee74e` on `8d9acfc` | Pushed; CI `36708435237` passed. Merge after C7 (test files of the frozen API). |
@@ -93,7 +93,7 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 | The Jev question set | **Needed** for 2c–2d. | Cisco writes `13 Jev Question Set` from H1's DRAFT; the next session adds it to `jev-questions.ts` as the default, then runs Jev and Sonnet on 1.2.0 and 1.3.1. |
 | When `fix/timing-budgets` merges | Open. | After C7: its files are tests of `main`'s frozen API; merging before C1 would change the candidate's tree. |
 | The public `hyphae-program` README at C7 and C13 | Open. | Allow the C7 and C13 sessions to edit that README's status, Read API and funding lines (the same changes as `docs/runbook-c-truths`); this session could write only `rubrics/**`. |
-| `CLAUDE.md` says "There is no CI" | Open. | Change it to "CI runs the gate on every push; the local gate still runs before each push". |
+| `CLAUDE.md` says "There is no CI" | **Done** 2026-09-30 (`2302224`). | CI runs the gate on every push; the local gate still runs before each push. |
 | Repo visibility and licence | Ruled and done 2026-09-29, except Colosseum access. | Cisco adds `hackathon@colosseum.com` to `FCisco95/hyphae` before submitting (checklist step 4). |
 | Vercel plan | **Ruled yes 2026-09-29** (board decision 4). | Cisco's dashboard step: Pro with usage alerts. |
 | The site's domain | Open. | Keep `hyphae-delta.vercel.app` until a domain is bought. |
