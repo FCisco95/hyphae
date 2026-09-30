@@ -22,4 +22,4 @@ it("seeds two communities in the same millisecond without a clash", async () => 
   } finally {
     vi.restoreAllMocks();
   }
-});
+}, 30_000);

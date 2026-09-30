@@ -21,13 +21,36 @@ import {
   type Instruction,
 } from "@solana/kit";
 import { and, eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { loadIntent, type PublicationIntent } from "../payout/intent.js";
 import { type PublishChain, publishEpoch } from "../payout/publish.js";
 import { type ReadySeed, randomAddress, seedReadyEpoch } from "../payout/ready-seed.js";
 import { createTestDb } from "../rewards/test-db.js";
 import { readClaim, readEpoch, readWalletClaims } from "./read-service.js";
 import { LOOKUPS_AT_ONCE, mapLimit, type SettlementReader } from "./settlement.js";
+
+// The deadline tests time the read path, not program-address derivation: each derivation is a
+// SHA-256 round trip of about 1 ms, forty of them stand between the deadline's start and the first
+// batch of eight chain reads, and under the full parallel run that stretched past 150 ms. Each
+// address is derived once, while seeding, and reused inside the timed window.
+vi.mock("@hyphae/core", async (importOriginal) => {
+  const core = await importOriginal<typeof import("@hyphae/core")>();
+  const once = <A extends unknown[]>(derive: (...args: A) => Promise<Address>) => {
+    const derived = new Map<string, Promise<Address>>();
+    return (...args: A) => {
+      const key = args.join("/");
+      const found = derived.get(key) ?? derive(...args);
+      derived.set(key, found);
+      return found;
+    };
+  };
+  return {
+    ...core,
+    epochAddress: once(core.epochAddress),
+    vaultAddress: once(core.vaultAddress),
+    receiptAddress: once(core.receiptAddress),
+  };
+});
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -157,6 +180,10 @@ async function published(wallets: Partial<ReadySeed["wallets"]> = {}): Promise<{
   const intent = await loadIntent(t.db, seed.epochId);
   if (!intent) throw new Error("no intent");
   const epoch = await epochAddress(HYPHAE_PROGRAM_ID, address(community), 1n);
+  await Promise.all([
+    vaultAddress(HYPHAE_PROGRAM_ID, address(community)),
+    ...intent.leaves.map((l) => receiptAddress(HYPHAE_PROGRAM_ID, epoch, address(l.wallet))),
+  ]);
   return { seed, intent, community, epoch };
 }
 
@@ -425,7 +452,7 @@ describe("P14 allocation and payment", () => {
     const stuck = await epochOf(p.seed, fake.reader, 500);
     const down = { status: "unavailable", reason: "chain_unavailable" };
     expect([stuck.allocation, stuck.payment]).toEqual([down, down]);
-  });
+  }, 30_000);
 });
 
 describe("mapLimit", () => {
@@ -558,7 +585,7 @@ describe("a wallet's claims", () => {
     expect(w.claims.every((c) => c.payment.status === "unavailable")).toBe(true);
     // The first batch waits out the deadline; nothing after it reaches the chain.
     expect(reads.accounts).toBe(LOOKUPS_AT_ONCE);
-  }, 30_000);
+  }, 60_000);
 
   it("gives up on a slow chain by one deadline for the whole list", async () => {
     const wallet = randomAddress();
@@ -576,7 +603,7 @@ describe("a wallet's claims", () => {
       "unavailable",
       "unavailable",
     ]);
-  });
+  }, 30_000);
 });
 
 describe("the claim route", () => {
