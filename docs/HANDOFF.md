@@ -1,6 +1,6 @@
 ---
 date: 2026-09-30
-summary: Part A of the Oct 2 arc is done (Sep 30); Part B waits for 2026-10-02T00:00Z and Cisco. Rubric 1.3.1 now says an unedited AI draft is capped at 79, or at 40 when obvious (Cisco's "fix it"); Codex Astra SHIP in one round; it is public in FCisco95/hyphae-program 9999bfa byte for byte. feat/jev-eval has the Jev backend (jev-1.13.0 pinned, a recorded mode, a DRAFT question set as default), with the late FIX review addressed at 7c00629; no live run, since Cisco's question set does not exist yet. Runbook C Parts 1-2 run Oct 2-3 (board decision 3): candidate pinned to b3c82c7, C4 behind a 3 s lock timeout over Neon's direct endpoint (rehearsed, read back on Neon), a worker-recovery check at C7. fix/timing-budgets has the test-only deadline correction at 02ee74e; five continuation full-suite passes and CI 36708435237 passed. docs/runbook-c-truths holds the C7 and C13 doc changes, one commit each. The video script and submission checklist are current. Production is unchanged since the Sep 29 cutover: 86ff258 on Neon 0000-0009, the site live, first_paid_epoch 2. Nothing merged, deployed or written to production.
+summary: Part A and the late Jev review fixes are complete and pushed. feat/jev-eval is at 7c00629, with all three findings addressed and its full local gate and CI green. docs/runbook-c-truths is pushed at b95d0ab after its full gate. The optional Claude follow-up review returned HTTP 429 twice, including after the reported credit reset; no follow-up verdict exists. fix/timing-budgets is at 02ee74e with ten continuation full-suite passes and green CI. No live Jev evaluation ran; Cisco's question set is still needed. Part B waits for 2026-10-02T00:00Z and Cisco. Production remains 86ff258 on Neon 0000-0009, first_paid_epoch 2; Runbook C's candidate remains b3c82c7. Nothing merged, deployed or written to production.
 ---
 
 # Hyphae handoff
@@ -9,9 +9,11 @@ summary: Part A of the Oct 2 arc is done (Sep 30); Part B waits for 2026-10-02T0
 
 **Part A of the Oct 2 arc is done** (2026-09-30; record: [2026-09-30 Part A](handoffs/2026-09-30-part-a.md)). Next is **Part B, after 2026-10-02T00:00Z, with Cisco**: epoch 1's close check, the Ledger devnet deploy, then Runbook C Parts 1–2 on mainnet.
 
-**Sep 30 continuation:** the prior session's late Jev review returned **FIX** after this handoff was written. Its three findings are addressed on `feat/jev-eval` at **`7c00629`**, pushed: invalid replay options stop before provider calls; results identify their scoring configuration and historical replay metrics; replay identity and composition boundaries have regression coverage. The full local gate passed (792 tests + 1 skipped; Postgres 44/44). A fresh Claude follow-up review was attempted but hit the account limit (reset 14:20 Lisbon); no follow-up SHIP verdict is claimed. The original mandatory rubric review is unchanged. Details: [continuation receipt](handoffs/2026-09-30-orca-continuation.md).
+**The quoted prior-session open items are complete:** all three Jev findings are fixed on `feat/jev-eval` at **`7c00629`**, pushed, and `docs/runbook-c-truths` is pushed at **`b95d0ab`** after its full gate. Jev now rejects unsafe options before provider calls, records scoring configuration and live/replay provenance, and tests request identity and composition boundaries. Its full local gate passed (792 tests + 1 skipped; Postgres 44/44), and CI `36707618974` passed. The runbook branch's CI `36697228485` passed. Do not reopen these as unfinished implementation or an unpushed branch.
 
-The timing branch's original CI run `36696829889` failed despite its 12 local passes (nine reads versus eight in the deadline test). Test-only correction `02ee74e` is pushed; five continuation full-suite passes and a mutation check are recorded, and CI `36708435237` passed. Do not describe `8d9acfc` as the corrected CI run.
+**Optional follow-up review remains pending:** both fresh Claude attempts, including the retry after Cisco reported resetting credits, returned HTTP 429 with zero review tokens and a reported reset of 14:20 Lisbon. No follow-up SHIP verdict is claimed. The original mandatory rubric review remains SHIP. Details: [continuation receipt](handoffs/2026-09-30-orca-continuation.md).
+
+The timing branch's original CI run `36696829889` failed despite its 12 local passes (nine reads versus eight in the deadline test). Test-only correction `02ee74e` is pushed; all ten continuation full-suite runs passed (726 tests + 1 skipped each), the weakened-guard mutation was caught, and CI `36708435237` passed. The earlier count of five omitted completed background runs. Do not describe `8d9acfc` as the corrected CI run.
 
 **Production is unchanged since the Sep 29 cutover:**
 - **API:** Fly `hyphae-api` runs `86ff258`, image `deployment-01M3P9QRW519BGZY986E1GV539` (release v10). Rollback image: `deployment-01M3A6PDECR4D9AP1TSJYDBSP3`.
@@ -22,7 +24,7 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 - **Rubric 1.3.1 is final and public.** "What earns zero" no longer lists an unedited AI draft; "How grading works" says it is "capped at 79, or at 40 when obvious, and a score under 60 earns zero" (Cisco's "fix it"). `feat/rules-v2` `158452f`, Codex `gpt-6-astra` xhigh **SHIP** with no findings. `FCisco95/hyphae-program` `9999bfa` carries it byte for byte (sha256 `56e5fad1…03de`).
 - **The Jev backend** on `feat/jev-eval` (`7c00629`): `eval-scoring --backend jev`, `jev-1.13.0` pinned, unsafe replay options rejected before provider construction, replay/configuration provenance recorded, and H1's DRAFT question set (`docs/evals/jev-questions-draft.md`) as the default. **Not run live:** Cisco's question set doesn't exist yet.
 - **Runbook C Parts 1–2 on Oct 2–3** (`main` `e7f3821`): candidate `b3c82c7`; C4 behind `options=-c lock_timeout=3000` on Neon's direct endpoint with a retry rule; C7 checks the worker drains its queue. Every Oct 2 precondition is listed in the runbook's new first section.
-- **Helpers:** `fix/timing-budgets` `8d9acfc` (the settlement flake, test files only); `docs/runbook-c-truths` `ad40b77` (C7) and `b95d0ab` (C13); the video script and submission checklist on `main` (`c93561a`).
+- **Helpers and continuation:** `fix/timing-budgets` `02ee74e` on `8d9acfc` (the settlement flake, test files only); `docs/runbook-c-truths` `ad40b77` (C7) and `b95d0ab` (C13); the video script and submission checklist on `main` (`c93561a`).
 
 **What to do next:**
 1. **Cisco, any time before Oct 2 (dashboard):** Vercel Pro with usage alerts (board decision 4, ruled yes).
@@ -33,7 +35,7 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 
 ## Metadata
 
-- Last updated: 2026-09-30, continuation after the original session's final review notification.
+- Last updated: 2026-09-30, final handoff requested by Cisco; remote branch heads and all ten timing-run logs verified.
 - Continuation runner: Codex, GPT-6 (specific variant and effort not exposed by this runtime); no helpers. The original Orca/provider session was read only, never resumed or modified.
 - Runner: Claude Code, **Opus 5.5 (`claude-opus-5-5`)**, effort **xhigh**, unattended. Helpers: three Claude **Sonnet** subagents (H1–H3), each writing only its own files; the main session reviewed and committed every diff. Reviews: Codex `gpt-6-astra`, reasoning xhigh, read-only.
 - Authority: the session prompt's Part A and Cisco's rulings on the vault's Integration Board (2026-09-29, "I agree with them"): decision 2 "fix it", decision 3 yes, decision 4 yes.
@@ -48,7 +50,7 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 | Public site | Vercel project `hyphae`, https://hyphae-delta.vercel.app | **Live** from `main`. Hobby plan until Cisco moves it to Pro. |
 | Program | devnet `EAz8WkyU…`, upgrade authority the throwaway `Fcv1xtZ6…` | Devnet only; mainnet `AccountNotFound`. |
 | Runbook C candidate | `b3c82c7` (CI `36596228282`) | Pinned. Migrations 0010–0012, HYP-01/02 and the full `/v1` arrive at C4 and C7. |
-| `main` | docs after `b3c82c7` | `e7f3821`, `c93561a`, this record. |
+| `main` | docs after `b3c82c7` | Prior handoff commits `e34d7fe`, `ce99c4e` pushed; this final refresh follows them. |
 | `feat/rules-v2` | `158452f` (CI `36694552444` green) | Pushed. Rubric 1.3.1 final. Merges during epoch 3. |
 | `feat/jev-eval` | `7c00629` | Pushed. Late review findings fixed; 2c–2d wait for Cisco's set. Merges during epoch 3. |
 | `fix/timing-budgets` | `02ee74e` on `8d9acfc` | Pushed; CI `36708435237` passed. Merge after C7 (test files of the frozen API). |
@@ -70,18 +72,19 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 
 | Gate | `feat/rules-v2` `158452f` | `feat/jev-eval` `7c00629` | `fix/timing-budgets` `02ee74e` | `docs/runbook-c-truths` `b95d0ab` |
 |---|---|---|---|---|
-| `pnpm test` | 773 + 1 skipped | 778 + 1 skipped (after one flaky run; below) | 726 + 1 skipped | see below |
+| `pnpm test` | 773 + 1 skipped | 792 + 1 skipped | 726 + 1 skipped, ten runs | 726 + 1 skipped |
 | typecheck | 0 | 0 | 0 | see below |
 | Biome | 273 clean | 275 clean | 267 clean | see below |
 | `drizzle-kit check` | pass | pass | pass | see below |
 | `test:pg` | 44/44 | 44/44 | see below | see below |
 | `git diff --check` | clean | clean | see below | see below |
 
-- `feat/jev-eval`'s first full run failed one test, the settlement deadline flake that `fix/timing-budgets` fixes; the next two full runs passed.
-- `fix/timing-budgets`: H2's original 12 local full parallel runs passed, but CI exposed a timer-boundary race. Continuation commit `02ee74e` controls the test clock; five additional full-suite passes passed locally, the weakened-guard mutation failed as expected, and CI `36708435237` passed.
+- Before the continuation fixes, `feat/jev-eval`'s first full run failed one test, the settlement deadline flake that `fix/timing-budgets` fixes; the next two full runs passed. The current `7c00629` gate is recorded separately below.
+- `fix/timing-budgets`: H2's original 12 local full parallel runs passed, but CI exposed a timer-boundary race. Continuation commit `02ee74e` controls the test clock; ten additional full-suite runs passed locally, the weakened-guard mutation failed as expected, and CI `36708435237` passed, including Postgres 44/44. No separate local Postgres rerun after `02ee74e` is claimed.
 - Follow-up `feat/jev-eval` `7c00629`: 792 tests + 1 skipped (106 core, 79 web, 607 API), typecheck clean, Biome 275 files clean, drizzle check pass, Postgres 44/44, diff check clean. The eight invalid-CLI cases were red before the fix with network intercepted; all now reject before a provider call.
 - `docs/runbook-c-truths` `b95d0ab` was pushed after its gate completed: 726 tests + 1 skipped, Postgres 44/44. CI `36697228485` passed, independently checked in this continuation.
 - Codex `gpt-6-astra` xhigh: step 1 **SHIP** (no findings).
+- Final documentation refresh on `main`, after `ce99c4e`: full local gate passed again before committing (726 tests + 1 skipped; typecheck 0; Biome 267 files clean; drizzle check pass; local Postgres 44/44; diff check clean). Handoff validation passed with template-format warnings; every path in the resume prompts exists. Only the three handoff/build-log files changed; the untracked `wsl` file is untouched.
 
 ## Open Decisions
 
@@ -99,6 +102,7 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 
 ## Parked
 
+- **Optional fresh Claude review of `0894335..7c00629`:** two HTTP 429 responses, zero review tokens, no verdict. Retry when Claude CLI access is available; the three original findings are already fixed and pushed.
 - **`gates.pg.test.ts` "concurrent runs settle on one row…" hung to its 60 s timeout** in 2 of 8 `test:pg` runs on 2026-09-30, both under heavy parallel load; it passes in about 4 s otherwise, on `main` too. `main`'s API is frozen before C1; read `runHoldChecks`'s pool and lock path after the payout. Production runs one worker, so the multi-pool race doesn't arise there.
 - **H1's draft notes** for the eval: no case tests `link_mismatch` positively; the composed raw scores of flagged cases 3, 7, 11 and 13 will land below their founder raw targets while their credit (0) is right; a perfect reply composes to 100 where the founder caps ordinary replies at 90. All are in the draft's "Open for Cisco".
 
