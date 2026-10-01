@@ -1,11 +1,13 @@
 ---
-date: 2026-09-30
-summary: Session closed 2026-09-30 evening (record: docs/handoffs/2026-09-30-session-close.md). Part A and the late Jev review fixes are complete and pushed. feat/jev-eval is at 7c00629, with all three findings addressed and its full local gate and CI green. docs/runbook-c-truths is pushed at b95d0ab after its full gate. The optional Claude follow-up review returned HTTP 429 twice, including after the reported credit reset; no follow-up verdict exists. fix/timing-budgets is at 02ee74e with ten continuation full-suite passes and green CI. Later on 2026-09-30 Cisco ruled nine times on the Jev questions, the first live Jev vs Sonnet run happened, and feat/jev-eval is now at 707d7da with question set v3 (docs/handoffs/2026-09-30-jev-eval-run.md). Part B waits for 2026-10-02T00:00Z and Cisco. Production remains 86ff258 on Neon 0000-0009, first_paid_epoch 2; Runbook C's candidate remains b3c82c7. Nothing merged, deployed or written to production.
+date: 2026-10-01
+summary: Paused 2026-10-01 evening (record: docs/handoffs/2026-10-01-evening-pause.md). The Ledger devnet rehearsal and the browser claim passed early (docs/handoffs/2026-10-01-ledger-devnet-rehearsal.md), and Runbook C's C1 and C2 and C8's mainnet read passed read-only. C3 to C7 wait for epoch 1's close at 2026-10-02T00:00Z; C8 to C13 follow. Nothing in production changed. Earlier summary: Session closed 2026-09-30 evening (record: docs/handoffs/2026-09-30-session-close.md). Part A and the late Jev review fixes are complete and pushed. feat/jev-eval is at 7c00629, with all three findings addressed and its full local gate and CI green. docs/runbook-c-truths is pushed at b95d0ab after its full gate. The optional Claude follow-up review returned HTTP 429 twice, including after the reported credit reset; no follow-up verdict exists. fix/timing-budgets is at 02ee74e with ten continuation full-suite passes and green CI. Later on 2026-09-30 Cisco ruled nine times on the Jev questions, the first live Jev vs Sonnet run happened, and feat/jev-eval is now at 707d7da with question set v3 (docs/handoffs/2026-09-30-jev-eval-run.md). Part B waits for 2026-10-02T00:00Z and Cisco. Production remains 86ff258 on Neon 0000-0009, first_paid_epoch 2; Runbook C's candidate remains b3c82c7. Nothing merged, deployed or written to production.
 ---
 
 # Hyphae handoff
 
 ## TL;DR
+
+**Paused 2026-10-01 evening, mid-arc** (receipt: [evening pause](handoffs/2026-10-01-evening-pause.md)). Cisco started Part B early. Done and pushed (`187d165`, `e31c4c4`): the Ledger devnet deploy with one approval and a Phantom `/claim` on devnet ([rehearsal receipt](handoffs/2026-10-01-ledger-devnet-rehearsal.md)), Runbook C's C1 (full gate of `b3c82c7`) and C2 (Neon pre-check). **Next: after 2026-10-02T00:00Z, run the epoch 1 proof (read-only script in the pause receipt), then C3 to C7 with Cisco, then C8 to C13.** Production is still `86ff258` on Neon 0000 to 0009; no mainnet, Neon-write, Fly or Vercel action has run.
 
 **Session close, 2026-09-30 evening** (receipt: [session close](handoffs/2026-09-30-session-close.md), written for `/organic-sync`). The pre-Oct-2 work is finished: the CLAUDE.md CI note is corrected on `main`, and the Jev eval ran live with nine rulings from Cisco, pushed on `feat/jev-eval` `707d7da`. The production path is untouched (production `86ff258`, Neon 0000 to 0009, Runbook C candidate `b3c82c7`, API tree equals the candidate). **Next gate: 2026-10-02T00:00Z, with Cisco** (Part B below). The Jev follow-ups are optional and need Cisco's grades and two answers about the project brief.
 
@@ -33,9 +35,9 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 **What to do next:**
 1. **Cisco, any time before Oct 2 (dashboard):** Vercel Pro with usage alerts (board decision 4, ruled yes).
 2. **Optional, whenever Cisco has time (Jev eval):** answer the project brief's two open questions and confirm its flagged sentence (`docs/evals/project-brief-mycel.md` on `feat/jev-eval`); grade more replies, including jokes and short opinions, so a calibration can be fit and tested on a holdout. The `13 Jev Question Set` vault note is no longer needed: the set is `docs/evals/jev-questions.md`.
-3. **Oct 2 after 00:00Z (read-only):** epoch 1 `closed` with its snapshot, epoch 2 open, `reward-close` logged no error, the payout gate refuses epoch 1 as `before_first_paid_epoch`.
-4. **Oct 2, attended (~30 min):** the Ledger-signed devnet deploy (Runbook C's C8–C13 at a fresh throwaway address, Windows CLI 3.1.10, `usb://ledger?key=2/0`), then one `/claim` from a real browser wallet against that devnet program.
-5. **Oct 2–3, attended:** Runbook C C1–C13 on mainnet, one step per message. After C7 passes, merge `ad40b77`; after C13, merge `b95d0ab` (rebase, fast-forward).
+3. **After 2026-10-02T00:00Z (read-only; the agent can run it alone):** epoch 1 `closed` with its snapshot, epoch 2 open, `reward-close` logged no error, the payout gate refuses epoch 1 as `before_first_paid_epoch`.
+4. **Done 2026-10-01:** the Ledger-signed devnet deploy and one browser `/claim` on devnet; see the rehearsal receipt.
+5. **Attended:** Runbook C C3–C7 (C1 and C2 already passed), then C8–C13 on mainnet, one step per message. After C7 passes, merge `ad40b77`; after C13, merge `b95d0ab` (rebase, fast-forward).
 
 ## Metadata
 
