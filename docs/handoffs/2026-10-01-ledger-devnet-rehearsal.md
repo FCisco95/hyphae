@@ -31,6 +31,14 @@ The `/claim` page refuses any program but `EAz8…`, so the throwaway program ca
 - Claim from Phantom (testnet mode, Solana Devnet): `4eqG2A4XuZpRZRePiMDTEotaTyJKDjhUDguwbwgCGz75mQin6PssycnqsF5gyidec9KCeBD4BVxTERQ7e5zY7Mn6`, finalized, no error, 12,125,000 lamports.
 - Read back: the receipt account `GLALvW…j7r9` exists, owned by the program; the vault went from 50,695,960 to 37,070,960 lamports (the 1,500,000 fee at 300 bps plus the claim); the API reads the wallet `paid` with that signature and the other two members `claimable`; claimed 12,125,000, unclaimed 18,335,365.
 
+## Runbook C pre-gate checks, run the same evening (read-only or local)
+
+These need no production change, so they ran ahead of the gate. C3 onward still waits for epoch 1's close, because C3 stops the worker that runs `reward-close`.
+
+- **C1:** `git diff --stat b3c82c7 origin/main -- apps packages programs Anchor.toml Cargo.toml Cargo.lock package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json biome.json` printed nothing. In a clean worktree at `b3c82c790e129b1f4a24ada6b34407e5f6d57ec9`: `pnpm -r test` exit 0 (core 106, web 79, api 541 + 1 skipped), `pnpm -r typecheck` 0, `pnpm lint` 0, `drizzle-kit check` 0, `test:pg` 0 (6 files, 44 tests), `git diff --check` 0.
+- **C2:** read-only transaction (`transaction_read_only = on`) on Neon, Postgres 18.6: the journal holds exactly 0000 to 0009 with hashes equal to the files'; 0010's four columns, 0011's two tables and `leaves_wallet` are absent; row counts `reward_configs` 1, `reward_decisions` 0, `reward_intakes` 0, `reward_snapshot_entries` 0, `leaves` 0; no transaction open longer than 5 s.
+- **Read from C2:** no member has submitted anything yet, so epoch 1 closes with an empty snapshot and epoch 2 starts with no contributions. The first payout needs real submissions during epoch 2.
+
 ## Not done yet
 
 - The epoch 1 close proof (epoch 1 closes at 2026-10-02T00:00Z; at 18:05Z the API read it `open`, current epoch 1).
