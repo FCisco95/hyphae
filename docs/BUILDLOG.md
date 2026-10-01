@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-01 · worktree cleanup checkpoint — folder deletion blocked
+
+**Verified:** the previous session removed four worktree registrations; Git and Orca now show only `main` and detached `c1-gate`. The four remaining folders contain dependencies and unchanged copies of committed files. All branch refs remain local and on GitHub.
+**Decision:** keep the candidate checkout through C7 and preserve the unmerged branches. Automatic approval review rejected recursive deletion as “blocked by policy”; Cisco's exact PowerShell cleanup command is in the checkpoint receipt. The attempted paste included prose and failed before execution.
+**Numbers:** 2 retained worktrees · 4 branch heads checked against live GitHub · 80 file copies verified against branch blobs · 0 unique non-dependency files found · 0 production actions. Local gate passed: 726 tests + 1 skipped, typecheck exit 0, lint exit 0 (266 files), diff check clean; handoff validation passed with existing format/portability warnings.
+**Commits:** this documentation checkpoint follows `26040a6`; validated locally, push pending until the checkpoint commit is recorded.
+**Next:** finish the four-folder deletion locally; after 2026-10-02T00:00Z, run the read-only epoch proof, then C3–C7 with Cisco tomorrow morning. No overnight automation was created in this continuation. Receipt: `docs/handoffs/2026-10-01-worktree-cleanup.md`.
+
 ## 2026-10-01 · the Ledger signs a deploy, and a real wallet claims on devnet
 
 **Shipped:** a day before the planned gate, Cisco chose to run the rehearsal that still had no proof: his Ledger signing a program deploy through the Solana command line, and a real browser wallet claiming a payout. The program built the same way it always has (same hash as every earlier build). A throwaway key wrote the program's code to a holding account and handed it to the Ledger's address; the chain showed the Ledger as the only controller before Cisco pressed approve; the one approval landed the deploy on a throwaway devnet program, and the chain read back the Ledger as upgrade authority with the build's hash. Then Phantom, on devnet, claimed 0.012125 SOL from a published epoch through the real claim page, and the chain, the page and the API agreed.
