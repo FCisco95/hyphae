@@ -22,6 +22,8 @@ The previous session deregistered four worktrees but could not delete their rema
 
 Documentation validation: `pnpm test` passed (106 core, 79 web, 541 API; 1 skipped), `pnpm typecheck` and `pnpm lint` exited 0 (266 files), `git diff --check` was clean, and handoff validation passed with existing format/portability warnings. No database or reward-job source changed, so a separate Postgres gate was not required for this documentation checkpoint.
 
+Commit `e4d8648` records this checkpoint; it and the documentation validation receipt were pushed to `origin/main`. Only documentation changed. Folder deletion is still pending on this machine.
+
 In Windows PowerShell, run only this command. These four literal absolute targets were checked to be ordinary directories beneath the intended `hyphae-wt` parent; neither retained worktree is a target.
 
 ```powershell

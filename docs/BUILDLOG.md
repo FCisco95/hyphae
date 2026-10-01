@@ -7,7 +7,7 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 **Verified:** the previous session removed four worktree registrations; Git and Orca now show only `main` and detached `c1-gate`. The four remaining folders contain dependencies and unchanged copies of committed files. All branch refs remain local and on GitHub.
 **Decision:** keep the candidate checkout through C7 and preserve the unmerged branches. Automatic approval review rejected recursive deletion as “blocked by policy”; Cisco's exact PowerShell cleanup command is in the checkpoint receipt. The attempted paste included prose and failed before execution.
 **Numbers:** 2 retained worktrees · 4 branch heads checked against live GitHub · 80 file copies verified against branch blobs · 0 unique non-dependency files found · 0 production actions. Local gate passed: 726 tests + 1 skipped, typecheck exit 0, lint exit 0 (266 files), diff check clean; handoff validation passed with existing format/portability warnings.
-**Commits:** this documentation checkpoint follows `26040a6`; validated locally, push pending until the checkpoint commit is recorded.
+**Commits:** `e4d8648` (cleanup checkpoint) and its documentation validation receipt pushed to `origin/main`. Folder deletion remains blocked; no implementation or production change is represented as shipped.
 **Next:** finish the four-folder deletion locally; after 2026-10-02T00:00Z, run the read-only epoch proof, then C3–C7 with Cisco tomorrow morning. No overnight automation was created in this continuation. Receipt: `docs/handoffs/2026-10-01-worktree-cleanup.md`.
 
 ## 2026-10-01 · the Ledger signs a deploy, and a real wallet claims on devnet
