@@ -1,3 +1,15 @@
+# SNAPSHOT METADATA
+
+- Created At: 2026-10-01T23:26:09+01:00
+- Scope: repo
+- Kind: handoff
+- Source Canonical: docs/HANDOFF.md
+- Workspace: n/a
+- Workstream: n/a
+- Repositories: hyphae
+- Reason: Explicit handoff-memory request; concise checkpoint before next attended production arc
+
+---
 ---
 date: 2026-10-01
 summary: Worktree cleanup is complete in Git and Orca, but four leftover folders remain policy-blocked. Epoch proof is pending after 2026-10-02T00:00Z; attended C3-C7 follows. Completed devnet rehearsal, C1 and C2 must not be repeated. Production is unchanged.
@@ -7,17 +19,17 @@ summary: Worktree cleanup is complete in Git and Orca, but four leftover folders
 
 ## TL;DR
 
-Git and Orca retain only `main` and detached `../hyphae-wt/c1-gate` at `b3c82c7`. All four unmerged branches are preserved. Their deregistered folders still exist: automatic approval review blocked recursive deletion. The exact PowerShell command is in [cleanup receipt](handoffs/2026-10-01-worktree-cleanup.md); paste only the command, without prose or Markdown fences.
+Git and Orca retain only `main` and detached `../hyphae-wt/c1-gate` at `b3c82c7`. All four unmerged branches are preserved. Their deregistered folders still exist: automatic approval review blocked recursive deletion. The exact PowerShell command is in [cleanup receipt](2026-10-01-worktree-cleanup.md); paste only the command, without prose or Markdown fences.
 
 The Ledger devnet deploy/browser claim, C1 and C2 passed on October 1. **Next: after 2026-10-02T00:00Z (01:00 Lisbon), run the read-only epoch proof, then C3-C7 with Cisco tomorrow morning, then C8-C13.** No epoch proof or production action ran in this continuation. No overnight automation was installed; the original provider session/transcript was read only and never resumed or modified. Do not assume its background wait produced a proof.
 
 ## Metadata
 
-- Project: hyphae
-- Project ID: github.com-fcisco95-hyphae
+- Project: Hyphae
+- Project ID: github:fcisco95/hyphae
 - Repo Root: .
 - Branch: main
-- Last Updated: 2026-10-01T23:26:09+01:00
+- Last Updated: 2026-10-01 22:23 UTC
 - Updated By: Codex; specific model variant, effort and usage unavailable. No helpers.
 - Main at handoff refresh: `f60615b`, equal to `origin/main`; untracked `wsl` untouched.
 - Scope: documentation checkpoint only. Runtime code and root build files equal candidate `b3c82c7`.
@@ -62,12 +74,12 @@ Resume Part B safely at the epoch-close proof. Cisco chose tomorrow morning for 
 
 ## Quick Reference
 
-- [Evening pause](handoffs/2026-10-01-evening-pause.md): read-only proof script, C1/C2 results, environment notes and queued dependency cleanups.
-- [Ledger devnet rehearsal](handoffs/2026-10-01-ledger-devnet-rehearsal.md): attended deploy and browser claim receipts; do not repeat them.
-- [Runbook C](handoffs/2026-09-28-runbook-c.md): commands, preconditions and read-backs for C3-C13.
-- [Cleanup receipt](handoffs/2026-10-01-worktree-cleanup.md): verified folders, preserved branches and exact pending deletion command.
-- [September 30 close](handoffs/2026-09-30-session-close.md): founder rulings, downstream sync and parked work.
-- [Part A](handoffs/2026-09-30-part-a.md), [review continuation](handoffs/2026-09-30-orca-continuation.md), [Jev run](handoffs/2026-09-30-jev-eval-run.md): durable implementation/review/evaluation history.
+- [Evening pause](2026-10-01-evening-pause.md): read-only proof script, C1/C2 results, environment notes and queued dependency cleanups.
+- [Ledger devnet rehearsal](2026-10-01-ledger-devnet-rehearsal.md): attended deploy and browser claim receipts; do not repeat them.
+- [Runbook C](2026-09-28-runbook-c.md): commands, preconditions and read-backs for C3-C13.
+- [Cleanup receipt](2026-10-01-worktree-cleanup.md): verified folders, preserved branches and exact pending deletion command.
+- [September 30 close](2026-09-30-session-close.md): founder rulings, downstream sync and parked work.
+- [Part A](2026-09-30-part-a.md), [review continuation](2026-09-30-orca-continuation.md), [Jev run](2026-09-30-jev-eval-run.md): durable implementation/review/evaluation history.
 - `CLAUDE.md`, `AGENTS.md`, `docs/BUILDLOG.md`: boundaries, gates and public progress.
 
 ## Validation
