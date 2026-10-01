@@ -115,7 +115,7 @@ The timing branch's original CI run `36696829889` failed despite its 12 local pa
 ## Next Actions
 
 1. Oct 2 after 00:00Z, read-only: epoch 1's close (the Next-session prompt's step 6). A failure there stops Part B: report, don't repair.
-2. Oct 2, attended: the Ledger devnet deploy and one browser-wallet `/claim` on devnet.
+2. **Done 2026-10-01** (Cisco started early; devnet only): the Ledger devnet deploy and one browser-wallet `/claim` on devnet, receipt [Ledger devnet rehearsal](handoffs/2026-10-01-ledger-devnet-rehearsal.md). The throwaway `GWBJ…` can optionally be closed with the Ledger.
 3. Oct 2–3, attended: Runbook C C1–C13, one step per message; merge `ad40b77` after C7 and `b95d0ab` after C13; sync the public README if allowed.
 4. Jev eval follow-up: see the Jev eval run record's recommended next steps; needs Cisco's real labelled replies.
 5. Oct 8–9: Runbook C Parts 3–4 (unchanged). Oct 9–10: the video and the submission checklist. During epoch 3, after the payout: merge `feat/rules-v2` and `feat/jev-eval`, deploy, then the O4 proposal of 1.3.1.

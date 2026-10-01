@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-01 · the Ledger signs a deploy, and a real wallet claims on devnet
+
+**Shipped:** a day before the planned gate, Cisco chose to run the rehearsal that still had no proof: his Ledger signing a program deploy through the Solana command line, and a real browser wallet claiming a payout. The program built the same way it always has (same hash as every earlier build). A throwaway key wrote the program's code to a holding account and handed it to the Ledger's address; the chain showed the Ledger as the only controller before Cisco pressed approve; the one approval landed the deploy on a throwaway devnet program, and the chain read back the Ledger as upgrade authority with the build's hash. Then Phantom, on devnet, claimed 0.012125 SOL from a published epoch through the real claim page, and the chain, the page and the API agreed.
+**Decision:** run the devnet rehearsal before the epoch 1 close proof, because it touches nothing in production; the close proof still runs before the worker is stopped. The claim ran against the real devnet program, since the page refuses any other program id.
+**Numbers:** 1 Ledger approval · 230 write transactions to fill the buffer's holding account · buffer hash `7e902d1b…43ac` before and after · claim 12,125,000 lamports, finalized · vault down by exactly the fee plus the claim · 0 production, Neon, Fly, Vercel or mainnet actions.
+**Commits:** this record on `main`. The scratch variant of the devnet harness was not committed (the API tree must stay equal to the Runbook C candidate `b3c82c7`).
+**Next:** after 2026-10-02T00:00Z, with Cisco: the epoch 1 close proof, then Runbook C C1 to C7, one step at a time. Receipt: `docs/handoffs/2026-10-01-ledger-devnet-rehearsal.md`.
+
 ## 2026-09-30 · the Jev questions get ruled, and the first live run says the AI tell doesn't fire yet
 
 **Shipped:** Cisco ruled on the five open questions in an interview: `low_effort` is a hard zero (in the eval; production's credit rule is unchanged until a rubric version adopts it), the weights stay, no cap on a perfect reply, both raw and credited are checked on every case, and the tell that reads as AI is a sentence built backwards: "buying the coin is what I'm going to do" where a person says "I'm going to buy the coin". The questions now say so without quoting any test reply, and a test guards that. The first live run scored the 16 synthetic cases with Jev and with Sonnet on rubrics 1.2.0 and 1.3.1.
