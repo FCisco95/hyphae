@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-02 · C13: mainnet program verified, unused SOL returned
+
+**Changed:** C12 recorded one Approved Ledger prompt and deployed the reviewed candidate. C13 finalized program/hash/Ledger authority/ProgramData/229,432-byte size matched; buffer consumed. Returned 0.051537968 SOL to Cisco's explicitly confirmed original wallet, finalized signature succeeded and deployer balance zero; only then deleted hot-key file. Both temporary key files absent, persistent program identity and Ledger retained; wallet registry records retired addresses and exact deletion times.
+**Decision:** report deployment separately from contributor payment. No mainnet community/vault/epoch publication or pot funding in this arc; claims route still 200/empty. Never send more funds to the retired temporary addresses.
+**Numbers/signatures:** deploy `5B2are5dPJqDvirkFH5CGLdPSzcvkaBeA6jEkTjq68HfHo5sNgt4SksG646wDXAcMx3f4Xw1pLAJATM7oWUDVJJ`, slot 452597368; ProgramData `CHm2qHs1Mj3FF4pmRdwmtEYBrL2WkupesoayiwxiNp3J`; sweep `4n2ecxuQvHaRf8eiHuu7ujbWNMcBkZMDsugXMCtg8LZYcSo4kw79RWXWyDYTt99GoBB4MYfPsacFRQBfd42hu7d8`, slot 452597849. Costs 1.168463032 SOL (deposits 1.16722652, deployer fees 0.001236512), below 1.2 cap. Zero verified 11:34:18Z; both files absent 11:34:53Z.
+**Commits/validation:** C11 `bb45993` committed locally before C12; C13 receipt follows. Prior registry `a8a5d0a` pushed/CI 36997676179 success. Direct finalized reads and solana-verify passed. Final local/CI gate runs after the now-authorized C13 truth integration; unchanged accepted reviews retained.
+**Next:** integrate b95d0ab, README-only public funding/status sync, delete only fully integrated refs, gate/push/exact-SHA CI and fresh uptake/final handoff. C14-C22 October 8-9, video/submission October 9-10 remain outside this arc. Full receipt: `docs/handoffs/2026-10-02-c13-mainnet-receipt.md`.
+
 ## 2026-10-02 · mainnet funding ruling and C11 verified buffer
 
 **Changed:** Cisco's funding finalized for 1.22 SOL, signature `ZHWxt4jvPbRvLeH2wwi7eKyTqNMp1VCrY1NxTtCLng5xLMMBnzje9fFjhGpvkujn1qRjaa6qBjPPzadhS9P5k8m`. Parked the exact-amount mismatch; Cisco accepted it with the original 1.2 SOL spending cap and confirmed return wallet `Fjgmfymca7zPDcCr4e9CJLr9GEyqi68HvHrYJ7Tj1Sd7`. C11 wrote the verified candidate buffer and handed authority to the Ledger. Finalized authority/length/hash passed; only then deleted the buffer identity key and verified absence. Registry and handoff now track actual funding and deletion.

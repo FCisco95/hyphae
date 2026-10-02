@@ -1,11 +1,13 @@
 ---
 date: 2026-10-02
-summary: C3-C11 passed. Cisco accepted actual 1.22 SOL with 1.2 SOL spending cap and confirmed return address. Buffer key deleted after finalized gates; C12 next.
+summary: C3-C13 passed. Mainnet reviewed program under Ledger verified; unused funds returned, zero balance, both temporary key files deleted after gates. See C13 receipt for final stage.
 ---
 
 # October 2 attended Part B receipt
 
 ## TL;DR
+
+**Latest stage: C3-C13 complete;** [C13 receipt](2026-10-02-c13-mainnet-receipt.md) records mainnet deploy/read-back, returned 0.051537968 SOL, finalized zero balance and both temporary key-file deletions. Sections below preserve the earlier checkpoints and their then-pending states. Never repeat funding or deployment.
 
 Epoch proof passed in [the proof checkpoint](2026-10-02-epoch-proof.md). Cisco is present. Under the session prompt's explicit C1-C13 approval, Codex handles the approved CLI commands and read-backs; Cisco handles wallet transfers, Ledger approvals and required dashboard/editor inputs. This session instruction supersedes the older runbook's assignment of every Fly/Neon-write command to Cisco's PowerShell; it does not change custody, funding or safety gates.
 

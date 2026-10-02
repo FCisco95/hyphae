@@ -1,20 +1,20 @@
 ---
 date: 2026-10-02
-summary: C3-C11 passed. Cisco accepted actual 1.22 SOL funding under 1.2 SOL cap and confirmed return wallet. Buffer key deleted after finalized authority/hash gates; C12 Ledger deploy next.
+summary: C3-C13 passed. Mainnet program/hash/Ledger authority verified; 0.051537968 SOL returned, zero balance, both temporary key files deleted after gates. Final integration/README/CI next.
 ---
 
 # Hyphae handoff
 
 ## TL;DR
 
-**C3-C11 passed; C12 Ledger deploy is next.** Frozen `b3c82c7` is live as Fly v11, Neon 0000-0012; C7 integrations/read-backs and CI passed. Cisco funded 1.22 SOL and accepted that amount under the **1.2 SOL spending cap**, confirming return of all unused balance to **`Fjgmfymca7zPDcCr4e9CJLr9GEyqi68HvHrYJ7Tj1Sd7`**. C11 buffer is finalized under the Ledger, 229,432 bytes, exact reviewed hash; buffer key deleted only after those gates. Hot key retained, finalized balance **0.052391118 SOL** at 11:25:02Z. **No mainnet program deployed yet. Next: C12's one blind Ledger approval, then C13 read-back and sweep.**
+**C3-C13 passed with Cisco attending.** Mainnet program `EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E`, sole Ledger authority `2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR`, reviewed hash and 229,432-byte size verified; buffer consumed. Returned **0.051537968 SOL**, confirmed finalized success/zero, then deleted hot key; both temporary key files absent. Costs **1.168463032 SOL**, below 1.2 SOL cap. Fly v11/Neon 0000-0012/read API remain live. **Next: C13 truth integration, public README-only sync, fully integrated ref cleanup and final gate/CI. No mainnet community/vault or contributor payment yet.**
 
 Cisco is present. Session pre-approval authorizes Codex to run the named CLI steps/read-backs; Cisco handles wallet transfers, Ledger approvals and necessary human inputs. The older runbook's operator assignment caused an initial pause; the session instruction governs execution. No renewed approval is needed. Every safety/read-back gate remains binding.
 
 ## Metadata
 
 - Project: hyphae; project ID: github.com-fcisco95-hyphae; repo root: .; branch: main.
-- Last Updated: 2026-10-02T12:28:00+01:00.
+- Last Updated: 2026-10-02T12:39:00+01:00.
 - Runner: Codex (GPT-6); exact runtime model ID, effort, token/cost usage unavailable. No helpers or paid scoring calls.
 - Arc start: `ea15cf1d134256af79e2ea716ea41fd2aebe7231 = origin/main`, CI `36935161826` success.
 - Latest integration main: `4a4165584d4a7d728b3b020e49374dd926c1af25`, pushed, exact-SHA CI `36990943344` success. C8-C10 receipt `9a7e6817a93c4fb6b8ec2db55d0bd6b47c8aa1e6` pushed, exact-SHA CI `36992801247` success. This wallet-registry checkpoint follows; earlier proof CI succeeded too.
@@ -22,7 +22,7 @@ Cisco is present. Session pre-approval authorizes Codex to run the named CLI ste
 
 ## Current Objective
 
-Run attended C12-C13. C3-C11 are complete; C10 amount ruling and exact return recipient are recorded. After C13, integrate its truth commit, update the public funding README and finish the /organic-sync receipt. Stop this arc before C14-C22.
+Finish post-C13 truth integration/public README, fully integrated ref cleanup and final local/CI/handoff gates. All attended C3-C13 actions are complete; never repeat funding or deploy. This arc stops before C14-C22.
 
 ## Current State
 
@@ -35,7 +35,7 @@ Run attended C12-C13. C3-C11 are complete; C10 amount ruling and exact return re
 | Site | https://hyphae-delta.vercel.app; current C7 integration deployment `dpl_91ZFh5fugnnEs247CsShBL5Kbwa5`, Ready and aliased. Same web token as sensitive Production secret. Browser rendered community/open epoch 2/final epoch 1; integrated API-docs link/disclaimer verified live. |
 | API | Health/docs/OpenAPI/community/epoch/wallet-claims reads passed. Epoch 1 settlement unavailable `before_first_paid_epoch`; epoch 2 `no_settlement`. No-leaf wallet returns total_claims 0/empty list; leaf route and site proxy correctly return 404. Rate limits: token 3,000, anonymous 300. |
 | Worker | All required queues consumed. Ten-minute DB proof 09:29:18Z: pending/old/failed jobs 0, recovery completed after restart 4, stop-window submissions/unscored 0. |
-| Program/C8-C11 | Program/key/archive/CLI and Ledger address matched. C9 hashes exact. C10 1.22 SOL funding accepted under 1.2 SOL cap; return recipient explicitly confirmed. C11 finalized buffer Ledger authority, 229,432 bytes, exact hash; key deleted 11:24:18Z. Program still absent at 11:25:02Z; hot balance 0.052391118 SOL. C12-C13 not run; never repeat October 1 rehearsal/C1/C2. |
+| Program/C13 | Mainnet finalized: program EAz8WkyU…d6E, ProgramData `CHm2qHs1Mj3FF4pmRdwmtEYBrL2WkupesoayiwxiNp3J`, Ledger authority exact, reviewed executable hash exact, 229,432 bytes. Deploy signature in C13 receipt, one Approved Ledger prompt; buffer AccountNotFound. Sweep returned 0.051537968 SOL to confirmed original wallet, finalized/zero 11:34:18Z; both temporary files absent 11:34:53Z. |
 | Uptake | October 2 10:02:50Z read-only refresh: epochs 1/2 have 0 submissions and 0 intakes; lifetime community submissions 3, outside those windows. Snapshot entries 0 at close proof. Community display name is Hyphae Lab; mint is the runbook's fixed mint. |
 
 ## Branch Disposition
@@ -51,6 +51,7 @@ Original refs remain local/pushed: timing `02ee74e` is patch-integrated as `9df0
 - Private October 2 plan amendment read in place; vault, Organic and Sentinel unchanged. Public-program README-only C7 sync committed/pushed as `1caeebb`; funding/program status unchanged until C13. New owning checkout `../hyphae-program` is clean at origin/main.
 - Cisco's Ledger-ready reply cleared C8. C9 hashes refreshed; Cisco's funding amount/recipient ruling cleared C10. [Funding/C11 receipt](handoffs/2026-10-02-mainnet-funding.md) records write/authority signatures, finalized proof and buffer-key deletion. The later 1,000-lamport deposit from a similar-looking address does not change the confirmed original return recipient. Production worker remains healthy/started.
 - Cisco requested a durable wallet inventory and reaffirmed continuation after the deployment rent/control explanation. [Wallet registry](WALLETS.md) records both temporary keys, persistent program identity and Ledger authority, exact storage, recovery limits, rent commitment and deletion gates. [Registry checkpoint](handoffs/2026-10-02-wallet-registry.md) records verification. No custody change, copied secret or new wallet.
+- [C13 receipt](handoffs/2026-10-02-c13-mainnet-receipt.md): actual Ledger approval, finalized program/hash/authority/ProgramData and consumed buffer, sweep signature/recipient/zero and hot-key deletion. Persistent program identity and Ledger retained. Claims API still 200/zero claims after deploy; no payment claim.
 
 ## Known Issues / Watch List
 
@@ -67,8 +68,8 @@ Post-C7 full gate: **727 passed, 1 skipped** (106 core, 80 web, 541 API), typech
 
 ## Next Actions
 
-1. Run C12 Windows deploy with one blind Ledger approval after clear program/buffer/hash/authority/fee-payer summary and fresh safety reads. Do not regenerate keys, repeat funding or recreate the deleted buffer identity.
-2. C13 finalized program/hash/authority/buffer read-back, then sweep to the exact confirmed recipient, confirm signature, read zero balance and only then delete hot key. C7/integrations/API README/CI and C8-C11 complete; no repeated proof/rehearsal/C1/C2.
+1. Integrate only b95d0ab's gated C13 patch by rebase/fast-forward, with identical range-diff. C13 is complete; do not repeat funding/deploy or recreate deleted key identities.
+2. Fetch/read owning public checkout; update only approved README funding/program lines after no-conflict check. Verify live site after final push. Run required local gate before push and verify exact-SHA CI.
 3. Ask Cisco to bring real MYCEL reply/quote contributions into epoch 2 through the bot, leaving time for scoring and the October 8 author/duplicate audit. Prepare the request; Cisco sends any community message.
 4. After C13 integrate `b95d0ab`, update public README funding lines, delete only fully integrated refs; gate/push/exact-SHA CI.
 5. Final C13 /organic-sync receipt: actual runner/usage limits, SHAs, program/image/migrations, attended reads, checks, branches, uptake, downstream API impact and parked items/recommendations. This arc ends there.
@@ -98,14 +99,14 @@ Check Git refs/status/frozen candidate and live machine/schema/site state before
 | Receipts | `docs/HANDOFF.md`, `docs/BUILDLOG.md`, October 2 proof/attended snapshots | Public-safe; no private plan or credential copied |
 | Wallet metadata | `docs/WALLETS.md`, October 2 registry snapshot | Public addresses/exact file locations; no secret bytes or backup copy |
 
-Hot key retained only in WSL `~/hyphae-mainnet/deploy-hot-2026-10-02.json`; buffer key deleted after C11 gates, exact former path retained in registry. Approved C11 hot-key transactions completed; no mainnet program deploy or scheduled job yet. Existing proof script remains untracked in c1-gate. Organic/Sentinel unchanged; Hyphae v1 read API is deployed, payment still unavailable.
+Both temporary key files deleted after C11/C13 gates; exact former paths/public addresses/deletion times retained in registry. Do not fund their retired addresses. Persistent program identity and Ledger retained. Mainnet program now deployed; no scheduled job created. Existing proof script remains untracked in c1-gate. Organic/Sentinel unchanged; v1 read API live, no contributor payment yet.
 
 ## Resume Prompt
 
 ```text
-Resume Hyphae Part B at C12. C3-C11 passed; C10 actual 1.22 SOL accepted with 1.2 SOL cap and confirmed sweep recipient Fjgmfymca7zPDcCr4e9CJLr9GEyqi68HvHrYJ7Tj1Sd7. Later similar-looking sender is not the recipient. Buffer E8MhkV28a4918ZpqRZHAf6ANqK8GxkroEy82GEFAdBSF finalized under Ledger with exact 229432-byte reviewed hash; buffer key deleted after gates. Hot key retained in registered WSL path; finalized balance 52391118 lamports at 11:25:02Z. Mainnet program absent then. Preserve C12 Ledger approval and signed-error recovery, C13 sweep/confirm/zero-before-deletion. C7 already live; no repeated funding/rehearsal/deploy.
-Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/WALLETS.md, docs/handoffs/2026-10-02-mainnet-funding.md, docs/handoffs/2026-10-02-wallet-registry.md, docs/handoffs/2026-10-02-epoch-proof.md, docs/handoffs/2026-10-02-attended-run.md, docs/handoffs/2026-10-01-evening-pause.md, docs/handoffs/2026-10-01-ledger-devnet-rehearsal.md, docs/handoffs/2026-09-28-runbook-c.md.
+Resume Hyphae after C13. Mainnet program/hash/authority/ProgramData/229432 bytes verified, buffer consumed. Returned 0.051537968 SOL to confirmed original wallet, sweep finalized/zero and both temporary key files deleted after gates. Persistent program identity and Ledger retained; don't fund retired addresses or repeat deploy. C13 truth integration/public README/final checks remain. C7 Fly v11/Neon 0000-0012/read API complete; no mainnet community/pot/payment yet.
+Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/WALLETS.md, docs/handoffs/2026-10-02-c13-mainnet-receipt.md, docs/handoffs/2026-10-02-mainnet-funding.md, docs/handoffs/2026-10-02-wallet-registry.md, docs/handoffs/2026-10-02-epoch-proof.md, docs/handoffs/2026-10-02-attended-run.md, docs/handoffs/2026-10-01-evening-pause.md, docs/handoffs/2026-10-01-ledger-devnet-rehearsal.md, docs/handoffs/2026-09-28-runbook-c.md.
 Model: GPT-6.1 Sol (high) — current plan's runbook-execution recommendation.
 Skills: handoff-memory, superpowers:verification-before-completion, vercel:vercel-cli, solana-dev, handoff.
-Verify actual state, then attended C12-C13 and final C13 truth/public funding/receipt work. Update wallet lifecycle receipts; preserve rules/Jev, original refs, candidate checkout and wsl. Stop this arc before C14-C22 and optional cleanup/close work.
+Verify actual Git state, finish post-C13 integration/README/gate/push/CI, refresh uptake and append final receipt. Preserve rules/Jev, candidate checkout and wsl. Stop before C14-C22 and optional cleanup/close work.
 ```
