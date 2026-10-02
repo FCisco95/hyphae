@@ -9,20 +9,23 @@ summary: C3-C13 and gated integrations complete, pushed, CI green. Public README
 
 **This authorized arc is complete through C13 and its integrations.** Mainnet program `EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E`, sole Ledger authority `2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR`, reviewed hash/229,432-byte size verified; buffer consumed. Returned **0.051537968 SOL**, finalized success/zero, then deleted hot key; both temporary files absent. Costs **1.168463032 SOL**, below 1.2 SOL cap. C13 integration `874fa19` pushed, exact-SHA CI **37003102460 success**, public README `d1a9f34` pushed; fully integrated timing/docs refs deleted, rules/Jev preserved. Fly v11/Neon 0000-0012/API remain live; site C13 copy verified. **Next: bring real contributions into epoch 2; C14-C22 clock gate October 8-9, video/submission October 9-10. No mainnet community/vault or contributor payment yet.**
 
-Cisco is present. Session pre-approval authorizes Codex to run the named CLI steps/read-backs; Cisco handles wallet transfers, Ledger approvals and necessary human inputs. The older runbook's operator assignment caused an initial pause; the session instruction governs execution. No renewed approval is needed. Every safety/read-back gate remains binding.
+The attended sitting is complete; future attendance must be confirmed at the next runbook gate. Session pre-approval authorized the named CLI steps/read-backs; Cisco handled wallet transfers and Ledger approvals. Every safety/read-back gate remains binding.
+
+MYCEL announcement and Cisco quote-post drafts are saved in [the communications checkpoint](handoffs/2026-10-02-mainnet-announcement.md). Neither was published by the agent; no image was generated. Publication by Cisco is unverified.
 
 ## Metadata
 
 - Project: hyphae; project ID: github.com-fcisco95-hyphae; repo root: .; branch: main.
-- Last Updated: 2026-10-02T11:59:28Z.
+- Last Updated: 2026-10-02T13:56:02Z.
 - Runner: Codex (GPT-6); exact runtime model ID, effort, token/cost usage unavailable. No helpers or paid scoring calls.
 - Arc start: `ea15cf1d134256af79e2ea716ea41fd2aebe7231 = origin/main`, CI `36935161826` success.
-- Latest integration main: `874fa199f0e689b3243f0a653b7f2660c4cf0371`, pushed, exact-SHA CI `37003102460` success. Final documentation checkpoint follows that SHA; its exact CI is verified after push. C11 receipt `bb45993`, C13 receipt `311830f` pushed. Prior C7/proof/registry CI also green.
+- Latest integration main: `874fa199f0e689b3243f0a653b7f2660c4cf0371`, pushed, exact-SHA CI `37003102460` success. C11 receipt `bb45993`, C13 receipt `311830f` pushed. Prior C7/proof/registry CI also green.
+- Shipping close checkpoint: `68a151ce1a3c5b7f80f967d4ae96659aea227588`, pushed; exact-SHA CI `37004134175` success, independently rechecked in this handoff refresh. A documentation-only communications checkpoint follows; verify current HEAD/CI when resuming.
 - C7 used the frozen candidate; main now has authorized post-C7 doc/test/dependency cleanup. Production API/program source still matches the candidate. Git retains only main and detached `../hyphae-wt/c1-gate`. Preserve untracked `wsl`.
 
 ## Current Objective
 
-No further runbook action in this arc. C3-C13, gated integrations, approved README sync and integrated-ref cleanup complete; final docs commit/CI closes the receipt. Prepare the next sitting for C14-C22 on October 8-9 without executing those steps now. Never repeat funding/deploy or fund retired addresses.
+No further runbook action in this arc. C3-C13, gated integrations, approved README sync and integrated-ref cleanup are complete; the shipping close checkpoint passed CI. Preserve the announcement drafts and prepare the next sitting for C14-C22 on October 8-9 without executing those steps now. Never repeat funding/deploy or fund retired addresses.
 
 ## Current State
 
@@ -72,7 +75,7 @@ Fresh post-C13 gate: **727 passed, 1 skipped** (106 core, 80 web, 541 API), type
 2. Next attended runbook sitting: C14-C18 community/vault preparation on October 8 with fresh preconditions, then C18b audit from **October 8 23:00Z** before close. Any uncorrected duplicate/borrowed work parks publication; no waived gates.
 3. C19-C22 after **October 9 00:00Z** epoch-2 close and required hold-check/safety proofs. No unattended proof assumed. Video/submission October 9-10.
 4. /organic-sync post-ship: reconcile this receipt read-only against the private plan; vault edits remain outside this arc. SDK stays 0.1.0 through October 12; rules/Jev remain for epoch 3.
-5. This arc ends after final docs push/exact-SHA CI. C14-C22 execution, rules/Jev merge, optional devnet close and leftover-folder deletion remain out of scope.
+5. Shipping arc closed at `68a151c` with exact-SHA CI success. Announcement drafts remain for Cisco to use; no social publication or image generation is authorized by this checkpoint. C14-C22 execution, rules/Jev merge, optional devnet close and leftover-folder deletion remain out of scope.
 
 ## Quick Reference
 
@@ -86,7 +89,7 @@ Check Git refs/status/frozen candidate and live machine/schema/site state before
 
 ## Suggested skills
 
-`handoff-memory`, `superpowers:verification-before-completion`, `vercel:vercel-cli` for site checks, `solana-dev` for C8-C13, `handoff` for final receipt. No helpers.
+`handoff-memory` to resume; `superpowers:verification-before-completion`, `solana-dev` and `vercel:vercel-cli` for the next authorized runbook sitting; `handoff` for closure. For announcement work: `content-repurposer-sms`, `social-media-trends-research`; `imagegen` if an image is requested. No helpers.
 
 ## Generated artifacts this session
 
@@ -103,7 +106,7 @@ Both temporary key files deleted after C11/C13 gates; exact former paths/public 
 ## Resume Prompt
 
 ```text
-Resume Hyphae after the completed C3-C13 arc. Mainnet program/hash/Ledger authority/ProgramData verified; buffer consumed, unused 0.051537968 SOL returned, sweep finalized/zero and both temporary key files deleted after gates. C13 integration 874fa19 pushed/CI 37003102460 success, public README d1a9f34 pushed, fully integrated timing/docs refs deleted; rules/Jev and wsl preserved. Final documentation checkpoint follows 874fa19; verify actual HEAD/CI. No mainnet community/pot/payment yet. Next runbook clock gate October 8-9; never repeat funding/deploy or fund retired addresses.
+Resume Hyphae after the completed C3-C13 arc. Mainnet program/hash/Ledger authority/ProgramData verified; buffer consumed, unused 0.051537968 SOL returned, sweep finalized/zero and both temporary key files deleted after gates. C13 integration 874fa19 pushed/CI 37003102460 success, shipping close 68a151c pushed/CI 37004134175 success, public README d1a9f34 pushed, fully integrated timing/docs refs deleted; rules/Jev and wsl preserved. A documentation-only announcement checkpoint follows; verify actual HEAD/CI. MYCEL/Cisco drafts and image concept are in docs/handoffs/2026-10-02-mainnet-announcement.md; publication unverified, no image generated. No mainnet community/pot/payment yet. Next runbook clock gate October 8-9; never repeat funding/deploy or fund retired addresses.
 Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/WALLETS.md, docs/handoffs/2026-10-02-c13-mainnet-receipt.md, docs/handoffs/2026-10-02-mainnet-funding.md, docs/handoffs/2026-10-02-wallet-registry.md, docs/handoffs/2026-10-02-epoch-proof.md, docs/handoffs/2026-10-02-attended-run.md, docs/handoffs/2026-10-01-evening-pause.md, docs/handoffs/2026-10-01-ledger-devnet-rehearsal.md, docs/handoffs/2026-09-28-runbook-c.md.
 Model: GPT-6.1 Sol (high) — current plan's runbook-execution recommendation.
 Skills: handoff-memory, superpowers:verification-before-completion, vercel:vercel-cli, solana-dev, handoff.

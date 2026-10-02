@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-02 · mainnet announcement drafts and handoff refresh
+
+**Changed:** saved the official MYCEL announcement, Cisco's developer quote-post, mainnet contract/source links and a simple mycelium image concept in `docs/handoffs/2026-10-02-mainnet-announcement.md`. Updated the canonical handoff to record the completed shipping checkpoint and future attendance requirement.
+**Decision:** describe the verified smart-contract deployment and upcoming rewards pilot accurately. No contributor payment, new Organic fees, third-party audit or published social post is claimed; the image is a concept only.
+**Validation:** fresh local gate **727 passed, 1 skipped**, typecheck/lint exit 0 (266 files); handoff validation passed with the existing sibling-worktree path warning, diff check clean. Shipping close `68a151ce1a3c5b7f80f967d4ae96659aea227588` independently rechecked against successful exact-SHA CI `37004134175`; fetch without pruning confirmed `main = origin/main`. No live chain/database/deployment changes or scoring calls.
+**Commits:** shipping close `68a151c` already pushed. This documentation-only checkpoint ships with this entry; its exact commit ID and push/CI result are reported at session close and discoverable with `git log -- docs/handoffs/2026-10-02-mainnet-announcement.md`. Push and exact-SHA CI are checked after commit; no hook bypass.
+**Next:** Cisco may use the drafts; publication status is unverified. Bring real MYCEL contributions into epoch 2 before October 9 00:00 UTC, then the next attended October 8-9 runbook sitting. No additional runbook step or social publication ran.
+
 ## 2026-10-02 · shipped C13 truths, final gates and portable receipt
 
 **Changed:** rebased/fast-forwarded only the gated C13 patch as `874fa19`, identical range-diff/no conflicts. Main C11/C13 receipts and integration pushed; approved public README status/hash/funding lines pushed as `d1a9f34`, README-only from its clean owning checkout. Live site renders C13 copy. Deleted only fully integrated timing/docs refs locally/remotely after exact-SHA CI green, with atomic SHA leases; rules/Jev remain pushed and unmerged. Handoff, dated C13 receipt and wallet registry capture actual mainnet authority/hash/ProgramData, returned funds and retired key identities.
