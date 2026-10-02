@@ -1,15 +1,15 @@
 ---
-date: 2026-10-01
-summary: Worktree cleanup is complete in Git and Orca, but four leftover folders remain policy-blocked. Epoch proof is pending after 2026-10-02T00:00Z; attended C3-C7 follows. Completed devnet rehearsal, C1 and C2 must not be repeated. Production is unchanged.
+date: 2026-10-02
+summary: Read-only epoch proof passed; attended C3 awaits Cisco's worker-stop output. Epochs 1 and 2 have zero submissions/intakes. Candidate and all unmerged refs preserved; production unchanged.
 ---
 
 # Hyphae handoff
 
 ## TL;DR
 
-Git and Orca retain only `main` and detached `../hyphae-wt/c1-gate` at `b3c82c7`. All four unmerged branches are preserved. Their deregistered folders still exist: automatic approval review blocked recursive deletion. The exact PowerShell command is in [cleanup receipt](handoffs/2026-10-01-worktree-cleanup.md); paste only the command, without prose or Markdown fences.
+**Next: attended C3.** The epoch proof passed at **2026-10-02T08:49:30Z**: epoch 1 closed with one empty snapshot, epoch 2 open to October 9 00:00Z, reward-close completed, no failed reward jobs, epoch 1 blocked by `before_first_paid_epoch`. [Actual proof and uptake](handoffs/2026-10-02-epoch-proof.md).
 
-The Ledger devnet deploy/browser claim, C1 and C2 passed on October 1. **Next: after 2026-10-02T00:00Z (01:00 Lisbon), run the read-only epoch proof, then C3-C7 with Cisco tomorrow morning, then C8-C13.** No epoch proof or production action ran in this continuation. No overnight automation was installed; the original provider session/transcript was read only and never resumed or modified. Do not assume its background wait produced a proof.
+The Ledger devnet deploy/browser claim and C1/C2 passed October 1; do not repeat them. Cisco runs C3's worker stop in his own PowerShell under the existing approval; output/read-back is pending. Production writes and mainnet steps have not run. Only `main` and detached c1-gate are registered; all four unmerged refs and untracked `wsl` are preserved. Leftover folders are nonblocking and their deletion is outside this arc.
 
 ## Metadata
 
@@ -17,24 +17,25 @@ The Ledger devnet deploy/browser claim, C1 and C2 passed on October 1. **Next: a
 - Project ID: github.com-fcisco95-hyphae
 - Repo Root: .
 - Branch: main
-- Last Updated: 2026-10-01T23:26:09+01:00
-- Updated By: Codex; specific model variant, effort and usage unavailable. No helpers.
-- Main at handoff refresh: `f60615b`, equal to `origin/main`; untracked `wsl` untouched.
+- Last Updated: 2026-10-02T09:55:00+01:00
+- Updated By: Codex (GPT-6); exact runtime model ID, effort and usage unavailable. No helpers.
+- Main at arc start: `ea15cf1d134256af79e2ea716ea41fd2aebe7231`, equal to `origin/main`; exact-SHA CI `36935161826` independently verified successful. Untracked `wsl` untouched.
 - Scope: documentation checkpoint only. Runtime code and root build files equal candidate `b3c82c7`.
 
 ## Current Objective
 
-Resume Part B safely at the epoch-close proof. Cisco chose tomorrow morning for attended production work. Preserve the candidate checkout through C7 and keep all branches until their integration gates.
+Continue Part B at C3 with Cisco, one step and read-back per message. Preserve the candidate checkout through C7 and keep branches until integration gates. This arc ends after C13 integrations and its final receipt; C14-C22 remain October 8-9.
 
 ## Current State
 
 | Component | State / receipt |
 |---|---|
-| Production API/worker | Last recorded `86ff258`, Fly release v10, image `deployment-01M3P9QRW519BGZY986E1GV539`; not re-read during cleanup. Rollback: `deployment-01M3A6PDECR4D9AP1TSJYDBSP3`. |
+| Production API/worker | October 2 live machine read: API `6839d31b317318` and worker `817400c9901de8` both started on recorded v10 image `deployment-01M3P9QRW519BGZY986E1GV539` (`86ff258`). Rollback: `deployment-01M3A6PDECR4D9AP1TSJYDBSP3`. No deploy. |
 | Neon | Last recorded migrations 0000-0009, `first_paid_epoch = 2`; no writes in this continuation. |
 | Site | https://hyphae-delta.vercel.app; Vercel from `main`. |
 | Runbook C candidate | Pinned `b3c82c7`; retained `c1-gate` checkout has dependencies and `apps/api/scripts/epoch-proof.ts`. |
 | Completed October 1 | Ledger-signed throwaway devnet deploy and Phantom claim; C1 full gate, C2 Neon pre-check, C8 mainnet read. See rehearsal and evening-pause receipts. |
+| Completed October 2 | Epoch-close proof; epoch 1 snapshot 0 entries, reward-close 1 completed, reward-recovery 2,202 completed, failed reward jobs 0. Epochs 1/2 submissions and intakes 0; lifetime submissions 3. |
 | Program | Real program `EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E` remains devnet-only at last read. Throwaway `GWBJHTQMvxjoUeh1WcfPWpyX7HxoKk3rMvJpBF6dpcTY` deployed under the Ledger; optional close not done. |
 | `fix/timing-budgets` | `02ee74e`, pushed; CI `36708435237` passed. Integrate after C7. |
 | `docs/runbook-c-truths` | `b95d0ab`, pushed. Integrate C7 commit `ad40b77` after C7 and C13 commit `b95d0ab` after C13. |
@@ -44,24 +45,25 @@ Resume Part B safely at the epoch-close proof. Cisco chose tomorrow morning for 
 
 ## Recent Changes
 
-- Cleanup checkpoint `e4d8648` and validation receipt `f60615b` pushed to `origin/main`.
-- Four branch heads checked against live GitHub. All 80 non-dependency files in the leftover folders matched their branch blobs; no unique non-dependency files or links found.
-- Follow-up state check confirms all four folders still exist. No successful user deletion has been observed.
-- Canonical handoff condensed to remove contradictory historical summaries. Earlier decisions, reviews and measurements remain in linked receipts.
+- Fetched without pruning; fast-forward-only reported already up to date. Runtime/build inputs still equal frozen candidate.
+- Ran the actual read-only proof and current uptake count; no unexpected proof result and no repair.
+- Read October 2 private-plan amendment in place. No vault, Organic, Sentinel or public-program writes.
+- Asked Cisco for C3 execution output; the explicit runbook operator assignment remains binding. Approval is already recorded.
 
 ## Known Issues / Watch List
 
 - **Folder deletion blocked:** both guarded and literal-path recursive deletion attempts were rejected by automatic approval review as “blocked by policy,” without further reason. Do not report folders as deleted or delete branch refs. The cleanup receipt holds the verified command.
-- **Epoch proof:** failure parks Part B; report, do not repair. Proof must show epoch 1 closed with one snapshot, epoch 2 open to October 9, completed reward-close with none failed, and epoch 1 blocked with `before_first_paid_epoch`.
+- **Epoch proof passed:** actual October 2 receipt linked above. Do not confuse it with an assumed overnight run.
 - **Candidate remains frozen:** no program or runtime changes before C7. C4 uses Neon's direct endpoint with `options=-c lock_timeout=3000`, bounded retry, migrations 0010-0012 in order. Recheck C2 activity at C4.
 - **Custody:** recorded C1-C13 approval applies only under runbook preconditions and Cisco's attendance. C10 sends 1.2 SOL; C12 requires a blind Ledger approval. Any failed precondition/read-back stops that step.
-- **Boundaries:** Organic is consumed only through its public settlement API; never write `organic-app`. Public program/README writes must follow recorded authorization, with an explicit stop if it is missing.
-- **Payout:** no epoch 1 payout (`first_paid_epoch = 2`). MYCEL had zero submissions at last production read; no new count is claimed.
+- **Boundaries:** Organic is consumed only through its public settlement API; never write `organic-app`. October 1 yes authorizes only public-program README status/Read API lines after C7 and funding lines after C13, using its owning checkout after read-back. A conflicting edit stops that item. SDK stays exactly 0.1.0 through October 12.
+- **Payout:** no epoch 1 payout (`first_paid_epoch = 2`). October 2 uptake: epochs 1/2 have zero submissions/intakes; lifetime submissions 3. After C7, ask Cisco to bring real MYCEL contributions into epoch 2. No new Organic fees or contributor payment claimed.
 - **Parked engineering:** known settlement timing flake is fixed on the gated timing branch; `gates.pg.test.ts` multi-pool timeout remains for investigation after payout. Optional Claude follow-up review returned HTTP 429 twice; no new verdict. Jev needs real founder grades/holdout calibration and quoted-post/image context; no superiority claim from 16 synthetic cases. Details in session-close and Jev receipts.
 - **Founder/dashboard items:** Vercel Pro/alerts ruled yes but dashboard completion unverified; Colosseum repo access, domain, post-hackathon database cost and remaining project-brief questions stay parked in the session-close receipt.
 
 ## Quick Reference
 
+- [October 2 proof checkpoint](handoffs/2026-10-02-epoch-proof.md): actual counts, worker IDs and C3 command.
 - [Evening pause](handoffs/2026-10-01-evening-pause.md): read-only proof script, C1/C2 results, environment notes and queued dependency cleanups.
 - [Ledger devnet rehearsal](handoffs/2026-10-01-ledger-devnet-rehearsal.md): attended deploy and browser claim receipts; do not repeat them.
 - [Runbook C](handoffs/2026-09-28-runbook-c.md): commands, preconditions and read-backs for C3-C13.
@@ -72,25 +74,23 @@ Resume Part B safely at the epoch-close proof. Cisco chose tomorrow morning for 
 
 ## Validation
 
-Earlier in this continuation, before pushing the cleanup records: `pnpm test` passed with 726 tests and 1 skipped (106 core, 79 web, 541 API); typecheck and lint exited 0 (266 files). Diff check was clean. Handoff validation passed with existing template/portability warnings. No DB or reward-job code changed; no separate Postgres gate was required for those docs commits.
-
-This handoff refresh changes documentation only. Runtime tests from the same session are reused; handoff validation, reference existence and diff checks are rerun. No new CI or live production proof is claimed.
+October 2: proof and read-only uptake count exit 0; starting exact-SHA CI successful; **726 tests passed, 1 skipped** (106 core, 79 web, 541 API), typecheck exit 0 and lint exit 0 (266 files). Initial full suite hit the known wallet-claims deadline flake (725 passed, 1 failed, 1 skipped); unchanged suite passed on standalone rerun. No DB/reward code changed; accepted C1 migration/Postgres gates are preserved. Documentation validation and push are recorded with the proof milestone.
 
 ## Next Actions
 
-1. After October 2 00:00Z, execute the evening pause's read-only epoch proof from `c1-gate`. Record commands/results. Any unexpected result parks Part B: report, do not repair.
+1. Get Cisco's C3 worker-stop output; read back worker `817400c9901de8` stopped, API `6839d31b317318` started, `/health` 200. Epoch proof already passed.
 2. With Cisco, run C3-C7 on `b3c82c7`, one step and read-back per message. C1/C2 and the rehearsal already passed; recheck the required C2 activity at C4. C7 must verify worker drain/recovery, API, docs, OpenAPI and claims routes.
-3. After C7: integrate `ad40b77` and `fix/timing-budgets` by rebase/fast-forward, then remove unused root `@anchor-lang/core` and move web `zod` to devDependencies if still test-only, as one bounded cleanup. Full gate before push; review any rebase conflict that changes code. Public README changes only under recorded authorization.
-4. With Cisco, C8-C13 in order, preferably in one sitting. After C13: integrate `b95d0ab`; delete only fully integrated branches. Keep the rules/Jev branches until epoch 3. Optional devnet program close requires Cisco's in-session yes.
-5. Finish local leftover-folder deletion when Cisco runs the recorded command; confirm absence. It does not block the epoch proof. Keep `c1-gate` through C7.
-6. C14-C22 remain October 8-9; video/submission October 9-10. No rubric activation or rules/Jev merge in the current arc.
+3. After C7: integrate `ad40b77` and `fix/timing-budgets` by rebase/fast-forward, then remove unused root `@anchor-lang/core` and move web `zod` to devDependencies if still test-only, as one bounded cleanup. Full gate before push and exact-SHA CI; review code altered by conflicts. Update public README status/Read API lines under October 1 yes after read-back.
+4. With Cisco, C8-C13 in order, preferably in one clear-headed sitting. After C13: integrate `b95d0ab`, update public README funding lines after read-back, delete only fully integrated refs. Keep rules/Jev until epoch 3. Record program/hash/authority, signatures, hot-key sweep and truthful funding-versus-payment status.
+5. Refresh the final C13 receipt, handoff and BUILDLOG for /organic-sync. Out of scope: optional devnet close, leftover-folder deletion, rules/Jev merge and execution of C14-C22.
+6. Next clock-bound arc: C14-C22 October 8-9; video/submission October 9-10. Prepare the request for Cisco to bring real contributions into epoch 2 after C7.
 
 ## Resume Checklist
 
 - Verify branch heads, `git status -sb`, worktree list and candidate code equality; exclude untracked `wsl`.
 - Use UTC explicitly; October 2 00:00Z is 01:00 Lisbon.
 - Read the pause, rehearsal and runbook receipts before acting.
-- Confirm the epoch proof actually ran and passed; do not trust an unattended promise.
+- Read the actual October 2 proof receipt; do not repeat completed rehearsal/C1/C2.
 - Preserve all gates, attendance and repo boundaries; record each attended read-back.
 
 ## Suggested skills
@@ -103,16 +103,16 @@ This handoff refresh changes documentation only. Runtime tests from the same ses
 
 ## Generated artifacts this session
 
-Documentation only: this canonical handoff, the cleanup snapshot, its dated handoff-memory snapshot and `docs/BUILDLOG.md`. No keys, credentials, scheduled jobs, chain accounts or services created. Existing unmerged branches, Vercel previews and local build artifacts are documented in earlier receipts.
+Documentation only: this canonical handoff, `docs/handoffs/2026-10-02-epoch-proof.md` and `docs/BUILDLOG.md`. No keys, credentials, scheduled jobs, chain accounts or services created. Existing untracked proof script preserved in c1-gate. No downstream API impact shipped in this checkpoint.
 
 ## Resume Prompt
 
 ```text
-Resume Hyphae Part B after 2026-10-02T00:00Z. Main's runtime tree equals pinned candidate b3c82c7; the Ledger devnet deploy/browser claim, C1 and C2 are done. Keep c1-gate and all four unmerged branches. Folder cleanup is incomplete only on disk, with the exact verified command in its receipt.
+Resume Hyphae Part B at attended C3. October 2 epoch proof passed; epochs 1/2 have zero submissions/intakes. Main's runtime/build inputs equal pinned b3c82c7; Ledger devnet/browser claim and C1/C2 are done. Keep c1-gate, untracked wsl and all four unmerged refs. Folder deletion is outside this arc.
 
-Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-01-evening-pause.md, docs/handoffs/2026-10-01-ledger-devnet-rehearsal.md, docs/handoffs/2026-10-01-worktree-cleanup.md, docs/handoffs/2026-09-28-runbook-c.md.
-Model: claude-opus-5-5 (high), the recorded Part B recommendation for attended production checks.
+Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-02-epoch-proof.md, docs/handoffs/2026-10-01-evening-pause.md, docs/handoffs/2026-10-01-ledger-devnet-rehearsal.md, docs/handoffs/2026-09-28-runbook-c.md.
+Model: GPT-6.1 Sol (high) — the current plan's runbook-execution recommendation.
 Skills: handoff-memory, superpowers:verification-before-completion, solana-dev, handoff.
 
-Verify current state, then run the read-only epoch proof first. Failure parks Part B: report, do not repair. Cisco joins for C3-C7, one step at a time, then C8-C13 under the recorded runbook approvals. Do not repeat the completed rehearsal or merge the rules/Jev branches. Integrate the docs/timing branches only at their gates. Refresh handoff and BUILDLOG with actual receipts; never assume an overnight proof ran.
+Verify current state, get Cisco's C3 execution output and read back worker stopped/API started/health 200. Continue C4-C13 one attended step per message under existing approval and operator assignments. Integrate docs/timing and dependency cleanups only at their gates; README-only exception already authorized after read-back. Refresh handoff and BUILDLOG with actual receipts and stop after the C13 arc receipt, before C14-C22.
 ```

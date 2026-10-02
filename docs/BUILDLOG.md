@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-02 · epoch-close proof passed; attended rollout starts at C3
+
+**Verified:** the read-only proof on frozen candidate `b3c82c7` shows epoch 1 closed with exactly one snapshot, epoch 2 open until October 9 00:00Z, one completed reward-close and no failed reward jobs. Epoch 1 is blocked from payout by `before_first_paid_epoch`. The live Fly machine read still shows the recorded v10 image; no rollout or mainnet action has run.
+**Decision:** proceed to attended C3 under the existing approval, preserving the runbook's operator assignment: Cisco runs Fly/Vercel/Neon-write commands in his own PowerShell. His worker-stop output and the agent's read-back are pending. Keep all integrations behind C7/C13 and keep the runtime frozen until C7.
+**Numbers:** snapshot entries 0 · epoch 1 submissions/intakes 0/0 · epoch 2 submissions/intakes 0/0 · lifetime community submissions 3 · reward-recovery completed 2,202 · failed reward jobs 0. Local gate: 726 tests passed, 1 skipped; typecheck/lint exit 0, 266 linted files. The first test run hit the recorded wallet-claims deadline flake; unchanged standalone rerun passed.
+**Commits:** proof milestone being recorded on `main`; push and exact-SHA CI receipt follow verification. Starting SHA `ea15cf1` independently verified on CI `36935161826` (success). No production change is represented as shipped.
+**Next:** Cisco stops worker `817400c9901de8`; read back worker stopped/API started/health 200, then C4 activity check and migrations 0010–0012. Invite real MYCEL epoch-2 contributions after C7. C14–C22 remain October 8–9; video/submission October 9–10. Receipt: `docs/handoffs/2026-10-02-epoch-proof.md`.
+
 ## 2026-10-01 · worktree cleanup checkpoint — folder deletion blocked
 
 **Verified:** the previous session removed four worktree registrations; Git and Orca now show only `main` and detached `c1-gate`. The four remaining folders contain dependencies and unchanged copies of committed files. All branch refs remain local and on GitHub.
