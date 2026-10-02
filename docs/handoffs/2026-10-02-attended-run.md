@@ -1,6 +1,6 @@
 ---
 date: 2026-10-02
-summary: Epoch proof/C3-C9 passed; C7 integrations pushed and CI green. C10 keys generated silently; Cisco funding and sweep recipient pending. No mainnet transaction or deploy yet.
+summary: C3-C11 passed. Cisco accepted actual 1.22 SOL with 1.2 SOL spending cap and confirmed return address. Buffer key deleted after finalized gates; C12 next.
 ---
 
 # October 2 attended Part B receipt
@@ -80,6 +80,10 @@ C10 silently generated two new keys with restrictive permissions, without overwr
 
 ## Participation request for Cisco
 
+**Continuation supersedes the earlier parked C10 state:** Cisco accepted the bundled amount/recipient ruling, spending cap **1.2 SOL**, exact C13 return wallet **`Fjgmfymca7zPDcCr4e9CJLr9GEyqi68HvHrYJ7Tj1Sd7`**. C11 passed; finalized Ledger buffer authority/229,432-byte size/reviewed hash; buffer key deleted only after repeated gates and absence verified 11:24:18.368Z. Deployer retained, balance **0.052391118 SOL** at 11:25:02Z. No mainnet program deploy yet. [Funding/C11 receipt](2026-10-02-mainnet-funding.md) contains signatures and safety details. C12 next.
+
+Latest C10 receipt: Cisco supplied funding signature `ZHWxt4jvPbRvLeH2wwi7eKyTqNMp1VCrY1NxTtCLng5xLMMBnzje9fFjhGpvkujn1qRjaa6qBjPPzadhS9P5k8m`. At **11:15:21.161Z**, finalized mainnet RPC read verified successful transfer **1.22 SOL** from `Fjgmfymca7zPDcCr4e9CJLr9GEyqi68HvHrYJ7Tj1Sd7`, slot 452593580; deployer balance **1.22 SOL**. C10's 1.2 SOL read-back does not match. **C11-C13 parked** pending Cisco's ruling on accepting that funding while keeping the approved spending budget, and his explicit return address. Recommended: return the extra 0.02 SOL together with all unused balance at C13 to the source wallet, only after Cisco confirms. Keys retained; no buffer write, authority handoff, deploy or sweep. Current state supersedes the earlier pending-funding paragraph; details in [funding checkpoint](2026-10-02-mainnet-funding.md).
+
 Epoch 2 still has **zero contributions/intakes** at the 09:29Z read. C7 is live now, so ask Cisco to bring real MYCEL reply/quote contributions through the existing bot workflow during epoch 2, which closes October 9 00:00Z. Recommendation: invite them promptly, leaving time for scoring and the October 8 author/duplicate audit. No community post/message was sent. No Organic fee collection or contributor payment is claimed.
 
 ## Downstream and next gate
@@ -94,7 +98,7 @@ Hyphae's complete public v1 read API is deployed (including claims/docs/OpenAPI)
 | Read web token | Ignored `.env`; staged Fly `READ_API_WEB_TOKEN`; Vercel Production `HYPHAE_API_TOKEN` | Same 64-character secret, values omitted |
 | Operational receipts | `docs/HANDOFF.md`, `docs/BUILDLOG.md`, this receipt and proof checkpoint | Public-safe states/counts only |
 
-Two mainnet deployment key files now exist only at their canonical WSL paths above. Funding is pending; no agent transaction, program deployment or scheduled job created yet.
+Two mainnet deployment key files remain at their canonical WSL paths above. Cisco's funding finalized for 1.22 SOL; exact C10 read-back ruling is pending. No agent transaction, program deployment, sweep, key deletion or scheduled job yet.
 
 ## Checkpoint commits and CI
 

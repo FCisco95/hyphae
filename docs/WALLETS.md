@@ -6,8 +6,8 @@ Verified October 2, 2026. This registry covers the keys and authority used in th
 
 | Identity | Public address | Role and control | Current state |
 |---|---|---|---|
-| Temporary mainnet deployer | `CpBum8ynMAawJSdNCKS9NLZXc6hySE1aDCqna7XhmyNT` | Software key on Cisco's computer. Pays buffer/program rent and deployment fees, then returns its unused balance. The agent CLI can sign with this file without a Ledger prompt. It is not the program's intended upgrade authority. | Key exists; finalized mainnet balance 0 at 2026-10-02T10:45:23.740Z. Funding pending. |
-| Temporary mainnet buffer identity | `E8MhkV28a4918ZpqRZHAf6ANqK8GxkroEy82GEFAdBSF` | Software key creates/resumes the account that temporarily holds the verified program bytes. C11 hands that account's authority to the Ledger. | Key exists; C11 buffer write has not run. |
+| Temporary mainnet deployer | `CpBum8ynMAawJSdNCKS9NLZXc6hySE1aDCqna7XhmyNT` | Software key on Cisco's computer. Pays buffer/program rent and deployment fees, then returns its unused balance. The agent CLI can sign with this file without a Ledger prompt. It is not the program's intended upgrade authority. | Key retained. C10 actual 1.22 SOL funding accepted by Cisco with 1.2 SOL spending cap; confirmed return address below. After C11, finalized balance **0.052391118 SOL** at 11:25:02Z. |
+| Temporary mainnet buffer identity | `E8MhkV28a4918ZpqRZHAf6ANqK8GxkroEy82GEFAdBSF` | Software key created/resumed the account holding the verified program bytes. C11 handed that account's authority to the Ledger. | C11 passed finalized authority/size/hash; **key file deleted and absence verified at 11:24:18.368Z**. Buffer account still exists under Ledger authority pending C12. |
 | Persistent program identity | `EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E` | Existing program-address keypair. Identifies the program for deployment; possession alone does not authorize upgrading/closing a deployed program. | Existing devnet program; latest mainnet account read was AccountNotFound at C8. No mainnet deploy yet. |
 | Persistent Ledger authority | `2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR` | Cisco's Ledger, derivation `44'/501'/2'/0'`; CLI locator `usb://ledger?key=2/0`. Planned sole mainnet program upgrade/closure authority. Private signing key remains on the hardware device. | C8 hardware public-address read matched. C12 mainnet authority assignment/signing has not run. |
 
@@ -18,7 +18,7 @@ WSL distro **Ubuntu**, Linux user **fcisco95**. The two temporary keys were gene
 | Identity | Canonical key location | Windows access to the same file |
 |---|---|---|
 | Deployer | `/home/fcisco95/hyphae-mainnet/deploy-hot-2026-10-02.json` (`~/hyphae-mainnet/deploy-hot-2026-10-02.json` in this WSL user) | `\\wsl.localhost\Ubuntu\home\fcisco95\hyphae-mainnet\deploy-hot-2026-10-02.json` |
-| Buffer identity | `/home/fcisco95/hyphae-mainnet/deploy-buffer-2026-10-02.json` | `\\wsl.localhost\Ubuntu\home\fcisco95\hyphae-mainnet\deploy-buffer-2026-10-02.json` |
+| Buffer identity | Former location `/home/fcisco95/hyphae-mainnet/deploy-buffer-2026-10-02.json`; **deleted after C11 gates** | Former path `\\wsl.localhost\Ubuntu\home\fcisco95\hyphae-mainnet\deploy-buffer-2026-10-02.json`; **absent** |
 | Program identity | Repo-relative `target/deploy/hyphae-keypair.json` in the owning Hyphae checkout; Git-ignored | Same file in the Windows checkout's `target\deploy` directory |
 | Ledger authority | Existing Ledger device; recovery depends on Cisco's existing Ledger recovery backup | No software key file was created/exported; recovery backup was not inspected |
 
@@ -26,12 +26,12 @@ The UNC paths above access the existing WSL files; they are not additional copie
 
 ## Lifecycle and deletion gates
 
-1. **Deployer:** Cisco funds exactly 1.2 SOL on mainnet; verify the balance before C11. Cisco still needs to name the return address. Do not repeat funding merely because a session resumed.
+1. **Deployer:** actual funding **1.22 SOL**, finalized. Cisco accepted the extra funding while keeping the approved **1.2 SOL spending cap** and confirmed return of all unused funds to **`Fjgmfymca7zPDcCr4e9CJLr9GEyqi68HvHrYJ7Tj1Sd7`**. Do not repeat funding. Use this exact address; do not substitute a later history entry.
 2. **Buffer key:** retain until C11 verifies Ledger authority, data length 229,432 and executable hash `7e902d1b5f8d8c49dfd199ec2e7bf44139b56524d98408f1556e14f4e9ab43ac`. Only then delete this specific key file, as required by the approved runbook. Retain its public address and deletion receipt here. This prevents recreating the consumed buffer address with other bytes.
 3. **Deployer key:** retain until C13 verifies the deployed program and consumed buffer, sweeps the unused balance to Cisco's named address, confirms the sweep signature succeeded and reads deployer balance 0. Only then delete this specific key file and record the signature/time here. Any uncertainty means retain the file.
 4. **Program authority:** deleting the temporary keys does not remove Cisco's Ledger control. Closing the deployed program later requires the Ledger and a separate instruction from Cisco; it is not part of C13's deployer cleanup.
 
-No key was deleted at this checkpoint. Future updates must record actual funding/write/deploy/sweep signatures, ProgramData address, authority/hash read-backs, and each temporary key's verified deletion. Never replace a pending state with an inferred success.
+Buffer key deletion is complete; deployer key must remain through C13. Future updates must record the deploy/sweep signatures, ProgramData address and deployer deletion receipt. Never replace a pending state with inferred success.
 
 ## Deployment budget and finality
 
@@ -40,5 +40,9 @@ At 2026-10-02T10:31:24.900Z, fresh mainnet RPC reads quoted ProgramData rent **1
 Most funding remains allocated to the deployed program while it operates; it is not returned by C13. The Ledger authority can later close the program to reclaim its large ProgramData deposit, but closure disables the program and that program address cannot be reused. See [Solana's deployment documentation](https://solana.com/docs/programs/deploying#close-your-program). No automatic refund date is promised. This deployment budget is separate from contributor rewards and does not fund the later MYCEL pot.
 
 ## Receipts
+
+Funding transaction [ZHWxt4jv…P5k8m](https://solscan.io/tx/ZHWxt4jvPbRvLeH2wwi7eKyTqNMp1VCrY1NxTtCLng5xLMMBnzje9fFjhGpvkujn1qRjaa6qBjPPzadhS9P5k8m): block time **2026-10-02T11:14:43Z**, slot **452593580**, finalized RPC read with `meta.err = null`. Source `Fjgmfymca7zPDcCr4e9CJLr9GEyqi68HvHrYJ7Tj1Sd7` transferred **1,220,000,000 lamports**; funding wallet paid **79,934 lamports** in fees. Cisco confirmed this source as C13 recipient in his reply to the bundled amount/recipient question. A separate later deposit added **1,000 lamports** from a different, similar-looking address; it does not change the confirmed recipient or spending cap.
+
+C11 buffer write exited 0 at **11:22:15.769Z**. Authority handoff signature **`RGHKFzihm7wkCnDRTEthcUsqUAmuwq4SWB2rM5dR6who4H37a7ghieGvK3LrzBfJPtpeK5da5dVi991Lh4qrVJs`**, finalized slot **452595437**. Buffer history: **241 successful transactions, none failed**; first creation/write signature `55CWz9kQZMvESFgMBXcCbr9yzwsZRdw3ygdo4tWndei5UAnGQk3MDT7KdHqj4GV91h9ocq7o2jSYY2qtgTqNt9jP`. Finalized authority/229,432-byte size and hash passed again at **11:24:18.198Z**; only then the buffer key was deleted. C11 spend **1.167609882 SOL**, under 1.2 SOL cap; retained buffer rent **1.1663934 SOL**. No C12 deploy or C13 sweep yet. [Funding/C11 checkpoint](handoffs/2026-10-02-mainnet-funding.md) records the full ruling and verification.
 
 [Runbook C](handoffs/2026-09-28-runbook-c.md) governs C10-C13. [October 2 attended receipt](handoffs/2026-10-02-attended-run.md) records the actual gates; [current handoff](HANDOFF.md) records the next action. Other projects and all historical wallet files have not been inventoried by this checkpoint.

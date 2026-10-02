@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-02 · mainnet funding ruling and C11 verified buffer
+
+**Changed:** Cisco's funding finalized for 1.22 SOL, signature `ZHWxt4jvPbRvLeH2wwi7eKyTqNMp1VCrY1NxTtCLng5xLMMBnzje9fFjhGpvkujn1qRjaa6qBjPPzadhS9P5k8m`. Parked the exact-amount mismatch; Cisco accepted it with the original 1.2 SOL spending cap and confirmed return wallet `Fjgmfymca7zPDcCr4e9CJLr9GEyqi68HvHrYJ7Tj1Sd7`. C11 wrote the verified candidate buffer and handed authority to the Ledger. Finalized authority/length/hash passed; only then deleted the buffer identity key and verified absence. Registry and handoff now track actual funding and deletion.
+**Decision:** preserve the cap and exact confirmed recipient. A later 1,000-lamport transfer from a different similar-looking address was investigated read-only and never substituted as recipient. CLI URL-forwarding failure occurred before any transaction; secure stdin delivery was verified and the same buffer write retried without source changes.
+**Numbers:** 241 finalized buffer transactions, 0 failed; buffer 229,432 bytes, reviewed hash exact, Ledger authority exact. Buffer rent 1.1663934 SOL; C11 spend 1.167609882 SOL, hot balance 0.052391118 SOL at 11:25:02Z. Authority signature `RGHKFzihm7wkCnDRTEthcUsqUAmuwq4SWB2rM5dR6who4H37a7ghieGvK3LrzBfJPtpeK5da5dVi991Lh4qrVJs`; buffer key deletion verified 11:24:18.368Z. No mainnet program deploy or contributor payment yet.
+**Validation/commits:** registry `a8a5d0a` pushed, exact-SHA CI `36997676179` success. Funding/C11 milestone follows, documentation only; unchanged accepted local gate 727 passed/1 skipped, typecheck/lint/web build exit 0. Handoff/diff/address checks before commit; push after the remaining attended gates. No new sensitive implementation or review-changing conflict.
+**Next:** C12 Windows deploy with one blind Ledger approval, then C13 finalized program/hash/authority/buffer reads and sweep/confirm/zero-before-hot-key deletion. Full receipt: `docs/handoffs/2026-10-02-mainnet-funding.md`. Deployment funds remain separate from the later MYCEL pot; C14-C22 out of scope.
+
 ## 2026-10-02 · durable wallet registry before mainnet funding
 
 **Changed:** added `docs/WALLETS.md` for the two temporary deployment keys, persistent program identity and Ledger authority. Records public addresses, exact WSL/Windows access paths, roles, recovery limits and C11/C13 deletion gates. Linked the registry from the canonical handoff and saved a dated checkpoint. No key copied, deleted or newly generated.
