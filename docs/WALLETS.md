@@ -7,7 +7,7 @@ Verified October 2, 2026. This registry covers the keys and authority used in th
 | Identity | Public address | Role and control | Current state |
 |---|---|---|---|
 | Temporary mainnet deployer — retired | `CpBum8ynMAawJSdNCKS9NLZXc6hySE1aDCqna7XhmyNT` | Software key paid deployment costs and returned all unused balance. It was never the deployed program's upgrade authority. | Sweep finalized, balance **0** at 11:34:18Z; **key file deleted and absence verified at 11:34:53.582Z**. Do not fund this retired address. |
-| Temporary mainnet buffer identity | `E8MhkV28a4918ZpqRZHAf6ANqK8GxkroEy82GEFAdBSF` | Software key created/resumed the account holding the verified program bytes. C11 handed that account's authority to the Ledger. | C11 passed finalized authority/size/hash; **key file deleted and absence verified at 11:24:18.368Z**. Buffer account still exists under Ledger authority pending C12. |
+| Temporary mainnet buffer identity — retired | `E8MhkV28a4918ZpqRZHAf6ANqK8GxkroEy82GEFAdBSF` | Software key created/resumed the verified buffer; C11 handed authority to the Ledger. | **Key file deleted after C11 gates at 11:24:18.368Z**. Buffer consumed in C12; C13 finalized AccountNotFound. Do not fund or recreate this address. |
 | Persistent program identity | `EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E` | Existing program-address keypair; possession alone does not authorize upgrading/closing a deployed program. | Deployed on mainnet and devnet. Mainnet ProgramData `CHm2qHs1Mj3FF4pmRdwmtEYBrL2WkupesoayiwxiNp3J`; C13 finalized read-back passed. Persistent key file retained. |
 | Persistent Ledger authority | `2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR` | Cisco's Ledger, derivation `44'/501'/2'/0'`; CLI locator `usb://ledger?key=2/0`. Sole verified mainnet upgrade/closure authority. Private signing key remains on hardware. | C12 recorded one Approved device prompt; C13 finalized authority matched. Hardware/recovery arrangement retained. |
 
@@ -22,7 +22,7 @@ WSL distro **Ubuntu**, Linux user **fcisco95**. The two temporary keys were gene
 | Program identity | Repo-relative `target/deploy/hyphae-keypair.json` in the owning Hyphae checkout; Git-ignored | Same file in the Windows checkout's `target\deploy` directory |
 | Ledger authority | Existing Ledger device; recovery depends on Cisco's existing Ledger recovery backup | No software key file was created/exported; recovery backup was not inspected |
 
-The UNC paths above access the existing WSL files; they are not additional copies. The registry is metadata, not a key backup. Keep the WSL files available through their recovery gates; do not regenerate, overwrite, move or delete them because a path is inconvenient. Preserve the persistent program identity and Ledger recovery material beyond this deployment.
+The former UNC paths accessed the same WSL files, not additional copies. Both temporary key files completed their recovery gates and are now absent; this registry preserves their metadata, not secret backups. Do not recreate or fund retired identities. Preserve the persistent program identity and Ledger recovery material beyond this deployment.
 
 ## Lifecycle and deletion gates
 

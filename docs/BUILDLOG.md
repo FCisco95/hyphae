@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-02 · shipped C13 truths, final gates and portable receipt
+
+**Changed:** rebased/fast-forwarded only the gated C13 patch as `874fa19`, identical range-diff/no conflicts. Main C11/C13 receipts and integration pushed; approved public README status/hash/funding lines pushed as `d1a9f34`, README-only from its clean owning checkout. Live site renders C13 copy. Deleted only fully integrated timing/docs refs locally/remotely after exact-SHA CI green, with atomic SHA leases; rules/Jev remain pushed and unmerged. Handoff, dated C13 receipt and wallet registry capture actual mainnet authority/hash/ProgramData, returned funds and retired key identities.
+**Decision:** preserve accepted integrations/reviews and frozen API/db/program source; no new sensitive implementation. Program funding does not imply community/vault funding or contributor payment. Bring real submissions into epoch 2 before its October 9 close; do not advance into the later clock-bound runbook steps in this arc.
+**Validation/numbers:** fresh **727 passed, 1 skipped**, typecheck/lint exit 0 (266 files), production web build exit 0; exact-SHA CI **37003102460 success** on `874fa199f0e689b3243f0a653b7f2660c4cf0371`, including drizzle/Postgres/H-CONTRACT. Vercel `dpl_E7jkDXr6cKZrtAftHAoYz349fANy` Ready/aliased, browser read 11:50:16Z passed; finalized mainnet program-owned accounts 0 at 11:46:42Z. Uptake 11:48:42Z: epoch 1 closed/epoch 2 open, submissions/intakes 0/0, lifetime 3. SDK exactly 0.1.0.
+**Commits:** C11 `bb45993`, C13 receipt `311830f`, accepted C13 truth `874fa19` **pushed**; public README `d1a9f34` **pushed**. Final documentation checkpoint follows, reusing the unchanged accepted local gate; final exact-SHA CI checked after push. No secrets/private strategy committed, no hook bypass.
+**Next:** Cisco brings real MYCEL reply/quote contributions through the existing bot before October 9 00:00 UTC; prepared request is in the C13 receipt, no agent message sent. C14-C18 October 8, C18b audit from 23:00Z, C19-C22 after October 9 00:00Z and fresh safety proofs; video/submission October 9-10. Rules/Jev, optional devnet close and leftover-folder deletion stay deferred. No unresolved C3-C13 stop remains.
+
 ## 2026-10-02 · C13: mainnet program verified, unused SOL returned
 
 **Changed:** C12 recorded one Approved Ledger prompt and deployed the reviewed candidate. C13 finalized program/hash/Ledger authority/ProgramData/229,432-byte size matched; buffer consumed. Returned 0.051537968 SOL to Cisco's explicitly confirmed original wallet, finalized signature succeeded and deployer balance zero; only then deleted hot-key file. Both temporary key files absent, persistent program identity and Ledger retained; wallet registry records retired addresses and exact deletion times.

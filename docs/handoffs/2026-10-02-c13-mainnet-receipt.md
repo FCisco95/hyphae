@@ -1,13 +1,13 @@
 ---
 date: 2026-10-02
-summary: C3-C13 passed; program verified on mainnet, unused funds returned, both temporary key files deleted after gates. Final C13 integrations and local/CI gate next.
+summary: C3-C13 and integrations complete, pushed and CI green; public README synced, integrated refs deleted, rules/Jev preserved. Wallet lifecycle recorded. Next clock gate October 8-9.
 ---
 
 # October 2 C13 mainnet receipt
 
 ## TL;DR
 
-**C3-C13 completed with Cisco attending.** Mainnet program `EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E`, ProgramData `CHm2qHs1Mj3FF4pmRdwmtEYBrL2WkupesoayiwxiNp3J`, Ledger sole authority `2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR`, data length **229,432**, reviewed executable hash **`7e902d1b5f8d8c49dfd199ec2e7bf44139b56524d98408f1556e14f4e9ab43ac`**. Buffer consumed. Returned **0.051537968 SOL**, verified finalized success/zero, then deleted hot key. Both temporary key files absent; persistent identity and Ledger retained. Next: integrate C13 truth, approved public README, fully integrated ref cleanup and final gates. C14-C22 remain out of scope.
+**C3-C13 and post-C13 integrations completed.** Mainnet program `EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E`, ProgramData `CHm2qHs1Mj3FF4pmRdwmtEYBrL2WkupesoayiwxiNp3J`, Ledger sole authority `2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR`, data length **229,432**, reviewed hash **`7e902d1b5f8d8c49dfd199ec2e7bf44139b56524d98408f1556e14f4e9ab43ac`**. Buffer consumed. Returned **0.051537968 SOL**, finalized success/zero, then deleted hot key. Both temporary key files absent; persistent identity/Ledger retained. C13 `874fa19` pushed/CI **37003102460 success**; public README `d1a9f34` pushed; fully integrated timing/docs refs deleted. Final documentation checkpoint follows. C14-C22 remain outside this arc.
 
 ## Attended deployment and cleanup
 
@@ -53,11 +53,40 @@ Source wallet funding fee **0.000079934 SOL** is separate. Most funding remains 
 
 ## Uptake and request prepared for Cisco
 
-Latest recorded uptake **10:02:50Z**: epochs 1/2 submissions/intakes **0/0**, lifetime community submissions **3**; refresh for final handoff. Prepared request for Cisco to send himself: **Please bring real MYCEL reply/quote contributions through the existing Hyphae bot submission flow during epoch 2, before October 9 00:00 UTC. Invite original work now so scoring and the October 8 author/duplicate audit have time to run.** No agent community message or payout promise.
+Fresh read-only uptake **11:48:42.858Z**: epoch 1 closed, epoch 2 open to October 9 00:00Z; epochs 1/2 submissions/intakes **0/0**, lifetime community submissions **3**. Prepared request for Cisco to send himself: **Please bring real MYCEL reply/quote contributions through the existing Hyphae bot submission flow during epoch 2, before October 9 00:00 UTC. Invite original work now so scoring and the October 8 author/duplicate audit have time to run.** No agent community message or payout promise.
 
 ## /organic-sync fields
 
-Runner **Codex / GPT-6**; exact runtime model variant, effort and token/cost usage unavailable. No helpers/paid scoring calls. Program/image/migrations and attended read-backs above; append final integration/public SHAs, exact-SHA CI, branch disposition and fresh uptake after gates. Vault/Organic/Sentinel unchanged; SDK pinned. Downstream public read API v1 remains available with truthful empty/unavailable payment status; deploying the program does not bind a mainnet community or change the pot source.
+Runner **Codex / GPT-6**; exact runtime model variant, effort and token/cost usage unavailable. No helpers/paid scoring calls. Program/image/migrations and attended read-backs above; final SHAs/checks/branches below. Vault/Organic/Sentinel unchanged; SDK pinned. Downstream public read API v1 remains available with truthful empty/unavailable payment status; deploying the program does not bind a mainnet community or change the pot source.
+
+## Final integration, public read-back and branch receipt
+
+| Milestone | SHA / verification |
+|---|---|
+| C7 accepted truth | Original ad40b77 integrated as `fa6c35d93dbd40b2c4f856fd0152f6e76cc2ed5f` |
+| Accepted timing patches | `9df0f41e36a3e36dcba925b40e7b314dbb2b7513`, `ca054d9413067bce30c67f43cc8c92303ae59f36` |
+| Dependency cleanup | `37f2f8f07e06b7e7abbeca4cb71820b62516686a`, unused root Anchor removed/test-only web zod moved, no retained version upgrade, SDK 0.1.0 |
+| C11 receipt | `bb4599318aeecd8f82f69bee6751f7f9b7a58601`, pushed |
+| C13 receipt | `311830f97a53051f76ffb25b086fe6ef72aa9243`, pushed |
+| C13 accepted truth | Original b95d0ab integrated as **`874fa199f0e689b3243f0a653b7f2660c4cf0371`**, pushed; range-diff identical, no conflict |
+| Exact integration CI | **37003102460 success**, all tests/typecheck/lint, drizzle check, Postgres 17 and H-CONTRACT vectors |
+| Public README C7/C13 | `1caeebb5f30366c7cb9cfa5d9502e76106b69ad4` / **`d1a9f347f3f62731e7ce4d69e222a556d3d7dd95`**, both pushed from owning checkout; README only, no conflicting edit |
+| Fresh local gate | **727 passed, 1 skipped** (106 core/80 web/541 API), typecheck/lint exit 0, 266 files; production web build exit 0 |
+| Site C13 deployment | **dpl_E7jkDXr6cKZrtAftHAoYz349fANy**, Ready/aliased; browser 11:50:16Z renders mainnet/devnet trust, community/network funding gate, API/public README links |
+| Mainnet empty state | Finalized program-owned accounts query **11:46:42Z: 0 accounts**; claims route 200/empty; no inferred mainnet community/vault/payout |
+| Integrated refs deleted | Timing 02ee74e and docs b95d0ab local/remote, only after pushed CI green and identical patch mappings; atomic SHA leases protected remote tips |
+| Preserved refs | Rules **158452fe2b22a1e42e5efd42f3f7e11bfdf59c70**, Jev **707d7daf21e217d9a8a64e58514065f5e3bca45e**, still local/pushed unmerged |
+| Worktrees/scratch | Only main and detached c1-gate registered. Candidate/leftover folders/untracked wsl preserved; only task test log/browser snapshot removed |
+
+API/db/program production files match the frozen candidate, excluding the accepted timing tests; C13 changes only approved web/docs/tests copy. No new sensitive implementation or conflict-altered code; unchanged accepted reviews reused, no mandatory fresh review triggered. Final receipt commit changes docs only and reuses this accepted local gate; push/exact-SHA CI checked afterward. No hook bypass.
+
+Final live read **11:59:28Z**: API `6839d31b317318` and worker `817400c9901de8` both **started** on C7's v11 image; `/health`, `/docs`, `/v1/openapi.json` all **200**. Strict handoff validator passed (only existing candidate-checkout portability warning), diff check passed, all **13 resume paths** exist and verified C13 fields match. No new production mutation.
+
+## Next clock gates and parked items
+
+This arc ends here. Recommend Cisco invite genuine contributions promptly; current uptake is zero. Next attended C14-C18 on **October 8**, C18b author/duplicate audit from **23:00Z**, then C19-C22 only after epoch 2 closes **October 9 00:00Z** and fresh close/hold/safety proofs pass. No overnight proof assumed. Video/submission **October 9-10**. SDK freeze through **October 12**.
+
+No unresolved C3-C13 stop remains: amount/recipient ruling accepted, device readiness cleared, finalized proofs passed, public README conflict check clean. Rules/Jev remain deferred to epoch 3; existing Postgres multi-pool/calibration/project-context follow-ups remain in September 30 receipts. Recommend retain candidate/leftover folders and optional devnet program for now; deletion/devnet closure are outside this arc. Founder dashboard/domain/cost follow-ups remain parked; no new spend/custody/public claim decision inferred. /organic-sync can reconcile this post-ship receipt with the private plan without an agent vault write.
 
 ## Generated artifacts
 
@@ -76,9 +105,9 @@ Runner **Codex / GPT-6**; exact runtime model variant, effort and token/cost usa
 ## Resume prompt
 
 ```text
-Resume Hyphae after C13. Mainnet program/ProgramData/authority/hash verified, buffer consumed, 0.051537968 SOL returned to the confirmed original wallet, sweep finalized/zero and both temporary key files deleted after gates. Never fund retired addresses, repeat funding or redeploy.
+Resume Hyphae after the completed C3-C13 arc and integrations. Mainnet program/ProgramData/Ledger authority/hash verified, buffer consumed, 0.051537968 SOL returned, sweep finalized/zero, both temporary key files deleted after gates. C13 874fa19 pushed/CI 37003102460 success, public README d1a9f34 pushed, timing/docs refs deleted; rules/Jev/wsl preserved. Final documentation checkpoint follows 874fa19; verify actual HEAD/CI. Never fund retired addresses or redeploy.
 Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/WALLETS.md, docs/BUILDLOG.md, docs/handoffs/2026-10-02-c13-mainnet-receipt.md, docs/handoffs/2026-10-02-mainnet-funding.md, docs/handoffs/2026-09-28-runbook-c.md.
 Model: GPT-6.1 Sol (high), current plan runbook-execution recommendation.
 Skills: handoff-memory, superpowers:verification-before-completion, vercel:vercel-cli, handoff.
-Verify Git state; integrate only b95d0ab C13 patch by rebase/fast-forward, sync approved public README, delete only proven fully integrated refs, gate/push/exact-SHA CI and append final receipt/current uptake. Stop before C14-C22, rules/Jev merge and optional folder/devnet-close work.
+Verify Git/CI and read receipts. Cisco needs real epoch-2 contributions (0 submissions/intakes at 11:48:42Z). Prepare the next authorized sitting: C14-C18 October 8, C18b from 23:00Z, C19-C22 after October 9 00:00Z and fresh safety gates, video/submission October 9-10. Do not execute these later steps in this completed arc. Preserve rules/Jev/candidate/wsl; optional folder/devnet-close work remains outside scope.
 ```
