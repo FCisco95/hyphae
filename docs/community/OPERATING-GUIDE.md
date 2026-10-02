@@ -31,7 +31,7 @@ The alias above is the evidenced website; a custom domain is a future improvemen
 
 ## Professional pilot checklist
 
-Recommended participant-facing label: **MYCEL · Contribution Pilot**, with “Powered by Hyphae” in the description. This is a naming proposal; the live database and Telegram still say Hyphae Lab. A rename must be applied consistently through the authorized operator path before claiming it is live.
+**Cisco's confirmed community name: MYCEL**, with “Powered by Hyphae” as attribution and “Pilot” as a status badge. The live database and Telegram still say Hyphae Lab. A rename must be applied consistently through an authorized metadata operation before claiming it is live; keep the existing community identity, members, scores and history. Do not hardcode MYCEL into the shared views for every community.
 
 - Use the existing logo and consistent name, description and official links across the group, bot, website and X profile. Verify each account and link before inviting people.
 - Pin one short “Start here” guide: purpose, official links, wallet linking, rules, accepted evidence, deadlines, score explanation and a named support contact.
