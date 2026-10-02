@@ -1,13 +1,13 @@
 ---
 date: 2026-10-02
-summary: Epoch proof and C3-C7 passed. Frozen b3c82c7 is live as Fly v11, Neon 0000-0012 and worker/site/API proofs passed. C7 integrations/cleanup and public README sync are next, then attended C8-C13.
+summary: Epoch proof and C3-C7 passed. C7 docs/timing/dependency cleanups integrated and gated; public README status/Read API pushed. Main integration push/CI is next, then attended C8-C13.
 ---
 
 # Hyphae handoff
 
 ## TL;DR
 
-**C7 passed at 09:29:18Z.** Epoch proof and C3-C7 passed. Frozen `b3c82c790e129b1f4a24ada6b34407e5f6d57ec9` is deployed as Fly v11; API and worker are started on `deployment-01M3XYDW5XW7AEAY68CKVPKC2X`. API/docs/OpenAPI/claims/rate-limit/rendered-site and ten-minute worker proofs passed. **Next: C7 integrations, dependency cleanup and public README status/Read API sync, then attended C8-C13.**
+**C7 and its integration gate passed.** Frozen `b3c82c790e129b1f4a24ada6b34407e5f6d57ec9` is live as Fly v11; Neon 0000-0012, API/site/worker read-backs passed. C7 truth/timing patches integrated without conflicts, two dependency cleanups committed and full gate/build passed. Public README status/Read API pushed as `1caeebb`. **Next: push main integration receipt, verify exact-SHA CI, then attended C8-C13.**
 
 Cisco is present. Session pre-approval authorizes Codex to run the named CLI steps/read-backs; Cisco handles wallet transfers, Ledger approvals and necessary human inputs. The older runbook's operator assignment caused an initial pause; the session instruction governs execution. No renewed approval is needed. Every safety/read-back gate remains binding.
 
@@ -18,7 +18,7 @@ Cisco is present. Session pre-approval authorizes Codex to run the named CLI ste
 - Runner: Codex (GPT-6); exact runtime model ID, effort, token/cost usage unavailable. No helpers or paid scoring calls.
 - Arc start: `ea15cf1d134256af79e2ea716ea41fd2aebe7231 = origin/main`, CI `36935161826` success.
 - Latest pushed main: `2cd7c7cb664e9eec5944e79b01c6d04f6832cf6f`, exact-SHA CI `36987497612` success. `72a93a3` proof milestone CI `36987120342` also succeeded.
-- Runtime/build inputs remain frozen candidate until C7; no substituted API tree. Git retains only main and detached `../hyphae-wt/c1-gate`. Preserve untracked `wsl`.
+- C7 used the frozen candidate; main now has authorized post-C7 doc/test/dependency cleanup. Production API/program source still matches the candidate. Git retains only main and detached `../hyphae-wt/c1-gate`. Preserve untracked `wsl`.
 
 ## Current Objective
 
@@ -40,7 +40,7 @@ Complete C7, then its gated integrations/dependency cleanup and public README st
 
 ## Branch Disposition
 
-All four refs remain local and pushed, unmerged: `fix/timing-budgets` `02ee74e`; `docs/runbook-c-truths` `b95d0ab`; `feat/rules-v2` `158452f`; `feat/jev-eval` `707d7da`. After C7 integrate `ad40b77` and timing by rebase/fast-forward; after C13 integrate `b95d0ab`. Delete only fully integrated refs. Keep rules/Jev until epoch 3; no activation in this arc. Preserve candidate checkout through C7. Leftover folders are nonblocking and deletion is outside this arc.
+Original refs remain local/pushed: timing `02ee74e` is patch-integrated as `9df0f41`/`ca054d9`; C7 truth `ad40b77` is integrated as `fa6c35d`, while docs branch `b95d0ab` still needs its C13 commit. Rules `158452f` and Jev `707d7da` remain unmerged until epoch 3. Dependency cleanup `37f2f8f`, C7 receipt `49f409e`. All rebases had no conflicts and range-diff was identical. Delete only fully integrated refs after C13; preserve candidate checkout and `wsl`. Leftover-folder deletion is outside this arc.
 
 ## Recent Changes
 
@@ -48,7 +48,7 @@ All four refs remain local and pushed, unmerged: `fix/timing-budgets` `02ee74e`;
 - [Attended run](handoffs/2026-10-02-attended-run.md): actual C3-C6 commands/timestamps and C7 deployment/read-backs as observed.
 - C6 generated a 64-character web token in ignored `.env`; staged Fly read secrets and set matching Vercel Production token. RPC reuses existing Helius hold provider, verified mainnet genesis. Values never printed/committed.
 - C7 deployed from c1-gate; temporary ignore file added only the untracked proof-script exclusion, then was removed. Dockerfile/entrypoints/source unchanged.
-- Private October 2 plan amendment read in place; vault, Organic, Sentinel and public-program checkout not written yet.
+- Private October 2 plan amendment read in place; vault, Organic and Sentinel unchanged. Public-program README-only C7 sync committed/pushed as `1caeebb`; funding/program status unchanged until C13.
 
 ## Known Issues / Watch List
 
@@ -61,12 +61,12 @@ All four refs remain local and pushed, unmerged: `fix/timing-budgets` `02ee74e`;
 
 ## Validation
 
-Local gate this session: 726 tests passed, 1 skipped (106 core, 79 web, 541 API); typecheck and lint exit 0 (266 files). First test run hit the known wallet-claims deadline flake; unchanged standalone rerun passed. Strict handoff validation, resume-path existence and diff checks passed on the proof checkpoint. Both pushed proof/receipt CI runs passed, including migration consistency, Postgres and H-CONTRACT gates. Completed C1 Postgres/migration checks are reused for the unchanged candidate; C4/C5 live reads prove the actual migration state. No sensitive code changed or conflict was resolved yet.
+Post-C7 full gate: **727 passed, 1 skipped** (106 core, 80 web, 541 API), typecheck/lint exit 0, production web build exit 0. Retained dependency versions unchanged and SDK 0.1.0 exact. Before timing integration, initial proof test gate hit the known deadline flake, then unchanged rerun passed (726/1). Both proof/receipt CI runs green, including migration/Postgres/H-CONTRACT checks. C4/C5 live reads prove actual schema; accepted C1 gates preserved. No sensitive code or conflict-altered patch; no new mandatory other-family review triggered. Integration exact-SHA CI follows push.
 
 ## Next Actions
 
-1. C7 completed; commit its actual receipt, then perform the gated integrations and cleanup below. No rerun of the completed proof/rehearsal/C1/C2.
-2. After C7 passes: rebase/fast-forward `ad40b77` and timing; remove unused root `@anchor-lang/core`, move web `zod` to devDependencies only if test-only, one cleanup commit. Full gate/push/exact-SHA CI. Fresh other-family review for sensitive or conflict-altered code. Public-program README status/Read API sync under existing yes.
+1. Commit updated integration receipt, push main and verify exact-SHA CI. C7 operational receipt, integrations and package cleanup are already committed/gated. No repeated proof/rehearsal/C1/C2.
+2. After green exact-SHA CI, attended C8-C13 in order. Use fresh mainnet/device/build safety reads; preserve program/hash/authority. C7 public README status/Read API sync already pushed.
 3. Ask Cisco to bring real MYCEL reply/quote contributions into epoch 2 through the bot, leaving time for scoring and the October 8 author/duplicate audit. Prepare the request; Cisco sends any community message.
 4. C8-C13 in order with fresh safety reads and Cisco attending. After C13 integrate `b95d0ab`, update public README funding lines, delete only fully integrated refs; gate/push/exact-SHA CI.
 5. Final C13 /organic-sync receipt: actual runner/usage limits, SHAs, program/image/migrations, attended reads, checks, branches, uptake, downstream API impact and parked items/recommendations. This arc ends there.
@@ -98,9 +98,9 @@ No mainnet keys, funds movement, program deploy or scheduled jobs created yet. E
 ## Resume Prompt
 
 ```text
-Resume Hyphae Part B after passed C7 (October 2 09:29:18Z). Epoch proof and C3-C7 passed; b3c82c7 is live as Fly v11, Neon 0000-0012, site/token/routes and worker drain/recovery verified. Next are C7 integrations/cleanup/public README, then C8-C13. Cisco attends; agent CLI execution is pre-approved, human wallet/Ledger inputs remain Cisco's.
+Resume Hyphae Part B after passed C7 (October 2 09:29:18Z). b3c82c7 is live as Fly v11, Neon 0000-0012, site/API/worker proofs passed. C7 docs/timing and dependency cleanups integrated/gated; public README C7 sync pushed as 1caeebb. Verify main's integration push/exact-SHA CI, then C8-C13. Cisco attends; agent CLI pre-approved, wallet/Ledger inputs remain Cisco's.
 Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-02-epoch-proof.md, docs/handoffs/2026-10-02-attended-run.md, docs/handoffs/2026-10-01-evening-pause.md, docs/handoffs/2026-10-01-ledger-devnet-rehearsal.md, docs/handoffs/2026-09-28-runbook-c.md.
 Model: GPT-6.1 Sol (high) — current plan's runbook-execution recommendation.
 Skills: handoff-memory, superpowers:verification-before-completion, vercel:vercel-cli, solana-dev, handoff.
-Verify actual state, perform gated C7 integrations/cleanups/public README status lines, then attended C8-C13 and final funding/docs receipts. Preserve rules/Jev, candidate checkout and wsl. Stop this arc before C14-C22 and optional cleanup/close work.
+Verify actual state and integration CI, then attended C8-C13 and final C13 truth/public funding/receipt work. Preserve rules/Jev, candidate checkout and wsl. Stop this arc before C14-C22 and optional cleanup/close work.
 ```

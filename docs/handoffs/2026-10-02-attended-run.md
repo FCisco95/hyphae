@@ -44,9 +44,22 @@ Vercel production rebuild `dpl_BoanHo18mXaSpfXk4JetxakgYoa7`, URL `hyphae-p69a1z
 
 Route reads: health/docs/OpenAPI/community/epochs 1 and 2/wallet claims **200**. OpenAPI lists both claims routes. Epoch 1 allocation/payment unavailable `before_first_paid_epoch`; epoch 2 unavailable `no_settlement`. Wallet with no leaves: `total_claims=0`, `claims=[]`; the leaf route and site proxy correctly return **404 not_found**. Token-aware rate limit **3,000**, anonymous **300**, all `RateLimit-*` headers present. An exploratory `/communities/:mint/epochs` request returned 404 because that route does not exist; the advertised individual epoch routes passed.
 
-Worker consuming line at **09:19:05Z** lists `score`, `reward-evaluation`, `reward-retrieval`, `reward-notify`, `reward-recovery`, `reward-close`, `hold-check`. Recovery logged at 09:19:05Z, 09:19:07Z and 09:20:03Z. **Ten-minute database drain/recovery proof remains due at or after 09:29:01Z.** C7 is not yet complete; C8 and all gated integrations remain pending.
+Worker consuming line at **09:19:05Z** lists `score`, `reward-evaluation`, `reward-retrieval`, `reward-notify`, `reward-recovery`, `reward-close`, `hold-check`. Recovery logged at 09:19:05Z, 09:19:07Z and 09:20:03Z. The initial route/site read preceded the required ten-minute proof below.
 
 **Final ten-minute proof at 09:29:18.801Z, exit 0, read-only transaction:** pending jobs **0**; old score/reward jobs **0**; failed jobs since C3 **0**; recovery completed after restart **4**, latest 09:25:05.389171Z; submissions during worker-stop window **0**, unscored **0**. Uptake still epochs 1/2 submissions/intakes **0/0**. **Every C7 read-back passed.** C7 integrations and C8-C13 may now proceed under existing approval.
+
+## Post-C7 integration milestone
+
+| Original | Integrated on main | Verification |
+|---|---|---|
+| `ad40b77` | `fa6c35d` | Detached rebase/fast-forward; range-diff identical, no conflicts |
+| `8d9acfc` | `9df0f41` | Same accepted timing-test patch |
+| `02ee74e` | `ca054d9` | Same accepted deterministic-clock patch |
+| Two dependency cleanups | `37f2f8f` | One commit: remove unused root Anchor; move direct web test-only zod to devDependencies |
+
+Verified root Anchor had no imports; web zod appears only in `lib/api.test.ts`. Offline lockfile update removed the unused graph (47 installed packages); no retained dependency version upgrade. Sentinel remains **exactly 0.1.0**. Full gate: **727 passed, 1 skipped** (106 core, 80 web, 541 API), typecheck/lint exit 0, production web build exit 0. No conflict or sensitive implementation change; unchanged accepted integrations require no new review. Original branch refs remain preserved until their final integration gates.
+
+Public-program owning checkout created at `../hyphae-program`, origin `FCisco95/hyphae-program`. Baseline `9999bfa`, clean, no conflicting README changes. **Only README status and Read API lines** changed; `1caeebb5f30366c7cb9cfa5d9502e76106b69ad4` committed and **pushed**, checkout equals origin/main. Funding/program-status lines remain unchanged for C13. No public program/rubric edits. Main C7 receipt commit is `49f409e`; push/exact-SHA CI of the integrated milestone follow before C8.
 
 ## Generated artifacts this session
 
