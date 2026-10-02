@@ -50,7 +50,7 @@ After C7, ask Cisco to bring real MYCEL reply/quote contributions into epoch 2 t
 
 ## Attended state and next command
 
-Live `fly machines list --app hyphae-api` read both machines started on `deployment-01M3P9QRW519BGZY986E1GV539`: API `6839d31b317318`, worker `817400c9901de8`. This matches the recorded production image; it is not a new deployment.
+Live `fly machines list --app hyphae-api` read both machines started on `deployment-01M3P9QRW519BGZY986E1GV539`: API `6839d31b317318`, worker `817400c9901de8`. This matches the recorded production image; it is not a new deployment. At 08:59:09Z, `https://hyphae-api.fly.dev/health` returned **200**, body `{"ok":true}`. This is a pre-C3 health read, not a completed worker-stop read-back.
 
 Cisco's C3 command:
 
@@ -64,6 +64,8 @@ The [runbook](2026-09-28-runbook-c.md), “How to run it,” explicitly says: **
 ## Validation
 
 Local documentation gate: **726 tests passed, 1 skipped** (106 core, 79 web, 541 API), typecheck exit 0, lint exit 0 (266 files). First full test run: 725 passed, 1 failed, 1 skipped; failure was the documented wallet-claims deadline test (`settlement.test.ts:560`, expected 8 account reads, observed 0). The unchanged full suite passed when rerun alone. No DB/reward code changed; C1's accepted Postgres/migration checks remain recorded in the [rehearsal](2026-10-01-ledger-devnet-rehearsal.md). Diff, handoff validation and push are checked when recording this milestone.
+
+Milestone `72a93a35bb3b90289bea51b2ad7d1a662183b4f1` was committed and **pushed**; `git status -sb` then showed main equal to origin/main with only preserved untracked `wsl`. Strict handoff validation passed, resume paths exist and `git diff --check` passed. Exact-SHA CI [36987120342](https://github.com/FCisco95/hyphae/actions/runs/36987120342) **completed successfully**, including tests/typecheck/lint, migration consistency, Postgres gate and H-CONTRACT vectors. This documentation-only closeout records that observed verdict; check its own exact-SHA CI after push. The same-session local runtime gate is reused because no runtime/build input changed.
 
 ## Gates still ahead
 

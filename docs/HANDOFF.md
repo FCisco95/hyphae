@@ -17,9 +17,10 @@ The Ledger devnet deploy/browser claim and C1/C2 passed October 1; do not repeat
 - Project ID: github.com-fcisco95-hyphae
 - Repo Root: .
 - Branch: main
-- Last Updated: 2026-10-02T09:55:00+01:00
+- Last Updated: 2026-10-02T10:02:00+01:00
 - Updated By: Codex (GPT-6); exact runtime model ID, effort and usage unavailable. No helpers.
 - Main at arc start: `ea15cf1d134256af79e2ea716ea41fd2aebe7231`, equal to `origin/main`; exact-SHA CI `36935161826` independently verified successful. Untracked `wsl` untouched.
+- Proof milestone: `72a93a35bb3b90289bea51b2ad7d1a662183b4f1`, pushed; exact-SHA CI `36987120342` **completed successfully**, including migration check, Postgres gate and H-CONTRACT vectors. The documentation-only receipt commit follows it; its exact-SHA CI must also pass before resume.
 - Scope: documentation checkpoint only. Runtime code and root build files equal candidate `b3c82c7`.
 
 ## Current Objective
@@ -49,6 +50,7 @@ Continue Part B at C3 with Cisco, one step and read-back per message. Preserve t
 - Ran the actual read-only proof and current uptake count; no unexpected proof result and no repair.
 - Read October 2 private-plan amendment in place. No vault, Organic, Sentinel or public-program writes.
 - Asked Cisco for C3 execution output; the explicit runbook operator assignment remains binding. Approval is already recorded.
+- Pre-C3 `/health` read at 08:59:09Z returned 200 (`{"ok":true}`); this does not satisfy the pending worker-stop read-back.
 
 ## Known Issues / Watch List
 
@@ -74,7 +76,7 @@ Continue Part B at C3 with Cisco, one step and read-back per message. Preserve t
 
 ## Validation
 
-October 2: proof and read-only uptake count exit 0; starting exact-SHA CI successful; **726 tests passed, 1 skipped** (106 core, 79 web, 541 API), typecheck exit 0 and lint exit 0 (266 files). Initial full suite hit the known wallet-claims deadline flake (725 passed, 1 failed, 1 skipped); unchanged suite passed on standalone rerun. No DB/reward code changed; accepted C1 migration/Postgres gates are preserved. Documentation validation and push are recorded with the proof milestone.
+October 2: proof and read-only uptake count exit 0; starting exact-SHA CI successful; **726 tests passed, 1 skipped** (106 core, 79 web, 541 API), typecheck exit 0 and lint exit 0 (266 files). Initial full suite hit the known wallet-claims deadline flake (725 passed, 1 failed, 1 skipped); unchanged suite passed on standalone rerun. No DB/reward code changed; accepted C1 migration/Postgres gates are preserved. Handoff validator and diff check passed; all resume paths exist. Proof milestone pushed; only untracked `wsl` remains.
 
 ## Next Actions
 
