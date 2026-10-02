@@ -1,11 +1,13 @@
 ---
 date: 2026-10-02
-summary: October 8–9 readiness packet prepared; fresh October 2 17:02Z reads agree with C13, epoch 2 still empty, no contributor payment. C14 remains dated/attended and unexecuted; preserved candidate/rules/Jev/wsl.
+summary: Professional community pilot/content guide prepared; real browser reads at 17:55–17:58Z still empty with no payout. Member onboarding polish remains proposed; October 8–9 gates unchanged.
 ---
 
 # Hyphae handoff
 
 ## TL;DR
+
+**Latest follow-up: community presentation and operating guidance.** Cisco confirmed Hyphae Lab is the Telegram pilot group. Read [the community operating guide](community/OPERATING-GUIDE.md) and [dated checkpoint](handoffs/2026-10-02-community-guide.md): each community should keep its own group/dashboard with the shared bot; current onboarding is operator-assisted, one chat per mint. Recommended cadence is one useful original post/day and one active contribution brief at a time. Browser reads at 17:55–17:58Z still showed zero contributions/contributing members and no payout. Real desktop/mobile empty-state screenshots saved; member onboarding buttons, verified group invite, naming polish and self-service remain proposed. No content/message, runtime change or production write. Existing money gates remain unchanged.
 
 **Latest arc: preparation only, ending before C14.** Read the [October 8–9 operator packet](demo/2026-10-08-first-payout-readiness.md) and [fresh readiness receipt](handoffs/2026-10-02-payout-readiness.md). October 2 **17:02Z**: Fly v11 stable, all 13 Neon migrations match, recovery completed 17:00Z, epoch 2 still **0 submissions/intakes/decisions/backlog**, no publication intent or leaf. Derived mainnet community/vault absent, binding null, admin balance 0. Empty author/duplicate lists are **provisional**, not the final C18b audit. No production write, scoring call, synthetic contribution or community message. Completed deployment receipts below remain valid and must never be repeated.
 
@@ -18,15 +20,18 @@ MYCEL announcement and Cisco quote-post drafts are saved in [the communications 
 ## Metadata
 
 - Project: hyphae; project ID: github.com-fcisco95-hyphae; repo root: .; branch: main.
-- Last Updated: 2026-10-02T17:20:52Z.
+- Last Updated: 2026-10-02T18:02:22Z.
 - Runner: Codex (GPT-6); exact runtime model ID, effort, token/cost usage unavailable. No helpers or paid scoring calls.
 - Readiness arc start: `d67fa7972bd64c1ff32ff6f83e4f38c7547f0dba = origin/main`, exact-SHA CI `37016652141` independently verified success. No-prune fetch/fast-forward already up to date. Earlier deployment arc started at `ea15cf1`.
+- Community-guide start: `0b1cd61992f39bec6b69788b22d97ce45a59e768`, pushed; exact-SHA CI `37040306523` verified success at the preceding readiness close. Guide milestone `b1431489aec99d20e99630f0eb9e992ecc984f33`; shipping receipt records the passing local gate. Both docs milestones ship together on main; final push/exact-SHA CI result is reported at session close. Resolve the receipt's own SHA/CI from Git and Actions.
 - Readiness milestone: **`b05059cc8fe0b220cdcd31e878eb855109d88900` pushed**, exact-SHA [CI 37039599645](https://github.com/FCisco95/hyphae/actions/runs/37039599645) **completed/success**, including migration consistency, Postgres 17 and H-CONTRACT. A documentation-only shipping receipt follows; resolve its own SHA with `git log -1 -- docs/HANDOFF.md` and verify its exact-SHA CI when resuming.
 - Latest integration main: `874fa199f0e689b3243f0a653b7f2660c4cf0371`, pushed, exact-SHA CI `37003102460` success. C11 receipt `bb45993`, C13 receipt `311830f` pushed. Prior C7/proof/registry CI also green.
 - Shipping close checkpoint: `68a151ce1a3c5b7f80f967d4ae96659aea227588`, pushed; exact-SHA CI `37004134175` success, independently rechecked in this handoff refresh. A documentation-only communications checkpoint follows; verify current HEAD/CI when resuming.
 - C7 used the frozen candidate; main now has authorized post-C7 doc/test/dependency cleanup. Production API/program source still matches the candidate. Git retains only main and detached `../hyphae-wt/c1-gate`. Preserve untracked `wsl`.
 
 ## Current Objective
+
+Provide the professional pilot guide now; next preparation is the bounded participant onboarding design in `docs/community/OPERATING-GUIDE.md`. No new UI has shipped. Cisco supplies the genuine group invite/support contact/publishing account, chooses willing participants and publishes useful content himself. Multi-community onboarding needs independent evidence before a wider availability claim.
 
 The readiness milestone is shipped and CI green; this arc ends before C14. Next execution remains October 8 C14–C18, 23:00Z C18b pause and after-23:45Z final audit; C19–C22 only after October 9 00:00Z plus close/hold/safety gates and attendance. Cisco brings real contributions before close. Never repeat deployment/funding or fund retired keys.
 
@@ -78,11 +83,15 @@ Timing `02ee74e` fully patch-integrated as `9df0f41`/`ca054d9`; docs `ad40b77`/`
 
 ## Validation
 
+Community-guide follow-up: required fresh `pnpm test` **727 passed, 1 skipped** (106 core, 80 web, 541 API), typecheck exit 0, lint exit 0 (266 files), staged diff check, relative guide links and all new resume paths verified. Strict handoff validation passed with existing GitHub/sibling-candidate path warnings. Browser presentation evidence is bounded as described above; no new DB/program/worker audit or wallet claim proof.
+
 Readiness focused tests: **175 passed, 11 files**; packet author/duplicate SELECTs validated against Neon inside a repeatable-read/read-only transaction, both empty. Production API/core/DB/program/config/operator inputs freshly compared with frozen candidate; accepted test/dependency/doc differences only. No DB/reward implementation change or new other-family review. Fresh full local gate **727 passed, 1 skipped**, typecheck/lint exit 0 (266 files), diff check and strict handoff validation passed (existing sibling-path warning). Readiness exact-SHA CI **37039599645 success** includes migration/Postgres/H-CONTRACT gates. Configured-secret exposure check passed; seven committed files are docs only. Exact runtime model ID/effort/token/cost usage unavailable; no helpers or model calls.
 
 Fresh post-C13 gate: **727 passed, 1 skipped** (106 core, 80 web, 541 API), typecheck/lint exit 0 (266 files), production web build exit 0. Exact-SHA CI **37003102460 success** on `874fa19`, including migration check, Postgres 17 and H-CONTRACT vectors. Retained dependency versions unchanged, SDK 0.1.0 exact. C4/C5 prove live schema; finalized C13 proofs and fresh claims read passed. API/db/program production inputs match frozen candidate; C7/C13 accepted copy/test integrations and dependency cleanup only. No conflict or new sensitive implementation; accepted reviews reused. Initial known timing flake passed unchanged before the accepted deterministic-clock fix.
 
 ## Next Actions
+
+0. Use `docs/community/OPERATING-GUIDE.md` to organize the existing pilot. Recommendation: one coordinator, 5–10 willing contributors, verified pinned links and one active brief. Agree the bounded member onboarding design before implementation; preserve the frozen deployment boundary and dated money gates. Actual group invite/support contact/official publishing account remain owner inputs. Do not repeat-read all production state merely to reuse the browser presentation checkpoint.
 
 1. Cisco brings real MYCEL reply/quote contributions into epoch 2 via the existing bot flow before October 9 00:00 UTC; request prepared in the C13 receipt. Agent sent no community message. Allow scoring time and October 8 author/duplicate audit.
 2. Next attended runbook sitting: C14-C18 community/vault preparation on October 8 with fresh preconditions, then C18b audit from **October 8 23:00Z** before close. Any uncorrected duplicate/borrowed work parks publication; no waived gates.
@@ -102,9 +111,13 @@ Check Git refs/status/frozen candidate and live machine/schema/site state before
 
 ## Suggested skills
 
+For the new participant-flow preparation: `content-strategy-sms`, `social-media-trends-research`, `superpowers:brainstorming` for product design and `frontend-design` for a subsequently authorized UI implementation. `handoff`/`handoff-memory` for durable closure. No social publication or helpers.
+
 `handoff-memory` to resume; `superpowers:verification-before-completion`, `solana-dev` and `vercel:vercel-cli` for the next authorized runbook sitting; `handoff` for closure. For announcement work: `content-repurposer-sms`, `social-media-trends-research`; `imagegen` if an image is requested. No helpers.
 
 ## Generated artifacts this session
+
+Community follow-up: `docs/community/OPERATING-GUIDE.md`, two real empty-state screenshots beside it, `docs/handoffs/2026-10-02-community-guide.md`, refreshed handoff/build log. Scratch browser snapshots removed; no new key, credential, deployment, scheduled job or published content.
 
 Readiness arc: `docs/demo/2026-10-08-first-payout-readiness.md`, `docs/handoffs/2026-10-02-payout-readiness.md`, current handoff/build log and corrected demo wording. Temporary SELECT/RPC/HTTP scratch scripts/results removed before commit. No credentials, keys, deployments or schedules created in this arc. The table below records earlier deployment-arc artifacts, not new readiness writes.
 
@@ -119,6 +132,18 @@ Readiness arc: `docs/demo/2026-10-08-first-payout-readiness.md`, `docs/handoffs/
 Both temporary key files deleted after C11/C13 gates; exact former paths/public addresses/deletion times retained in registry. Do not fund their retired addresses. Persistent program identity and Ledger retained. Mainnet program now deployed; no scheduled job created. Existing proof script remains untracked in c1-gate. Organic/Sentinel unchanged; v1 read API live, no contributor payment yet.
 
 ## Resume Prompt
+
+For the community presentation follow-up:
+
+```text
+Resume Hyphae's participant onboarding preparation from docs/community/OPERATING-GUIDE.md and docs/handoffs/2026-10-02-community-guide.md. The guide is shipped documentation; no new UI, group rename, onboarding automation or content publication has occurred. October 2 17:55–17:58Z browser reads showed empty epoch 2 and no payout; earlier deployment/DB receipts are separately timestamped. Preserve candidate/rules/Jev/folders/wsl, SDK 0.1.0 and all dated October 8–9 gates.
+Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/community/OPERATING-GUIDE.md, docs/handoffs/2026-10-02-community-guide.md, docs/demo/2026-10-08-first-payout-readiness.md.
+Model: GPT-6.1 Sol (high) — bounded participant-flow design and documentation.
+Skills: handoff-memory, superpowers:brainstorming, frontend-design, handoff.
+Inspect the existing participant flow and agree a bounded design for community-specific joining, wallet/rules instructions and score explanations. Obtain the genuine group invite/support contact from Cisco; don't invent links. Keep runtime/deployment changes separate from the frozen candidate and do not execute C14 early or publish messages.
+```
+
+For the later attended money sitting:
 
 ```text
 Resume Hyphae at the dated October 8 attended C14–C18 sitting, then C18b from 23:00Z and final audit after 23:45Z before October 9 00:00Z. C1–C13 and readiness are complete; verify actual HEAD/CI and fresh uptake. October 2 17:02Z reads matched v11/Neon 0000–0012/Ledger authority but epoch 2 still had 0 submissions/intakes/decisions, no community/vault/payment. The provisional empty audit is not C18b. Never repeat deployment/funding or fund retired keys. Preserve candidate/rules/Jev/folders/wsl and SDK exactly 0.1.0. MYCEL/Cisco drafts remain unpublished by the agent; owner publication unverified.
