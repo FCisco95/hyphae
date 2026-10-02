@@ -4,6 +4,8 @@ Plan Week 4 #7. The deadline is 2026-10-12 23:59 PDT; Oct 11–12 are buffer. On
 
 ## Scope, as it stands
 
+**October 2 readiness checkpoint:** C1–C13 completed, with Fly v11 on frozen `b3c82c7`, Neon 0000–0012 and the reviewed mainnet program under the Ledger. Fresh 17:02–17:04Z reads still show no initialized MYCEL mainnet community/vault, publication or contributor payment; epoch-2 submissions/intakes are 0/0. Read the [October 8–9 operator packet](2026-10-08-first-payout-readiness.md) and [readiness receipt](../handoffs/2026-10-02-payout-readiness.md) before advancing the status. C14–C22 remain dated/attended, with publication after the October 9 close and all safety gates.
+
 | Plan item | State | Evidence |
 |---|---|---|
 | Week 4 #1 API finishing | Built | `d712289`, `135a80f`, `1d56e5d` |
@@ -23,7 +25,7 @@ Plan Week 4 #7. The deadline is 2026-10-12 23:59 PDT; Oct 11–12 are buffer. On
    - Closes when: every check passes, recorded with the SHA and the CI run id.
 2. **README status matches reality (agent writes, Cisco reads).**
    - The README's "Status" says exactly what is deployed: the api image, the Vercel site (https://hyphae-delta.vercel.app, live since the Sep 29 cutover), and whether the program is on mainnet. It is updated from the build log, not from this file.
-   - If Runbook C's Parts 1–2 ran (C1–C13, Oct 2–3):
+   - Runbook C's Parts 1–2 completed October 2 (C1–C13; see the C13 receipt):
      - the api routes that went live with C7: a wallet's claims, `/v1/openapi.json` and `/docs`;
      - the mainnet program id and its upgrade authority `2kz1Zq…`;
      - the verified hash `7e902d1b…43ac` and how to reproduce it.
@@ -31,7 +33,7 @@ Plan Week 4 #7. The deadline is 2026-10-12 23:59 PDT; Oct 11–12 are buffer. On
      - MYCEL's community and vault addresses;
      - the publish and claim signatures.
    - If only Parts 1–2 ran: the program is on mainnet, and MYCEL has no community, vault or payout there. Say that, not "mainnet payouts".
-   - If neither ran: say devnet only, with the devnet proof's signatures.
+   - If no eligible epoch-2 members or a safety gate blocks Parts 3–4, retain the actual blocker and say mainnet program deployed, no contributor payment. Do not substitute fixture leaves or the devnet payout as mainnet evidence.
    - Closes when: every status line cites a build-log entry or a signature.
 3. **Public-safe pass (agent).**
    - `git grep` for key material, `.env` values and private paths finds nothing.
@@ -42,7 +44,7 @@ Plan Week 4 #7. The deadline is 2026-10-12 23:59 PDT; Oct 11–12 are buffer. On
    - The app repo `FCisco95/hyphae` is private. Add `hackathon@colosseum.com` as a collaborator (GitHub: Settings, Collaborators) before submitting. A collaborator on a personal repo gets write access; there is no read-only role.
    - Closes when: the repo's collaborator list shows `hackathon@colosseum.com`, pending or accepted.
 5. **Links work (agent).**
-   - Each of these opens from a clean browser: the public program repo `FCisco95/hyphae-program`; the site's `/`, `/claim` and an epoch page; the api's `/health`, and its `/docs` and `/v1/openapi.json` once Runbook C's C7 ran (Oct 2–3; they answer 404 until then); each explorer link in the README and the video.
+   - Each of these opens from a clean browser: the public program repo `FCisco95/hyphae-program`; the site's `/`, `/claim` and an epoch page; the api's `/health`, `/docs` and `/v1/openapi.json` (live since C7 on October 2); each explorer link in the README and the video. A wallet with no leaf correctly receives an empty claims list and 404 on its individual leaf route; unavailable settlement is not evidence of a payout.
    - The private app repo does not open without access. Check it from a signed-in account that has it.
    - Closes when: every link answers; a dead one is fixed or removed.
 6. **Video (Cisco).**

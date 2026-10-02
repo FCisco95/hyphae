@@ -12,6 +12,8 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 ## Before recording
 
+**October 2 checkpoint:** C1–C13 are complete: Fly v11/candidate `b3c82c7`, Neon 0000–0012, API docs/claims live and mainnet program/hash/Ledger authority recorded in [C13](../handoffs/2026-10-02-c13-mainnet-receipt.md). Fresh [readiness reads](../handoffs/2026-10-02-payout-readiness.md) at 17:02–17:04Z still show zero epoch-2 uptake, no MYCEL mainnet community/vault and no contributor payment. Beats 4–6 keep their devnet evidence until their specific October 8–9 receipts exist; beat 7 may use the verified mainnet program, and beat 8 may show the live read API. Follow the [operator packet](2026-10-08-first-payout-readiness.md). If the epoch is empty or blocked, show its actual unavailable settlement and say “mainnet program deployed; no contributor payment” instead of implying a first payout.
+
 1. Read the newest build-log entries. Runbook C (`docs/handoffs/2026-09-28-runbook-c.md`) runs in two blocks: Parts 1–2 (C1–C13, the candidate on Fly and Vercel, then the program on mainnet) on Oct 2–3, and Parts 3–4 (C14–C22, MYCEL's community and vault, then the first payout) on Oct 8–9. Use each **mainnet swap-in** below only if the steps it names ran, with the signatures the build log records for them. Otherwise that beat says "devnet" on screen.
 2. `git switch main && git pull --ff-only`. Note the SHA and the latest CI run; say those, not the numbers in this file.
 3. Open the tabs in the order of the recording guide below. The site is https://hyphae-delta.vercel.app, live since the Sep 29 cutover (`docs/handoffs/2026-09-29-cutover-run.md`, step 15).
@@ -34,7 +36,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 | 5 | `<site>/#proof`, the publish row; after Runbook C, `<site>/c/<mint>/e/2`'s settlement panel | the explorer on the publish |
 | 6 | `<site>/#proof`, the claim and the refused claim; after Runbook C, `<site>/c/<mint>/e/2/claim` | the explorer on both |
 | 7 | `<site>/#trust` (the build hash and the custody policy) | the terminal's `solana-verify` |
-| 8 | `<site>/#integrate` | the public README's vault section; `/docs` on the api only if Runbook C's C7 ran |
+| 8 | `<site>/#integrate` | the public README's vault section; live `/docs` on the api (C7 completed October 2) |
 | Close | `<site>/` | — |
 
 ## Beat 1 — who this is for (framing) · ~15 s
@@ -126,7 +128,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 **Show:**
 1. The site's `<site>/#integrate`: the read API and the proof check.
 2. The section "Funding a community's vault" of the public `hyphae-program` README: the PDA seeds.
-3. Only if Runbook C's C7 ran: `/docs`, the OpenAPI reference, and one `GET /v1/wallets/{wallet}/claims` response.
+3. `/docs`, the OpenAPI reference, and one `GET /v1/wallets/{wallet}/claims` response; C7 completed October 2. An empty result is shown as empty, not as evidence of payment.
 
 **Say:** "A vault's address comes from the coin and its admin, so any project can find it and fund it. Everything on the page is in a public API: communities, weeks, every score with its reasons, and every claim with its proof."
 
@@ -134,7 +136,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 - the wallet-claims route and rate limits: `d712289`, `6e48b12`; OpenAPI and `/docs`: `135a80f`;
 - the README integration: `1d56e5d`.
 
-Say "deployed" for the community and epoch routes: production has run `86ff258` since the Sep 29 cutover (`docs/HANDOFF.md`). For a wallet's claims, `/v1/openapi.json` and `/docs`, say it only if Runbook C's C7 ran (Oct 2–3): until then they answer 404.
+Say "deployed" for the community/epoch routes, wallet claims, `/v1/openapi.json` and `/docs`: production has run Fly v11 on frozen candidate `b3c82c7` since October 2 C7. The September 29 `86ff258` image is the prior rollback image. Cite the attended run and newest read-back, not a deployment inferred from current `main`.
 
 ## Close · ~5 s
 
