@@ -62,6 +62,12 @@ Existing focused operator tests: **175 passed** across 11 files: init CLI 20, pu
 
 Full local gate passed: **727 tests, 1 skipped** (106 core, 80 web, 541 API); `pnpm typecheck` and `pnpm lint` exit **0**, lint checked **266 files**. `git diff --check` passed. Strict handoff validation passed after restoring its required Current State heading; the existing sibling-worktree portability warning remains. Final commits, push and exact-SHA CI are recorded in the closeout after they run. A sandbox shell-start failure (`CreateProcessAsUserW`, access denied) was worked around with approved execution outside the sandbox; no production action was rejected or attempted.
 
+## Shipping closeout
+
+Readiness milestone **`b05059cc8fe0b220cdcd31e878eb855109d88900` committed and pushed** after the full local gate. Exact-SHA [CI 37039599645](https://github.com/FCisco95/hyphae/actions/runs/37039599645) independently **completed/success** at the closeout read, including tests/typecheck/lint, migration consistency, Postgres 17 and H-CONTRACT vectors. Seven documentation files only; configured-secret and added machine-path checks passed. Post-push status was main equal to origin/main with only preserved untracked `wsl`; live remote rules/Jev refs match the original SHAs. No runtime changes or production mutation.
+
+This documentation-only receipt records that actual verdict; its own SHA is discoverable with `git log -1 -- docs/HANDOFF.md`, and its exact-SHA CI is verified after its push at session close. The required full local gate rerun before the receipt push also passed: **727 tests, 1 skipped**, typecheck/lint exit 0 (266 files). Nothing advances into C14 or beyond.
+
 ## Next Actions
 
 1. Cisco brings real own-account contributions now, signed `/link` and rules pass before close. Recommendation: use the existing flow early; there are no epoch-2 entries to pay today.

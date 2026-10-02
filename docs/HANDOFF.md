@@ -18,16 +18,17 @@ MYCEL announcement and Cisco quote-post drafts are saved in [the communications 
 ## Metadata
 
 - Project: hyphae; project ID: github.com-fcisco95-hyphae; repo root: .; branch: main.
-- Last Updated: 2026-10-02T17:08:51Z.
+- Last Updated: 2026-10-02T17:20:52Z.
 - Runner: Codex (GPT-6); exact runtime model ID, effort, token/cost usage unavailable. No helpers or paid scoring calls.
 - Readiness arc start: `d67fa7972bd64c1ff32ff6f83e4f38c7547f0dba = origin/main`, exact-SHA CI `37016652141` independently verified success. No-prune fetch/fast-forward already up to date. Earlier deployment arc started at `ea15cf1`.
+- Readiness milestone: **`b05059cc8fe0b220cdcd31e878eb855109d88900` pushed**, exact-SHA [CI 37039599645](https://github.com/FCisco95/hyphae/actions/runs/37039599645) **completed/success**, including migration consistency, Postgres 17 and H-CONTRACT. A documentation-only shipping receipt follows; resolve its own SHA with `git log -1 -- docs/HANDOFF.md` and verify its exact-SHA CI when resuming.
 - Latest integration main: `874fa199f0e689b3243f0a653b7f2660c4cf0371`, pushed, exact-SHA CI `37003102460` success. C11 receipt `bb45993`, C13 receipt `311830f` pushed. Prior C7/proof/registry CI also green.
 - Shipping close checkpoint: `68a151ce1a3c5b7f80f967d4ae96659aea227588`, pushed; exact-SHA CI `37004134175` success, independently rechecked in this handoff refresh. A documentation-only communications checkpoint follows; verify current HEAD/CI when resuming.
 - C7 used the frozen candidate; main now has authorized post-C7 doc/test/dependency cleanup. Production API/program source still matches the candidate. Git retains only main and detached `../hyphae-wt/c1-gate`. Preserve untracked `wsl`.
 
 ## Current Objective
 
-Close the documentation readiness milestone with its local gate, push and exact-SHA CI receipt. Next execution remains October 8 C14–C18, 23:00Z C18b pause and after-23:45Z final audit; C19–C22 only after October 9 00:00Z plus close/hold/safety gates and attendance. Cisco brings real contributions before close. Never repeat deployment/funding or fund retired keys.
+The readiness milestone is shipped and CI green; this arc ends before C14. Next execution remains October 8 C14–C18, 23:00Z C18b pause and after-23:45Z final audit; C19–C22 only after October 9 00:00Z plus close/hold/safety gates and attendance. Cisco brings real contributions before close. Never repeat deployment/funding or fund retired keys.
 
 ## Fresh readiness state — October 2 17:02–17:08Z
 
@@ -77,7 +78,7 @@ Timing `02ee74e` fully patch-integrated as `9df0f41`/`ca054d9`; docs `ad40b77`/`
 
 ## Validation
 
-Readiness focused tests: **175 passed, 11 files**; packet author/duplicate SELECTs validated against Neon inside a repeatable-read/read-only transaction, both empty. Production API/core/DB/program/config/operator inputs freshly compared with frozen candidate; accepted test/dependency/doc differences only. No DB/reward implementation change or new other-family review. Fresh full local gate **727 passed, 1 skipped**, typecheck/lint exit 0 (266 files), diff check and strict handoff validation passed (existing sibling-path warning). Push/CI closeout follows. Exact runtime model ID/effort/token/cost usage unavailable; no helpers or model calls.
+Readiness focused tests: **175 passed, 11 files**; packet author/duplicate SELECTs validated against Neon inside a repeatable-read/read-only transaction, both empty. Production API/core/DB/program/config/operator inputs freshly compared with frozen candidate; accepted test/dependency/doc differences only. No DB/reward implementation change or new other-family review. Fresh full local gate **727 passed, 1 skipped**, typecheck/lint exit 0 (266 files), diff check and strict handoff validation passed (existing sibling-path warning). Readiness exact-SHA CI **37039599645 success** includes migration/Postgres/H-CONTRACT gates. Configured-secret exposure check passed; seven committed files are docs only. Exact runtime model ID/effort/token/cost usage unavailable; no helpers or model calls.
 
 Fresh post-C13 gate: **727 passed, 1 skipped** (106 core, 80 web, 541 API), typecheck/lint exit 0 (266 files), production web build exit 0. Exact-SHA CI **37003102460 success** on `874fa19`, including migration check, Postgres 17 and H-CONTRACT vectors. Retained dependency versions unchanged, SDK 0.1.0 exact. C4/C5 prove live schema; finalized C13 proofs and fresh claims read passed. API/db/program production inputs match frozen candidate; C7/C13 accepted copy/test integrations and dependency cleanup only. No conflict or new sensitive implementation; accepted reviews reused. Initial known timing flake passed unchanged before the accepted deterministic-clock fix.
 
