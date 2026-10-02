@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-02 · durable wallet registry before mainnet funding
+
+**Changed:** added `docs/WALLETS.md` for the two temporary deployment keys, persistent program identity and Ledger authority. Records public addresses, exact WSL/Windows access paths, roles, recovery limits and C11/C13 deletion gates. Linked the registry from the canonical handoff and saved a dated checkpoint. No key copied, deleted or newly generated.
+**Decision:** Cisco requested durable wallet tracking and reaffirmed continuation after the control/rent explanation. Preserve the temporary keys until their verified cleanup gates; the Ledger controls the deployed program, while the software deployer only pays deployment costs. Keep secrets out of Git and record deletions as well as creations.
+**Numbers:** 2 temporary key-file public addresses verified, both mode 600; persistent program address verified and file Git-ignored; deployer finalized balance 0 at 10:45:23Z. Fresh mainnet rent: 1.1663934 SOL ProgramData plus 0.00083312 SOL program account; fees estimated, no immediate refund of the large storage deposit. Uptake refresh 10:02:50Z: epochs 1/2 submissions and intakes 0, lifetime submissions 3.
+**Validation/commits:** `9a7e681` C8-C10 checkpoint **pushed**, exact-SHA CI `36992801247` **success**, including tests/typecheck/lint, migration/Postgres/contract gates. Registry checkpoint follows that SHA; it changes documentation only and reuses the unchanged accepted local gate. Handoff validation, path/address checks and diff checks run before commit; push and exact-SHA CI are checked afterward.
+**Next:** Cisco sends 1.2 SOL on mainnet to the recorded deployer and names the return address. Verify C10 funding, then C11-C13 with Cisco attending; update wallet signatures/deletion states after each gate. No mainnet transaction, program deployment, pot funding or contributor payment yet. No other project wallet inventory is claimed.
+
 ## 2026-10-02 · C3-C7 passed: migrations, frozen deployment and worker recovery verified
 
 **Changed:** attended C3 stopped the worker; C4 applied only migrations 0010–0012 on its first attempt; C5 verified all 13 journal hashes, additions, unchanged counts and null new hash fields. C6 staged the read RPC/token and set the matching Production web token. C7 deployed frozen `b3c82c7` as Fly v11, restarted the worker and rebuilt the site. API/docs/OpenAPI/community/claims/rate-limit, rendered-site and ten-minute worker drain/recovery reads all passed; C7 complete at 09:29:18Z.
