@@ -1,0 +1,57 @@
+// Scratch, untracked: the read-only epoch 1 close proof. Prints states and counts, no row text.
+import { readFileSync } from "node:fs";
+import { communities, createDb, epochs, rewardEpochSnapshots, rewardSnapshotEntries } from "@hyphae/db";
+import { eq, sql } from "drizzle-orm";
+import { evaluatePayoutGate } from "../src/payout/gate.js";
+import { readOnly } from "../src/pg.js";
+
+const MINT = "HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg";
+const env = readFileSync("C:/Users/joao_/Desktop/DEVELOPMENTS/hyphae/.env", "utf8").replace(/^\uFEFF/, "");
+const url = env.split(/\r?\n/).find((l) => l.startsWith("DATABASE_URL="))?.split("=").slice(1).join("=").trim();
+if (!url) throw new Error("DATABASE_URL not in .env");
+const db = createDb(url);
+
+const out = await readOnly(db, async (tx) => {
+  const [community] = await tx.select().from(communities).where(eq(communities.mint, MINT));
+  if (!community) throw new Error("community not found");
+  const eps = await tx.select().from(epochs).where(eq(epochs.communityId, community.id)).orderBy(epochs.index);
+  const snapshots = await tx
+    .select({ epochId: rewardEpochSnapshots.epochId, id: rewardEpochSnapshots.id, closesAt: rewardEpochSnapshots.closesAt, closedAt: rewardEpochSnapshots.closedAt })
+    .from(rewardEpochSnapshots)
+    .where(eq(rewardEpochSnapshots.communityId, community.id));
+  const entries: Record<string, number> = {};
+  for (const s of snapshots) {
+    const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(rewardSnapshotEntries).where(eq(rewardSnapshotEntries.snapshotId, s.id));
+    entries[s.id] = n;
+  }
+  const jobs = await tx.execute(sql`
+    select name, state, count(*)::int as n, min(created_on) as first, max(completed_on) as last_done
+    from pgboss.job where name in ('reward-close', 'reward-recovery', 'hold-check') group by name, state order by name, state`);
+  const failed = await tx.execute(sql`
+    select name, created_on, left(coalesce(output::text, ''), 300) as output
+    from pgboss.job where state = 'failed' and name like 'reward-%' order by created_on desc limit 3`);
+  return { community, eps, snapshots, entries, jobs: [...jobs], failed: [...failed] };
+});
+
+const gates = [];
+for (const e of out.eps) {
+  const g = await evaluatePayoutGate(db, { communityId: out.community.id, epochId: e.id });
+  gates.push({ epoch: e.index, status: g.status, blockers: g.status === "blocked" ? g.blockers : [] });
+}
+
+console.log(
+  JSON.stringify(
+    {
+      now: new Date().toISOString(),
+      firstPaidEpoch: out.community.firstPaidEpoch,
+      epochs: out.eps.map((e) => ({ index: e.index, status: e.status, opensAt: e.opensAt, closesAt: e.closesAt, hasRewardConfig: !!e.rewardConfigId })),
+      snapshots: out.snapshots.map((s) => ({ epochId: s.epochId, closesAt: s.closesAt, closedAt: s.closedAt, entries: out.entries[s.id] })),
+      jobs: out.jobs,
+      failedRewardJobs: out.failed,
+      gates,
+    },
+    null,
+    1,
+  ),
+);
+await db.$client.end();
