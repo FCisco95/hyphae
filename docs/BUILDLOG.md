@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-02 · C3-C7 passed: migrations, frozen deployment and worker recovery verified
+
+**Changed:** attended C3 stopped the worker; C4 applied only migrations 0010–0012 on its first attempt; C5 verified all 13 journal hashes, additions, unchanged counts and null new hash fields. C6 staged the read RPC/token and set the matching Production web token. C7 deployed frozen `b3c82c7` as Fly v11, restarted the worker and rebuilt the site. API/docs/OpenAPI/community/claims/rate-limit, rendered-site and ten-minute worker drain/recovery reads all passed; C7 complete at 09:29:18Z.
+**Decision:** execute the approved CLI steps with Cisco attending, preserving every read-back and wallet/Ledger gate. Use the existing verified mainnet Helius endpoint and keep new secrets out of logs/Git. Exclude the existing proof scratch file from the build; no runtime substitution.
+**Numbers:** migration attempts 1 · journal rows 13 · config rows 1, reward decisions/intakes/entries/leaves 0 · non-null new hashes 0 · both machines started on `deployment-01M3XYDW5XW7AEAY68CKVPKC2X` · wallet claims 0 · no funds moved · ten-minute pending/old/failed jobs 0, recovery completions 4, unscored stop-window submissions 0. Same-session unchanged-runtime gate: 726 passed/1 skipped, typecheck/lint exit 0; proof/receipt exact-SHA CI both green including Postgres/migration checks.
+**Commits:** operational checkpoint is local until its verified documentation milestone is committed/pushed. Earlier proof commits `72a93a3`, `2cd7c7c` are pushed. No branch integration or public README sync yet.
+**Next:** C7 integrations/cleanup and public README status lines. Receipt: `docs/handoffs/2026-10-02-attended-run.md`. C8–C13 follow with Cisco; no contributor payment is claimed.
+
 ## 2026-10-02 · epoch-close proof passed; attended rollout starts at C3
 
 **Verified:** the read-only proof on frozen candidate `b3c82c7` shows epoch 1 closed with exactly one snapshot, epoch 2 open until October 9 00:00Z, one completed reward-close and no failed reward jobs. Epoch 1 is blocked from payout by `before_first_paid_epoch`. The live Fly machine read still shows the recorded v10 image; no rollout or mainnet action has run.
