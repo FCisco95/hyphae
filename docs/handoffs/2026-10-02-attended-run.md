@@ -1,6 +1,6 @@
 ---
 date: 2026-10-02
-summary: Epoch proof and C3-C7 passed. Neon 0000-0012, Fly v11 on pinned b3c82c7, site/read API and ten-minute worker recovery verified. Gated C7 integrations are next.
+summary: Epoch proof/C3-C9 passed; C7 integrations pushed and CI green. C10 keys generated silently; Cisco funding and sweep recipient pending. No mainnet transaction or deploy yet.
 ---
 
 # October 2 attended Part B receipt
@@ -59,7 +59,32 @@ Worker consuming line at **09:19:05Z** lists `score`, `reward-evaluation`, `rewa
 
 Verified root Anchor had no imports; web zod appears only in `lib/api.test.ts`. Offline lockfile update removed the unused graph (47 installed packages); no retained dependency version upgrade. Sentinel remains **exactly 0.1.0**. Full gate: **727 passed, 1 skipped** (106 core, 80 web, 541 API), typecheck/lint exit 0, production web build exit 0. No conflict or sensitive implementation change; unchanged accepted integrations require no new review. Original branch refs remain preserved until their final integration gates.
 
-Public-program owning checkout created at `../hyphae-program`, origin `FCisco95/hyphae-program`. Baseline `9999bfa`, clean, no conflicting README changes. **Only README status and Read API lines** changed; `1caeebb5f30366c7cb9cfa5d9502e76106b69ad4` committed and **pushed**, checkout equals origin/main. Funding/program-status lines remain unchanged for C13. No public program/rubric edits. Main C7 receipt commit is `49f409e`; push/exact-SHA CI of the integrated milestone follow before C8.
+Public-program owning checkout created at `../hyphae-program`, origin `FCisco95/hyphae-program`. Baseline `9999bfa`, clean, no conflicting README changes. **Only README status and Read API lines** changed; `1caeebb5f30366c7cb9cfa5d9502e76106b69ad4` committed and **pushed**, checkout equals origin/main. Funding/program-status lines remain unchanged for C13. No public program/rubric edits.
+
+Main C7 receipt `49f409e`, C7 docs `fa6c35d`, timing `9df0f41`/`ca054d9`, cleanup `37f2f8f` and integration receipt `4a4165584d4a7d728b3b020e49374dd926c1af25` are **pushed**. Exact-SHA CI **36990943344** completed **successfully** on `4a41655`, including full tests/typecheck/lint, migration check, Postgres and H-CONTRACT vectors. Main equals origin/main with only untracked `wsl`. Auto-deployed site `dpl_91ZFh5fugnnEs247CsShBL5Kbwa5` is Ready; live home read at 09:40:58Z confirms direct API-docs link and absence of the old wallet-route disclaimer.
+
+## C8 — passed after Ledger readiness
+
+Fresh checks after green integration CI:
+
+- Windows archive sha256 `84abbbf25a463a0b53aec04df0ede9cb4f00d6bf2ea1ab6870e7a4306b39c06b`, exact match; CLI `3.1.10 (src:7bc9c805; feat:1620780344, client:Agave)`.
+- `solana-keygen pubkey target/deploy/hyphae-keypair.json` returns exact `EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E`.
+- Finalized mainnet account read returns **AccountNotFound**, expected.
+- Initial `solana-keygen.exe pubkey usb://ledger?key=2/0` returned **no device found**. After Cisco replied **Ledger ready**, the retry returned exact `2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR`, exit 0, before 09:52:07Z. **C8 passed**, with no signing.
+
+## C9 passed; C10 funding pending
+
+Rechecked the existing October 1 verifiable build in WSL `~/vb/oct2`: HEAD exactly `b3c82c790e129b1f4a24ada6b34407e5f6d57ec9`, tracked tree clean, executable 229,432 bytes. SHA256 `cb4ffdd8074442310f7953b5233a4c2df4eaf8c3f7627cdf259efb84ebf98d79`; executable hash `7e902d1b5f8d8c49dfd199ec2e7bf44139b56524d98408f1556e14f4e9ab43ac`. Both match the approved reuse gate; no rebuild or program change.
+
+C10 silently generated two new keys with restrictive permissions, without overwriting files: `~/hyphae-mainnet/deploy-hot-2026-10-02.json` and `deploy-buffer-2026-10-02.json`. Public deployer `CpBum8ynMAawJSdNCKS9NLZXc6hySE1aDCqna7XhmyNT`; buffer `E8MhkV28a4918ZpqRZHAf6ANqK8GxkroEy82GEFAdBSF`. Secret bytes/recovery phrases were not printed or copied. Cisco's request is pending: send exactly **1.2 SOL on mainnet** to the deployer and name the C13 sweep recipient. Finalized balance **0** at **09:54:10.230Z**. RPC mainnet genesis matched; recommended priority fee **10,000 micro-lamports/CU** at that read. Refresh it before C11. C11-C13 have not run; no funds moved by the agent, no signing or mainnet deploy. No C13 truth integrated or refs deleted.
+
+## Participation request for Cisco
+
+Epoch 2 still has **zero contributions/intakes** at the 09:29Z read. C7 is live now, so ask Cisco to bring real MYCEL reply/quote contributions through the existing bot workflow during epoch 2, which closes October 9 00:00Z. Recommendation: invite them promptly, leaving time for scoring and the October 8 author/duplicate audit. No community post/message was sent. No Organic fee collection or contributor payment is claimed.
+
+## Downstream and next gate
+
+Hyphae's complete public v1 read API is deployed (including claims/docs/OpenAPI), with rate limits and unavailable payment reasons. Organic/Sentinel/vault unchanged; SDK exactly 0.1.0. The public-program README's live API claim now matches that rollout. Program remains devnet-only at fresh mainnet absence read; treasury/pot/custody policy unchanged. After C13, integrate `b95d0ab`, update only authorized README funding/program status and delete fully integrated refs. C14-C22 stay October 8-9, video/submission October 9-10, outside this arc.
 
 ## Generated artifacts this session
 
@@ -69,7 +94,7 @@ Public-program owning checkout created at `../hyphae-program`, origin `FCisco95/
 | Read web token | Ignored `.env`; staged Fly `READ_API_WEB_TOKEN`; Vercel Production `HYPHAE_API_TOKEN` | Same 64-character secret, values omitted |
 | Operational receipts | `docs/HANDOFF.md`, `docs/BUILDLOG.md`, this receipt and proof checkpoint | Public-safe states/counts only |
 
-No mainnet keys, transfers, deployments or scheduled jobs created yet.
+Two mainnet deployment key files now exist only at their canonical WSL paths above. Funding is pending; no agent transaction, program deployment or scheduled job created yet.
 
 ## Checkpoint commits and CI
 
