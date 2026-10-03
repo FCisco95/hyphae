@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { communityPresentation } from "./community-presentation.js";
 
@@ -8,6 +9,21 @@ const valid = {
 };
 
 describe("verified community presentation", () => {
+  it("does not promote a test-only dependency into the server's configuration path", () => {
+    const source = readFileSync(new URL("./community-presentation.ts", import.meta.url), "utf8");
+    const manifest = JSON.parse(
+      readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+    ) as { dependencies: Record<string, string> };
+    for (const match of source.matchAll(/import\s+(?!type\b)[\s\S]*?from\s+["']([^"']+)["']/g)) {
+      const specifier = match[1] ?? "";
+      if (specifier.startsWith(".") || specifier.startsWith("node:")) continue;
+      const packageName = specifier.startsWith("@")
+        ? specifier.split("/").slice(0, 2).join("/")
+        : specifier.split("/")[0];
+      expect(packageName && manifest.dependencies[packageName]).toBeDefined();
+    }
+  });
+
   it("has no production owner links or default community status", () => {
     expect(communityPresentation("HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg")).toBeUndefined();
     expect(communityPresentation("OtherMint")).toBeUndefined();
