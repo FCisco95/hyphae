@@ -1,0 +1,102 @@
+export const PARTICIPANT_KEYS = [["/link", "/rules"], ["/me", "/help brief"], ["/help"]] as const;
+
+export interface OnboardingCommunity {
+  name: string;
+  mint: string;
+  webOrigin: string;
+  paused: boolean;
+  epoch: {
+    index: number;
+    closesAt: Date;
+    rubricVersion: string | null;
+    rulesQuestions: number | null;
+  } | null;
+}
+
+const GENERIC =
+  "Hyphae scores real work for token communities. Begin in your registered community group: /link, /rules, then /me. Adding the bot does not register a group. Ask the community owner for its verified invite.";
+const OWN_LINK =
+  "On a phone, open your ORIGINAL private bot URL (including its fragment) in a compatible wallet browser. Never forward it or send it to support. Use your own link from the official bot; cancel any transfer, approval or seed-phrase request. After signing, check your own /me.";
+const utc = (date: Date) => `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
+
+function audit(c: OnboardingCommunity): string {
+  try {
+    const url = new URL(c.webOrigin);
+    if (url.protocol === "https:" && url.origin === c.webOrigin) {
+      return `${url.origin}/c/${encodeURIComponent(c.mint)}${c.epoch ? `/e/${c.epoch.index}` : ""}`;
+    }
+  } catch {
+    /* Invalid configuration must not produce a clickable destination. */
+  }
+  return "Audit link unavailable; ask the owner.";
+}
+
+const heading = (c: OnboardingCommunity) =>
+  [
+    c.name.slice(0, 120),
+    "Powered by Hyphae",
+    `Reward intake ${c.paused ? "paused" : "open"}.`,
+    c.epoch
+      ? `Epoch ${c.epoch.index} closes ${utc(c.epoch.closesAt)}.`
+      : "No reward epoch is open.",
+  ].join("\n");
+
+export function welcomeContent(c?: OnboardingCommunity): string {
+  if (!c) return GENERIC;
+  return [
+    heading(c),
+    "Start here",
+    "/link — Link your own wallet privately. This signs a free message.\n/rules — Take this epoch's rules test in the private bot chat.\n/me — Your wallet and epoch progress (replied in this group).\n/help brief — Current brief and audit.\n/help — How scores and payment work.",
+    "Your work, evidence and verified wallet may appear in the public audit. Points do not promise payment.",
+    OWN_LINK,
+    audit(c),
+  ].join("\n\n");
+}
+
+export function helpContent(c?: OnboardingCommunity): string {
+  if (!c) return GENERIC;
+  const rules = c.epoch?.rulesQuestions
+    ? `Rubric ${c.epoch.rubricVersion}: /rules requires ${c.epoch.rulesQuestions}/${c.epoch.rulesQuestions}, strictly before ${utc(c.epoch.closesAt)}. A pass is only one payment condition.`
+    : "No rules test available; ask the owner. Never assume another community's quiz applies.";
+  return [
+    heading(c),
+    "Rules and score help",
+    rules,
+    "Raw quality is the model's assessment. Credited quality applies the pinned rules; reasons and correction history explain the difference. Timing and accepted effort determine exact point units, combined before whole-point rounding.",
+    "Pending means no decision yet. Open-epoch points are provisional; final points belong to the closed snapshot and are not SOL.",
+    "Allocation states what was assigned. Publication is required before it is claimable. Paid requires a confirmed claim receipt. Positive points, a wallet verified at close, rules, holder, author/duplicate and safety gates all apply.",
+    "/link signs a free readable message. /claim later signs a transaction on the claim page. Use /me for your own progress and /help brief for the active brief. Ask the owner about evidence or corrections before close.",
+    OWN_LINK,
+    audit(c),
+  ].join("\n\n");
+}
+
+export function briefContent(
+  c: OnboardingCommunity,
+  task: { brief: string; targetUrl: string | null; closesAt: Date } | null,
+): string {
+  let target = "";
+  if (task?.targetUrl) {
+    try {
+      const url = new URL(task.targetUrl);
+      if (
+        url.protocol === "https:" &&
+        !url.username &&
+        !url.password &&
+        /^(x|twitter)\.com$/.test(url.hostname) &&
+        /^\/[A-Za-z0-9_]+\/status\/\d+$/.test(url.pathname)
+      )
+        target = `${url.origin}${url.pathname}`;
+    } catch {
+      /* Untrusted task values remain text, never arbitrary action URLs. */
+    }
+  }
+  return [
+    heading(c),
+    task
+      ? `Current brief\n${task.brief.slice(0, 1000) || "Ask the owner for this task's brief."}${task.brief.length > 1000 ? "…" : ""}\n${target}\nTask closes ${utc(task.closesAt)}.`
+      : "No active brief. Ask the owner before submitting linked work.",
+    "URL submissions use the latest active task. Keep one active brief; confirm its target before /submit. A task window does not extend the epoch's intake deadline.",
+    audit(c),
+  ].join("\n\n");
+}

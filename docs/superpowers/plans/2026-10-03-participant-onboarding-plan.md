@@ -1,6 +1,6 @@
 # Bounded participant onboarding implementation plan
 
-**Status: planning only; no implementation in the October 3 arc.** Depends on [the design](../specs/2026-10-03-participant-onboarding-design.md) and [platform verdict/test](../specs/2026-10-03-link-platform-verdict.md). An approved implementation prompt must identify release scope; deployment and live metadata remain separately authorized. SDK **exactly 0.1.0 through October 12**, frozen reward/scoring/program behavior, and unmerged rules/Jev remain boundaries.
+**Status: local T/A/B implementation approved October 3; live effects remain unapproved.** Depends on [the design](../specs/2026-10-03-participant-onboarding-design.md) and [platform verdict/test](../specs/2026-10-03-link-platform-verdict.md). An approved implementation prompt must identify release scope; deployment and live metadata remain separately authorized. SDK **exactly 0.1.0 through October 12**, frozen reward/scoring/program behavior, and unmerged rules/Jev remain boundaries.
 
 ## Dependency gates before activation
 
@@ -62,9 +62,11 @@ Use actual implementation-date screenshot/receipt names if the future prompt app
 
 **Local candidate done:** the copy affordance preserves the original fragment and security invariants, with tests and fresh other-family exact-range review. **Activation done:** separately authorized real phone journey passes. Mock Wallet Standard tests alone cannot clear activation. The forwarded-link residual remains explicitly recorded; no confirmation code/account display is claimed.
 
-## Candidate and release packet — October 3, awaiting approval
+## Candidate and release packet — October 3
 
-This is the concrete scope to approve: **local T, then A, then B**, using only the table above and normal engineering documentation. Recommendation: approve all three for local implementation, so the bot, audit page and portable-link guidance agree; authorize each live effect separately. T/A are independently buildable with fixtures while phone/type/owner URLs wait. No build, deployment, attended test or Telegram operation is authorized by this packet itself. The [alignment receipt](../../handoffs/2026-10-03-onboarding-scope-packet.md) records the completed document gate and source limits. Recheck changed refs/code/platform guidance before a later build; do not repeat unchanged accepted sensitive reviews.
+**Approval recorded:** Cisco replied “yes” to the concrete local T → A → B scope and recommended disjoint Hyphae briefs/Raidar separate, one active brief and hidden pilot until phone PASS. No owner URLs, read-only credentials, attended phone-test scope or live-effect authorization was supplied.
+
+This is the approved local scope: **T, then A, then B**, using only the table above and normal engineering documentation. Recommendation: approve all three for local implementation, so the bot, audit page and portable-link guidance agree; authorize each live effect separately. T/A are independently buildable with fixtures while phone/type/owner URLs wait. The recorded approval authorizes local implementation only; deployment, attended testing and Telegram operations remain separate. The [alignment receipt](../../handoffs/2026-10-03-onboarding-scope-packet.md) records the completed document gate and source limits. Recheck changed refs/code/platform guidance before a later build; do not repeat unchanged accepted sensitive reviews.
 
 ### T: concrete welcome, destinations and context
 
@@ -155,11 +157,11 @@ Registered-chat menu labels: `start` “Start here”; `help` “Rules, score he
 
 ### Owner input and activation checklist
 
-1. **Build decision:** explicitly approve local T/A/B using this exact contract (or identify subset). Recommended all three; no production MYCEL URLs required for generic T/A. Record the authorization before any code.
+1. **Build decision — COMPLETE:** October 3 “yes” approves local T/A/B using this exact contract. No production MYCEL URLs required for generic T/A; activation and publication remain gated.
 2. **Technical read-only access:** use an existing owner-configured connection, never paste secrets; require one registered row, exact bot/chat binding, current `getChat.type` and migration health. Current access/result is UNKNOWN. Ownership is settled; Testers stays separate. No upgrade merely because the old record said basic.
 3. **Attended test:** separately authorize/attend the existing fifteen-minute external-tester Lab test. Android actual signing UNEXECUTED; iOS UNKNOWN. Phone PASS gates recruitment/activation, not T/A design. `/link` PASS does not establish C21.
 4. **Owner values:** genuine registered-Lab invite, support and official publishing-account URLs, verified round trips/expiry/rights. Missing values remove actions; publishing URL is an operator record, no social feed/post integration.
-5. **Operating choice:** recommend disjoint Hyphae paid briefs with Raidar separate, one active Hyphae brief and hidden pilot until phone PASS. Founder raid/visibility decision is still pending; no imported points/retroactive rules. Wider Community joining must not be confused with registered Lab access.
+5. **Operating choice — RECORDED:** disjoint Hyphae paid briefs with Raidar separate, one active Hyphae brief and hidden pilot until phone PASS. No imported points/retroactive rules; no live brief or visibility setting changed. Wider Community joining must not be confused with registered Lab access.
 6. **Concrete live scopes:** approve only relevant rows above with targets, old values, exact commits/text and read-back. Desired MYCEL / Powered by Hyphae / Pilot; production remains Hyphae Lab. Deployment, name, upgrade, placement, menu, message/pin and activation are distinct effects. Absent input parks that effect while independent documentation/candidate work continues. Publish nothing from this arc without its authorization.
 
 ## Milestone C — MYCEL configuration, owner only

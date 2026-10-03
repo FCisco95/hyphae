@@ -5,6 +5,7 @@ import { chatMigration } from "./chat-migration.js";
 import { effort } from "./commands/effort.js";
 import { linkInGroup, linkStart } from "./commands/link.js";
 import { me } from "./commands/me.js";
+import { onboardingHelp, onboardingWelcome } from "./commands/onboarding.js";
 import { raid } from "./commands/raid.js";
 import { rulesStart, rulesTest } from "./commands/rules.js";
 import { submit } from "./commands/submit.js";
@@ -20,14 +21,13 @@ commands.command("start", async (ctx) => {
   if (ctx.chat.type === "private" && ((await linkStart(ctx)) || (await rulesStart(db, ctx)))) {
     return;
   }
-  return ctx.reply(
-    "Hyphae scores real work for token communities. In a community chat: /link, then /submit.",
-  );
+  return onboardingWelcome(db, ctx, env.PUBLIC_WEB_URL);
 });
 commands.command("link", (ctx) =>
   ctx.chat.type === "private" ? ctx.reply("Send /link in your community chat.") : linkInGroup(ctx),
 );
 commands.command("me", me);
+commands.command("help", (ctx) => onboardingHelp(db, ctx, env.PUBLIC_WEB_URL));
 commands.command("submit", submit);
 commands.command("effort", effort);
 commands.command("raid", raid);

@@ -695,6 +695,57 @@ td:first-child {
   }
 }
 
+/* ---------- participant onboarding ---------- */
+
+.community-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 8px 0 12px;
+}
+
+.community-identity h1 {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.onboarding-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px 36px;
+  margin: 24px 0;
+  padding-left: 24px;
+}
+
+.onboarding-steps li {
+  min-width: 0;
+  padding-left: 4px;
+  overflow-wrap: anywhere;
+}
+
+.onboarding-steps li::marker {
+  font-weight: 750;
+}
+
+.community-onboarding .button {
+  max-width: 100%;
+  min-height: 46px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+  line-height: 1.25;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .onboarding-steps {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+}
+
 /* ---------- evidence links ---------- */
 
 .evidence {

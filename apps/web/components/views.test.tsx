@@ -219,3 +219,88 @@ describe("tables on a phone", () => {
     expect(tables).toBe(4);
   });
 });
+
+describe("community participant onboarding", () => {
+  it("renders stored identity, attribution and clear group commands without a join placeholder", () => {
+    const html = renderToStaticMarkup(<CommunityView community={f.community} />);
+    const t = text(<CommunityView community={f.community} />);
+    expect(t).toContain("Start here");
+    expect(t).toContain("Hyphae Lab");
+    expect(t).toContain("Powered by Hyphae");
+    expect(t).toContain("/link");
+    expect(t).toContain("wallet app's browser");
+    expect(t).toContain("/rules");
+    expect(t).toContain("/me");
+    expect(t).toContain("ask its owner for an invite");
+    expect(t).not.toContain("Pilot");
+    expect(html).not.toMatch(/start=link_|\/link#|href="[^"]*(TODO|example\.com)/);
+    expect(html).not.toContain(">Join community<");
+  });
+
+  it("uses the selected open epoch for audit actions and preserves intake and read time", () => {
+    const firstEpoch = f.community.epochs[0];
+    if (!firstEpoch) throw new Error("fixture epoch missing");
+    const community = {
+      ...f.community,
+      current_epoch: 7,
+      reward_intake: "paused" as const,
+      epochs: [{ ...firstEpoch, index: 7, status: "open" as const }],
+    };
+    const html = renderToStaticMarkup(<CommunityView community={community} />);
+    expect(html).toContain(`href="/c/${community.mint}/e/7"`);
+    expect(text(<CommunityView community={community} />)).toContain("Reward intake is paused");
+    expect(text(<CommunityView community={community} />)).toContain("Data as of");
+    expect(html).not.toContain("/e/2");
+  });
+
+  it("shows no current shortcut when no epoch is open, including contradictory stale data", () => {
+    for (const community of [
+      { ...f.community, current_epoch: null, epochs: [] },
+      {
+        ...f.community,
+        epochs: f.community.epochs.map((e) => ({ ...e, status: "closed" as const })),
+      },
+    ]) {
+      const html = renderToStaticMarkup(<CommunityView community={community} />);
+      expect(html).not.toContain(">Read this epoch's rules<");
+      expect(html).not.toContain(">Open this week's contributions<");
+    }
+  });
+
+  it("offers only supplied verified join/support actions and configures Pilot per community", () => {
+    const presentation = {
+      pilot: true,
+      telegramInvite: "https://t.me/+FixtureInvite",
+      supportUrl: "https://support.test/help",
+    };
+    const html = renderToStaticMarkup(
+      <CommunityView community={f.community} presentation={presentation} />,
+    );
+    expect(html).toContain("Pilot");
+    expect(html).toContain('href="https://t.me/+FixtureInvite"');
+    expect(html).toContain('href="https://support.test/help"');
+    expect(html).toContain(">Join community<");
+    expect(text(<CommunityView community={f.community} presentation={presentation} />)).toContain(
+      "Hyphae Lab",
+    );
+  });
+
+  it("never substitutes MYCEL identity or links for another community", () => {
+    const community = { ...f.community, mint: "OtherMint", name: "Another community" };
+    const html = renderToStaticMarkup(<CommunityView community={community} />);
+    expect(html).toContain("Another community");
+    expect(html).toContain('href="/c/OtherMint/e/2"');
+    expect(html).not.toMatch(/Hyphae Lab|MYCEL|Pilot/);
+  });
+
+  it("explains quality and eligibility without claiming an allocation or payment exists", () => {
+    const t = text(<CommunityView community={f.community} />);
+    expect(t).toContain("Raw quality");
+    expect(t).toContain("credited quality");
+    expect(t).toContain("Points do not promise payment");
+    expect(t).toContain("confirmed claim receipt");
+    expect(t).toContain("/link signs a free readable message");
+    expect(t).toContain("/claim later signs a transaction");
+    expect(t).not.toMatch(/you are eligible|payment sent|you have passed/i);
+  });
+});
