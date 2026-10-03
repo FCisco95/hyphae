@@ -10,9 +10,9 @@ Requirements: [shared-community clarification](../specs/2026-10-03-organic-commu
 
 ## Ownership and boundaries
 
-This arc owns new `apps/api/src/community-setup/{manifest,telegram,registration,cli}.ts`, their tests, `apps/api/scripts/community-setup.ts`, this plan, a new setup integration guide, and this arc's engineering receipt. It uses a separate worktree based on the committed generic participant implementation. Existing bot welcome, signing-page, website and other-session documentation edits stay with their current owner. No helpers are spawned.
+This arc owns new `apps/api/src/community-setup/{manifest,telegram,registration,cli}.ts`, their tests/fixture, `apps/api/scripts/community-setup.ts`, this plan, a new setup integration guide, and this arc's engineering receipt. The README setup entry and empty operator variable in `.env.example` are necessary documentation additions. It uses a separate worktree based on the committed generic participant implementation. Existing bot welcome, signing-page, website and other-session documentation edits stay with their current owner. No build helpers are spawned; the required fresh other-family reviewer is read-only.
 
-No changes to DB schema, reward policy, SDK or lockfile, existing runtime handlers, chain instructions, Organic, Sentinel or vault. Existing reward bootstrap is reused in a single registration transaction. No public registration endpoint or website administrator dashboard is added.
+No changes to DB schema, reward policy, SDK or lockfile, existing runtime handlers, chain instructions, Organic, Sentinel or vault. Existing reward bootstrap is reused in a single registration transaction. No public registration endpoint or website administrator dashboard is added. The independent review's F1 repair additionally owns `packages/db/src/index.ts`: an optional explicit connection target pins reviewed host/port/database/TLS without changing existing callers; complete the DB consistency and real-Postgres gates for that extension.
 
 ## Ordered milestones
 

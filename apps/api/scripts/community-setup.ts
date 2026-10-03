@@ -22,8 +22,8 @@ async function main() {
       const url = process.env.COMMUNITY_SETUP_DATABASE_URL;
       const token = process.env.TELEGRAM_BOT_TOKEN;
       if (!url || !token) throw new SetupError("credentials_missing");
-      verifyDatabaseTarget(url, manifest);
-      const db = createDb(url);
+      const target = verifyDatabaseTarget(url, manifest);
+      const db = createDb(url, target);
       try {
         const telegram = setupTelegramReader(token);
         return command === "check"

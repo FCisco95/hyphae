@@ -14,6 +14,12 @@ Built solo for [Colosseum's Crypto World's Fair](https://colosseum.com/worldsfai
 | Solana program (`programs/hyphae`): vaults, epoch roots, one-time claims | Deployed on **mainnet** and on **devnet**, at the same address, `EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E`. On mainnet its upgrade authority is a Ledger hardware wallet, `2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR`, and its hash is the verified build's. No community, vault or payout exists on mainnet yet. A publish, a claim and a refused duplicate claim are recorded on devnet in [docs/handoffs/2026-09-27-devnet-proof.md](docs/handoffs/2026-09-27-devnet-proof.md). |
 | Soulbound Token-2022 points | Planned, not built. |
 
+## Set up a community
+
+Each token community uses its own registered Telegram group and `/c/<mint>` audit page. The shared bot provides community-specific welcome/help, rules, submissions and progress. Adding the bot alone does not register a group.
+
+The [operator setup guide](docs/community/SETUP-INTEGRATION.md) describes the local `community-setup` tool: offline plan, read-only checks, then an explicitly approved registration that starts paused with a pinned epoch and no payment eligibility. Current setup is operator-assisted; an Organic owner-authorized integration and a self-service administrator interface are not built. No new production community or Telegram setting is changed by publishing this code.
+
 ## Read API
 
 Public, read-only, unauthenticated JSON at `https://hyphae-api.fly.dev/v1`. The reference is at [`/docs`](https://hyphae-api.fly.dev/docs), which renders the OpenAPI 3.1 document at [`/v1/openapi.json`](https://hyphae-api.fly.dev/v1/openapi.json). The document is generated from the same schemas the API's tests check its responses with. To run it locally, see [Develop](#develop).

@@ -1,5 +1,6 @@
 import { open } from "node:fs/promises";
 import { parseArgs } from "node:util";
+import type { DbConnectionTarget } from "@hyphae/db";
 import { parseSetupManifest, SetupError, type SetupManifest, setupPlan } from "./manifest.js";
 
 export const SETUP_USAGE =
@@ -39,7 +40,7 @@ export function parseSetupArgs(argv: string[]) {
   }
 }
 
-export async function readSetupManifest(path: string) {
+export async function readSetupManifest(path: string): Promise<SetupManifest> {
   let file: Awaited<ReturnType<typeof open>> | undefined;
   try {
     file = await open(path, "r");
@@ -61,14 +62,23 @@ export async function readSetupManifest(path: string) {
   }
 }
 
-export function verifyDatabaseTarget(url: string, m: SetupManifest): void {
+export function verifyDatabaseTarget(url: string, m: SetupManifest): DbConnectionTarget {
   try {
+    const authority = /^postgres(?:ql)?:\/\/([^/?#]*)/.exec(url)?.[1];
+    if (
+      !authority ||
+      authority.includes(",") ||
+      (authority.match(/@/g)?.length ?? 0) > 1 ||
+      /\s/.test(url)
+    )
+      throw new Error();
     const target = new URL(url);
     const query = [...target.searchParams];
     if (
       !["postgres:", "postgresql:"].includes(target.protocol) ||
       target.hostname !== m.database.host ||
-      Number(target.port || 5432) !== m.database.port ||
+      !target.port ||
+      Number(target.port) !== m.database.port ||
       decodeURIComponent(target.pathname.slice(1)) !== m.database.name ||
       target.hash
     )
@@ -82,6 +92,15 @@ export function verifyDatabaseTarget(url: string, m: SetupManifest): void {
       throw new Error();
     if (m.environment === "disposable" && !["127.0.0.1", "localhost"].includes(target.hostname))
       throw new Error();
+    const remoteProduction =
+      m.environment === "production" && !["127.0.0.1", "localhost"].includes(target.hostname);
+    if (remoteProduction && target.searchParams.get("sslmode") !== "verify-full") throw new Error();
+    return {
+      host: m.database.host,
+      port: m.database.port,
+      database: m.database.name,
+      ...(remoteProduction ? { ssl: "verify-full" as const } : {}),
+    };
   } catch {
     throw new SetupError("environment_mismatch");
   }

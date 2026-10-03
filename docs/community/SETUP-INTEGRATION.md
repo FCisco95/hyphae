@@ -46,7 +46,7 @@ Use the existing `buildRewardConfigPayload` helper to prepare an explicitly appr
    ```
 
 4. Review the exact plan, especially its community/group/admin, database target, pinned configuration and timestamp. Preserve the hash and original manifest for read-back.
-5. Under the intended environment's separately authorized connection, run `check`. The private environment file supplies `COMMUNITY_SETUP_DATABASE_URL` and `TELEGRAM_BOT_TOKEN`. There is no fallback to ambient `DATABASE_URL`. Host/port/database must match the manifest; disposable targets must be loopback. Connection-query overrides are refused; only one supported `sslmode` option is allowed.
+5. Under the intended environment's separately authorized connection, run `check`. The private environment file supplies `COMMUNITY_SETUP_DATABASE_URL` and `TELEGRAM_BOT_TOKEN`. There is no fallback to ambient `DATABASE_URL`. The URL must include an explicit port; host/port/database must match the manifest and are also pinned as driver options. Multi-host/comma authorities, repeated raw `@` delimiters, whitespace and connection-query overrides are refused. Percent-encode reserved credential characters. Disposable targets must be loopback; remote production targets require `sslmode=verify-full`, also enforced as a driver option.
 
    ```sh
    node --env-file=/absolute/private/setup.env --import tsx scripts/community-setup.ts check --manifest /absolute/private/community.json --environment disposable
@@ -72,6 +72,8 @@ An exact replay returns `existing` without overwriting names/admins, resetting i
 Community creation and pinned-epoch bootstrap are one transaction. A partially created community would otherwise enter the legacy scoring path, so no unpinned row may commit. New intake starts paused. An activation time that passes during a lock wait is refused against the database clock.
 
 `setup_outcome_unknown` means success cannot be determined from the exception. Run `check` with the original manifest before any deliberate retry. `existing` establishes the committed registration; `ready` establishes that no matching registration exists at that read. Conflicts/unavailability need operator diagnosis, not a new UUID, reseeding or automatic retry. Neither outcome is proof of bot deployment, member signing or payments.
+
+The repeat/check comparison deliberately includes current group/admin/name/rubric fields. A later authorized group migration, rename, administrator change or rubric staging can therefore make the original manifest report `registration_conflict` even though its original registration committed correctly. This is not permission to replace the community; reconcile the original immutable bootstrap marker and current identity through authorized read-only operator access. Telegram is checked before the DB read, so an outage or demoted bot can also block automated reconciliation. Use authorized read-only DB diagnosis when that preflight is unavailable, never bypass the guard with a new registration. Prefer the intended stable group type before registering a new community; existing Lab placement remains its own guarded operation.
 
 ## Organic-owned follow-up contract
 

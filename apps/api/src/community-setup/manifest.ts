@@ -53,7 +53,7 @@ const Schema = z
       })
       .strict(),
     communityId: z.uuid().refine((v) => v === v.toLowerCase()),
-    mint: z.string().refine(isAddress),
+    mint: z.string().refine((value): boolean => isAddress(value)),
     name: z
       .string()
       .min(1)
