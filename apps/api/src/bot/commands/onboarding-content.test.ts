@@ -102,16 +102,16 @@ describe("participant guidance", () => {
 
   it("truncates names and briefs without splitting an emoji surrogate pair", () => {
     const text = briefContent(
-      { ...community, name: "x".repeat(119) + "😀" + "tail" },
+      { ...community, name: `${"x".repeat(119)}😀tail` },
       {
-        brief: "x".repeat(999) + "😀" + "tail",
+        brief: `${"x".repeat(999)}😀tail`,
         targetUrl: null,
         opensAt: new Date(),
         closesAt: new Date(),
       },
     );
-    expect(text).toContain("x".repeat(119) + "😀");
-    expect(text).toContain("x".repeat(999) + "😀");
+    expect(text).toContain(`${"x".repeat(119)}😀`);
+    expect(text).toContain(`${"x".repeat(999)}😀`);
     expect(text).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
   });
 

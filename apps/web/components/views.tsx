@@ -93,9 +93,7 @@ export function CommunityView({
         <p className="muted small">Powered by Hyphae</p>
         <p className="muted">
           Reward intake is {community.reward_intake}.{" "}
-          {community.current_epoch !== null
-            ? `Epoch ${community.current_epoch} is open.`
-            : "No epoch is open right now."}
+          {current ? `Epoch ${current.index} is open.` : "No epoch is open right now."}
         </p>
         <AsOf at={community.as_of} />
       </header>

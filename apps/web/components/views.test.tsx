@@ -262,6 +262,7 @@ describe("community participant onboarding", () => {
       },
     ]) {
       const html = renderToStaticMarkup(<CommunityView community={community} />);
+      expect(text(<CommunityView community={community} />)).not.toContain("Epoch 2 is open");
       expect(html).not.toContain(">Read this epoch's rules<");
       expect(html).not.toContain(">Open this week's contributions<");
     }
