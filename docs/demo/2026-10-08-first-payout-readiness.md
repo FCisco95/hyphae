@@ -1,6 +1,16 @@
 # October 8–9 operator packet
 
-Prepared October 2, 2026. This packet prepares [Runbook C](../handoffs/2026-09-28-runbook-c.md), C14–C22; it executes none of them. Use UTC throughout. The [October 2 readiness receipt](../handoffs/2026-10-02-payout-readiness.md) distinguishes fresh reads from accepted C13 receipts. Recheck every live precondition at the dated, attended sitting. Existing policy, funding and author-attestation rulings remain approved.
+Prepared October 2; reconciled October 3, 2026. This packet prepares [Runbook C](../handoffs/2026-09-28-runbook-c.md), C14–C22; it executes none of them. Use UTC throughout. The [October 2 readiness receipt](../handoffs/2026-10-02-payout-readiness.md) distinguishes fresh reads from accepted C13 receipts. Recheck every live precondition at the dated, attended sitting. Existing policy, funding and author-attestation rulings remain approved.
+
+## October 3 onboarding dependency (no gate/date change)
+
+[Fresh receipt](../handoffs/2026-10-03-onboarding-preparation.md), October 3 18:41Z: live name Hyphae Lab, epoch 2/intake open, rubric 1.2.0, public contributions/counted/pending/leaderboard 0, no settlement; finalized slot 453017150 derived community/vault/epoch accounts absent. DB jobs/schema and program authority/hash below remain prior October 2 receipts, not fresh reads on this Mac. No credentials were provisioned or production state changed.
+
+[Code-path verdict and fifteen-minute test](../superpowers/specs/2026-10-03-link-platform-verdict.md): the signing browser must register Wallet Standard connect/message-signing features. Telegram without them fails; Hyphae's actual Android/Desktop opening behavior and system/wallet browsers are device-unconfirmed. Copy the original private bot URL into the wallet in-app browser, not the stripped address bar. The proposed page copy control is not implemented. Recruitment is parked until an owner-attended phone journey succeeds; this test creates link/proof/member records when separately authorized, but sends no work/model call or funds.
+
+The existing MYCEL group stack includes Raidar; [recommend a separate bounded Hyphae paid pilot](../superpowers/specs/2026-10-03-raid-system-decision-memo.md) in the already registered chat. Founder raid choice, registered-chat mapping, genuine invite/support/publishing links remain inputs before activation. No duplicated campaign, changed reward policy, replacement registration or live rename. The [design](../superpowers/specs/2026-10-03-participant-onboarding-design.md) and [plan](../superpowers/plans/2026-10-03-participant-onboarding-plan.md) are documentation only.
+
+**These dependencies do not move the first-payout gates:** real admitted own-account work, signed wallet and 6/6 pass strictly before close; October 8 **23:00Z pause**, final C18b **after 23:45Z** with author attestation and duplicate-original mappings/corrections accepted **before October 9 00:00Z**; then post-00:00Z close/snapshot, hold/safety gates, attended Ledger publication, genuine claim and P14 evidence. Unknown authors/duplicates park C19. An empty/no-payable epoch remains no payment; never seed fake work to meet a date. A signed-message phone test does not prove the later transaction-signing `/claim` path; C21 must evidence the actual claimant's compatible wallet surface at that sitting.
 
 ## Canonical addresses and current C15 preflight
 
@@ -165,7 +175,7 @@ https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e
 
 | Owner action | Recommendation and reason |
 |---|---|
-| Real uptake, wallet/rules prerequisites | Cisco brings real own-account work through the existing raid/submit flow now, with signed `/link` and rules pass before close, leaving time for scoring and attestation. Today there are no epoch-2 entries to pay. No agent community message or scoring experiment was sent. |
+| Real uptake, wallet/rules prerequisites | After the attended phone path and founder raid choice are verified, Cisco brings real own-account work through the existing registered raid/submit flow, with signed `/link` and rules pass before close, leaving time for scoring and attestation. October 3 public reads show no epoch-2 entries to pay. No agent community message or scoring experiment was sent. |
 | October 8–9 attendance and Ledger | Reserve C14–C18, 23:00Z pause and the 23:45Z audit, then post-close publication/claim time; check the exact Ledger derivation live before any irreversible action. Availability remains unverified today. |
 | Squads Receive screen and funding wallet | Compare the fixed Treasury vault at C15 and the exact transfer destination at C18; current RPC ownership is necessary but does not replace Cisco's dashboard comparison. The already approved amounts/source need no new funding decision. |
 | Vercel Pro and usage alerts | Confirm the previously approved Pro upgrade/alerts in the dashboard before C20 earns a fee; completion is not evidenced in this arc. |

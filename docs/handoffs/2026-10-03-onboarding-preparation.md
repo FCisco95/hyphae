@@ -28,11 +28,17 @@ No live observation contradicted the prior receipt. No database, Telegram, Verce
 
 ## Current State
 
-Code-path verdict written before onboarding design. Signature happens in the selected wallet's browser, not in Telegram/server. Android/Telegram Desktop without a registered provider FAIL by code; their actual Hyphae URL-opening behavior and system/wallet browsers remain device-unconfirmed. Sentinel's discovery finding applies partially, not as proof of the entire Hyphae flow.
+Code-path verdict written before onboarding design; [participant design](../superpowers/specs/2026-10-03-participant-onboarding-design.md), [implementation plan](../superpowers/plans/2026-10-03-participant-onboarding-plan.md), [raid memo](../superpowers/specs/2026-10-03-raid-system-decision-memo.md) and [display-name operator plan](../superpowers/plans/2026-10-03-mycel-display-name-operator-plan.md) subsequently written, not implemented. Guide/packet reconciled. Signature happens in the selected wallet's browser, not in Telegram/server. Android/Telegram Desktop without a registered provider FAIL by code; their actual Hyphae URL-opening behavior and system/wallet browsers remain device-unconfirmed. Sentinel's discovery finding applies partially, not as proof of the entire Hyphae flow.
 
 ## Validation
 
-Initial local test failed because Mac dependency links were stale (`@solana/kit` missing). `pnpm install --frozen-lockfile` restored ignored dependencies without manifest/lockfile changes. Full rerun: **727 passed, 1 skipped** (core 106, web 80, API 541); typecheck exit 0, lint exit 0 (**266 files**). No source implementation changed. Shipping and final CI receipt follow below after execution.
+Initial local test failed because Mac dependency links were stale (`@solana/kit` missing). `pnpm install --frozen-lockfile` restored ignored dependencies without manifest/lockfile changes. Full rerun: **727 passed, 1 skipped** (core 106, web 80, API 541); typecheck exit 0, lint exit 0 (**266 files**). No source implementation changed. Final pre-push rerun also passed **727/1 skipped**, typecheck/lint exit 0, **266 files**; strict handoff, 74 local links/resume paths, credential-shaped-content and diff checks passed. Shipping and final CI receipt follow below after execution.
+
+## Owner inputs and unchanged gates
+
+Recommendation: one disjoint Hyphae paid pilot in the existing registered chat while Raidar campaigns remain separate; founder policy decision pending. Confirm Raidar rewards/points and registered-chat mapping to the existing MYCEL group stack. Supply genuine registered-group invite, support contact URL and official publishing-account URL; no placeholders. Attend the fifteen-minute external-tester phone test before recruitment, and configure existing read-only DB access locally for the missing direct backlog/schema reads (no credentials in chat). Future implementation, live name correction and group branding remain separately authorized.
+
+Preserve C14–C18 on October 8 (approved admin 0.02 SOL, gross 500,000,000 lamports, exact fresh vault top-up/permanent recipient); pause 23:00Z, final C18b after 23:45Z, owner author attestation/duplicate mappings and corrections accepted strictly before October 9 00:00Z. After 00:00Z require closed epoch/immutable snapshot, hold/safety/ready gates, Ledger publication, genuine signed-wallet claimant and P14 evidence. Hold window through October 10 00:00Z inclusive. Empty/no-payable/unavailable stays honest; no funding/attestation ruling repeated. Phone message signing does not prove the later C21 claim transaction surface.
 
 ## Suggested skills
 
@@ -40,14 +46,14 @@ Initial local test failed because Mac dependency links were stale (`@solana/kit`
 
 ## Generated artifacts this session
 
-Platform verdict and this public-safe receipt. No credentials, keys, deployed resources or schedules.
+Platform verdict, participant design, raid memo, two bounded plans, reconciled guide/packet, BUILDLOG and canonical/dated public-safe receipts. No credentials, keys, deployed resources or schedules.
 
 ## Next-session prompt
 
 ```text
 Read docs/HANDOFF.md and docs/superpowers/specs/2026-10-03-link-platform-verdict.md. Do not recruit until an attended phone test establishes the signed-link journey. Preserve the recorded October 8–9 packet, SDK 0.1.0 and parked rules/Jev branches. No production mutation is authorized by this receipt.
 Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/demo/2026-10-08-first-payout-readiness.md, docs/superpowers/specs/2026-10-03-link-platform-verdict.md.
-Model: use the project model-routing convention for the next task; actual session model/effort is recorded in the canonical handoff.
+Model: gpt-6.1-sol (high) — actual current runtime, for bounded code-path reasoning; apply project routing for the next implementation/review task.
 Skills: handoff-memory, security-review, handoff.
 Run the owner-attended phone check only under its separate authorization and record surface-specific results without tokens or private member details.
 ```

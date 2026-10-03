@@ -1,12 +1,12 @@
 # Community launch and operating guide
 
-Prepared October 2, 2026. This is a proposed operating model and a checklist for polishing the pilot. It does not activate another community, change rewards or authorize a production write. Cisco confirmed that “iFailab” means the existing **Hyphae Lab Telegram group**.
+Prepared October 2; reconciled October 3, 2026. The [participant design](../superpowers/specs/2026-10-03-participant-onboarding-design.md) and [bounded implementation plan](../superpowers/plans/2026-10-03-participant-onboarding-plan.md) are now written, not implemented. This guide activates no community, changes no rewards and authorizes no production write. The registered pilot still displays **Hyphae Lab**; the approved participant-facing name is **MYCEL**.
 
 ## Where people participate
 
 Use each community's own Telegram group, with the shared Hyphae bot and a dedicated community page on the website. Members keep their existing Telegram, X and wallet accounts. They do not need a separate app installation or to join every other community's group.
 
-Hyphae Lab can host the current MYCEL pilot. Keep it small and clearly labeled as a pilot. For future communities, add the bot to their existing group rather than moving everyone into Hyphae Lab. A separate lab remains useful for demonstrations and support, with test activity clearly distinguished from real contributions.
+Reuse the existing registered MYCEL pilot, correcting its display name later through the [guarded operator plan](../superpowers/plans/2026-10-03-mycel-display-name-operator-plan.md). Keep it small and clearly labeled as a pilot. For future communities, add the bot to their existing group rather than moving everyone into Hyphae Lab. A separate lab remains useful for demonstrations and support, with test activity clearly distinguished from real contributions.
 
 | Community owns | Hyphae provides |
 | --- | --- |
@@ -18,6 +18,9 @@ Hyphae Lab can host the current MYCEL pilot. Keep it small and clearly labeled a
 The code already identifies communities by a unique mint and Telegram chat; membership and epochs are scoped to the community. The chain derives a community/vault from mint plus admin. **The current database supports one registered chat per mint**, not several independent workspaces for the same token. Subcommunities, Discord, delegated admin roles, custom branding controls and self-service onboarding need separate design and verification. No isolation/load claim for many live communities has been demonstrated by this pilot.
 
 New-community onboarding is currently operator-assisted. An operator must verify the mint, group, administrator, current reward configuration, schedule, publisher and immutable fee recipient before the attended initialization/funding gates. Adding the bot alone does not register or fund a community. The legacy `apps/api/scripts/seed-community.ts` uses old defaults and is not a complete production onboarding procedure.
+
+
+Founder context, October 3: MYCEL already has Buy Calls (Safeguard), Trenches, Raid Team (Raidar), Announcements and a two-member Mycel Testers group with one external tester. This is an existing stack, not a blank community to create. Its mapping to the registered Hyphae chat still needs owner verification; do not assume Testers or Raid Team is that chat. Group membership is not scored uptake. [Raid decision memo](../superpowers/specs/2026-10-03-raid-system-decision-memo.md): recommend one disjoint Hyphae paid pilot brief in the registered chat, with Raidar campaigns separate. Founder choice remains pending; neither bot changed.
 
 ## Current links to pin
 
@@ -31,7 +34,7 @@ The alias above is the evidenced website; a custom domain is a future improvemen
 
 ## Professional pilot checklist
 
-**Cisco's confirmed community name: MYCEL**, with “Powered by Hyphae” as attribution and “Pilot” as a status badge. The live database and Telegram still say Hyphae Lab. A rename must be applied consistently through an authorized metadata operation before claiming it is live; keep the existing community identity, members, scores and history. Do not hardcode MYCEL into the shared views for every community.
+**Cisco's confirmed community name: MYCEL**, with “Powered by Hyphae” as attribution and “Pilot” as a status badge. The live API still says Hyphae Lab; the registered Telegram title/permissions have not been freshly read in this session. A rename must be applied consistently through an authorized metadata operation before claiming it is live; keep the existing community identity, members, scores and history. Do not hardcode MYCEL into the shared views for every community.
 
 - Use the existing logo and consistent name, description and official links across the group, bot, website and X profile. Verify each account and link before inviting people.
 - Pin one short “Start here” guide: purpose, official links, wallet linking, rules, accepted evidence, deadlines, score explanation and a named support contact.
@@ -44,12 +47,14 @@ The alias above is the evidenced website; a custom domain is a future improvemen
 
 **Observed, October 2 17:55–17:58Z:** the live epoch page rendered cleanly at desktop width 1689 and mobile width 390, with no horizontal overflow. Community, leaderboard and home were also read on mobile without horizontal overflow; those pages were not all visually audited in both themes. Epoch 2 displayed **0 contributions/0 counted**, leaderboard **0 contributing members**, and **no payout**. The community page first showed data as of 17:02Z, then 17:57Z on a second visit. This is consistent with cached reads refreshing, but the cache cause was not traced. Check timestamps after reload; these are point-in-time browser observations, not an uptime measurement or a new database/backlog audit.
 
+**Fresh October 3 18:41Z read-only update:** API/site HTTP reads succeeded; API name Hyphae Lab, intake/epoch 2 open, rubric 1.2.0, contributions/counted/pending/leaderboard entries all 0, no settlement or payout. Finalized RPC slot 453017150: derived mainnet community/vault/epoch accounts absent. [Receipt and limits](../handoffs/2026-10-03-onboarding-preparation.md): no new rendered device proof, continuous uptime measurement, direct DB/job backlog read or owner author attestation. The October 2 screenshot observations below remain historical.
+
 Real empty-state screenshots: [desktop](2026-10-02-epoch-2-desktop.png) and [mobile](2026-10-02-epoch-2-mobile.png), captured at 17:55–17:56Z. They are not fixture contributions or payment proof.
 
 ## Member journey with existing commands
 
 1. Join the registered community group and read the pinned rules and public-data notice.
-2. Send `/link` in that group. Follow the bot's private flow and verify the wallet by signing the requested message. Never share a seed phrase or private key.
+2. Send `/link` in that registered group; follow the private bot deep link. **On a phone, the signing browser must expose a compatible Wallet Standard wallet.** Telegram's no-provider surface cannot sign. Copy the original private bot URL, including its fragment, into the wallet app's own browser; the loaded page strips its address bar, so copying that address loses the token. Read [the platform verdict and fifteen-minute test](../superpowers/specs/2026-10-03-link-platform-verdict.md). A real Hyphae phone test is still pending; do not recruit on an assumed mobile PASS. The proposed page copy control is not shipped. Use only your own link, never a forwarded one, and never send it to support. Check the exact API domain and readable free message; cancel any transaction, approval or seed-phrase request. Confirm your own signed wallet via `/me`.
 3. Send `/rules` in the group and complete the private rules test. For the current MYCEL rules all six answers must be correct; passing is only one payment condition.
 4. Choose a brief you can help with. The registered admin can open a task using `/raid <public X post URL> [hours=…] [brief…]`. This is a production intake operation performed by the owner, not by this preparation session.
 5. Submit your own genuine work: `/submit <reply URL>` or `/submit quote <quote URL>`. The bot also accepts `/submit <text of your work>`; whether it earns credit depends on the pinned rubric. A submitted artifact is not automatically eligible or counted.
@@ -105,10 +110,10 @@ Review content weekly: which posts prompted useful questions, voluntary original
 
 The canonical money/readiness procedure remains [the October 8–9 packet](../demo/2026-10-08-first-payout-readiness.md). No mainnet community/vault or contributor payment is evidenced; the browser observation does not replace the earlier database/operator receipts.
 
-- **Before inviting the cohort:** Cisco supplies the genuine group invite, support contact and official publishing account. Recommendation: use the existing registered pilot group, pin these verified dashboard links and keep its pilot status explicit. Do not create a replacement production community merely to rename it.
+- **Before inviting the cohort:** prove the attended phone signed-link path, resolve Raidar/Hyphae raid ownership, and obtain/verify the genuine registered-group invite, support contact and official publishing account. Recommendation: use the existing registered chat and a disjoint Hyphae paid pilot; no replacement community, fabricated invite or assumed Testers registration. Owner supplies final values and controls future pins/messages.
 - **Before wider launch:** complete the participant onboarding UI, verified two-way links and current-rule onboarding checklist; prove a second community's scoping and attended setup independently. Recommendation: keep onboarding operator-assisted until that evidence exists.
 - **October 8:** attended C14–C18 remain scheduled; intake pauses at **23:00Z**. Finish real member submissions well before that cutoff. Final C18b author/duplicate audit occurs **after 23:45Z and before October 9 00:00Z**, with required before-close corrections and owner attestation.
 - **October 9:** C19–C22 only after **00:00Z**, close/snapshot and hold/safety gates. Claims/payment language follows actual publication and genuine confirmed claim evidence. Empty/no-payable fallback stays explicit.
-- **Next preparation work:** implement the bounded member onboarding polish from the checklist, after agreeing the product design and preserving the frozen runtime boundary for the dated sitting. Self-service onboarding, multi-chat support and reward changes remain separate work.
+- **Next work:** review the written design/plan, run the separately authorized attended phone test and resolve owner inputs before a bounded implementation prompt. Nothing in this documentation arc implements the plan. Preserve the frozen runtime boundary for the dated sitting; self-service, multi-chat, new wallet protocols and reward policy remain separate work.
 
 No content, Telegram message, production registration, funding or deployment was performed in preparing this guide.
