@@ -1,98 +1,103 @@
 ---
 date: 2026-10-03
-summary: Research/document gate complete for this Hyphae scope; local T/A/B candidate packet finalized, implementation/live approval absent. No phone proof or activation.
+summary: Approved T/A/B local candidate built and reviewed; 803 tests passed/1 skipped. Unpushed/undeployed, actual phone test and technical/owner inputs remain gated.
 ---
 
 # Hyphae handoff
 
-Last Updated: 2026-10-03T21:47Z
+Last Updated: 2026-10-03T22:27Z
 
 ## TL;DR
 
-**Owner research/document gate COMPLETE for this scope.** The prepared three-doc patch matched and was applied; current code/refs and dated primary sources were rechecked. Preserve [the durable requirement](superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md) in each later handoff and recheck changed evidence before coding. Brain's shared alignment was completed in its `2026-10-03-2125Z-post-ship` report; this session completes the owning engineering pass, without editing the vault.
+**Local T → A → B candidate built, reviewed and verified.** Cisco’s “yes” approved this bounded implementation and the disjoint-Hyphae/Raidar-separate, one-active-brief, hidden-until-phone-PASS choices. It did not supply genuine URLs, technical access, test attendance or live authorization. **No push/deployment/activation or real phone PASS.**
 
-**Next: explicit approval for local T → A → B in the [amended participant plan](superpowers/plans/2026-10-03-participant-onboarding-plan.md#candidate-and-release-packet--october-3-awaiting-approval).** It contains exact files/tests, working command/button destinations, safe contexts, score/payment copy, mobile/keyboard checks and separate live-effects/rollback. No implementation is authorized or built. Recommend all three for a coherent candidate; generic T/A can use fixtures and omit missing MYCEL links while phone/type inputs wait. B needs fresh other-family exact-range review before push/release.
+Final source **8841a01e8abdcec4398f1255a8ccd3d1c9423212**; fresh split other-family reviews ACCEPT/no blockers. Gate **803 passed, 1 skipped**, typecheck/lint/build exit 0. [Full implementation receipt](handoffs/2026-10-03-onboarding-implementation.md), [operator/release packet](superpowers/plans/2026-10-03-participant-onboarding-plan.md#candidate-and-release-packet--october-3), [local mobile preview](community/2026-10-03-onboarding-mobile.png).
 
-Cisco owns Lab, bot admin, owner+bot only; Testers separate. September 24 basic-group history is settled. Current registered row/bot binding/type and migration health are **UNKNOWN without access**, not deployment failure. Real Android signing remains unexecuted; iOS unknown. Recruitment/activation waits for attended own-account phone PASS, owner inputs and live approval. Production name remains Hyphae Lab; desired MYCEL / Powered by Hyphae / Pilot.
+**Research/document gate COMPLETE for this scope.** Preserve [the durable requirement](superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md) in later handoffs and recheck changed refs/code/sources. Prepared three-doc patch applied in [the prior scope receipt](handoffs/2026-10-03-onboarding-scope-packet.md); original dated receipts retained. Vault shared alignment remains the owning Brain lane.
 
 ## Metadata
 
-- Only repo `FCisco95/hyphae` writable. Start/main/origin **`312cc0ffae1c4efbf5fd69c2b58a5aaf98af28ac`**, exact [CI 37154342915](https://github.com/FCisco95/hyphae/actions/runs/37154342915) independently completed/success. No-prune fetch passed, 0/0 overlap, ff-only synchronization already current; one main worktree.
-- Packet/alignment milestone **`e7667747fcdf6d04b860f554df43a4cd18a8ec22`** is committed locally. This closure adds its exact receipt; closure SHA resolves from `git log -1 -- docs/handoffs/2026-10-03-onboarding-scope-packet.md` and final delivery. **Push intentionally deferred:** current prompt requires separate authorization for publication; no remote push/deployment inferred. No new exact-SHA CI claim for the local commit.
-- Actual runner: Codex, GPT-6 family identified by session contract; exact runtime identifier/configured effort and usage/cost not exposed. Prior session's `gpt-6.1-sol` xhigh counters are historical and not this run. No helpers, model/scoring-provider experiments or new sensitive implementation review.
-- Read-only private inputs: existing Hyphae plan, 30-day master plan, October 3 2125Z post-ship report/patch. No vault, Organic, Sentinel or public-program writes. Source application details and evidence in [the dated receipt](handoffs/2026-10-03-onboarding-scope-packet.md); earlier [preparation](handoffs/2026-10-03-onboarding-preparation.md) and [readiness](handoffs/2026-10-02-payout-readiness.md) retained unchanged.
+- Only FCisco95/hyphae writable. Implementation start d26357e101195019688b981c3ab6c938d1a8ed73, two local docs commits ahead of remote 312cc0ffae1c4efbf5fd69c2b58a5aaf98af28ac. No-prune/ff-only checks preserved local work; no fetched overlap.
+- Start [CI 37154342915](https://github.com/FCisco95/hyphae/actions/runs/37154342915) success belongs to remote 312cc0ff only. All new commits remain local; **publication/deployment not authorized**. Closure SHA from git log -1 -- docs/handoffs/2026-10-03-onboarding-implementation.md and final delivery.
+- Main runner Codex/GPT-6 family; exact runtime ID/configured effort/usage/cost unavailable. Reviewers actual **claude-opus-5-5/high**, isolated read-only processes, exact ranges and counters in receipt. No implementation helpers or scoring-provider experiment; no prior counters copied.
+- Vault/siblings read-only. Concurrent untracked community-onboarding requirements doc read/preserved, not edited or included. New-community setup/auth/provisioning is separate scope beyond step 6.
 
 ## Current Objective
 
-Approve a concrete local candidate scope and, separately, the needed attended test/live effects. Preparation is complete; scope/input-dependent steps are parked. This arc ends at owner activation preparation, before any operation after step 6.
+Finish the independent local candidate/operator packet, now complete. Next is existing read-only preflight plus separately authorized attended phone proof and owner inputs, followed only by explicitly approved live effects. No new product work or step after 6 from this checkpoint.
 
 ## Current State
 
-| Evidence class | Result / limit |
+| Stage | Result / limit |
 |---|---|
-| CONFIRMED current Git/code | No runtime delta since prior trace baseline; SDK manifest/lockfile exactly 0.1.0. Private link/rules start first, current `/me` group-scoped, URL submission uses newest active task, migration handler exists. T welcome/help not implemented. |
-| CONFIRMED public reads Oct 3 21:41:03Z | Health/community/epoch HTTP 200; name Hyphae Lab, epoch 2/intake open Oct 2 → Oct 9 00:00Z; public counts all 0, no settlement. Point availability only, no internal jobs/phone proof. |
-| PRIOR RECEIPT | October 2 Neon 13 matched hashes 0000–0012, deployed rules/hold gates, Fly v11 frozen candidate. October 3 rubric 1.2.0 and finalized slot 453017150 absent derived community/vault/epoch; no fresh DB/Fly/RPC/hash read here. |
-| UNKNOWN technical | Single registered row/UUID, exact bot/chat binding, current `getChat.type`, webhook/deployed migration health. DB/bot environment/env files and Fly/psql tools unavailable. Ownership itself settled. |
-| UNEXECUTED phone/live | Actual Telegram/system/wallet-browser signing, attended test, deployment, rename, in-place upgrade, Community placement, menu registration, messages/pins, recruitment. iOS unknown. |
-| PROPOSED | T/A/B packet; disjoint Hyphae briefs with Raidar separate, one active Hyphae task, hidden pilot until phone PASS. Genuine Lab invite/support/publishing URLs and founder raid/visibility choice missing. |
+| T built locally | Contextual welcome/help/brief, selective command keyboard, pinned public guidance. Original private link/rules dispatch first, callbacks and personal /me unchanged; no generic guidance writes. |
+| A built locally | Generic stored identity/attribution, optional validated Pilot/invite/support, Start here/score explanation and open-epoch actions. Production configuration empty; no MYCEL name override. |
+| B built locally | Original-fragment explicit copy/selectable fallback, cancel/retry and expiry/taken/uncertain UX. SDK/message/request-verify-status unchanged; no vendor/adapter/confirmation protocol. |
+| Local verified | 803 tests/1 optional skip; typecheck/lint and both builds 0. Desktop/mobile, light/dark preference, 200% CSS zoom, keyboard/focus and simulated wallet flow pass. Screenshots are local fixtures. |
+| Prior production evidence | Last public read Oct 3 21:41:03Z: Hyphae Lab, epoch 2/intake open, public counts 0/no settlement. Oct 2 Neon 13 hashes/rules/hold/Fly v11 and Oct 3 prior absent derived chain accounts remain dated receipts, not refreshed internal health. |
+| UNKNOWN technical | Single registered row/UUID, exact bot/chat binding, current getChat.type/webhook/migration health; configured DB/bot/Fly access absent. Ownership settled: Cisco owner, bot admin, owner+bot only, Testers separate. September basic-group history is not current type. |
+| UNEXECUTED live/phone | Android actual signing, iOS unknown, Telegram/system/wallet-browser matrix, deployment/name/upgrade/placement/menu/message/pin/recruitment. /link message PASS will not establish C21. |
 
-C13 authority/hash/deploy/temporary-key retirement remain accepted in [WALLETS](WALLETS.md) and [C13](handoffs/2026-10-02-c13-mainnet-receipt.md). Never repeat deployment/funding or fund retired identities. No contributor payment evidenced.
+C13 deploy/hash/Ledger/key-retirement evidence remains in [WALLETS](WALLETS.md) and [C13](handoffs/2026-10-02-c13-mainnet-receipt.md). No new initialization/funding/payment; never repeat deployment/funding or fund retired identities.
 
 ## Recent Changes
 
-Applied prepared WHITEPAPER deployment correction, false Sentinel WR-01 dependency removal and explicit T scope; finalized the existing participant plan's candidate/release packet. Reconciled design, alignment requirement, guide and money packet; updated portable engineering receipt/build log. Preserve original dated evidence; no runtime/file-contract execution or shared strategy copy.
+T/A 0e97582; zoom 5907a76; B e003cdf; packaging 5e4b994; review fixes 8f395b4; consistent header 8841a01. Exact source paths only; no manifest/script/DB/reward/program changes. Candidate screenshots and this engineering close added. Review accepted d26357e..e003cdf and e003cdf..8841a01; no unchanged-range repeat.
 
 ## Known Issues / Watch List
 
-- Forwarded bearer links can bind a signer to the issuer; SDK 0.1.0's unchanged generic message does not name Telegram identity. Own-link warnings/copy do not solve this residual. No new confirmation protocol is authorized; blocking review finding parks B.
-- Copy ORIGINAL bot URL with fragment; loaded address bar is stripped. The proposed copy control is not implemented. No-provider FAIL by code is not a real Android/iOS test. `/link` message PASS never proves C21 transaction signing.
-- Preserve the registered Lab. If current type is supergroup, skip upgrade. If group, attended in-place upgrade requires exact same UUID/mint/members/epochs/config read-back; collision stops. No promised upgrade reversal, replacement chat or same-mint multi-chat support.
-- Command-menu/pin/deployment/name/upgrade/placement/visibility are separate effects with explicit targets, read-back and rollback limits in the packet. T initially has no API per-mint owner config; A's optional web map does not configure the bot.
+- Forwarded bearer identity binding and clipboard history/sync remain inherited residuals, not solved by copy/warnings. SDK message has no Telegram identity. New account-confirmation/protocol needs separate authorization/review.
+- Close the previous signing page before reopening original/fresh bot URL: same-document hash navigation does not reload client. Copy only ORIGINAL URL with fragment, never stripped address bar. No real device result inferred.
+- Same registered Lab, no replacement/Testers registration or same-mint multi-chat support. If current type is supergroup, skip upgrade; if basic, relevant attended in-place plan/read-back preserves UUID/mint/members/epochs/config. Upgrade reversal not promised.
+- Low static-review notes and existing newest-active-task/highest-epoch constraints recorded in receipt. No new reward policy. Existing metadataBase build warning left outside scope.
+- This candidate serves registered communities; self-service/Organic owner setup is not implemented by welcome/help or the code-owned presentation map.
 
 ## Branch Disposition
 
-Rules **`158452fe2b22a1e42e5efd42f3f7e11bfdf59c70`** and Jev **`707d7daf21e217d9a8a64e58514065f5e3bca45e`** remain remote/pushed/unmerged until epoch 3. No local copies created or refs pruned/deleted. Preserve local `hackathon/r1-exact-reward-points` **`2fd2470`**, an ancestor of main. No worktree/branch cleanup.
+Rules **158452fe2b22a1e42e5efd42f3f7e11bfdf59c70**, Jev **707d7daf21e217d9a8a64e58514065f5e3bca45e** preserved pushed/unmerged until epoch 3. Local hackathon/r1-exact-reward-points **2fd2470a26ff9a349bceeb697b2731bd1bff0e07** retained. No pruning/deletion/merge/cleanup. SDK exactly 0.1.0 through Oct 12.
 
 ## Validation
 
-Fresh `pnpm test`: **727 passed, 1 skipped**, exit 0 (core 106, web 80, API 541). `pnpm typecheck`: exit 0. `pnpm lint`: exit 0, **266 files**, no fixes. `git diff --check` and strict handoff passed (GitHub-URL heuristic warning only); **85 local links/resume paths** checked across 9 docs, runtime/SDK/schema and retained refs unchanged. No candidate mobile/keyboard rendering or real phone test claimed; those wait for code/test authorization. No DB/reward source changes, so no new real-Postgres gate or other-family review is claimed; accepted unchanged ranges retained.
+Final pnpm test **exit 0, 803 passed/1 skipped** (106 core, 107 web, 590 API); typecheck **0**; lint **0**, 274 files/no fixes; web production build and wallet bundle **0**. Fresh Opus5.5-high static reviews **ACCEPT/no blockers** for complete split source coverage through 8841a01. Original private dispatch and immutable SDK/wallet/flow/store/routes/config/reward/DB/program source checked. Diff/handoff/local-path checks at closure.
+
+Browser: desktop 1280/mobile 390/320, light/dark preference, 200% CSS zoom at 390, 0 overflow/errors; web controls ≥46px/copy 53px; keyboard/focus and local simulated copy/cancel/retry/status flow pass. No physical screen-reader, real wallet/phone, bot binding, new Postgres/production or C21 proof claimed.
 
 ## Next Actions
 
-1. Record explicit local T/A/B approval (or subset), then implement T/A independently with missing links omitted; B stays within exact page files and receives fresh other-family exact-range review. No deployment from local build permission.
-2. Use existing owner-configured read-only DB/bot/Fly access when available for single row, exact binding, type and migration health. Preserve unknowns if absent; no secret pasted into chat and no repeated ownership question.
-3. Under separate attended test authorization, external tester joins registered Lab with their own account: group `/link` → private ORIGINAL URL → record Telegram/system/wallet-browser surfaces separately → unchanged free message → same wallet in own `/me`. Android actual signing unexecuted; iOS unknown. Conditional isolated pattern probe only on qualifying failure/need; Sentinel remains PARKED.
-4. Owner supplies genuine Lab invite/support/publishing URLs and decides raid/visibility. Recommend disjoint Hyphae briefs/Raidar separate, one active brief and hidden pilot until phone PASS. Prepare/authorize only relevant name/upgrade/placement/menu/pin/deployment effects with read-backs; publish nothing without authorization.
-5. Carry unchanged C1–C13/readiness and **unexecuted C14–C22**: October 8 admin **0.02 SOL**, gross **500,000,000 lamports**, fresh exact vault top-up/permanent recipient and approved author-attestation corrections. Pause **23:00Z**; final C18b **AFTER 23:45Z**; corrections/attestation **STRICTLY BEFORE October 9 00:00Z**. Post-00:00Z close/snapshot/hold/safety, Ledger publication, genuine signed-wallet claimant/P14 before payment claims. Hold window through **October 10 00:00Z inclusive**; empty/no-payable remains no payment. SDK exactly 0.1.0 through Oct 12; no operation pulled forward.
+1. Supply/use **existing owner-configured read-only access** for one registered row, exact bot/chat/type/webhook/migration health. Absent access stays UNKNOWN; no credentials pasted, new registration or repeated ownership question.
+2. Separately authorize/attend external tester’s own-account Lab phone matrix: /link → ORIGINAL private URL/fragment, close old signing page → Telegram/system/compatible-wallet-browser surfaces recorded separately → unchanged free message → same wallet in own /me. Android signing unexecuted/iOS unknown. Only real qualifying failure/need can request conditional isolated probe; Sentinel stays parked.
+3. Supply genuine Lab invite/support/publishing URLs and verify round trips/expiry/rights. Disjoint Hyphae briefs/Raidar separate, one active brief, hidden pilot until PASS already recorded; no repeated choice. Missing URLs leave actions absent.
+4. Approve only concrete live packet rows: publication/deployment, name, relevant upgrade/placement/visibility, menu, message and pin each have targets/read-back/rollback. Desired MYCEL / Powered by Hyphae / Pilot; no live name correction. No startup API calls or activation from local approval.
+5. C1–C13/readiness complete; **C14–C22 unexecuted**. Oct 8 admin **0.02 SOL**, gross **500000000 lamports**, fresh exact top-up/permanent recipient/author corrections remain approved. Pause **23:00Z**, final C18b **AFTER 23:45Z**, corrections/attestation **STRICTLY BEFORE Oct 9 00:00Z**. Only post-00:00Z close/snapshot/hold/safety, Ledger publication, actual claimant/P14 precede payment claims. Hold through **Oct 10 00:00Z inclusive**; empty/no-payable means no payment. No earlier/repeated operation.
 
 ## Quick Reference
 
-[Candidate/release packet](superpowers/plans/2026-10-03-participant-onboarding-plan.md), [alignment requirement](superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md), [new receipt](handoffs/2026-10-03-onboarding-scope-packet.md), [phone procedure](superpowers/specs/2026-10-03-link-platform-verdict.md), [name](superpowers/plans/2026-10-03-mycel-display-name-operator-plan.md), [placement](superpowers/plans/2026-10-03-lab-community-placement-operator-plan.md), [guide](community/OPERATING-GUIDE.md), [money packet](demo/2026-10-08-first-payout-readiness.md).
+[Implementation/review receipt](handoffs/2026-10-03-onboarding-implementation.md), [candidate/operator packet](superpowers/plans/2026-10-03-participant-onboarding-plan.md), [durable gate](superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md), [phone procedure](superpowers/specs/2026-10-03-link-platform-verdict.md), [placement](superpowers/plans/2026-10-03-lab-community-placement-operator-plan.md), [name](superpowers/plans/2026-10-03-mycel-display-name-operator-plan.md), [guide](community/OPERATING-GUIDE.md), [money packet](demo/2026-10-08-first-payout-readiness.md).
 
 ## Resume Checklist
 
-Read current local checkpoint before syncing. Fetch without pruning and compare main/origin/parked refs; ff-only only, never reset local docs to old remote. Reuse the completed scope alignment; recheck changed sources/code. Record implementation/live authorization before their dependent actions. Missing access/input is UNKNOWN; continue independent authorized work. Vault shared plans remain read-only; product receipt is prepared for organic-sync post-ship, no sync execution claimed.
+Read latest local checkpoint before syncing. Fetch without pruning; compare local/remote/parked refs and ff-only only, never reset local candidate. Preserve concurrent untracked work. Reuse accepted unchanged reviews/research gate and recheck changed evidence. No publication/live effect without concrete authorization. Vault shared plans remain read-only; this receipt is ready for organic-sync post-ship, not a claim that sync ran.
 
 ## Suggested skills
 
-`handoff-memory`, `security-review`, `test-driven-development` only after candidate approval, applicable React/Next.js guidance for A, `handoff`. Fresh other-family reviewer for B; no automatic helpers or Sentinel build.
+handoff-memory, security-review if new sensitive changes, handoff; device/browser guidance for separately authorized sitting. No automatic Sentinel/setup lane or implementation helpers.
 
 ## Generated artifacts this session
 
 | What | Canonical home | Stage |
 |---|---|---|
-| Applied alignment and concrete packet | `docs/WHITEPAPER.md`, participant plan/design, alignment spec, guide/money packet | Local docs only |
-| Scope receipt and engineering memory | `docs/handoffs/2026-10-03-onboarding-scope-packet.md`, `docs/HANDOFF.md`, `docs/BUILDLOG.md` | Local, portable |
+| T/A/B code/tests | Exact participant contract, source through 8841a01 | Local reviewed, unpushed/undeployed |
+| Candidate previews | docs/community/2026-10-03-onboarding-desktop.png and -mobile.png | Captioned local fixtures |
+| Engineering receipt | docs/handoffs/2026-10-03-onboarding-implementation.md, HANDOFF, BUILDLOG, existing plan/guide | Portable checkpoint |
 
-No new key, credential, deployment, transaction, schedule, community or message.
+No key/credential/community/public message/transaction/deployment/schedule. Local fixture/dev processes stopped at closure; ignored build outputs not releases.
 
 ## Resume Prompt
 
-```text
-Resume only FCisco95/hyphae from its latest local docs checkpoint; origin was 312cc0ffae1c4efbf5fd69c2b58a5aaf98af28ac with exact CI 37154342915 success. The owner research/document gate is complete for this scope; carry the durable alignment requirement and recheck changed refs/code/sources. T/A/B packet is proposed, code/phone/live actions unexecuted. Local docs publication was deferred under the explicit no-publication instruction.
-Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-03-onboarding-scope-packet.md, docs/superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md, docs/superpowers/plans/2026-10-03-participant-onboarding-plan.md, docs/demo/2026-10-08-first-payout-readiness.md.
-Model: GPT-6.1 Sol (high) — current sync recommendation for bounded implementation; actual previous runner identifier/effort was unavailable.
-Skills: handoff-memory, security-review, test-driven-development (after build approval), handoff.
-Record explicit local T/A/B approval before code. Preserve private link/rules starts and exact file contract; generic T/A need no missing MYCEL URLs. B needs fresh other-family exact-range review, SDK/message/reconciliation unchanged. Use existing read-only access for binding/type/migration health if available; otherwise UNKNOWN. Separate attended own-account Lab phone test and all live effects; no replacement chat, Sentinel build, reward change or operation beyond step 6. Preserve parked refs/local reward branch, SDK 0.1.0 through Oct 12 and exact Oct 8–10 payout gates. Ask unresolved owner inputs once with recommendations.
-```
+~~~text
+Resume only FCisco95/hyphae from latest local docs checkpoint; source 8841a01e8abdcec4398f1255a8ccd3d1c9423212 built/reviewed, final gate803/1 skipped, types/lint/build0. No push/deployment/real phone PASS. Durable research/document gate complete for this scope; recheck changed refs/code/sources. Preserve local commits/concurrent untracked work and old remote312cc0ff, no reset.
+Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-03-onboarding-implementation.md, docs/superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md, docs/superpowers/plans/2026-10-03-participant-onboarding-plan.md, docs/demo/2026-10-08-first-payout-readiness.md.
+Model: GPT-6.1 Sol (high) — recorded sync recommendation; actual previous main ID/effort unavailable.
+Skills: handoff-memory, security-review (new changes only), handoff.
+Use approved scope/operating choices; obtain existing read-only access, genuine Lab URLs and separately authorized tester attendance. Verify row/bot-chat/type/migration health or UNKNOWN. Own-account phone matrix uses ORIGINAL URL/fragment, close prior signing page, unchanged free message, own /me. Android unexecuted/iOS unknown/C21 distinct. No publish/deploy/name/upgrade/placement/menu/message/pin without concrete approval. Preserve SDK0.1.0 throughOct12, parked rules/Jev, reward branch and exactOct8–10 gates. End at step6; new-community setup is separate scope.
+~~~

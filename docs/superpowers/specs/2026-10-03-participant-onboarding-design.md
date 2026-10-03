@@ -2,6 +2,10 @@
 
 **Status: proposed, reviewable design; not implemented or deployed.** Based on [the `/link` verdict](2026-10-03-link-platform-verdict.md), written first, and [fresh read-only observations](../../handoffs/2026-10-03-onboarding-preparation.md). The phone path gates recruitment/activation, not generic T/A design or approved local fixture work; it is not assumed working. No new rewards, custody, registration or SDK policy is decided here.
 
+## Local implementation checkpoint — October 3
+
+The proposal-status wording above records the original design checkpoint. The approved T/A/B candidate is now built, committed and independently reviewed **locally**, through source 8841a01; **not pushed/deployed or real-phone verified**. [Implementation receipt](../../handoffs/2026-10-03-onboarding-implementation.md) and the amended participant plan own current engineering/activation status. Original design examples and dated observations remain evidence, not live previews.
+
 ## Outcome and boundaries
 
 A member arriving from the existing registered Telegram pilot can identify the community, find its official surfaces, link their own wallet in a compatible browser, pass the pinned rules test, submit genuine work and understand the evidence required before payment. A coordinator can explain each blocked step without taking signing or reward authority.

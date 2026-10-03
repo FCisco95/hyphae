@@ -1,6 +1,6 @@
 # Bounded participant onboarding implementation plan
 
-**Status: local T/A/B implementation approved October 3; live effects remain unapproved.** Depends on [the design](../specs/2026-10-03-participant-onboarding-design.md) and [platform verdict/test](../specs/2026-10-03-link-platform-verdict.md). An approved implementation prompt must identify release scope; deployment and live metadata remain separately authorized. SDK **exactly 0.1.0 through October 12**, frozen reward/scoring/program behavior, and unmerged rules/Jev remain boundaries.
+**Status: approved local T/A/B candidate built and independently reviewed through 8841a01; unpushed/undeployed.** Depends on [the design](../specs/2026-10-03-participant-onboarding-design.md) and [platform verdict/test](../specs/2026-10-03-link-platform-verdict.md). An approved implementation prompt must identify release scope; deployment and live metadata remain separately authorized. SDK **exactly 0.1.0 through October 12**, frozen reward/scoring/program behavior, and unmerged rules/Jev remain boundaries.
 
 ## Dependency gates before activation
 
@@ -31,7 +31,7 @@ The website/signing-page milestones below do not cover this deliverable. Scope r
 
 ## Exact prospective writable files
 
-These are ownership limits for a **future authorized implementation**, not permission to write them in this session. New files are explicitly marked. Everything else, including API schemas/routes/store/session, DB/migrations, reward jobs, SDK package/lockfile, chain code, vault, Organic, Sentinel and public-program repo, stays outside this bounded implementation.
+These are the exact ownership limits for the October 3 approved local implementation. Historical proposal wording does not authorize additional files or live effects. New files are explicitly marked. Everything else, including API schemas/routes/store/session, DB/migrations, reward jobs, SDK package/lockfile, chain code, vault, Organic, Sentinel and public-program repo, stays outside this bounded implementation.
 
 | Responsibility | Exact files |
 |---|---|
@@ -66,7 +66,7 @@ Use actual implementation-date screenshot/receipt names if the future prompt app
 
 **Approval recorded:** Cisco replied “yes” to the concrete local T → A → B scope and recommended disjoint Hyphae briefs/Raidar separate, one active brief and hidden pilot until phone PASS. No owner URLs, read-only credentials, attended phone-test scope or live-effect authorization was supplied.
 
-This is the approved local scope: **T, then A, then B**, using only the table above and normal engineering documentation. Recommendation: approve all three for local implementation, so the bot, audit page and portable-link guidance agree; authorize each live effect separately. T/A are independently buildable with fixtures while phone/type/owner URLs wait. The recorded approval authorizes local implementation only; deployment, attended testing and Telegram operations remain separate. The [alignment receipt](../../handoffs/2026-10-03-onboarding-scope-packet.md) records the completed document gate and source limits. Recheck changed refs/code/platform guidance before a later build; do not repeat unchanged accepted sensitive reviews.
+This is the approved and locally completed scope: **T, then A, then B**, using only the table above and normal engineering documentation. Recommendation: approve all three for local implementation, so the bot, audit page and portable-link guidance agree; authorize each live effect separately. T/A are independently buildable with fixtures while phone/type/owner URLs wait. The recorded approval authorizes local implementation only; deployment, attended testing and Telegram operations remain separate. The [alignment receipt](../../handoffs/2026-10-03-onboarding-scope-packet.md) records the completed document gate and source limits. Recheck changed refs/code/platform guidance before a later build; do not repeat unchanged accepted sensitive reviews.
 
 ### T: concrete welcome, destinations and context
 
@@ -183,3 +183,7 @@ Render real empty state and honest unavailable/expired/no-wallet states at deskt
 Generic web UI/config rollback: revert the bounded UI commit or remove the verified presentation entry; keep real API name/epochs intact. Signing page rollback: revert only the page/handoff commit and redeploy the previously reviewed image **under separate deployment authorization**; existing sessions/proofs/history remain unchanged, and the original-bot-link fallback still applies. No schema migration, SDK rollback or refund mechanism is introduced. DB display-name rollback is the guarded old-name update in the separate plan; Telegram branding rollback is owner-controlled.
 
 Do not deploy by convenience into the dated money sitting. C14–C18 stay October 8; intake pause **23:00Z**, final C18b **after 23:45Z**, all author/duplicate corrections accepted **strictly before October 9 00:00Z**. After **00:00Z**, close/snapshot/hold/safety gates precede Ledger publication, genuine claim and P14. Empty/no-payable/unknown-availability remain honest outcomes. Frozen deployment and any proposed UI rollout must be reconciled explicitly at the next authorized implementation session.
+
+## Local completion checkpoint — October 3
+
+[Implementation/review receipt](../../handoffs/2026-10-03-onboarding-implementation.md): T/A/B built and committed, 803 tests passed/1 skipped, typecheck/lint/build exit 0, local browser/keyboard/zoom checks pass. Fresh Opus5.5-high split exact-range reviews ACCEPT/no blockers through source 8841a01e8abdcec4398f1255a8ccd3d1c9423212. No push/deployment, real phone PASS or live effect. Owner URLs/access/attended test remain inputs; operating choices are recorded. Existing latest-epoch/latest-open-task behavior retained, task opening time displayed; keyboard selective and delayed clipboard fallback blocked during signing. Original private link/rules starts, SDK/message/reconciliation and DB/rewards/program unchanged.

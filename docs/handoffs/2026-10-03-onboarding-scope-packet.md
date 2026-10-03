@@ -7,7 +7,7 @@ summary: Owner research/document gate completed; concrete T/A/B candidate and se
 
 ## TL;DR
 
-The [durable research/document gate](../superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md) is **COMPLETE for this Hyphae scope**. Applied the matching prepared three-document patch, rechecked current refs/code and dated primary sources, and finalized the existing [participant plan's candidate/release packet](../superpowers/plans/2026-10-03-participant-onboarding-plan.md#candidate-and-release-packet--october-3-awaiting-approval). **Recommend explicit approval for local T → A → B implementation**, with deployment and all live actions separate. Nothing is built from this plan yet.
+The [durable research/document gate](../superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md) is **COMPLETE for this Hyphae scope**. Applied the matching prepared three-document patch, rechecked current refs/code and dated primary sources, and finalized the existing [participant plan's candidate/release packet](../superpowers/plans/2026-10-03-participant-onboarding-plan.md#candidate-and-release-packet--october-3). **Recommend explicit approval for local T → A → B implementation**, with deployment and all live actions separate. Nothing is built from this plan yet.
 
 Private source plans/report were read in place, read-only; no private strategy, contact/credential value or sibling/vault write. Historical dated receipts remain unchanged. No helper/reviewer, provider scoring call, group message, phone test, DB mutation, money action or branch cleanup.
 
