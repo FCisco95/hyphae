@@ -61,6 +61,7 @@ const options = (ctx: CommandContext<Context>, keyboard: boolean) => ({
           keyboard: PARTICIPANT_KEYS.map((row) => row.map((text) => ({ text }))),
           resize_keyboard: true,
           one_time_keyboard: true,
+          selective: true,
         },
       }
     : {}),

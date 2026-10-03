@@ -31,9 +31,14 @@ function audit(c: OnboardingCommunity): string {
   return "Audit link unavailable; ask the owner.";
 }
 
+const limited = (text: string, length: number) => {
+  const characters = Array.from(text);
+  return characters.length > length ? `${characters.slice(0, length).join("")}…` : text;
+};
+
 const heading = (c: OnboardingCommunity) =>
   [
-    c.name.slice(0, 120),
+    limited(c.name, 120),
     "Powered by Hyphae",
     `Reward intake ${c.paused ? "paused" : "open"}.`,
     c.epoch
@@ -55,9 +60,11 @@ export function welcomeContent(c?: OnboardingCommunity): string {
 
 export function helpContent(c?: OnboardingCommunity): string {
   if (!c) return GENERIC;
-  const rules = c.epoch?.rulesQuestions
-    ? `Rubric ${c.epoch.rubricVersion}: /rules requires ${c.epoch.rulesQuestions}/${c.epoch.rulesQuestions}, strictly before ${utc(c.epoch.closesAt)}. A pass is only one payment condition.`
-    : "No rules test available; ask the owner. Never assume another community's quiz applies.";
+  const rules = !c.epoch
+    ? "No open epoch; ask the owner which rules apply. The existing /rules command may still offer the latest pinned test."
+    : c.epoch.rulesQuestions
+      ? `Rubric ${c.epoch.rubricVersion}: /rules requires ${c.epoch.rulesQuestions}/${c.epoch.rulesQuestions}, strictly before ${utc(c.epoch.closesAt)}. A pass is only one payment condition.`
+      : "No rules test available; ask the owner. Never assume another community's quiz applies.";
   return [
     heading(c),
     "Rules and score help",
@@ -73,7 +80,7 @@ export function helpContent(c?: OnboardingCommunity): string {
 
 export function briefContent(
   c: OnboardingCommunity,
-  task: { brief: string; targetUrl: string | null; closesAt: Date } | null,
+  task: { brief: string; targetUrl: string | null; opensAt: Date; closesAt: Date } | null,
 ): string {
   let target = "";
   if (task?.targetUrl) {
@@ -94,7 +101,7 @@ export function briefContent(
   return [
     heading(c),
     task
-      ? `Current brief\n${task.brief.slice(0, 1000) || "Ask the owner for this task's brief."}${task.brief.length > 1000 ? "…" : ""}\n${target}\nTask closes ${utc(task.closesAt)}.`
+      ? `Current brief\n${limited(task.brief, 1000) || "Ask the owner for this task's brief."}\n${target}\nTask opens ${utc(task.opensAt)}; closes ${utc(task.closesAt)}.`
       : "No active brief. Ask the owner before submitting linked work.",
     "URL submissions use the latest active task. Keep one active brief; confirm its target before /submit. A task window does not extend the epoch's intake deadline.",
     audit(c),

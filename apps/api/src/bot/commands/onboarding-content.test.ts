@@ -66,6 +66,8 @@ describe("participant guidance", () => {
     expect(welcomeContent({ ...community, paused: true })).toContain("paused");
     const none = helpContent({ ...community, epoch: null });
     expect(none).toContain("No reward epoch is open");
+    expect(none).toContain("ask the owner which rules apply");
+    expect(none).not.toContain("No rules test available");
     expect(none).not.toContain("6/6");
     expect(none).not.toContain("/e/2");
     const unsupported = helpContent({
@@ -87,13 +89,30 @@ describe("participant guidance", () => {
     const text = briefContent(community, {
       brief: "Explain the actual update",
       targetUrl: "https://x.com/owner/status/123",
+      opensAt: new Date("2026-10-03T10:00:00Z"),
       closesAt: new Date("2026-10-04T10:00:00Z"),
     });
     expect(text).toContain("Explain the actual update");
     expect(text).toContain("https://x.com/owner/status/123");
+    expect(text).toContain("Task opens 2026-10-03 10:00 UTC");
     expect(text).toContain("2026-10-04 10:00 UTC");
     expect(text).toContain("one active brief");
     expect(briefContent(community, null)).toContain("No active brief");
+  });
+
+  it("truncates names and briefs without splitting an emoji surrogate pair", () => {
+    const text = briefContent(
+      { ...community, name: "x".repeat(119) + "😀" + "tail" },
+      {
+        brief: "x".repeat(999) + "😀" + "tail",
+        targetUrl: null,
+        opensAt: new Date(),
+        closesAt: new Date(),
+      },
+    );
+    expect(text).toContain("x".repeat(119) + "😀");
+    expect(text).toContain("x".repeat(999) + "😀");
+    expect(text).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
   });
 
   it("bounds untrusted plain text and refuses unsafe configured audit/target URLs", () => {
@@ -102,6 +121,7 @@ describe("participant guidance", () => {
       {
         brief: "x".repeat(6000),
         targetUrl: "javascript:alert(1)",
+        opensAt: new Date(),
         closesAt: new Date(),
       },
     );

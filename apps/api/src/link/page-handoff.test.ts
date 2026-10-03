@@ -170,6 +170,37 @@ describe("actual page client handoff and retry", () => {
     expect(h.node("copy-status").textContent).toMatch(/select|copy/i);
   });
 
+  it("does not reveal a delayed clipboard fallback after signing has started", async () => {
+    const h = page();
+    browser.wallets = [{ name: "Fixture wallet", icon: "data:image/png;base64," }];
+    let denyCopy: (() => void) | undefined;
+    h.clipboard.writeText.mockImplementation(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          denyCopy = () => reject(new Error("denied"));
+        }),
+    );
+    browser.connect.mockImplementation(() => new Promise(() => {}));
+    await import("./page/client.js");
+    h.node("copy-link").onclick?.();
+    h.node("wallets").children[0]?.onclick?.();
+    denyCopy?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(h.node("manual-copy").hidden).toBe(true);
+    expect(h.node("private-link").value).toBe("");
+  });
+
+  it("preserves the existing token-gated flow on local HTTP while disabling private-link copy", async () => {
+    const h = page();
+    h.location.origin = "http://localhost:3102";
+    browser.wallets = [{ name: "Fixture wallet", icon: "data:image/png;base64," }];
+    await import("./page/client.js");
+    expect(h.node("wallets").children).toHaveLength(1);
+    expect(h.node("copy-link").disabled).toBe(true);
+    expect(h.node("copy-status").textContent).toContain("HTTPS");
+    expect(h.fetch).not.toHaveBeenCalled();
+  });
+
   it("disables copy and wallet actions for a missing/invalid token, never copying the stripped address", async () => {
     const h = page("wrong");
     await import("./page/client.js");
@@ -234,6 +265,24 @@ describe("actual page client handoff and retry", () => {
     await vi.waitFor(() =>
       expect(h.node("status").textContent).toContain("Check your own /me first"),
     );
+    expect(h.node("retry").hidden).toBe(true);
+  });
+
+  it("handles the real wallet_taken response from verify without status resend or copy", async () => {
+    const h = page();
+    browser.wallets = [{ name: "Fixture wallet", icon: "data:image/png;base64," }];
+    h.fetch.mockImplementation(async (url) => ({
+      ok: url === "/link/request",
+      json: async () =>
+        url === "/link/request"
+          ? { requestId: "request", nonce: "nonce", message: "UNCHANGED readable message" }
+          : { error: "wallet_taken" },
+    }));
+    await import("./page/client.js");
+    h.node("wallets").children[0]?.onclick?.();
+    await vi.waitFor(() => expect(h.node("status").textContent).toContain("another member"));
+    expect(h.fetch.mock.calls.map(([url]) => url)).toEqual(["/link/request", "/link/verify"]);
+    expect(h.node("copy-link").disabled).toBe(true);
     expect(h.node("retry").hidden).toBe(true);
   });
 

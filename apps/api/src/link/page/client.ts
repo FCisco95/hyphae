@@ -51,12 +51,14 @@ function failed(code: unknown) {
   }
 }
 
+const copyAllowed = () => phase !== "busy" && !!privateLink;
+
 copy.onclick = async () => {
   const link = privateLink;
-  if (!link || phase === "busy") return;
+  if (!link || !copyAllowed()) return;
   const copied = await copyWalletLink(link, navigator.clipboard);
   // A verification may have finished while the clipboard permission dialog was open.
-  if (link !== privateLink) return;
+  if (link !== privateLink || !copyAllowed()) return;
   if (copied) {
     field.value = "";
     manual.hidden = true;
@@ -149,9 +151,12 @@ retry.onclick = () => {
   (list.firstElementChild as HTMLButtonElement | null)?.focus();
 };
 
-if (!privateLink) failed("link_expired");
+if (!/^[A-Za-z0-9_-]{43}$/.test(token)) failed("link_expired");
 else {
-  copy.disabled = false;
+  copy.disabled = !privateLink;
+  if (!privateLink)
+    copyStatus.textContent =
+      "Private-link copy needs the official HTTPS page. Open the ORIGINAL bot URL.";
   render();
   onWalletRegister(render);
 }

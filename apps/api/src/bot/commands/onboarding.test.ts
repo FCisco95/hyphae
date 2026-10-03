@@ -110,6 +110,7 @@ describe("actual bot onboarding wiring", () => {
         .flat()
         .map((b) => (typeof b === "string" ? b : b.text)),
     ).toEqual(["/link", "/rules", "/me", "/help brief", "/help"]);
+    expect((p?.reply_markup as ReplyKeyboardMarkup)?.selective).toBe(true);
     expect(p?.parse_mode).toBeUndefined();
     expect(await inventory()).toEqual(before);
   });
@@ -156,7 +157,7 @@ describe("actual bot onboarding wiring", () => {
     await bot.handleUpdate(command("/help", Number(second.community.telegramChatId)));
     expect(texts()[0]).toContain(second.community.name);
     expect(texts()[0]).not.toContain(first.community.name);
-    expect(texts()[0]).not.toMatch(/Wallet|Wallet\d+|your score is/);
+    expect(texts()[0]).not.toContain(second.member.wallet);
     out.length = 0;
     await bot.handleUpdate(command("/me", Number(second.community.telegramChatId)));
     expect(texts()[0]).toContain("Wallet");
@@ -171,6 +172,13 @@ describe("actual bot onboarding wiring", () => {
       expect(texts()).toHaveLength(1);
       expect(texts()[0]).toContain(`https://t.me/t_bot?start=${route}_${community.id}`);
     }
+  });
+
+  it("accepts addressed help commands in a multi-bot chat", async () => {
+    const { community } = await seedCommunity(t.db);
+    await bot.handleUpdate(command("/help@t_bot brief", Number(community.telegramChatId)));
+    expect(texts()[0]).toContain("No active brief");
+    expect(texts()[0]).toContain(community.name);
   });
 
   it("shows the pinned epoch and quiz, not a mutable community rubric or completed pass", async () => {
