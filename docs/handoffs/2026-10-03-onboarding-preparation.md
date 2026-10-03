@@ -70,6 +70,14 @@ Primary source: [Telegram Community limits](https://core.telegram.org/tdlib/opti
 
 Latest diagnostic checkpoint: actual model `gpt-6.1-sol`, effort **xhigh** (earlier design work used high), at **2026-10-03T20:52:08.395Z**: cumulative input **15,381,339**, cached input **14,598,144**, output **64,686** (reasoning output reported **21,042**), total **15,446,025**, cache-write 0. These counters include repeated requests; reasoning is not added again to total. Excludes later shipping/wait/final calls; cost unavailable. No helpers or live paid scoring calls.
 
+## Transfer to Obsidian Brain
+
+Founder instruction at closure: **research and clean/reconcile documents before further implementation, keeping the build aligned with actual product needs**. The durable requirement is [project alignment/document hygiene](../superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md); every subsequent handoff must retain it. Canonical HANDOFF was compacted, preserving this snapshot as detailed historical evidence.
+
+The explicitly requested Brain transfer input is vault `10 - PROJECTS/Organic/reports/organic-sync/2026-10-03-hyphae-post-ship-handoff.md`. It points the owning `/organic-sync post-ship` lane to stale migration/tester-group claims, Lab owner/basic-group evidence, phone/placement boundaries and the need to scope the professional Telegram welcome/menu separately from website polish. The sender owns only that new vault note; shared Board/Home/plans/INDEX/global memory and other workers' edits are preserved. No sync, product implementation or live action is claimed. Latest completed source checkpoint `a7f4163a7accffb6c91eaea99c733a3dc3977ba8`, exact-SHA CI 37153177852 independently success. This docs-only close passed a fresh full gate: **727 tests, 1 skipped**, typecheck/lint exit 0 (**266 files**), strict handoff, **59** local links/resume/Brain source paths and diff check. Push/exact-SHA CI are checked before transfer delivery.
+
+Final handoff capture, **2026-10-03T21:11:33.862Z**: actual `gpt-6.1-sol`, effort **xhigh**; cumulative input **21,685,742**, cached input **20,838,528**, output **88,523** (reasoning output reported **32,167**), total **21,774,265**, cache-write 0. These counters cover repeated requests/earlier turns in this thread; reasoning is not added to total again. Capture excludes subsequent commit/push/CI/delivery/final calls. Cost unavailable; no helpers or live paid scoring/model-provider experiments.
+
 ## Next-session prompt
 
 ```text

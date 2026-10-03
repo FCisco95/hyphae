@@ -2,6 +2,13 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-03 · alignment gate and handoff to Obsidian Brain
+
+**Changed:** made founder-requested research/document reconciliation a durable next-build requirement; compacted canonical HANDOFF, retained detailed snapshot, and prepared a narrow Brain transfer note for `/organic-sync post-ship`. New Telegram welcome/menu work needs explicit scope; the existing plan mainly covers website/signing-page UX. No product implementation or production mutation.
+**Decision:** owning-repo code/accepted receipts drive engineering truth; the vault sync reconciles shared plans/current claims. Preserve history/approvals and mark uncertainty, rather than re-asking settled ownership or treating old reads as fresh. The sender's only vault write is the requested transfer note; concurrent shared-doc edits remain untouched.
+**Validation/shipping:** source `a7f4163a7accffb6c91eaea99c733a3dc3977ba8` pushed, exact-SHA CI 37153177852 success. This handoff close passed **727 tests, 1 skipped**, typecheck/lint exit 0 (266 files), strict handoff, 59 local links/resume/Brain source paths and diff check; push/exact-SHA CI checked before delivery. SHA via `git log -1 -- docs/HANDOFF.md`. Actual runtime/usage captured in the dated snapshot; no helpers or live scoring calls.
+**Next:** run the prepared Brain `/organic-sync post-ship` prompt, correct stale deployment/Testers guidance, align one bounded bot/onboarding arc, and preserve the real phone/group-type/owner-input gates. SDK, parked branches and exact October 8–9 money/audit gates unchanged.
+
 ## 2026-10-03 · recover the recorded basic-group dependency
 
 **Finding:** owner screenshots confirm Cisco created Lab on September 17, owns it, and Hyphae is its admin; the September 16 build log already records the bot setup. The September 24 handoff explicitly says keep Lab a basic group until deployment. Current Telegram documentation describes Community capacity for supergroups/channels: basic-group type is the leading picker explanation, still **not freshly measured**. Historical paste-wallet messages are not current instructions. The prior ownership question was unnecessary; it is now recorded as settled.
