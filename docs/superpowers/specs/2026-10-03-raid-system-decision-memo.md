@@ -1,0 +1,16 @@
+# Raidar and Hyphae in the same MYCEL community
+
+October 3, 2026. **Decision pending; no system changed.** The founder reports Raidar already runs raids in Raid Team; Hyphae can open a reward task through `/raid` in its registered pilot chat. Raidar's configuration, rewards and duplicate controls have not been inspected. Do not claim a working integration or that Raidar does/does not pay people.
+
+| Option | Benefit | Risk / prerequisite |
+|---|---|---|
+| Keep both dispatching the same campaign | Least disruption to existing activity | Two instructions/deadlines and perceived double rewards. Hyphae cannot deduplicate against an external ledger; its own URL/member/task controls do not establish cross-system exclusivity. Reject for this pilot. |
+| Raidar dispatches; Hyphae scores a manually mirrored task | Familiar member entry point with Hyphae audit | Operator must prove matching target/window, one authoritative submission channel and whether Raidar gives points/rewards. Requires a defined integration/ownership policy; none exists today. Defer. |
+| **Separate the bounded Hyphae paid pilot from existing Raidar campaigns** | Preserves the working Raid Team while testing one reward ledger without integration | Owner must select disjoint targets/windows and communicate which brief is eligible. Coordination is manual; overlapping artifacts remain possible and need audit. |
+| Replace Raidar with Hyphae | One dispatcher and ledger | Disrupts existing workflow; feature parity, permissions and migration are unproven. Requires explicit owner choice and Telegram changes. Defer. |
+
+**Recommendation:** use Hyphae as the sole intake/scoring/allocation authority for one explicitly opted-in, disjoint pilot brief in the **already registered chat**, while Raidar continues its existing campaigns outside that paid pilot. Do not import Raidar points, auto-forward submissions, mirror raids or promise both systems' rewards for one artifact. Keep one active Hyphae task because URL submission selects the newest active task ([code](../../../apps/api/src/bot/commands/submit.ts)). This is a proposed operating choice, not a new approved payout rule.
+
+Double-counting can mean duplicate Hyphae originals, credit from two separate systems for the same post, or simply a member expecting two payments. Existing Hyphae artifact/member/raid controls address only its own rows; C18b follows originals across epochs and checks authors, but it cannot read an unknown Raidar ledger. The coordinator should flag overlaps for Cisco before the final audit, never zero work under an invented cross-system rule. If new exclusion policy is required, park it for a founder ruling; never retrofit the open epoch's pinned rules.
+
+Before recruitment, Cisco decides raid ownership and confirms whether Raidar offers points/rewards, which physical chat is registered, who opens the Hyphae brief, and how participants will distinguish its target, UTC window, submission command and sole reward ledger. **Recommend the separate pilot above** because it preserves existing operations and bounds the first payment proof. Any resulting group announcement remains owner-written/approved publication; this memo sends nothing and changes neither bot.
