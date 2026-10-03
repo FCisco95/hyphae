@@ -1,13 +1,17 @@
 ---
 date: 2026-10-03
-summary: Approved T/A/B local candidate built and reviewed; 803 tests passed/1 skipped. Unpushed/undeployed, actual phone test and technical/owner inputs remain gated.
+summary: Participant candidate and reusable operator-assisted community setup built/reviewed locally; 851 tests/1 skip and 50 Postgres checks passed. Organic owner integration and all live effects remain gated.
 ---
 
 # Hyphae handoff
 
-Last Updated: 2026-10-03T22:27Z
+Last Updated: 2026-10-03T22:54:52Z
 
 ## TL;DR
+
+**Shared community setup is now implemented and independently reviewed locally.** Cisco clarified that each Organic community must use its own group, then instructed this session to continue. The [setup tool/contract](community/SETUP-INTEGRATION.md) validates a private per-community manifest, verifies bot/group/admin, binds the database target, and atomically registers a paused community with its pinned future epoch and no payment eligibility. It preserves existing MYCEL history. **Operator-assisted, not self-service or a full admin dashboard.**
+
+Final setup source **cd4c4ef8a3ed4b47669ecd2dd0c4cd73ed9b437f**, reviewed exact range **072e99b..cd4c4ef**: fresh other-family **APPROVE, no actionable findings** after F1/F2 test-first repairs. Final local gate **851 passed/1 skipped**, real Postgres **50/50**, typecheck/lint/build/DB consistency exit 0. [Setup receipt](handoffs/2026-10-03-community-setup.md), [review](reviews/2026-10-03-community-setup-opus-fixcheck.md). No source delta after that review. Publication remains held under the earlier local-only scope.
 
 **Local T → A → B candidate built, reviewed and verified.** Cisco’s “yes” approved this bounded implementation and the disjoint-Hyphae/Raidar-separate, one-active-brief, hidden-until-phone-PASS choices. It did not supply genuine URLs, technical access, test attendance or live authorization. **No push/deployment/activation or real phone PASS.**
 
@@ -24,7 +28,7 @@ Final source **8841a01e8abdcec4398f1255a8ccd3d1c9423212**; fresh split other-fam
 
 ## Current Objective
 
-Finish the independent local candidate/operator packet, now complete. Next is existing read-only preflight plus separately authorized attended phone proof and owner inputs, followed only by explicitly approved live effects. No new product work or step after 6 from this checkpoint.
+The participant candidate and newly authorized shared setup foundation are complete locally. Next: Organic’s owning lane establishes its community-owner authority/settings contract before self-service, plus the existing technical/attended inputs for any live release or registration. Current setup remains operator-assisted, one contribution chat per token. No production operation or full admin dashboard is authorized by this checkpoint.
 
 ## Current State
 
@@ -58,11 +62,15 @@ Rules **158452fe2b22a1e42e5efd42f3f7e11bfdf59c70**, Jev **707d7daf21e217d9a8a64e
 
 ## Validation
 
+Shared setup final gate: **851 passed, 1 skipped** (core 106, web 107, API 638); **50/50** real-Postgres cases including 6 setup cases; typecheck/lint (285 files), both builds and drizzle-kit check exit 0. Two synthetic actual-CLI plans ran offline with zero provider/DB calls. Fresh complete setup fix check APPROVE; F1/F2 repaired, F3 operational limits documented. Source/rubric/schema/SDK/lockfile boundaries preserved; only the DB connection factory gained an optional reviewed-target argument, with existing caller defaults unchanged.
+
 Final pnpm test **exit 0, 803 passed/1 skipped** (106 core, 107 web, 590 API); typecheck **0**; lint **0**, 274 files/no fixes; web production build and wallet bundle **0**. Fresh Opus5.5-high static reviews **ACCEPT/no blockers** for complete split source coverage through 8841a01. Original private dispatch and immutable SDK/wallet/flow/store/routes/config/reward/DB/program source checked. Diff/handoff/local-path checks at closure.
 
 Browser: desktop 1280/mobile 390/320, light/dark preference, 200% CSS zoom at 390, 0 overflow/errors; web controls ≥46px/copy 53px; keyboard/focus and local simulated copy/cancel/retry/status flow pass. No physical screen-reader, real wallet/phone, bot binding, new Postgres/production or C21 proof claimed.
 
 ## Next Actions
+
+0. **Shared setup:** use the new operator/integration guide only under an explicitly authorized real-community sitting. Organic settings/provisioning remain outside this repo’s public-settlement-only boundary. Establish the owner-authority contract in its owning lane before self-service; never derive it from Telegram admin status or a public page. Original-manifest replay after legitimate name/chat/admin/rubric drift, or unavailable Telegram, needs authorized read-only diagnosis; no overwrite/reseed.
 
 1. Supply/use **existing owner-configured read-only access** for one registered row, exact bot/chat/type/webhook/migration health. Absent access stays UNKNOWN; no credentials pasted, new registration or repeated ownership question.
 2. Separately authorize/attend external tester’s own-account Lab phone matrix: /link → ORIGINAL private URL/fragment, close old signing page → Telegram/system/compatible-wallet-browser surfaces recorded separately → unchanged free message → same wallet in own /me. Android signing unexecuted/iOS unknown. Only real qualifying failure/need can request conditional isolated probe; Sentinel stays parked.
@@ -79,6 +87,8 @@ Browser: desktop 1280/mobile 390/320, light/dark preference, 200% CSS zoom at 39
 Read latest local checkpoint before syncing. Fetch without pruning; compare local/remote/parked refs and ff-only only, never reset local candidate. Preserve concurrent untracked work. Reuse accepted unchanged reviews/research gate and recheck changed evidence. No publication/live effect without concrete authorization. Vault shared plans remain read-only; this receipt is ready for organic-sync post-ship, not a claim that sync ran.
 
 ## Suggested skills
+
+For shared setup: `handoff-memory`, `karpathy-guidelines`, `security-review`, `orca-cli` for worktree state, `model-router` for required fresh other-family review, `handoff`. Parent runtime observed `gpt-6.1-sol` high; reviewers actual `claude-opus-5-5`, high requested with named effort independently unconfirmed.
 
 handoff-memory, security-review if new sensitive changes, handoff; device/browser guidance for separately authorized sitting. No automatic Sentinel/setup lane or implementation helpers.
 
@@ -101,3 +111,11 @@ Model: GPT-6.1 Sol (high) — recorded sync recommendation; actual previous main
 Skills: handoff-memory, security-review (new changes only), handoff.
 Use approved scope/operating choices; obtain existing read-only access, genuine Lab URLs and separately authorized tester attendance. Verify row/bot-chat/type/migration health or UNKNOWN. Own-account phone matrix uses ORIGINAL URL/fragment, close prior signing page, unchanged free message, own /me. Android unexecuted/iOS unknown/C21 distinct. No publish/deploy/name/upgrade/placement/menu/message/pin without concrete approval. Preserve SDK0.1.0 throughOct12, parked rules/Jev, reward branch and exactOct8–10 gates. End at step6; new-community setup is separate scope.
 ~~~
+
+## Shared setup continuation
+
+Read the setup receipt/contract before repeating owner setup instructions. Completed founder wallet linking and historical scoring remain accepted; a missing named-device receipt does not mean they never happened. Lab is the existing pilot; other token communities get their own groups and scopes. Current quiz catalog support is explicit and registration alone enables no payments. Sentinel remains PARKED at local d6dfbbe, one docs commit ahead of 7210266; 0.2.0 stays unpublished by its recorded state. Hyphae SDK remains 0.1.0 through October 12. No sibling/vault write, probe, live message, community registration, deployment or money action occurred in this setup arc.
+
+```text
+Continue Hyphae from current local main. Participant UI and private operator-assisted setup are implemented, reviewed and verified; publication/live effects remain unapproved. Read docs/HANDOFF.md, docs/handoffs/2026-10-03-community-setup.md and docs/community/SETUP-INTEGRATION.md. Preserve the completed research/document alignment requirement, accepted wallet/scoring history, SDK 0.1.0 and dated payout gates. Use the current model-routing reference; gpt-6.1-sol high was the observed setup runtime for this bounded engineering arc. Skills: handoff-memory, security-review, model-router for reviews, handoff. Keep Organic authority/settings implementation in its owning lane, Sentinel parked, and actual registration/deployment/group changes under separate concrete authorization.
+```

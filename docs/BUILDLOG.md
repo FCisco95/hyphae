@@ -2,6 +2,19 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-03 — reusable community setup, local and reviewed (2026-10-03T22:54:52Z)
+
+**Changed:** added a private operator manifest and plan/check/apply tool for independent token groups. Each registration begins paused with a pinned future epoch and no payment eligibility. Exact replay is read-only; conflicts refuse without replacing the MYCEL pilot. Added the Organic-side owner/settings integration contract and honest operator-assisted limits.
+
+**Decision:** use the existing one-contribution-group-per-token model; preserve the full admin-dashboard deferral and keep Organic authority implementation in its owning lane. A public page or Telegram admin status is not mint-owner authorization.
+
+**Validation:** **851 tests passed/1 skipped** (106 core, 107 web, 638 API), **50/50** real Postgres checks, typecheck/lint (285 files), builds and migration consistency exit 0. Two synthetic actual-CLI plans used no provider/DB calls. Fresh Opus complete fix check **APPROVE/no actionable findings** for `072e99b..cd4c4ef`; F1/F2 connection-target/TLS issues repaired test-first. F3 drift/outage recovery limits documented.
+
+**Commits:** `51e6c47533a46c49ef5c28a5e8fde71516f9fc0f` feature; `4ddf0bc21a141992b7548b7cbdc7b63904114a3d` review repairs; `cd4c4ef8a3ed4b47669ecd2dd0c4cd73ed9b437f` identity/replay checks. Documentation closure follows (resolve its SHA from this file’s log). **Local-only, not pushed:** current participant/setup scope excludes publication and deployment. All commits since origin `312cc0ff` remain pending, including the earlier participant arc; there is no new CI claim.
+
+**Next bounded action:** Organic’s owning lane establishes community-owner authority and settings/provisioning contract before self-service. Real group registration or release requires actual verified inputs and its concrete live authorization. No new credentials, real community, phone probe, Telegram message/pin, deployment, funds movement or sibling write. Sentinel F-13, SDK 0.1.0 and dated payout gates preserved.
+
+
 ## 2026-10-03 · reviewed local participant candidate
 
 **Changed:** implemented approved T → A → B: contextual Telegram welcome/help/brief and selective command keyboard, reusable community-page Start here/score guidance, original private-link copy/fallback and deliberate error/retry UX. Kept original private link/rules dispatch, SDK/message/reconciliation, DB/reward/program behavior and manifests unchanged. Fixed zoom, delayed clipboard, Unicode, closed-epoch copy and runtime test-dependency findings within the exact contract.
