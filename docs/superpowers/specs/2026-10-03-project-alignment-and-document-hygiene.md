@@ -16,11 +16,11 @@
 |---|---|
 | Hyphae engineering | `docs/HANDOFF.md`, `docs/BUILDLOG.md`, `docs/community/OPERATING-GUIDE.md`, relevant `docs/superpowers/specs/` and `plans/`, October 8–9 packet |
 | Historical evidence | Dated `docs/handoffs/`; retain timestamps and decisions, label superseded execution advice |
-| Product claims | `docs/WHITEPAPER.md` contains a stale rules/hold deployment row; extend writable scope explicitly before correcting it |
+| Product claims | `docs/WHITEPAPER.md` rules/hold row corrected under the explicit October 3 owner-doc scope; deployment is a dated accepted receipt, not a fresh DB read |
 | Shared Organic next steps | `/organic-sync post-ship` in cisco-brain owns the Integration Board, existing master plan, Briefing/TODAY gates and vault memory; product workers supply evidence |
 | Sibling products | Consume each repo's own latest checkpoint, including worktree/local-only work; preserve concurrent edits and ownership |
 
-The vault's October 3 memory still described Hyphae migration 0009 as unapplied and directed the tester to `/link` in Mycel Testers. Accepted Hyphae cutover/readiness evidence records deployed rules/hold gates and Neon 0000–0012; the registered chat is Lab, separate from Testers. The next sync must reconcile those specific contradictions, without presenting October 2 DB reads as fresh Mac reads.
+At the initial October 3 checkpoint, vault memory described migration 0009 as unapplied and directed `/link` to Mycel Testers. Brain's dated `2026-10-03-2125Z-post-ship` report corrected shared guidance; the owning Hyphae pass then applied the prepared three-doc patch. Accepted rules/hold deployment and Neon 0000–0012 remain prior October 2 evidence; registered Lab stays separate from Testers. Historical receipts retain their original date and wording.
 
 ## Fixed scope and unresolved dependencies
 
@@ -33,3 +33,7 @@ The vault's October 3 memory still described Hyphae migration 0009 as unapplied 
 ## Done when
 
 The owning sync has corrected the stale current statements, linked the authoritative evidence, preserved unknowns and history, and produced one ordered next arc with clear ownership. Every later handoff links this requirement and states whether that alignment pass is complete. Research/doc reconciliation can proceed while live operations are parked; it must not erase their approvals, guards or uncertainty to make a checklist look ready.
+
+## Completion checkpoint — October 3 owner scope
+
+**COMPLETE for this scope:** [owner receipt](../../handoffs/2026-10-03-onboarding-scope-packet.md) records no-prune/ff-only Git and exact CI checks, current bot/link/task/migration traces, dated primary-source rechecks, applied three-doc patch and the single amended T/A/B candidate/release packet. Current engineering docs agree on prior deployed rules/hold evidence, Sentinel parked, T proposed and phone/type/input unknowns. This gate remains durable: reuse unchanged evidence and recheck changed refs/code/sources before subsequent work. Completion authorizes no code, phone test or live operation.

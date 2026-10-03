@@ -1,6 +1,6 @@
 # Participant onboarding for the existing MYCEL pilot
 
-**Status: proposed, reviewable design; not implemented or deployed.** Based on [the `/link` verdict](2026-10-03-link-platform-verdict.md), written first, and [fresh read-only observations](../../handoffs/2026-10-03-onboarding-preparation.md). The phone path is a release dependency, not assumed working. No new rewards, custody, registration or SDK policy is decided here.
+**Status: proposed, reviewable design; not implemented or deployed.** Based on [the `/link` verdict](2026-10-03-link-platform-verdict.md), written first, and [fresh read-only observations](../../handoffs/2026-10-03-onboarding-preparation.md). The phone path gates recruitment/activation, not generic T/A design or approved local fixture work; it is not assumed working. No new rewards, custody, registration or SDK policy is decided here.
 
 ## Outcome and boundaries
 
@@ -55,7 +55,7 @@ When no wallet is found, show the copy action, three short wallet-browser steps 
 
 Keep explicit connect/sign clicks, the existing server-issued message and exact-byte check, server expiry/single-use enforcement and `/status` reconciliation. Success names the shortened wallet and tells the tester to return to their own Telegram `/me`. Relinking does not change the wallet frozen for an already closed epoch. Cancelled signatures offer a deliberate retry/restart; never resend a proof automatically. Missing/expired token, wallet taken and service uncertainty remain distinct states. Reload loses the in-memory bearer link: return to the original bot message or get a fresh `/link`, rather than adding browser persistence.
 
-**Release dependencies:** an attended fifteen-minute Hyphae phone test with the existing external tester; compatible wallet/browser confirmed; account/link-source warning reviewed. In the private-link flow, a forwarded link can bind a signer to the issuing member. SDK 0.1.0's message does not name that Telegram account. Copy affordances do not solve this residual. Do not claim Sentinel's confirmation-code protection exists here. A new server-backed account-confirmation protocol requires a separate bounded security design, files/authorization and review; it is not silently added to this UI plan. Recruitment remains parked until the phone journey is proven and the owner has considered that residual.
+**Activation dependencies:** an attended fifteen-minute Hyphae phone test with the existing external tester; compatible wallet/browser confirmed; account/link-source warning reviewed. In the private-link flow, a forwarded link can bind a signer to the issuing member. SDK 0.1.0's message does not name that Telegram account. Copy affordances do not solve this residual. Do not claim Sentinel's confirmation-code protection exists here. A new server-backed account-confirmation protocol requires a separate bounded security design, files/authorization and review; it is not silently added to this UI plan. Recruitment remains parked until the phone journey is proven and the owner has considered that residual.
 
 ## Rules, score explanations and eligibility
 
@@ -78,3 +78,7 @@ Anti-phishing copy: **“Use only your own private link from the official bot. N
 ## Acceptance and next work
 
 The [bounded plan](../plans/2026-10-03-participant-onboarding-plan.md) separates generic UI, the phone fallback and MYCEL configuration. [Raid ownership](2026-10-03-raid-system-decision-memo.md) is an unresolved founder policy choice; no campaign/intake change follows this design. The [October 8–9 packet](../../demo/2026-10-08-first-payout-readiness.md) remains canonical. No implementation, deployment, database rename, Telegram branding or social publication is authorized by this document alone.
+
+## Telegram deliverable scope clarification — October 3 post-ship
+
+The proposed professional Telegram welcome/buttons/rules/score guidance is explicitly scoped as Milestone T in `../plans/2026-10-03-participant-onboarding-plan.md`. It preserves the existing registered pilot and private link/rules handlers; the website/signing-page design does not claim a bot menu already exists. Local candidate code, live command registration/pins, group placement/rename and phone proof are separate stages. All require the research/document gate first and their recorded scope authorization.

@@ -1,101 +1,98 @@
 ---
 date: 2026-10-03
-summary: Handoff to Obsidian Brain for organic-sync post-ship. Research/document reconciliation is required before the next build; Lab ownership/basic-group history is settled, live type/phone path and implementation remain pending.
+summary: Research/document gate complete for this Hyphae scope; local T/A/B candidate packet finalized, implementation/live approval absent. No phone proof or activation.
 ---
 
 # Hyphae handoff
 
+Last Updated: 2026-10-03T21:45Z
+
 ## TL;DR
 
-**Next owner: Obsidian Brain / `/organic-sync post-ship`.** Cisco requires [research and document reconciliation before implementation](superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md). Preserve that requirement in future handoffs. The vault transfer input is `10 - PROJECTS/Organic/reports/organic-sync/2026-10-03-hyphae-post-ship-handoff.md`; it prepares the next sync, not another master plan.
+**Owner research/document gate COMPLETE for this scope.** The prepared three-doc patch matched and was applied; current code/refs and dated primary sources were rechecked. Preserve [the durable requirement](superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md) in each later handoff and recheck changed evidence before coding. Brain's shared alignment was completed in its `2026-10-03-2125Z-post-ship` report; this session completes the owning engineering pass, without editing the vault.
 
-**Cisco created/owns Hyphae Lab; Hyphae is admin; its two members are Cisco and the bot.** Mycel Testers is separate, with two Testers entries visible in MYCEL's Community list. Ownership is settled. September 24 explicitly kept Lab a basic group until deployment; this is the leading Community-picker explanation, **not a fresh live-type measurement**. Existing code handles an in-place supergroup/chat-ID migration. No upgrade/placement/rename happened.
+**Next: explicit approval for local T → A → B in the [amended participant plan](superpowers/plans/2026-10-03-participant-onboarding-plan.md#candidate-and-release-packet--october-3-awaiting-approval).** It contains exact files/tests, working command/button destinations, safe contexts, score/payment copy, mobile/keyboard checks and separate live-effects/rollback. No implementation is authorized or built. Recommend all three for a coherent candidate; generic T/A can use fixtures and omit missing MYCEL links while phone/type inputs wait. B needs fresh other-family exact-range review before push/release.
 
-[Phone verdict/test](superpowers/specs/2026-10-03-link-platform-verdict.md): a no-provider Telegram Android/Desktop surface fails by code; actual Hyphae opening behavior and system/wallet browsers/iOS are device-unproven. Sentinel applies partially. The private bot URL can move into a wallet browser; the stripped address bar loses its token. **No attended phone PASS; recruitment remains parked.**
-
-Participant design, raid memo and bounded plans are written, **not implemented**. Website/signing-page plan does not already implement the founder's requested professional Telegram welcome/buttons, rules and score guidance; the next sync must give that deliverable explicit scope. Desired hierarchy **MYCEL / Powered by Hyphae / Pilot**; live name remains Hyphae Lab. Epoch 2 open/rubric 1.2.0, zero uptake/settlement. No mainnet community/vault/payment.
+Cisco owns Lab, bot admin, owner+bot only; Testers separate. September 24 basic-group history is settled. Current registered row/bot binding/type and migration health are **UNKNOWN without access**, not deployment failure. Real Android signing remains unexecuted; iOS unknown. Recruitment/activation waits for attended own-account phone PASS, owner inputs and live approval. Production name remains Hyphae Lab; desired MYCEL / Powered by Hyphae / Pilot.
 
 ## Metadata
 
-- Repo `FCisco95/hyphae`, main; arc began `3a361e76801a78f0392ec0ca42dfb8ff1f1445d6`, CI 37050134269 success.
-- Latest completed checkpoint **`a7f4163a7accffb6c91eaea99c733a3dc3977ba8`**, pushed; [exact-SHA CI 37153177852](https://github.com/FCisco95/hyphae/actions/runs/37153177852) independently completed/success. Clean main matched origin. Documentation-only alignment/handoff close follows; resolve it from `git log -1 -- docs/HANDOFF.md` and verify its own CI, not an older run.
-- Actual diagnostic runtime `gpt-6.1-sol`, effort **xhigh**; earlier design used high. No helpers or live paid scoring/provider experiments. Applied handoff-memory, handoff, security-review, computer-use (read-only inspection blocked), orca-cli (transfer).
-- Latest captured runtime usage is in [the dated snapshot](handoffs/2026-10-03-onboarding-preparation.md); cumulative request/cache counters, not unique context. Cost unavailable; no estimated spend.
-- Earlier vault/Organic/Sentinel/public-program reads were read-only. **Cisco explicitly authorizes this closure's one Brain transfer note.** Shared vault Board, Home, plans, INDEX and global HANDOFF remain the sync lane's files; preserve concurrent changes. No other-product implementation write.
+- Only repo `FCisco95/hyphae` writable. Start/main/origin **`312cc0ffae1c4efbf5fd69c2b58a5aaf98af28ac`**, exact [CI 37154342915](https://github.com/FCisco95/hyphae/actions/runs/37154342915) independently completed/success. No-prune fetch passed, 0/0 overlap, ff-only synchronization already current; one main worktree.
+- This checkpoint is **local documentation only**. Its SHA is discoverable with `git log -1 -- docs/handoffs/2026-10-03-onboarding-scope-packet.md` and supplied at final delivery. **Push intentionally deferred:** current prompt requires separate authorization for publication; no remote push/deployment inferred. No new exact-SHA CI claim for the local commit.
+- Actual runner: Codex, GPT-6 family identified by session contract; exact runtime identifier/configured effort and usage/cost not exposed. Prior session's `gpt-6.1-sol` xhigh counters are historical and not this run. No helpers, model/scoring-provider experiments or new sensitive implementation review.
+- Read-only private inputs: existing Hyphae plan, 30-day master plan, October 3 2125Z post-ship report/patch. No vault, Organic, Sentinel or public-program writes. Source application details and evidence in [the dated receipt](handoffs/2026-10-03-onboarding-scope-packet.md); earlier [preparation](handoffs/2026-10-03-onboarding-preparation.md) and [readiness](handoffs/2026-10-02-payout-readiness.md) retained unchanged.
 
 ## Current Objective
 
-Deliver the portable engineering checkpoint and Brain transfer input, then stop this product lane. Cisco can run the prepared `/organic-sync post-ship` prompt to research/reconcile docs and order the next build. No product task or live operation is executed by the transfer.
+Approve a concrete local candidate scope and, separately, the needed attended test/live effects. Preparation is complete; scope/input-dependent steps are parked. This arc ends at owner activation preparation, before any operation after step 6.
 
 ## Current State
 
-| Evidence | Result / limit |
+| Evidence class | Result / limit |
 |---|---|
-| Fresh public reads Oct 3 18:41Z; follow-up 19:29:59Z | API/site point availability 200; name Hyphae Lab, intake/epoch 2 open Oct 2 00:00Z → Oct 9 00:00Z, rubric 1.2.0, public contributions/counted/pending/leaderboard 0; no settlement. Not continuous uptime or internal job proof. |
-| Claims | Ledger wallet claims 200/empty; individual leaf and real site proxy 404 `not_found`, proxy no-store. No payment. |
-| Finalized RPC 18:41:40Z, slot 453017150 | Derived community `HRkBN4sX7NyPEfa4SfRoTsP1dynmPDLMYbY7qLa4XbRX`, vault `AC3zkGQ9abJs6sssaY5nDX8Qjv2UM19r4JYLgcHoG86K`, epoch 2 `J7ipBhK2eJu8QFGtXTsYWNDhPYzcerwX22UkkJTaCPXG` absent. |
-| Prior Oct 2 readiness | Neon 13 migrations 0000–0012 matched; deployed rules/hold gate; internal uptake/jobs empty, Fly v11 frozen candidate. These are prior, **not newly read on Mac**. |
-| Not refreshed | Direct DB/jobs/backlog/schema/binding/admin balance/Fly image/live `getChat.type`: credentials unavailable. Computer Use settings input stopped on `window_not_focused` after the allowed retry; no click/settings effect. |
+| CONFIRMED current Git/code | No runtime delta since prior trace baseline; SDK manifest/lockfile exactly 0.1.0. Private link/rules start first, current `/me` group-scoped, URL submission uses newest active task, migration handler exists. T welcome/help not implemented. |
+| CONFIRMED public reads Oct 3 21:41:03Z | Health/community/epoch HTTP 200; name Hyphae Lab, epoch 2/intake open Oct 2 → Oct 9 00:00Z; public counts all 0, no settlement. Point availability only, no internal jobs/phone proof. |
+| PRIOR RECEIPT | October 2 Neon 13 matched hashes 0000–0012, deployed rules/hold gates, Fly v11 frozen candidate. October 3 rubric 1.2.0 and finalized slot 453017150 absent derived community/vault/epoch; no fresh DB/Fly/RPC/hash read here. |
+| UNKNOWN technical | Single registered row/UUID, exact bot/chat binding, current `getChat.type`, webhook/deployed migration health. DB/bot environment/env files and Fly/psql tools unavailable. Ownership itself settled. |
+| UNEXECUTED phone/live | Actual Telegram/system/wallet-browser signing, attended test, deployment, rename, in-place upgrade, Community placement, menu registration, messages/pins, recruitment. iOS unknown. |
+| PROPOSED | T/A/B packet; disjoint Hyphae briefs with Raidar separate, one active Hyphae task, hidden pilot until phone PASS. Genuine Lab invite/support/publishing URLs and founder raid/visibility choice missing. |
 
-Accepted C13 program/Ledger authority/hash/229,432-byte deployment and retired keys remain in [WALLETS](WALLETS.md) and [C13](handoffs/2026-10-02-c13-mainnet-receipt.md). Spend 1.168463032 SOL under 1.2 cap; 0.051537968 SOL returned. Never repeat deployment/funding or fund retired identities. No fresh executable rehash.
+C13 authority/hash/deploy/temporary-key retirement remain accepted in [WALLETS](WALLETS.md) and [C13](handoffs/2026-10-02-c13-mainnet-receipt.md). Never repeat deployment/funding or fund retired identities. No contributor payment evidenced.
 
 ## Recent Changes
 
-Written: platform trace/manual test; participant design; raid memo; bounded website/signing-page implementation, display-name and Lab placement/upgrade plans; reconciled guide/payout packet; recovered owner/basic-group facts. This closure adds the durable research/doc hygiene requirement, compacts current memory and prepares the Brain transfer note. Historical details remain in the dated snapshot and BUILDLOG.
+Applied prepared WHITEPAPER deployment correction, false Sentinel WR-01 dependency removal and explicit T scope; finalized the existing participant plan's candidate/release packet. Reconciled design, alignment requirement, guide and money packet; updated portable engineering receipt/build log. Preserve original dated evidence; no runtime/file-contract execution or shared strategy copy.
 
 ## Known Issues / Watch List
 
-- Vault `_memory/HANDOFF.md` says migration 0009 unapplied and directs `/link` to Mycel Testers: **stale** against accepted deployment and actual registered Lab. Sync must correct these without treating old DB reads as fresh.
-- WHITEPAPER's rules/hold deployment row is stale. Outside prior writable scope; give its correction explicit scope in the next doc pass. Preserve historical receipts; don't delete evidence to clean docs.
-- Real phone proof, current group type/binding, genuine registered invite/support/publishing URLs and raid choice remain pending. Recommend disjoint Hyphae paid pilot briefs with Raidar separate, and hidden pilot visibility until phone PASS; owner decisions unrecorded.
-- Forwarded bearer links can bind a signer to the issuer; SDK 0.1.0's generic message does not display Telegram identity. No Sentinel confirmation protocol is claimed. `/link` message PASS does not prove C21 transaction signing.
-- One registered chat per mint, operator-assisted onboarding; no same-mint multi-chat/self-service claim. URL submissions choose the latest active task: keep one active brief. No imported Raidar points or retroactive policy.
+- Forwarded bearer links can bind a signer to the issuer; SDK 0.1.0's unchanged generic message does not name Telegram identity. Own-link warnings/copy do not solve this residual. No new confirmation protocol is authorized; blocking review finding parks B.
+- Copy ORIGINAL bot URL with fragment; loaded address bar is stripped. The proposed copy control is not implemented. No-provider FAIL by code is not a real Android/iOS test. `/link` message PASS never proves C21 transaction signing.
+- Preserve the registered Lab. If current type is supergroup, skip upgrade. If group, attended in-place upgrade requires exact same UUID/mint/members/epochs/config read-back; collision stops. No promised upgrade reversal, replacement chat or same-mint multi-chat support.
+- Command-menu/pin/deployment/name/upgrade/placement/visibility are separate effects with explicit targets, read-back and rollback limits in the packet. T initially has no API per-mint owner config; A's optional web map does not configure the bot.
 
 ## Branch Disposition
 
-Only main checkout registered. Rules `158452fe2b22a1e42e5efd42f3f7e11bfdf59c70` and Jev `707d7daf21e217d9a8a64e58514065f5e3bca45e` remain pushed/remote-tracking and verified **unmerged until epoch 3**; no local copies on Mac. Existing local `hackathon/r1-exact-reward-points` untouched. Candidate is an ancestor of main; unique historical proof archived. Fetch without pruning; no cleanup deletion/merge authorized merely by the docs request.
+Rules **`158452fe2b22a1e42e5efd42f3f7e11bfdf59c70`** and Jev **`707d7daf21e217d9a8a64e58514065f5e3bca45e`** remain remote/pushed/unmerged until epoch 3. No local copies created or refs pruned/deleted. Preserve local `hackathon/r1-exact-reward-points` **`2fd2470`**, an ancestor of main. No worktree/branch cleanup.
 
 ## Validation
 
-Latest completed local gate: **727 tests passed, 1 skipped** (core 106, web 80, API 541), typecheck/lint exit 0 (**266 files**); strict handoff/path/diff checks passed, only validator GitHub-URL heuristic warnings. Current runtime/SDK/manifests/lockfile unchanged. Initial stale Mac dependency links were repaired with frozen-lockfile install. This closure’s fresh full gate also passed **727/1 skipped**, typecheck/lint exit 0 (266 files); strict handoff, **59** local links/resume/Brain source paths and diff check passed. Its exact-SHA CI is checked at final delivery. No new sensitive implementation review claimed; a future wallet implementation requires fresh other-family review.
+Fresh `pnpm test`: **727 passed, 1 skipped**, exit 0 (core 106, web 80, API 541). `pnpm typecheck`: exit 0. `pnpm lint`: exit 0, **266 files**, no fixes. `git diff --check` and strict handoff passed (GitHub-URL heuristic warning only); **85 local links/resume paths** checked across 9 docs, runtime/SDK/schema and retained refs unchanged. No candidate mobile/keyboard rendering or real phone test claimed; those wait for code/test authorization. No DB/reward source changes, so no new real-Postgres gate or other-family review is claimed; accepted unchanged ranges retained.
 
 ## Next Actions
 
-1. **Brain sync first:** consume the transfer note and owning repo receipts; apply the durable research/doc hygiene pass. Correct current statements, retain historical evidence and produce one bounded next arc with no repeated ownership/funding questions. No parallel product lane writes shared vault plans.
-2. **Next product scope:** explicitly include Telegram bot welcome/menu, explanation/rules/score help plus existing participant UI polish; keep generic behavior separate from MYCEL data. Recommendation: one clear Start here path in the existing pilot, without claiming unsupported self-service.
-3. **Phone/live group:** attended fifteen-minute external-tester check in Lab; current type/binding preflight before an explicitly approved in-place upgrade/placement/name correction. Same-community migration read-back, no replacement. Recommendation hidden pilot until phone PASS.
-4. **Owner inputs:** genuine Lab invite, support URL, publishing account; Raidar ownership/rewards and visibility choice. Recommend disjoint pilot briefs, preserve existing Raidar campaigns. Existing read-only operational connection is needed for missing checks; no secrets in chat.
-5. **Unchanged money gates:** C1–C13/readiness complete, C14–C22 unexecuted. Oct 8 admin **0.02 SOL**, gross **500,000,000 lamports**, exact fresh vault top-up/permanent recipient. **23:00Z pause; final C18b after 23:45Z; corrections/author attestation strictly before Oct 9 00:00Z**. After 00:00Z close/snapshot/hold/safety, Ledger publication, genuine signed-wallet claimant/P14; hold window through Oct 10 00:00Z inclusive. Honest empty/no-payable/unavailable fallbacks. SDK exactly 0.1.0 through Oct 12.
+1. Record explicit local T/A/B approval (or subset), then implement T/A independently with missing links omitted; B stays within exact page files and receives fresh other-family exact-range review. No deployment from local build permission.
+2. Use existing owner-configured read-only DB/bot/Fly access when available for single row, exact binding, type and migration health. Preserve unknowns if absent; no secret pasted into chat and no repeated ownership question.
+3. Under separate attended test authorization, external tester joins registered Lab with their own account: group `/link` → private ORIGINAL URL → record Telegram/system/wallet-browser surfaces separately → unchanged free message → same wallet in own `/me`. Android actual signing unexecuted; iOS unknown. Conditional isolated pattern probe only on qualifying failure/need; Sentinel remains PARKED.
+4. Owner supplies genuine Lab invite/support/publishing URLs and decides raid/visibility. Recommend disjoint Hyphae briefs/Raidar separate, one active brief and hidden pilot until phone PASS. Prepare/authorize only relevant name/upgrade/placement/menu/pin/deployment effects with read-backs; publish nothing without authorization.
+5. Carry unchanged C1–C13/readiness and **unexecuted C14–C22**: October 8 admin **0.02 SOL**, gross **500,000,000 lamports**, fresh exact vault top-up/permanent recipient and approved author-attestation corrections. Pause **23:00Z**; final C18b **AFTER 23:45Z**; corrections/attestation **STRICTLY BEFORE October 9 00:00Z**. Post-00:00Z close/snapshot/hold/safety, Ledger publication, genuine signed-wallet claimant/P14 before payment claims. Hold window through **October 10 00:00Z inclusive**; empty/no-payable remains no payment. SDK exactly 0.1.0 through Oct 12; no operation pulled forward.
 
 ## Quick Reference
 
-[Alignment requirement](superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md), [wallet verdict](superpowers/specs/2026-10-03-link-platform-verdict.md), [design](superpowers/specs/2026-10-03-participant-onboarding-design.md), [implementation](superpowers/plans/2026-10-03-participant-onboarding-plan.md), [placement/upgrade](superpowers/plans/2026-10-03-lab-community-placement-operator-plan.md), [name correction](superpowers/plans/2026-10-03-mycel-display-name-operator-plan.md), [raid memo](superpowers/specs/2026-10-03-raid-system-decision-memo.md), [guide](community/OPERATING-GUIDE.md), [money packet](demo/2026-10-08-first-payout-readiness.md), [dated snapshot](handoffs/2026-10-03-onboarding-preparation.md).
+[Candidate/release packet](superpowers/plans/2026-10-03-participant-onboarding-plan.md), [alignment requirement](superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md), [new receipt](handoffs/2026-10-03-onboarding-scope-packet.md), [phone procedure](superpowers/specs/2026-10-03-link-platform-verdict.md), [name](superpowers/plans/2026-10-03-mycel-display-name-operator-plan.md), [placement](superpowers/plans/2026-10-03-lab-community-placement-operator-plan.md), [guide](community/OPERATING-GUIDE.md), [money packet](demo/2026-10-08-first-payout-readiness.md).
 
 ## Resume Checklist
 
-Check clean Git/refs and exact-SHA CI, fetch without pruning/pull fast-forward only. Complete/reuse the owning Brain alignment pass before implementation. Read historical setup before asking questions; preserve evidence freshness/unknowns, existing approvals and other workers' files. Recheck live preconditions only when the authorized sitting needs them. No new code or production action from the handoff itself.
+Read current local checkpoint before syncing. Fetch without pruning and compare main/origin/parked refs; ff-only only, never reset local docs to old remote. Reuse the completed scope alignment; recheck changed sources/code. Record implementation/live authorization before their dependent actions. Missing access/input is UNKNOWN; continue independent authorized work. Vault shared plans remain read-only; product receipt is prepared for organic-sync post-ship, no sync execution claimed.
 
 ## Suggested skills
 
-`handoff-memory`, `organic-sync post-ship` in Brain, `security-review` for wallet work, `handoff`. `orca-cli` for the transfer. No helpers. New prompt model choices come from the sync's current model-selection reference, not older handoffs.
+`handoff-memory`, `security-review`, `test-driven-development` only after candidate approval, applicable React/Next.js guidance for A, `handoff`. Fresh other-family reviewer for B; no automatic helpers or Sentinel build.
 
 ## Generated artifacts this session
 
-| What | Canonical home | State |
+| What | Canonical home | Stage |
 |---|---|---|
-| Design/verdict/memo, alignment requirement | `docs/superpowers/specs/2026-10-03-*.md` | Docs only |
-| Bounded implementation/operator plans | `docs/superpowers/plans/2026-10-03-*.md` | Unexecuted |
-| Engineering memory/evidence | `docs/HANDOFF.md`, `docs/handoffs/2026-10-03-onboarding-preparation.md`, `docs/BUILDLOG.md` | Git portable |
-| Brain transfer input | Vault `10 - PROJECTS/Organic/reports/organic-sync/2026-10-03-hyphae-post-ship-handoff.md` | Explicitly requested; shared plan/memory files untouched by this sender |
+| Applied alignment and concrete packet | `docs/WHITEPAPER.md`, participant plan/design, alignment spec, guide/money packet | Local docs only |
+| Scope receipt and engineering memory | `docs/handoffs/2026-10-03-onboarding-scope-packet.md`, `docs/HANDOFF.md`, `docs/BUILDLOG.md` | Local, portable |
 
-No new key, credential, deployment, schedule, community, transaction or public/group message; no raw screenshot committed.
+No new key, credential, deployment, transaction, schedule, community or message.
 
 ## Resume Prompt
 
 ```text
-Resume Hyphae after Brain's /organic-sync post-ship alignment pass. Cisco requires research and document reconciliation before implementation; carry docs/superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md into every later handoff. Lab ownership is settled (Cisco + admin bot), Testers is separate, historical basic-group type is recorded but current type/phone signature remains unconfirmed. Designs/plans are not implemented, live name remains Hyphae Lab, zero public epoch-2 uptake/settlement, no mainnet community/vault/payment.
-Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-03-onboarding-preparation.md, docs/superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md, docs/superpowers/specs/2026-10-03-link-platform-verdict.md, docs/superpowers/specs/2026-10-03-participant-onboarding-design.md, docs/superpowers/plans/2026-10-03-participant-onboarding-plan.md, docs/superpowers/plans/2026-10-03-lab-community-placement-operator-plan.md, docs/demo/2026-10-08-first-payout-readiness.md.
-Model: gpt-6.1-sol (high) — current supported workhorse for the bounded next arc; actual latest diagnostic runtime was xhigh. Follow the sync's current routing evidence for changed scope/review.
-Skills: handoff-memory, security-review, handoff.
-Read the aligned plan and accepted history first. Give professional Telegram welcome/buttons/rules/score guidance explicit implementation scope, then finish its independently authorized steps. Keep current website/signing-page plans honest about what they build. Real phone/group checks, live upgrade/placement/name/visibility, missing owner links and raid policy remain bounded stops, not assumptions. Preserve SDK 0.1.0 through Oct 12, parked rules/Jev until epoch 3, and the exact Oct 8–9 pause/audit/correction/close/hold/Ledger publication/genuine claim/P14 gates. No implementation or production mutation is authorized by this resume handoff alone.
+Resume only FCisco95/hyphae from its latest local docs checkpoint; origin was 312cc0ffae1c4efbf5fd69c2b58a5aaf98af28ac with exact CI 37154342915 success. The owner research/document gate is complete for this scope; carry the durable alignment requirement and recheck changed refs/code/sources. T/A/B packet is proposed, code/phone/live actions unexecuted. Local docs publication was deferred under the explicit no-publication instruction.
+Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-03-onboarding-scope-packet.md, docs/superpowers/specs/2026-10-03-project-alignment-and-document-hygiene.md, docs/superpowers/plans/2026-10-03-participant-onboarding-plan.md, docs/demo/2026-10-08-first-payout-readiness.md.
+Model: GPT-6.1 Sol (high) — current sync recommendation for bounded implementation; actual previous runner identifier/effort was unavailable.
+Skills: handoff-memory, security-review, test-driven-development (after build approval), handoff.
+Record explicit local T/A/B approval before code. Preserve private link/rules starts and exact file contract; generic T/A need no missing MYCEL URLs. B needs fresh other-family exact-range review, SDK/message/reconciliation unchanged. Use existing read-only access for binding/type/migration health if available; otherwise UNKNOWN. Separate attended own-account Lab phone test and all live effects; no replacement chat, Sentinel build, reward change or operation beyond step 6. Preserve parked refs/local reward branch, SDK 0.1.0 through Oct 12 and exact Oct 8–10 payout gates. Ask unresolved owner inputs once with recommendations.
 ```
