@@ -5,7 +5,7 @@ summary: Research/document gate complete for this Hyphae scope; local T/A/B cand
 
 # Hyphae handoff
 
-Last Updated: 2026-10-03T21:45Z
+Last Updated: 2026-10-03T21:47Z
 
 ## TL;DR
 
@@ -18,7 +18,7 @@ Cisco owns Lab, bot admin, owner+bot only; Testers separate. September 24 basic-
 ## Metadata
 
 - Only repo `FCisco95/hyphae` writable. Start/main/origin **`312cc0ffae1c4efbf5fd69c2b58a5aaf98af28ac`**, exact [CI 37154342915](https://github.com/FCisco95/hyphae/actions/runs/37154342915) independently completed/success. No-prune fetch passed, 0/0 overlap, ff-only synchronization already current; one main worktree.
-- This checkpoint is **local documentation only**. Its SHA is discoverable with `git log -1 -- docs/handoffs/2026-10-03-onboarding-scope-packet.md` and supplied at final delivery. **Push intentionally deferred:** current prompt requires separate authorization for publication; no remote push/deployment inferred. No new exact-SHA CI claim for the local commit.
+- Packet/alignment milestone **`e7667747fcdf6d04b860f554df43a4cd18a8ec22`** is committed locally. This closure adds its exact receipt; closure SHA resolves from `git log -1 -- docs/handoffs/2026-10-03-onboarding-scope-packet.md` and final delivery. **Push intentionally deferred:** current prompt requires separate authorization for publication; no remote push/deployment inferred. No new exact-SHA CI claim for the local commit.
 - Actual runner: Codex, GPT-6 family identified by session contract; exact runtime identifier/configured effort and usage/cost not exposed. Prior session's `gpt-6.1-sol` xhigh counters are historical and not this run. No helpers, model/scoring-provider experiments or new sensitive implementation review.
 - Read-only private inputs: existing Hyphae plan, 30-day master plan, October 3 2125Z post-ship report/patch. No vault, Organic, Sentinel or public-program writes. Source application details and evidence in [the dated receipt](handoffs/2026-10-03-onboarding-scope-packet.md); earlier [preparation](handoffs/2026-10-03-onboarding-preparation.md) and [readiness](handoffs/2026-10-02-payout-readiness.md) retained unchanged.
 
