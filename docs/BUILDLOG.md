@@ -2,6 +2,13 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-03 · owner screenshots resolve Lab versus Testers
+
+**Changed:** recorded that Hyphae Lab and Mycel Testers are separate chats, with two Testers entries visible in the MYCEL Community; reconciled design/plan/guide and canonical/dated handoff. Screenshots inspected only, not saved to the repo; no tester identity or unrelated chats copied. Historical Lab bot replies are not current phone proof.
+**Recommendation:** retain the registered Lab, place that existing chat in MYCEL’s Telegram Community if offered by the owner UI, and invite the tester there. This avoids a new reward registration or a chat migration. No Telegram/database write, message, bot/UI implementation or policy decision.
+**Fresh check:** October 3 19:29:59Z API health 200/ok; Hyphae Lab/intake and epoch 2 open; contribution/count/pending fields 0; no settlement. No direct DB/Fly or phone test. Prior receipt `a1104cd9b8acc62a0593a12c99bf871a148e05b4` pushed, exact-SHA CI 37146676986 success. This docs checkpoint’s fresh local gate passed **727 tests, 1 skipped**, typecheck/lint exit 0 (266 files); strict handoff, 64 local links/resume paths and diff check passed. Its push/exact-SHA CI are checked at closure; commit SHA via `git log -1 -- docs/HANDOFF.md`.
+**Next:** tester joins the existing registered Lab for the attended phone check; genuine Lab invite/support/publishing links and raid policy remain owner inputs. Exact DB chat guards still required before mutation; do not repeat the resolved same-group question. October 8–9 gates, SDK 0.1.0 and parked branches unchanged.
+
 ## 2026-10-03 · wallet path verdict and participant onboarding preparation
 
 **Changed:** traced `/link` before design and wrote `docs/superpowers/specs/2026-10-03-link-platform-verdict.md` with a fifteen-minute operator test; participant design, bounded implementation plan, guarded display-name operator plan and Raidar decision memo are reviewable, not implemented. Reconciled guide/Oct 8–9 packet and portable handoff/snapshot. No runtime/SDK/reward code, production mutation, community message, social publication, helper or paid scoring experiment.
