@@ -22,6 +22,9 @@ New-community onboarding is currently operator-assisted. An operator must verify
 
 Founder context, October 3: MYCEL already has Buy Calls (Safeguard), Trenches, Raid Team (Raidar), Announcements and a two-member Mycel Testers group with one external tester. This is an existing stack, not a blank community to create. Owner screenshots now show Hyphae Lab and Mycel Testers are separate chats, with two Mycel Testers entries in the MYCEL list. Lab has historical Hyphae bot replies for this mint; Testers membership does not confer Lab membership. Recommend retaining the registered Lab, adding that existing chat to the MYCEL Community if offered by Telegram, and inviting the tester there. Verify the exact chat before a live change; no move/rename/registration has occurred. Group membership is not scored uptake. [Raid decision memo](../superpowers/specs/2026-10-03-raid-system-decision-memo.md): recommend one disjoint Hyphae paid pilot brief in the registered chat, with Raidar campaigns separate. Founder choice remains pending; neither bot changed.
 
+
+Ownership is confirmed: Cisco created Lab, and the bot is its admin. The September 24 handoff explicitly recorded Lab as a **basic group**. Telegram's Community chat capacity is defined for supergroups/channels ([primary documentation](https://core.telegram.org/tdlib/options)); basic-group type is the leading explanation for the missing Add a Chat entry, **not a freshly confirmed live type**. Follow [the placement/upgrade plan](../superpowers/plans/2026-10-03-lab-community-placement-operator-plan.md): read current type, preserve the existing community, and require approved in-place upgrade/migration read-back if needed. No upgrade or placement is done; no ownership question remains.
+
 ## Current links to pin
 
 - [MYCEL community](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg)

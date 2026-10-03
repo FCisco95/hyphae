@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-03 · recover the recorded basic-group dependency
+
+**Finding:** owner screenshots confirm Cisco created Lab on September 17, owns it, and Hyphae is its admin; the September 16 build log already records the bot setup. The September 24 handoff explicitly says keep Lab a basic group until deployment. Current Telegram documentation describes Community capacity for supergroups/channels: basic-group type is the leading picker explanation, still **not freshly measured**. Historical paste-wallet messages are not current instructions. The prior ownership question was unnecessary; it is now recorded as settled.
+**Prepared:** an owner-attended in-place upgrade/placement operator plan with read-only type/binding preflight, existing migration-handler read-back, collision/recovery limits and Community visibility choice; reconciled guide/design/plan and canonical/dated handoff. No source, Telegram, database, registration, invite, rename or message change. Existing code follows old/new migration IDs and refuses a target collision; no new implementation or independent review claimed.
+**Limit:** Computer Use inspection stopped on `window_not_focused` after one restore retry; no click effect. Bot/DB credentials remain absent, so live type/picker causality is unconfirmed. No raw screenshots or private identities committed.
+**Verification/shipping:** previous `e830dc8e3fee708df79b0d92a42298fec2535677` pushed, exact-SHA CI 37148464379 success. This docs-only milestone passed **727 tests, 1 skipped**, typecheck/lint exit 0 (266 files), strict handoff, 73 local links/resume paths and diff check. Actual diagnostic runtime gpt-6.1-sol/xhigh and usage checkpoint recorded in HANDOFF. Push/exact-SHA CI checked at closure; SHA via `git log -1 -- docs/HANDOFF.md`.
+**Next:** verify `getChat.type` for the registered Lab; if basic, recommend an approved in-place supergroup upgrade and read-back before adding it to MYCEL. Recommend hidden pilot visibility until the phone path passes; no new policy adopted. Bot welcome/menu work remains independent. SDK 0.1.0, parked branches and Oct 8–9 gates unchanged.
+
 ## 2026-10-03 · owner screenshots resolve Lab versus Testers
 
 **Changed:** recorded that Hyphae Lab and Mycel Testers are separate chats, with two Testers entries visible in the MYCEL Community; reconciled design/plan/guide and canonical/dated handoff. Screenshots inspected only, not saved to the repo; no tester identity or unrelated chats copied. Historical Lab bot replies are not current phone proof.
