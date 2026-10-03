@@ -2,6 +2,19 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 — shared setup local integration close (2026-10-03T23:01:48Z)
+
+**Changed:** fast-forward integrated the reviewed setup checkpoint **6b31fc6936c54e57a19c9673b4554beb40ab714c** into local main and removed its fully merged temporary worktree/branch. Preserved the participant arc, parked refs and initial-review retention tag. This carryover entry records integration/cleanup, not additional implementation.
+
+**Decision:** keep the result local under the recorded local-only scope; actual Organic owner integration and live registration/release remain separate.
+
+**Validation:** source unchanged since reviewed cd4c4ef; prior final **851 tests/1 skip**, **50/50 Postgres**, typecheck/lint/build/consistency 0 and fresh other-family APPROVE remain applicable. Main clean/13 ahead before this documentation close; remote independently re-read at **312cc0ff**. No new runtime test or CI claim for a docs-only close.
+
+**Commits/state:** source **51e6c47**, repair **4ddf0bc**, tests **cd4c4ef**, portable checkpoint **6b31fc6**, all local/unpushed; preceding participant commits also remain local. This close’s SHA resolves from file history; exact pending list is `git log origin/main..main`.
+
+**Next bounded action:** Organic-owned verified community-owner/settings/provisioning contract before self-service, then concrete authorized real-community setup/release. No new credential, group operation, deployment, message, funding/payment or sibling write; SDK/Sentinel/payout gates preserved.
+
+
 ## 2026-10-03 — reusable community setup, local and reviewed (2026-10-03T22:54:52Z)
 
 **Changed:** added a private operator manifest and plan/check/apply tool for independent token groups. Each registration begins paused with a pinned future epoch and no payment eligibility. Exact replay is read-only; conflicts refuse without replacing the MYCEL pilot. Added the Organic-side owner/settings integration contract and honest operator-assisted limits.

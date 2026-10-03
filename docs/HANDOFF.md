@@ -1,15 +1,17 @@
 ---
-date: 2026-10-03
+date: 2026-10-04
 summary: Participant candidate and reusable operator-assisted community setup built/reviewed locally; 851 tests/1 skip and 50 Postgres checks passed. Organic owner integration and all live effects remain gated.
 ---
 
 # Hyphae handoff
 
-Last Updated: 2026-10-03T22:54:52Z
+Last Updated: 2026-10-03T23:01:48Z
 
 ## TL;DR
 
 **Shared community setup is now implemented and independently reviewed locally.** Cisco clarified that each Organic community must use its own group, then instructed this session to continue. The [setup tool/contract](community/SETUP-INTEGRATION.md) validates a private per-community manifest, verifies bot/group/admin, binds the database target, and atomically registers a paused community with its pinned future epoch and no payment eligibility. It preserves existing MYCEL history. **Operator-assisted, not self-service or a full admin dashboard.**
+
+**Local integration complete:** checkpoint **6b31fc6936c54e57a19c9673b4554beb40ab714c** fast-forwarded onto main, preserving the participant arc. Only main checkout remains; the fully merged temporary setup worktree/branch was removed. The initial-review retention tag and all pre-existing parked refs remain. Remote main was re-read as 312cc0ff; publication is still held. [October 4 close](handoffs/2026-10-04-community-setup-close.md).
 
 Final setup source **cd4c4ef8a3ed4b47669ecd2dd0c4cd73ed9b437f**, reviewed exact range **072e99b..cd4c4ef**: fresh other-family **APPROVE, no actionable findings** after F1/F2 test-first repairs. Final local gate **851 passed/1 skipped**, real Postgres **50/50**, typecheck/lint/build/DB consistency exit 0. [Setup receipt](handoffs/2026-10-03-community-setup.md), [review](reviews/2026-10-03-community-setup-opus-fixcheck.md). No source delta after that review. Publication remains held under the earlier local-only scope.
 
