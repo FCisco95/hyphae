@@ -17,7 +17,7 @@ Fresh October 3 18:41Z reads still show **Hyphae Lab**, open epoch 2, rubric 1.2
 
 - Repo `github.com/FCisco95/hyphae`, branch main, scope this checkout only. Start `3a361e76801a78f0392ec0ca42dfb8ff1f1445d6`; [exact-SHA CI 37050134269](https://github.com/FCisco95/hyphae/actions/runs/37050134269) independently completed/success. Fetch without pruning; fast-forward-only pull already current.
 - **Actual runtime: `gpt-6.1-sol`, effort `high`**, from this thread’s local turn metadata. No helpers or live scoring/model-provider calls. Skills applied: `handoff-memory`, `security-review` for wallet/token design guidance, `handoff`.
-- Runtime cumulative usage at **2026-10-03T18:54:31.466Z**: input **2,447,312**, cached input **2,298,496**, output **22,113** (reasoning output reported **2,732**), total **2,469,425**; cache-write 0. These are actual runtime counters over repeated requests, not unique context words; reasoning is not added again to total. This is a checkpoint, excludes subsequent closure calls; cost is not exposed. Final captured usage/check results are appended to the dated snapshot at closure.
+- Actual runtime `gpt-6.1-sol`, effort **high**. Latest captured cumulative usage at **2026-10-03T19:05:10.854Z**: input **5,457,210**, cached input **5,282,688**, output **35,481** (reasoning output reported **6,964**), total **5,492,691**; cache-write **0**. These runtime counters include repeated requests/cache reads; reasoning is not added to total again. Capture excludes later receipt commit/push/CI-wait/final-response calls. Cost unavailable; no helpers or live paid scoring/provider experiments.
 - Read only: required vault master-plan §§3, 6.5, 6.6 and scope-reset §8, plus sibling Sentinel wallet-handoff design. No private strategy copied into tracked docs, no vault/Organic/Sentinel/public-program write.
 
 ## Current Objective
@@ -61,13 +61,13 @@ Only the main checkout is registered on this Mac. Remote/remote-tracking rules `
 
 ## Validation
 
-Initial `pnpm test` failed on stale Mac dependency links, missing `@solana/kit`. `pnpm install --frozen-lockfile` repaired ignored dependencies without manifest/lockfile edits. Full rerun passed **727 tests, 1 skipped** (106 core, 80 web, 541 API); typecheck/lint exit 0 (**266 lint files**). Final pre-push rerun also passed 727 tests/1 skipped, typecheck/lint exit 0 (266 files). Strict handoff validation, 74 local Markdown links/resume-path checks, credential-shape scan and `git diff --check` passed; the validator only warns about its GitHub URL path heuristic. No sensitive implementation change; no independent other-family runtime review claimed or needed for these docs-only commits. Future wallet implementation requires that review before push.
+Initial `pnpm test` failed on stale Mac dependency links, missing `@solana/kit`. `pnpm install --frozen-lockfile` repaired ignored dependencies without manifest/lockfile edits. Full rerun passed **727 tests, 1 skipped** (106 core, 80 web, 541 API); typecheck/lint exit 0 (**266 lint files**). Final pre-push rerun also passed 727 tests/1 skipped, typecheck/lint exit 0 (266 files). Strict handoff validation, 74 local Markdown links/resume-path checks, credential-shape scan and `git diff --check` passed; the validator only warns about its GitHub URL path heuristic. The required full local rerun before the shipping-receipt push also passed **727/1 skipped**, typecheck/lint exit 0 (266 files). No sensitive implementation change; no independent other-family runtime review claimed or needed for these docs-only commits. Future wallet implementation requires that review before push.
 
 ## Commits and shipping
 
 - `c6cac7ab0fd2cc97fe40264fafcf20655004585c` — wallet trace and fresh read-only receipts.
 - `87db766b70a7486dc6e0279297900cfee189d68c` — onboarding design, raid memo and bounded implementation/name plans.
-- Reconciliation/checkpoint commit follows; exact ID: `git log -1 -- docs/HANDOFF.md`. All are local until the gate/push succeeds. Final exact-SHA CI is verified after push and reported at closure; do not infer success from an older run.
+- `ef41856f89eee52e83a65bc32787e5c2728419eb` — guide/packet reconciliation and portable checkpoint. Final shipping receipt ID: `git log -1 -- docs/HANDOFF.md`. All three milestones are **pushed**. Reconciliation `ef41856f89eee52e83a65bc32787e5c2728419eb` has independently verified [exact-SHA CI 37146347200](https://github.com/FCisco95/hyphae/actions/runs/37146347200) **completed/success**, including local-equivalent gate, migration consistency, Postgres 17 and H-CONTRACT. This documentation-only shipping receipt follows; its own SHA is discoverable from Git, and its own exact-SHA CI is checked after push and reported in the final response. No runtime change between gates.
 
 ## Next Actions
 

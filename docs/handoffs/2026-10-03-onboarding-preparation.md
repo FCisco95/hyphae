@@ -48,6 +48,14 @@ Preserve C14–C18 on October 8 (approved admin 0.02 SOL, gross 500,000,000 lamp
 
 Platform verdict, participant design, raid memo, two bounded plans, reconciled guide/packet, BUILDLOG and canonical/dated public-safe receipts. No credentials, keys, deployed resources or schedules.
 
+## Shipping and runtime closeout
+
+Milestones **`c6cac7ab0fd2cc97fe40264fafcf20655004585c`**, **`87db766b70a7486dc6e0279297900cfee189d68c`** and **`ef41856f89eee52e83a65bc32787e5c2728419eb`** are pushed on main. Reconciliation [exact-SHA CI 37146347200](https://github.com/FCisco95/hyphae/actions/runs/37146347200) independently **completed/success**, including tests/typecheck/lint, migration consistency, Postgres 17 and H-CONTRACT vectors. Post-push `git status -sb` was clean `main...origin/main`. Rules/Jev are verified unmerged; candidate is an ancestor of main. Only the ten authorized documentation files changed across the arc; source, manifests and lockfile are byte-unchanged.
+
+This final documentation-only receipt commits the observed result. Its own SHA is resolved with `git log -1 -- docs/handoffs/2026-10-03-onboarding-preparation.md`; its own push/exact-SHA CI is checked at final closure, not assumed from the reconciliation run. Required fresh local gate before this receipt push: **727 passed, 1 skipped**, typecheck/lint exit 0 (**266 files**). Strict handoff, all **74** local Markdown links, resume paths, credential-shaped-content scan and diff checks passed; only the validator's GitHub URL path heuristic warning. No independent runtime review claimed because no wallet/auth/reward/DB code changed; a future wallet implementation requires fresh other-family review.
+
+Actual runtime `gpt-6.1-sol`, effort **high**. Latest captured cumulative usage at **2026-10-03T19:05:10.854Z**: input **5,457,210**, cached input **5,282,688**, output **35,481** (reasoning output reported **6,964**), total **5,492,691**; cache-write **0**. These runtime counters include repeated requests/cache reads; reasoning is not added to total again. Capture excludes later receipt commit/push/CI-wait/final-response calls. Cost unavailable; no helpers or live paid scoring/provider experiments.
+
 ## Next-session prompt
 
 ```text
