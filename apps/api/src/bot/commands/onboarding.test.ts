@@ -240,7 +240,8 @@ describe("actual bot onboarding wiring", () => {
     expect(texts()[0]).toContain("No reward epoch is open");
     out.length = 0;
     const update = command("/help", Number(community.telegramChatId));
-    if ("message" in update && update.message) delete update.message.from;
+    if ("message" in update && update.message)
+      delete (update.message as unknown as { from?: unknown }).from;
     await bot.handleUpdate(update);
     expect(texts()[0]).not.toContain(community.name);
     expect(out.find((o) => o.method === "sendMessage")?.payload.reply_markup).toBeUndefined();

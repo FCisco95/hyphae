@@ -678,7 +678,7 @@ td:first-child {
 
   table.stack td {
     position: relative;
-    padding: 3px 0 3px 7.5rem;
+    padding: 3px 0 3px min(7.5rem, 45%);
     border: 0;
     text-align: left;
     white-space: normal;
@@ -689,7 +689,7 @@ td:first-child {
     content: attr(data-label);
     position: absolute;
     left: 0;
-    width: 7rem;
+    width: min(7rem, 40%);
     color: var(--ink-3);
     font: 600 var(--step--1) / 1.9 var(--font-sans);
   }
@@ -740,6 +740,12 @@ td:first-child {
 }
 
 @media (max-width: 760px) {
+  .site-header .wrap {
+    flex-wrap: wrap;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
   .onboarding-steps {
     grid-template-columns: minmax(0, 1fr);
     gap: 24px;
