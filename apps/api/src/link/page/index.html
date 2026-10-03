@@ -7,10 +7,38 @@
 </head>
 <body>
   <main>
-    <h1>Link your wallet to Hyphae</h1>
-    <p>Your wallet will ask you to <strong>sign a readable message</strong>. It is free and moves no funds.</p>
-    <div id="wallets"></div>
-    <p id="status" role="status"></p>
+    <h1>Link your own wallet</h1>
+    <p>Your wallet will ask you to <strong>sign a readable message</strong>. It is free and moves no funds. A later claim signs a transaction.</p>
+    <p>Check the signing page's exact domain: <strong id="signing-origin"></strong>.</p>
+    <p id="private-warning">Use only your own private link from the official bot. Never open a forwarded wallet link, forward this link, or send it to support. Cancel any transfer, approval or seed-phrase request.</p>
+    <section aria-labelledby="wallet-title">
+      <h2 id="wallet-title">Choose a wallet in this browser</h2>
+      <div id="wallets"></div>
+      <p id="status" role="status" aria-live="polite"></p>
+      <button id="retry" type="button" hidden>
+        <svg width="24" height="44" viewBox="0 0 24 44" aria-hidden="true"><path d="M19 22a7 7 0 1 1-2-5M19 14v5h-5" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        Try wallet selection again
+      </button>
+    </section>
+    <section aria-labelledby="handoff-title">
+      <h2 id="handoff-title">On a phone?</h2>
+      <ol>
+        <li>Copy your ORIGINAL private bot URL below, including its fragment.</li>
+        <li>Paste it into your installed wallet app's own browser. A mobile system browser may not expose the wallet.</li>
+        <li>Select a detected wallet, sign the unchanged free message, then return to your own group <code>/me</code> and confirm the same wallet.</li>
+      </ol>
+      <button id="copy-link" type="button" aria-describedby="private-warning" disabled>
+        <svg width="24" height="44" viewBox="0 0 24 44" aria-hidden="true"><path d="M8 18h12v18H8zM4 30V14h12" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        Copy my private wallet link
+      </button>
+      <p id="copy-status" role="status" aria-live="polite"></p>
+      <div id="manual-copy" hidden>
+        <label for="private-link">Your private wallet link — select and copy; never forward it</label>
+        <br>
+        <textarea id="private-link" readonly rows="3" cols="20" autocomplete="off" spellcheck="false"></textarea>
+      </div>
+      <p>The page removes the private fragment from the address bar. Do not copy that stripped address. A reload loses the in-memory link: close the previous signing page, then open the ORIGINAL bot URL or get a fresh <code>/link</code> in your registered group. Links expire after fifteen minutes and are single-use.</p>
+    </section>
   </main>
   <script type="module" src="/link/app.js"></script>
 </body>

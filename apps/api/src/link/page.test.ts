@@ -16,5 +16,12 @@ describe("link page", () => {
     const html = await r.text();
     expect(html).toContain('<script type="module" src="/link/app.js"></script>');
     expect(html.match(/<script/g)).toHaveLength(1);
+    expect(html).toContain('id="copy-link"');
+    expect(html).toContain('id="manual-copy" hidden');
+    expect(html).toContain('for="private-link"');
+    expect(html).toContain('id="private-link" readonly');
+    expect(html).toContain('id="copy-status" role="status"');
+    expect(html).toContain('id="retry"');
+    expect(html).not.toMatch(/<style|style=|onclick=|phantom\.com|solflare\.com/);
   });
 });
