@@ -38,6 +38,22 @@ afterAll(async () => {
 });
 
 describe("community setup on two real Postgres pools", () => {
+  it("recognizes the original registration after its activation time has passed", async () => {
+    const initial = fresh();
+    const [time] = await a.execute(
+      sql`select date_trunc('second', clock_timestamp()) + interval '3 seconds' as at`,
+    );
+    const m = { ...initial, activationTime: new Date(time?.at as Date).toISOString() };
+    expect(await apply(a, m)).toMatchObject({ status: "created" });
+    await a.execute(
+      sql`select pg_sleep(greatest(0, extract(epoch from (${m.activationTime}::timestamptz - clock_timestamp()))) + 0.02)`,
+    );
+    expect(await checkCommunitySetup(b, m, telegramFor(m))).toMatchObject({ status: "existing" });
+    expect(await apply(b, m)).toMatchObject({ status: "existing" });
+    expect(await a.select().from(epochs).where(eq(epochs.communityId, m.communityId))).toHaveLength(
+      1,
+    );
+  });
   it("serializes identical requests into one registration and one pinned epoch (five rounds)", async () => {
     for (let round = 0; round < 5; round += 1) {
       const m = fresh();

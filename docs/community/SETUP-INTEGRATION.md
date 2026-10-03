@@ -65,6 +65,8 @@ Use the existing `buildRewardConfigPayload` helper to prepare an explicitly appr
 
 For existing communities the administrator uses `/raid` for briefs, members use `/link`, `/rules`, `/submit`, `/effort` and `/me`, and evidence lives on their own audit pages. Corrections and future rule changes still use the existing reviewed operator tools and immutable-epoch/cooldown rules. No current-epoch configuration edit or money control is exposed by setup.
 
+Rules-test availability remains dependent on the existing quiz catalog for that community's pinned rubric. An unsupported quiz is reported as unavailable; it is not a pass or payment readiness. Registration alone does not implement another community's quiz, verify its authors or enable its rewards.
+
 ## Idempotency and recovery
 
 An exact replay returns `existing` without overwriting names/admins, resetting intake or adding epochs. UUID, mint and chat conflicts refuse, never rebind. The complete original plan hash and approval reference are retained in the bootstrap proposal's `proposedBy` marker; changed plans do not count as the same setup.

@@ -4,6 +4,21 @@ import { verifySetupTelegram } from "./telegram.js";
 import { manifest, telegramFor } from "./test-fixture.js";
 
 describe("setup Telegram preflight", () => {
+  it.each([
+    { id: 12, is_bot: false },
+    { id: 11, is_bot: true },
+  ])(
+    "refuses an administrator response with the wrong identity or a bot account: %j",
+    async (user) => {
+      const reader = telegramFor();
+      const actual = reader.getChatMember;
+      reader.getChatMember = async (chat, id) =>
+        id === 11 ? { user, status: "administrator" } : actual(chat, id);
+      await expect(verifySetupTelegram(parseSetupManifest(manifest()), reader)).rejects.toThrow(
+        "telegram_admin_unverified",
+      );
+    },
+  );
   it("only reads the exact configured bot, group and designated admin", async () => {
     const reader = telegramFor();
     const getMember = vi.spyOn(reader, "getChatMember");
