@@ -1,4 +1,5 @@
-import { z } from "zod";
+// Namespace imports let consumer browser bundles discard unused Zod exports.
+import * as z from "zod";
 import { POINT_UNITS_PER_POINT } from "./reward-points.js";
 
 const DECIMALS = POINT_UNITS_PER_POINT.toString().length - 1;

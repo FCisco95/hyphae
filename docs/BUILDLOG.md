@@ -2,6 +2,20 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 — standalone read SDK built and installed independently (local-only)
+
+**Changed:** completed Cisco-approved local **@hyphae/read-client0.1.0**: seven typed publicv1 GETs, canonical response validation, structured failures, precision/identity/paging checks, deadline/cancellation/no-store, independent ESM/types tarball. SDK is private and not npm-published; original phone release still blocked on existing access.
+
+**Decision:** bundle shared schemas and use only existing Zod4.6.5 at runtime; namespace import preserves contract while reducing installed browser fixture bundle from464347 to **106688 bytes**. Lock adds only SDK importer; existing resolutions and @organichub/verify0.1.0 freeze preserved.
+
+**Validation:** **23focused tests**, full **886passed/1optional skip**, types/lint297/SDK+API+web builds0. Packed artifact installed outside workspace, declarations/example/all7reads/two fixture identities pass in Node and actual cross-origin Chromium151.0.7922.34. Streaming HTTP-error cleanup and malformed-refinement classification repaired test-first; original env-example and landing snippet parity maintained. Public SDK Lab/epoch read succeeded at10:30:57Z; not phone/payment proof.
+
+**Artifact:** ignored `packages/read-client/dist/hyphae-read-client-0.1.0.tgz`, **11753 bytes**, SHA-256 **023e3ff0f1886aa4d8e9c3658af6fbf729c895671bfefab4b6d96401c8a07d8e**; five files, canonical license, only runtime Zod. Report/rebuild commands in SDK README/[completion receipt](handoffs/2026-10-04-read-sdk.md).
+
+**Commit/state:** starting **eb454d228934c96c98b01da72520a7189561e95f**,20ahead unchangedorigin312cc0ff. SDK milestone SHA resolves from completion-receipt history/final delivery; pending full IDs in receipt. No push: exacta646 approval still conditional on unavailable configuration, later SDK commits excluded. Fresh applicable SDK-range review remains required before future sensitive publication.
+
+**Next:** use local tarball in a separately scoped adopter; Organic-sync owner carries unchangedv1/local package evidence/task3.6DEP-09 authority dependency into existing plans. No full sync/shared write. Original access/phone/setup/date gates preserved in HANDOFF; no early money, empty means no payment.
+
 ## 2026-10-04 — working public integration starter (local-only)
 
 **Changed:** after Cisco confirmed Windows unavailable and steered toward easier adoption, added a public reader using existing consumer schemas and exact community/epoch identity, plus [integration guide](community/INTEGRATING.md) linked from README. It preserves exact strings/unavailable states, omits credentials, refuses unsafe origins/redirects and handles failures without automatic retries. Standalone SDK scope proposed, not built/published.

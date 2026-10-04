@@ -1,0 +1,40 @@
+{
+  "name": "@hyphae/read-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "BUSL-1.1",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/index.js",
+    "dist/index.d.ts",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup && node scripts/copy-license.mjs",
+    "prepack": "pnpm build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "verify:package": "node scripts/verify-package.mjs"
+  },
+  "dependencies": {
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.3",
+    "esbuild": "0.27.7",
+    "tsup": "8.5.1",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  }
+}

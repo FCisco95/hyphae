@@ -160,6 +160,28 @@ importers:
         specifier: ^0.31.0
         version: 0.31.10
 
+  packages/read-client:
+    dependencies:
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
+    devDependencies:
+      '@types/node':
+        specifier: 22.20.3
+        version: 22.20.3
+      esbuild:
+        specifier: 0.27.7
+        version: 0.27.7
+      tsup:
+        specifier: 8.5.1
+        version: 8.5.1(postcss@8.5.28)(tsx@4.23.13)(typescript@5.9.3)
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: 3.2.7
+        version: 3.2.7(@types/node@22.20.3)(tsx@4.23.13)
+
 packages:
 
   '@ai-sdk/anthropic@4.0.56':

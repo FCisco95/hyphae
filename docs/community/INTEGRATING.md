@@ -47,23 +47,28 @@ For setup, the launchpad's owning server must establish the actor's authority ov
 
 Organic's current permitted interface from Hyphae remains its public settlement GET `/api/launchpad/coins/mint/[mint]/settlement`. Organic's owner-authority/settings work stays in its existing task **3.6 / DEP-09**. Another launchpad would own the equivalent authority adapter in its own project. No cross-project write or real registration is needed to run this reader.
 
-## Proposed next local SDK milestone
+## Local standalone read-only SDK
 
-Recommendation: package the existing public read contract as a standalone **read-only TypeScript client** before adding new server APIs or redesigning the website. An adopter should be able to install a locally packed artifact in a clean example project, read two registered mints, and see honest unavailable states with no Hyphae checkout or credentials.
+Cisco approved the bounded local SDK milestone. **@hyphae/read-client0.1.0 is built and privately packed**, with seven typed GET operations, ESM JavaScript and declarations. A clean project outside the workspace installed its tarball with scripts disabled, checked its types, and ran all seven operations and two community identities in Node and actual desktop Chromium against local fixtures. Package publication remains separate.
 
-Concrete proposed scope, requiring approval before this wider code step:
+See [SDK documentation](../../packages/read-client/README.md) for installation, all method signatures, cancellation/deadline/error behavior and package verification. From the repository root:
 
-- Add `packages/read-client/` with ESM JavaScript, TypeScript declarations and seven typed GET operations matching the existing OpenAPI routes. Reuse the shared consumer schemas; do not introduce a second contract or scoring policy.
-- Expose explicit origin/fetch/deadline options and structured HTTP/network/validation errors. Preserve decimal strings, pagination and no-store claim reads; validate request inputs and returned mint/wallet/epoch identity. No automatic retry, signing, token custody or provisioning.
-- Add an isolated packed-package install example and behavioral tests for browser/server use, two-community reads, rate limits, malformed responses, old/additive v1 fields and exact integers. Keep dependencies and exported schemas scoped to read functionality.
-- Update the workspace lockfile only as required for that local package. Run repository tests/typecheck/lint, package/build checks and isolated installation. Review any new sensitive delta before a later publication.
+```sh
+pnpm --filter @hyphae/read-client pack --out dist/hyphae-read-client-0.1.0.tgz
+```
 
-This proposes a **local package result**, not an npm release, API deployment, owner-contract implementation or site redesign. The approved phone release is frozen at `a646abc883131ff411d5dd7bbba536176364fe38`; later integration examples/package work are not substituted into it.
+Install the resulting `packages/read-client/dist/hyphae-read-client-0.1.0.tgz` in another ESM project. The runnable separate-project example is `packages/read-client/examples/consumer.mjs`. The only runtime dependency is existing Zod4.6.5; canonical response schemas are bundled, with no workspace/Solana/scoring dependency for adopters. Exact unit strings, pagination, unavailable states and requested mint/wallet/epoch identity are preserved. Claims use no-store. There is no registration, signing, automatic retry or transaction send.
+
+Validation: **23 focused SDK tests**, full **886 passed/1 optional skip**, repository typecheck/lint and SDK/API/web builds pass. Package installation, declarations, documented example, browser bundle and actual cross-origin Chromium execution pass. The minified consumer fixture bundle is **106688 bytes**, including Zod; local fixtures are not phone or production-payment proof. Live built-SDK Lab/community and epoch reads also pass. APIv1 fields/policy are unchanged; the shared schema's equivalent namespace import enables tree shaking. The lockfile adds only the new package importer, retaining every existing resolution.
+
+The private package guard prevents accidental npm publication. Existing BUSL1.1 license is copied unchanged into the tarball. SDK/operator/publication scope contains no new backend/provisioning interface or site redesign. New SDK code needs applicable fresh other-family review before a later source/package publication. It is distinct from **@organichub/verify**, which remains exactly0.1.0 throughOct12.
+
+The approved phone release remains frozen at **a646abc883131ff411d5dd7bbba536176364fe38**. SDK/core-import/lockfile changes are later local work and must not be substituted into that release.
 
 ## Organic-sync adoption notes
 
-Producer: Hyphae. Contract: existing public read API **v1**, unchanged. New artifact: local executable reader and this adoption guide. Consumer: Organic's existing task3.6/DEP-09 owner, or another launchpad's equivalent integration owner.
+Producer: Hyphae. Contract: existing public read API **v1**, unchanged. New artifacts: local standalone read-only SDK/tarball with isolated Node/browser install proof, executable reader and this adoption guide. Consumer: Organic's existing task3.6/DEP-09 owner, or another launchpad's equivalent integration owner.
 
-The next sync should carry these concrete changes into existing plans: reuse the reader and reviewed setup; record Windows operator access unavailable; retain the exact conditional P1+D2 approval; stop scheduling completed onboarding/setup or another release-preparation pass. Owner authority/provisioning stays unimplemented, and no live dependency is closed by this example.
+The next sync should carry these concrete changes into existing plans: adopt the locally packed read SDK where permitted, reuse the reader and reviewed setup; record Windows operator access unavailable; retain the exact conditional P1+D2 approval; stop scheduling completed onboarding/setup or another release-preparation pass. Owner authority/provisioning stays unimplemented, and no live dependency is closed by local SDK or fixture evidence.
 
 The Organic-sync portable loader resolves to its canonical skill on this Mac. Only that loader, canonical instructions and handoff requirements were checked here. A full multi-repository/vault sync was **not run**; those write targets remain outside this Hyphae-only session. This guide and `docs/HANDOFF.md` are the normal producer handoff to that owning sync.
