@@ -2,6 +2,18 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 — fresh release checks; phone result Needs Cisco (local-only)
+
+**Changed:** reused completed reviewed T/A/B and setup; made the existing P1+D2 source/automatic-web/rollback row concrete. Current objective is live reviewed build plus registered-Lab phonePASS; preparation is not completion. Refreshed portable state and [dated checkpoint](handoffs/2026-10-04-phone-release-gate.md), with remaining blockers rather than another input questionnaire.
+
+**Decision:** request only publication to FCisco95/hyphae main plus its automatic Vercel production deployment and rollback to captured dpl_G3xB3NRa78G9UR5GzZmXmsBa62mz; main auto-deploy makes those effects coupled. Conditional approval still requires private configuration proof. Later Fly API-only image rollout/test scope remain separate; frozen worker retained.
+
+**Fresh validation:** tests **851passed/1optional skip**, Postgres **50/50** disposable local Docker, typecheck/lint286/Drizzle consistency/API+web builds all **exit0**. Source **7trees/17hashes/13migrations** unchanged, SDK0.1.0. Accepted reviews reused; no new sensitive code. Public health/Lab epoch2/site200; Vercel correct target still READY from312cc0ff. Live signing page/bundle hashes differ from local reviewed output: phone fix not live, no physical phonePASS. Local build outputs are not deployed artifacts.
+
+**Commit/state:** starting40a9b4c294e3fca60ab405a9051f60fbc4d557ef,17ahead/0behind unchanged312cc0ffae1c4efbf5fd69c2b58a5aaf98af28ac after no-prune/ff-only. Closure SHA resolves from `git log -1 --format=%H -- docs/handoffs/2026-10-04-phone-release-gate.md`; final approval freezes that full SHA. Full17 preceding pending SHAs in checkpoint, all plus closure unpushed because recorded publication hold remains. No candidateCI/deployment claim.
+
+**Next:** Cisco approves that exact conditional action; execute only after its configuration guards pass, verify actual web build, then resolve existing operator access for separately scoped API rollout and attended one-step phone test. Pilot hidden/recruitment blocked untilPASS; missing genuine URLs/setup and all originalOct8–10 payout/attestation/hold gates retained in handoff. No early money, empty means no payment. Siblings/vault read-only.
+
 ## 2026-10-04 — read-only configuration access continuation (local-only)
 
 **Changed:** narrowed the combined packet’s Vercel configuration-access row. Exact project/team/root inspection succeeds, but selected API URL/default-mint reads return sensitive/decrypted=false with no readable value. Private equality remains UNKNOWN; no token export/query or settings change. Existing DB/bot/Fly settings remain absent in this Mac checkout; filename-only search including ignored Hyphae files/usual Fly paths found no saved settings here; Windows presence-only file check is pending.
