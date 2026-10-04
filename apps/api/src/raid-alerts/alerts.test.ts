@@ -216,7 +216,7 @@ describe("private raid alerts", () => {
     const d = deps();
     let calls = 0;
     const failReceipt = async () => {
-      if (++calls > 1) throw new Error("receipt write failed");
+      if (++calls > 2) throw new Error("receipt write failed");
       return NOW;
     };
     await expect(deliverRaidAlert(t.db, job.id, { ...d, clock: failReceipt })).rejects.toThrow(
@@ -248,6 +248,22 @@ describe("private raid alerts", () => {
     const job = required(await claimRaidAlert(t.db, NOW));
     const elapsed = at(new Date(NOW.getTime() + 3_600_000));
     expect(await deliverRaidAlert(t.db, job.id, { ...d, clock: elapsed })).toBe("skipped");
+    expect(d.send).not.toHaveBeenCalled();
+  });
+  it("expired raids do not retry a failing membership lookup forever", async () => {
+    const { community } = await seedCommunity(t.db);
+    await setRaidSubscription(t.db, community.id, 42n, true, clock);
+    await raid(t.db, community);
+    const d = deps();
+    d.membership.mockRejectedValue(new Error("permanently removed bot"));
+    const job = required(await claimRaidAlert(t.db, NOW));
+    expect(
+      await deliverRaidAlert(t.db, job.id, {
+        ...d,
+        clock: at(new Date(NOW.getTime() + 3_600_000)),
+      }),
+    ).toBe("skipped");
+    expect(d.membership).not.toHaveBeenCalled();
     expect(d.send).not.toHaveBeenCalled();
   });
 });

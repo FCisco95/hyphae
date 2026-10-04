@@ -114,6 +114,11 @@ describe("raid alerts on two real Postgres pools", () => {
     await openRaid(a, input);
     const now = await dbClock(a, community.id);
     const job = required(await claimRaidAlert(a, now));
+    // A claim consumed into dispatch is ambiguous; claiming alone is safe to recover.
+    await a
+      .update(raidDeliveries)
+      .set({ dispatchStarted: true })
+      .where(eq(raidDeliveries.id, job.id));
     expect(await claimRaidAlert(b, new Date(now.getTime() + 61_000))).toBeUndefined();
     const [row] = await a.select().from(raidDeliveries).where(eq(raidDeliveries.id, job.id));
     expect(row?.status).toBe("uncertain");
@@ -123,5 +128,56 @@ describe("raid alerts on two real Postgres pools", () => {
       "uncertain",
     );
     expect(send).not.toHaveBeenCalled();
+  });
+  it("opening another raid does not wait on a subscriber's in-flight send", async () => {
+    const { input } = await setup();
+    await openRaid(a, input);
+    const job = required(await claimRaidAlert(a));
+    let release = () => {};
+    let entered = () => {};
+    const inSend = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const sending = deliverRaidAlert(a, job.id, {
+      membership: async () => true,
+      send: async () => {
+        entered();
+        await barrier;
+      },
+    });
+    await inSend;
+    try {
+      const second = await b.transaction(async (tx) => {
+        await tx.execute(sql`set local lock_timeout = '500ms'`);
+        return openRaid(tx, { ...input, messageId: 2 });
+      });
+      expect(second.status).toBe("created");
+    } finally {
+      release();
+      await sending;
+    }
+    const pending = required(await claimRaidAlert(a));
+    await deliverRaidAlert(a, pending.id, {
+      membership: async () => true,
+      send: async () => undefined,
+    });
+  });
+  it("a stale claim whose dispatch never started can safely recover once", async () => {
+    const { community, input } = await setup();
+    await openRaid(a, input);
+    const now = await dbClock(a, community.id);
+    const first = required(await claimRaidAlert(a, now));
+    const recovered = required(await claimRaidAlert(b, new Date(now.getTime() + 61_000)));
+    expect(recovered.id).toBe(first.id);
+    const send = vi.fn(async () => undefined);
+    const outcomes = await Promise.all([
+      deliverRaidAlert(a, first.id, { membership: async () => true, send }),
+      deliverRaidAlert(b, recovered.id, { membership: async () => true, send }),
+    ]);
+    expect(outcomes).toContain("sent");
+    expect(send).toHaveBeenCalledTimes(1);
   });
 });
