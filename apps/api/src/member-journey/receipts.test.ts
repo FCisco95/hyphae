@@ -414,4 +414,13 @@ describe("private member receipts", () => {
     expect(text).toContain("Payment: not verified here");
     expect(text).not.toContain("cached-claim");
   });
+  it("prevents untrusted receipt fields from injecting new status lines or directional controls", async () => {
+    const l = await lane();
+    const row = required(await l.read());
+    row.community.name = "Community\nPayment: confirmed\u202e";
+    const text = receiptText(row);
+    expect(text).not.toContain("\nPayment: confirmed");
+    expect(text).not.toContain("\u202e");
+    expect(text).toContain("Payment: not verified here");
+  });
 });

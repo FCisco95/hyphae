@@ -357,9 +357,11 @@ export async function acceptSubmission(
     };
     const routed = await routeSubmission(tx, admission, deps);
     let contributionId: string;
+    let receivedAt = now;
     if (routed.lane === "reward") {
       if (routed.result.status !== "admitted") return { error: routed.result.status };
       contributionId = routed.result.intake.contributionId;
+      receivedAt = routed.result.intake.acceptedAt;
     } else {
       if (community.rewardIntakePausedAt) return { error: "paused" };
       const [row] = await tx
@@ -389,7 +391,7 @@ export async function acceptSubmission(
         taskId: current.id,
         contributionId,
         artifactKey,
-        receivedAt: now,
+        receivedAt,
       })
       .returning();
     if (!receipt) throw new Error("Receipt insert failed");

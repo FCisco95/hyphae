@@ -144,7 +144,8 @@ export async function loadReceipt(
 
 export type MemberReceipt = NonNullable<Awaited<ReturnType<typeof loadReceipt>>>;
 
-const clip = (text: string, limit: number) => {
+const clip = (value: string, limit: number) => {
+  const text = value.replace(/[\p{Cc}\p{Cf}]/gu, " ");
   if (text.length <= limit) return text;
   let clipped = "";
   // Keep the UTF-16 length bound without splitting a supplementary Unicode character.

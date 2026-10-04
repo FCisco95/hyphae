@@ -297,4 +297,15 @@ describe("explicit private raid submissions", () => {
     ).toHaveProperty("session");
     expect(community.id).not.toBe(other.community.id);
   });
+  it("reports the reward ledger's canonical acceptance time", async () => {
+    const { input, d } = await setup(true);
+    let tick = 0;
+    d.clock = async () => new Date(NOW.getTime() + tick++ * 1000);
+    const accepted = await acceptSubmission(t.db, input, d);
+    if (!("receipt" in accepted)) throw new Error("receipt");
+    const intake = await t.db.query.rewardIntakes.findFirst({
+      where: eq(rewardIntakes.contributionId, accepted.receipt.contributionId),
+    });
+    expect(accepted.receipt.receivedAt).toEqual(intake?.acceptedAt);
+  });
 });

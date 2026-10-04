@@ -54,8 +54,24 @@ export async function transitionRaid(
   const parsed = TransitionInput.safeParse(input);
   if (!parsed.success) return { status: "invalid" };
   const value = parsed.data;
+  // Refuse outsiders before taking a task lock; designation is rechecked under lock below.
+  const authorized = await db.query.communities.findFirst({
+    where: and(
+      eq(communities.id, value.communityId),
+      eq(communities.telegramChatId, value.chatId),
+      eq(communities.adminTelegramUserId, value.actorId),
+    ),
+  });
+  if (!authorized) return { status: "unauthorized" };
   return db.transaction(async (tx) => {
-    // Share the open/intake lock order so authority changes and terminal actions serialize.
+    // Wait for an in-flight alert BEFORE holding the reward lock. NO KEY UPDATE conflicts
+    // with the send's SHARE but permits intake's FK KEY SHARE, avoiding a lock-order cycle.
+    const [task] = await tx
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.id, value.taskId), eq(tasks.communityId, value.communityId)))
+      .for("no key update");
+    if (!task) return { status: "not_found" };
     const [community] = await tx
       .select()
       .from(communities)
@@ -67,13 +83,6 @@ export async function transitionRaid(
       community.adminTelegramUserId !== value.actorId
     )
       return { status: "unauthorized" };
-    const [task] = await tx
-      .select()
-      .from(tasks)
-      // Historical open briefs also hold the one-active-brief gate and need the same audited exit.
-      .where(and(eq(tasks.id, value.taskId), eq(tasks.communityId, value.communityId)))
-      .for("update");
-    if (!task) return { status: "not_found" };
     const [previous] = await tx
       .select()
       .from(raidLifecycleEvents)

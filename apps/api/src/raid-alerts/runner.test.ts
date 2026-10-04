@@ -32,7 +32,9 @@ describe("API notifier runner with intercepted Telegram transport", () => {
     const delivered = new Promise<void>((resolve) => {
       sent = resolve;
     });
-    api.config.use(async (_prev, method, payload) => {
+    const signals: unknown[] = [];
+    api.config.use(async (_prev, method, payload, signal) => {
+      signals.push(signal);
       calls.push({ method, payload: payload as Record<string, unknown> });
       if (method === "sendMessage") sent();
       return {
@@ -43,6 +45,8 @@ describe("API notifier runner with intercepted Telegram transport", () => {
     const runner = startRaidNotifier(t.db, api);
     await delivered;
     await runner.stop();
+    expect(signals).toHaveLength(2);
+    expect(signals.every((signal) => signal instanceof AbortSignal)).toBe(true);
     const message = calls.find((x) => x.method === "sendMessage")?.payload;
     expect(message?.chat_id).toBe(42);
     expect(message?.text).toContain(community.name);
@@ -81,5 +85,49 @@ describe("API notifier runner with intercepted Telegram transport", () => {
     expect(log).toHaveBeenCalled();
     expect(JSON.stringify(log.mock.calls)).not.toContain(token);
     log.mockRestore();
+  });
+  it("a timed-out send stays uncertain and is not automatically retried", async () => {
+    const { community } = await seedCommunity(t.db);
+    await setRaidSubscription(t.db, community.id, 42n, true);
+    const opened = await openRaid(t.db, {
+      communityId: community.id,
+      chatId: community.telegramChatId,
+      actorId: 7n,
+      messageId: 1,
+      hours: 1,
+      brief: "Explain",
+      post: { id: "1", handle: "a", text: "Target", url: "https://x.com/a/status/1" },
+    });
+    if (opened.status !== "created") throw new Error("raid");
+    const realTimeout = AbortSignal.timeout.bind(AbortSignal);
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockImplementation(() => realTimeout(15));
+    const api = new Api("1:test");
+    let signalExpired = () => {};
+    const expired = new Promise<void>((resolve) => {
+      signalExpired = resolve;
+    });
+    let sends = 0;
+    api.config.use(async (_prev, method, _payload, signal) => {
+      if (method === "getChatMember") return { ok: true, result: { status: "member" } } as never;
+      sends += 1;
+      return new Promise((_resolve, reject) => {
+        const fail = () => {
+          signalExpired();
+          reject(new Error("bounded timeout"));
+        };
+        if (!signal || signal.aborted) fail();
+        else signal.addEventListener("abort", fail, { once: true });
+      });
+    });
+    const runner = startRaidNotifier(t.db, api);
+    try {
+      await expired;
+    } finally {
+      await runner.stop();
+      timeout.mockRestore();
+    }
+    const rows = await t.db.select().from(raidDeliveries);
+    expect(rows.filter((row) => row.status === "uncertain")).toHaveLength(1);
+    expect(sends).toBe(1);
   });
 });

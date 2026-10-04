@@ -116,6 +116,20 @@ function barrier() {
   });
   return { enter, release, entered, wait };
 }
+async function waitForLock(table: "tasks" | "communities") {
+  for (let i = 0; i < 100; i++) {
+    const [row] = await a
+      .select({ n: count() })
+      .from(sql`pg_stat_activity`)
+      .where(
+        sql`datname = current_database() and wait_event_type = 'Lock' and query like ${`%from "${table}"%`}`,
+      );
+    if ((row?.n ?? 0) > 0) return;
+    await a.execute(sql`select pg_sleep(0.01)`);
+  }
+  throw new Error(`Expected a transaction waiting on ${table}`);
+}
+
 describe("private journey on two real PostgreSQL pools", () => {
   it("concurrent retries create one contribution and one exact receipt", async () => {
     const { submit, community } = await setup();
@@ -228,8 +242,14 @@ describe("private journey on two real PostgreSQL pools", () => {
       return r;
     });
     try {
-      await a.execute(sql`select pg_sleep(0.05)`);
+      await waitForLock("tasks");
       expect(cancelled).toBe(false);
+      // The closer is waiting on the sending task, not holding the community's reward lock.
+      await b.transaction(async (tx) => {
+        await tx.execute(
+          sql`select id from communities where id = ${community.id} for no key update nowait`,
+        );
+      });
     } finally {
       gate.release();
     }
@@ -391,5 +411,93 @@ describe("private journey on two real PostgreSQL pools", () => {
       .from(sql`journey_jobs.job`)
       .where(sql`id = ${receipt.id}::uuid`);
     expect(jobs?.n).toBe(1);
+  });
+  it("revoked authority is rechecked after a closer waits on an alert", async () => {
+    const { community, input, task } = await setup();
+    await setRaidSubscription(a, community.id, 42n, true);
+    const [announcement] = await a
+      .select({ id: sql<string>`id` })
+      .from(sql`raid_announcements`)
+      .where(sql`task_id = ${task.id}::uuid`);
+    if (!announcement) throw new Error("announcement");
+    await a.insert(raidDeliveries).values({
+      announcementId: announcement.id,
+      telegramUserId: 42n,
+      subscriptionRevision: 1,
+      nextAttemptAt: new Date(),
+    });
+    const job = await claimRaidAlert(a);
+    if (!job) throw new Error("job");
+    const gate = barrier();
+    const sending = deliverRaidAlert(a, job.id, {
+      membership: async () => true,
+      send: async () => {
+        gate.enter();
+        await gate.wait;
+      },
+    });
+    await gate.entered;
+    const cancelling = transitionRaid(b, {
+      communityId: community.id,
+      taskId: task.id,
+      chatId: input.chatId,
+      actorId: 7n,
+      messageId: 2,
+      action: "cancelled",
+      reason: "Wait then revoke",
+    });
+    try {
+      await waitForLock("tasks");
+      await a.transaction(async (tx) => {
+        await tx.execute(sql`set local lock_timeout = '500ms'`);
+        await tx
+          .update(communities)
+          .set({ adminTelegramUserId: 999n })
+          .where(eq(communities.id, community.id));
+      });
+    } finally {
+      gate.release();
+      await sending;
+    }
+    expect((await cancelling).status).toBe("unauthorized");
+  });
+  it("a task close waiting for the reward lock permits foreign-key inserts for admitted work", async () => {
+    const { community, member, task, input } = await setup();
+    const held = barrier();
+    let insert = () => {};
+    const insertNow = new Promise<void>((r) => {
+      insert = r;
+    });
+    const holder = withCommunityLock(a, community.id, {}, async (tx) => {
+      held.enter();
+      await insertNow;
+      await tx.execute(sql`set local lock_timeout = '500ms'`);
+      await tx.insert(contributions).values({
+        communityId: community.id,
+        memberId: member.id,
+        taskId: task.id,
+        kind: "reply",
+        text: "Already admitted while holding reward lock",
+        url: evidence.url,
+        telegramMessageId: 1,
+      });
+    });
+    await held.entered;
+    const cancelling = transitionRaid(b, {
+      communityId: community.id,
+      taskId: task.id,
+      chatId: input.chatId,
+      actorId: 7n,
+      messageId: 2,
+      action: "closed",
+      reason: "Finish accepted work first",
+    });
+    await waitForLock("communities");
+    insert();
+    await holder;
+    expect((await cancelling).status).toBe("changed");
+    expect(
+      await a.select().from(contributions).where(eq(contributions.taskId, task.id)),
+    ).toHaveLength(1);
   });
 });
