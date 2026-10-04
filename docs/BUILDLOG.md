@@ -2,6 +2,18 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 — exact publication approval recorded; configuration access pending (local-only)
+
+**Changed:** recorded Cisco’s “I approve” for exact **a646abc883131ff411d5dd7bbba536176364fe38** P1+D2 publication/automatic Vercel production release/rollback to **dpl_G3xB3NRa78G9UR5GzZmXmsBa62mz**, once existing configuration checks pass. Scope preserved in [approval checkpoint](handoffs/2026-10-04-publication-approval.md); no repeated approval or new packet.
+
+**Decision:** retain approval and wait for existing operator configuration proof; UNKNOWN is not a passed guard. Push only the approved full SHA after PASS, not later documentation HEAD. Later Fly image/API release and own-account phone test remain distinct gates.
+
+**Validation:** no-prune fetch/ancestry18ahead0behind; approved7trees/17hashes/13migrations match. Correct scoped Vercel project/root/Node24 and current READY old deployment/Git312cc0ff reverified. DB/bot/Fly settings and saved env files remain absent here. Prior same-conversation fresh851/1skip+Postgres50/50/typecheck/lint286/Drizzle/bothbuilds0 remain unchanged evidence; no repeated tests/reviews.
+
+**Commit/state:** all18commits througha646abc remain unpushed because private config preconditions are unresolved, despite publication approval. New docs-only approval receipt adds one excluded local commit, resolve exactSHA from its file history/final delivery. Full preceding pendingSHAs in release checkpoint. No candidateCI/deployment/phonePASS.
+
+**Next:** Cisco returns Windows project-root `Test-Path -LiteralPath .env -PathType Leaf` True/False/unavailable, no contents. Use existing settings to verify private configuration, then execute exact approved source action. Remaining downstream/URL/setup/date/phone gates retained in HANDOFF; no funds/messages/registration/credential or sibling/vault write.
+
 ## 2026-10-04 — fresh release checks; phone result Needs Cisco (local-only)
 
 **Changed:** reused completed reviewed T/A/B and setup; made the existing P1+D2 source/automatic-web/rollback row concrete. Current objective is live reviewed build plus registered-Lab phonePASS; preparation is not completion. Refreshed portable state and [dated checkpoint](handoffs/2026-10-04-phone-release-gate.md), with remaining blockers rather than another input questionnaire.

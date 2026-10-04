@@ -1,19 +1,19 @@
 ---
 date: 2026-10-04
-summary: Needs Cisco — fresh release checks pass; exact conditional publication/web-release row awaits approval, API rollout and registered-Lab phone PASS remain held.
+summary: P1+D2 approved for a646abc; execution waits for existing configuration access. No push/deployment or phone PASS yet.
 ---
 
 # Hyphae handoff
 
-Last Updated: 2026-10-04T09:39:54Z
+Last Updated: 2026-10-04T09:44:15Z
 
 ## TL;DR
 
-**Needs Cisco. The requested result is not done:** the reviewed signing flow is not live and no actual registered-Lab phone PASS has been observed. T/A/B, operator-assisted setup and the owner-doc patch are complete; reuse them and accepted unchanged reviews. This continuation ran the fresh release gate and narrowed the next approval to **one P1+D2 action**, detailed in the existing [combined packet](demo/2026-10-04-combined-release-packet.md#current-result-gate--october-4-release-checks). Preparation is not the live/device result. Stop the prep loop while the human action is pending.
+**Needs Cisco. The requested result is not done:** the reviewed signing flow is not live and no actual registered-Lab phone PASS has been observed. T/A/B, operator-assisted setup and the owner-doc patch are complete; reuse them and accepted unchanged reviews. The fresh release gate passed and Cisco approved **P1+D2 for exact a646abc883131ff411d5dd7bbba536176364fe38**, detailed in the existing [combined packet](demo/2026-10-04-combined-release-packet.md#current-result-gate--october-4-release-checks). Preparation is not the live/device result. Approval is settled; execution waits only for the remaining configuration proof. Stop the prep loop while the human access check is pending.
 
 ## Current Objective
 
-Make the exact approved build usable on Cisco's phone. Next human step: approve the exact closure SHA's **FCisco95/hyphae main publication, automatic Vercel production deployment and bounded rollback to the captured old web deployment**. The final approval question names the full SHA. Conditional approval cannot bypass the remaining private configuration guards. It grants no Fly rollout, test scope, rename, menu/message/pin, setup or activation. Keep remaining blockers here rather than asking a questionnaire.
+Make the exact approved build usable on Cisco's phone. Cisco's **“I approve”** authorizes **a646abc883131ff411d5dd7bbba536176364fe38** publication to **FCisco95/hyphae main**, automatic Vercel production deployment and bounded rollback to **dpl_G3xB3NRa78G9UR5GzZmXmsBa62mz**, once the existing configuration checks pass. Do not ask for this approval again. Next human step: in the existing Windows Hyphae project root, run `Test-Path -LiteralPath .env -PathType Leaf` and return True/False or Windows unavailable. No file contents. Conditional approval cannot bypass the remaining private configuration guards. It grants no Fly rollout, test scope, rename, menu/message/pin, setup or activation. Keep remaining blockers here rather than asking a questionnaire.
 
 ## Current State
 
@@ -36,7 +36,7 @@ Accepted unchanged participant R1 **d26357e1..e003cdf** and R2 **e003cdf..8841a0
 
 ## Recent Changes
 
-Fresh release gate and both builds completed; existing release row narrowed to one conditional P1+D2 approval. Live signing-page bytes differ from reviewed local output. No source, registry or live mutation.
+At 2026-10-04T09:44:15Z, recorded Cisco’s exact P1+D2 approval; reverified approved pins/ref ancestry, target and old Vercel deployment. Existing API/database/bot/Fly settings still absent here; no push because private config guards remain UNKNOWN. [Approval checkpoint](handoffs/2026-10-04-publication-approval.md). The prior same-conversation release gate remains green and unchanged; no repeated product tests/builds/reviews. Live signing-page bytes still lack candidate release proof.
 
 ## Known Issues / Watch List
 
@@ -48,13 +48,13 @@ Read this handoff and latest checkpoint, verify exact approved outgoing SHA, fet
 
 ## Metadata
 
-Started clean main **40a9b4c294e3fca60ab405a9051f60fbc4d557ef**, **17ahead/0behind** unchanged origin **312cc0ffae1c4efbf5fd69c2b58a5aaf98af28ac** after no-prune fetch/ff-only. This docs-only milestone adds one commit; resolve full outgoing SHA using `git log -1 --format=%H -- docs/handoffs/2026-10-04-phone-release-gate.md`. Approval question freezes that SHA; stop for any different outgoing runtime/source. All17 prior full SHAs are in the checkpoint pending ledger. Publication remains held, no push/CI/new deployment claimed; hold overrides ordinary daily push convention.
+Started clean main **40a9b4c294e3fca60ab405a9051f60fbc4d557ef**, **17ahead/0behind** unchanged origin **312cc0ffae1c4efbf5fd69c2b58a5aaf98af28ac** after no-prune fetch/ff-only. This docs-only milestone adds one commit; resolve full outgoing SHA using `git log -1 --format=%H -- docs/handoffs/2026-10-04-phone-release-gate.md`. Approval question freezes that SHA; stop for any different outgoing runtime/source. All17 prior full SHAs are in the checkpoint pending ledger. P1+D2 publication hold is cleared **for exact a646abc only**, conditional on private configuration proof. No push/CI/new deployment yet; failed/UNKNOWN prerequisites still block execution. The new approval-receipt closure is a later docs-only local commit, excluded from that exact-SHA approval; resolve it with `git log -1 --format=%H -- docs/handoffs/2026-10-04-publication-approval.md`. Do not substitute local HEAD in the approved push.
 
 Rules **158452fe2b22a1e42e5efd42f3f7e11bfdf59c70** and Jev **707d7daf21e217d9a8a64e58514065f5e3bca45e** remain remote/unmerged until epoch3; reward branch **2fd2470a26ff9a349bceeb697b2731bd1bff0e07** and review tag **2ca35057c3efbd43df191bda0d9527d526f6886f** preserved. No prune/reset/cleanup of held work. Siblings/vault read-only; current master/private plan and2026-10-04-0844Z-pre-work scope/rulings read, no sync or external authorization inferred.
 
 ## Next Actions
 
-1. Resolve Cisco's **one P1+D2 approval** for the exact closure SHA/destination/effect/rollback. Prove remaining existing private configuration guards before its push; preserve hooks. Verify actual Vercel deployment ID/GitSHA/alias/assets and selected Lab rendering. If acceptance fails, only the named old-web rollback is included in that requested scope; Git publication remains.
+1. **Approval received; do not re-ask.** Await the Windows existing-environment presence check, then use existing access to prove private configuration guards. Only after PASS, push **a646abc883131ff411d5dd7bbba536176364fe38:refs/heads/main** to origin, preserving hooks and immediate fast-forward/pin checks. Later approval-doc commits remain local under exact-SHA scope. Verify actual Vercel deployment ID/GitSHA/alias/assets and selected Lab rendering. If acceptance fails, only the named old-web rollback is included in that requested scope; Git publication remains.
 2. With existing operator access, verify exact registered Lab identity/bot/chat/type/webhook/live journal and Fly/API/web configuration privately. New immutable D1 image must be recorded before separately approving API-only rollout. Retain frozen v11 worker/config/start state and healthy queues; stop on mismatched target or unavailable safe rollback.
 3. After actual served API artifact and valid own-account test scope/attendance: guide **group `/link` first and wait**. Then private original URL, close old signing page before reopening, named wallet-browser surface, unchanged free readable message, same wallet in own `/me`. Record real device/app/surface and PASS/FAIL, keep unattempted surfaces UNKNOWN. Uncertain result→own `/me` before retry. No token/signature screenshots.
 
@@ -72,7 +72,7 @@ Organic owns authenticated actor authority over exact mint, permitted settings/a
 
 ## Quick Reference
 
-[Existing release row](demo/2026-10-04-combined-release-packet.md#current-result-gate--october-4-release-checks), [source pins](demo/2026-10-04-combined-source-pins.json), [fresh checkpoint/pending SHAs](handoffs/2026-10-04-phone-release-gate.md), [participant receipt](handoffs/2026-10-03-onboarding-implementation.md), [setup close](handoffs/2026-10-04-community-setup-close.md), [setup contract](community/SETUP-INTEGRATION.md), [setup review](reviews/2026-10-03-community-setup-opus-fixcheck.md), [phone procedure](superpowers/specs/2026-10-03-link-platform-verdict.md).
+[Existing release row](demo/2026-10-04-combined-release-packet.md#current-result-gate--october-4-release-checks), [source pins](demo/2026-10-04-combined-source-pins.json), [fresh checkpoint/pending SHAs](handoffs/2026-10-04-phone-release-gate.md), [approval/access checkpoint](handoffs/2026-10-04-publication-approval.md), [participant receipt](handoffs/2026-10-03-onboarding-implementation.md), [setup close](handoffs/2026-10-04-community-setup-close.md), [setup contract](community/SETUP-INTEGRATION.md), [setup review](reviews/2026-10-03-community-setup-opus-fixcheck.md), [phone procedure](superpowers/specs/2026-10-03-link-platform-verdict.md).
 
 ## Suggested skills
 
@@ -83,7 +83,7 @@ Organic owns authenticated actor authority over exact mint, permitted settings/a
 | What | Canonical home | Stage |
 |---|---|---|
 | Existing conditional release-row amendment | `docs/demo/2026-10-04-combined-release-packet.md` | Local; no new packet |
-| Current state/buildlog and dated checkpoint | `docs/HANDOFF.md`, `docs/BUILDLOG.md`, `docs/handoffs/2026-10-04-phone-release-gate.md` | Local, publication held |
+| Current state/buildlog and dated checkpoint | `docs/HANDOFF.md`, `docs/BUILDLOG.md`, `docs/handoffs/2026-10-04-phone-release-gate.md`, `docs/handoffs/2026-10-04-publication-approval.md` | Local; exact a646abc release approved, configuration proof pending |
 | API/web build output | Ignored `apps/api/dist`, `apps/web/.next` | Local validation only |
 
 No credential, registry image, deployed resource, message, registration, signature, transaction or schedule generated. Actual runtime/effort/usage not independently inspected; no borrowed prior counters.
@@ -92,8 +92,8 @@ No credential, registry image, deployed resource, message, registration, signatu
 
 ```text
 Resume only FCisco95/hyphae. Needs Cisco: exact reviewed build not live and registered-Lab phonePASS missing. T/A/B/setup/owner-doc patch complete; fresh release851/1skip+Postgres50/50, typecheck/lint/Drizzle/API+web builds0. Local signing page/bundle differs from live. Preserve closure and all local/held refs; no-prune/ff-only, never reset to old origin312cc0ff.
-Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-04-phone-release-gate.md, docs/demo/2026-10-04-combined-release-packet.md, docs/demo/2026-10-04-combined-source-pins.json, docs/community/SETUP-INTEGRATION.md, docs/demo/2026-10-08-first-payout-readiness.md.
+Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-04-publication-approval.md, docs/handoffs/2026-10-04-phone-release-gate.md, docs/demo/2026-10-04-combined-release-packet.md, docs/demo/2026-10-04-combined-source-pins.json, docs/community/SETUP-INTEGRATION.md, docs/demo/2026-10-08-first-payout-readiness.md.
 Model: gpt-6.1-sol (high) — October4 recorded routing for bounded release/attended runbook work; recommendation only.
 Skills: handoff-memory, vercel:vercel-cli, security-review for new sensitive deltas/deployment, handoff.
-Resolve Cisco's exact P1+D2 publication/automatic-web/old-web-rollback approval; privately prove outstanding config guards before execution and verify actual deployed SHA/assets. D1-build/API and own-accountT1 remain separate, require existing operator access/immutable image/live-target proof and attendance. Retain frozen v11 worker, SDK0.1.0 throughOct12 and held rules/Jev. Once API live/test scope valid, guide one phone action then wait, originalURL/close-old-page/named wallet-browser/unchanged free message/own me; real surfacePASS gates recruitment and is notC21. Remaining blockers stay in handoff, no prep loop, no invented setup/self-service or sibling/vault writes. Preserve exactOct8 23:00Zpause/after23:45Zfinalaudit/preOct9 00:00Zcorrections/Oct10inclusivehold; no early money, empty means no payment.
+Cisco already approved exact a646abc883131ff411d5dd7bbba536176364fe38 P1+D2 publication/automatic-web/old-web-rollback, conditional on existing config checks. Do not ask again or push a later HEAD. Await the existing Windows project-root env-presence check (True/False/unavailable, no contents), privately prove outstanding config guards, then execute approved exact-SHA push and verify actual deployed SHA/assets. Later approval-doc closure is local and outside that exact approval. D1-build/API and own-accountT1 remain separate, require existing operator access/immutable image/live-target proof and attendance. Retain frozen v11 worker, SDK0.1.0 throughOct12 and held rules/Jev. Once API live/test scope valid, guide one phone action then wait, originalURL/close-old-page/named wallet-browser/unchanged free message/own me; real surfacePASS gates recruitment and is notC21. Remaining blockers stay in handoff, no prep loop, no invented setup/self-service or sibling/vault writes. Preserve exactOct8 23:00Zpause/after23:45Zfinalaudit/preOct9 00:00Zcorrections/Oct10inclusivehold; no early money, empty means no payment.
 ```

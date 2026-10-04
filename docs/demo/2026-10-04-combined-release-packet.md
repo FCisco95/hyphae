@@ -4,9 +4,11 @@ Prepared **2026-10-04**, local-only. Source/checkpoint **e5ee300d6ce65231ec2325f
 
 ## Current result gate — October 4 release checks
 
+**Approval recorded 2026-10-04T09:44:15Z:** Cisco replied **“I approve”** to the final question naming **a646abc883131ff411d5dd7bbba536176364fe38**, publication to **FCisco95/hyphae main**, automatic Vercel production deployment to **hyphae-delta.vercel.app**, and bounded rollback to **dpl_G3xB3NRa78G9UR5GzZmXmsBa62mz** if verification fails, **once existing configuration checks pass**. This authorizes **P1+D2 only** and its named web rollback; it does not waive its guards or approve later commits/Fly/T1/other effects. Earlier NOT AUTHORIZED labels below are the historical proposal stage for this row; all other rows remain unapproved. No push/deployment yet: API/web private configuration equality remains UNKNOWN without existing operator access. After those guards pass, push **the approved SHA explicitly**, not the later approval-receipt HEAD: `git push origin a646abc883131ff411d5dd7bbba536176364fe38:refs/heads/main`. Preserve hooks and verify fast-forward refs immediately before it. [Approval/access checkpoint](../handoffs/2026-10-04-publication-approval.md).
+
 **Needs Cisco.** The current requested result is the reviewed build live on its authorized target and an attended registered-Lab phone PASS. Earlier preparation is complete; it is not this result. T/A/B, setup and the owner-doc patch remain accepted and unchanged. No new onboarding, setup implementation or unchanged-code review is scheduled.
 
-**The next single approval is P1+D2.** The table below makes that existing row concrete; D1-build, D1-API and T1 remain separate. Approval is conditional on the outstanding configuration guards and authorizes no other live effect.
+**P1+D2 is now approved for exact a646abc only.** The table below makes that existing row concrete; D1-build, D1-API and T1 remain separate. Execution waits for the outstanding configuration guards; approval authorizes no other live effect.
 
 | Release field | Exact next action |
 |---|---|
@@ -97,7 +99,7 @@ Private identity read procedure: one READ ONLY repeatable-read transaction with 
 
 ## Concrete effects Cisco can select
 
-Every proposed row is **NOT AUTHORIZED / NOT EXECUTED**. Conditional selection does not bypass UNKNOWN/FAIL guards; it authorizes only its stated effect once its prerequisites are verified. Missing new artifact pins remain explicit execution stops.
+The table records the original proposed effects. **P1+D2 only is now conditionally AUTHORIZED for exact a646abc and its named web rollback, NOT EXECUTED**; all other rows remain NOT AUTHORIZED / NOT EXECUTED. The approval receipt above owns current scope. Conditional selection does not bypass UNKNOWN/FAIL guards; it authorizes only its stated effect once its prerequisites are verified. Missing new artifact pins remain explicit execution stops.
 
 | Row | Exact proposed scope | Must be true before action / read-back | Recovery / recommendation |
 |---|---|---|---|
