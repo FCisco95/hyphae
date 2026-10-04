@@ -2,6 +2,28 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 · Exact approved web release live
+
+**Shipped:** exact **a646abc883131ff411d5dd7bbba536176364fe38** to GitHub main, with successful [CI37230455538](https://github.com/FCisco95/hyphae/actions/runs/37230455538) and Vercel production **dpl_A9BMEHKgNn8r9NtGtJhFWAunPY5q READY** at [hyphae-delta.vercel.app](https://hyphae-delta.vercel.app). Actual Git source/owner/target/alias, Lab onboarding/epoch rendering, ten served assets and new web/API token recognition PASS. No rollback needed.
+
+**Decision:** publish only the already approved a646; later SDK/adopter source stays local because the existing approval excludes it. Applied the checked technical connection checkpoint; no settings/secret export or new source review.
+
+**Validation:** exact-source 851 tests/1 optional skip, types 0, lint 0/286 files, Drizzle 0, disposablePostgres 50/50, API + web builds 0;7 trees / 17 file hashes / 13 migrations exact. Chromium151.0.7922.34 at 1280 / 390:0 page errors/failedrequests/overflow. Ten assets200 with SHA-256 receipts; fresh token budget 297→295 in 2.70s, proxy 404/not_found/no-store; bounded deployment error scan0 records. FlyAPI/worker remain frozen v11. Actual runner gpt-6.1-sol/xhigh, no cost claim.
+
+**Commits/publication:** pushed only a646 above. Docs receipt is local-only, main commit subject `docs: record exact approved web release acceptance`; no full-main/docs push because it would also publish excluded later source. Existing pending commit IDs:
+
+- `5d2cf6ebf8a4071827a7a53041f6aa12cd800562` — docs: record exact publication approval and pending configuration access
+- `eb454d228934c96c98b01da72520a7189561e95f` — feat: add validated public integration starter for communities
+- `ff97f71595b7fde2de88da0f5b788d166aef56cd` — feat: add standalone typed public read SDK
+- `fc1f379112d21dc7928fc116dabda2355b276024` — docs: authorize bounded SDK adoption arc and sync agreement v2
+- `335618498ad4bb65ce9fac6ca4353ae6852816c6` — feat: adopt SDK in CLI and add local community reference app
+- `010c68cfe32fd9db98fcf95e3eb273c05be4edee` — fix: harden adopter bootstrap cooldown and portable build
+- `64d71bf0df4d845ee28ef91f72e232b1389bef18` — fix(demo): install tarballs portably and recover cooldown
+- `202fe957af1bfba90f16ef212e940120a041f204` — fix(demo): preserve multicall entrypoint and prove timer injection
+- `7f4494aa88580451d89c44dfe55c0c0aa8e3f1d6` — docs: close accepted local SDK adoption arc
+
+**Next bounded action:** owner inspects [live Lab](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg); owning organic-sync consumes [portable release receipt](handoffs/2026-10-04-web-release.md). API D1 and real registered Lab phone proof remain separate scopes. Pilot/recruitment held until phone PASS; C21 and exact Oct 8–10 money/close/hold dates unchanged. Empty/no-payable means no payment.
+
 ## 2026-10-04 — local adopter arc achieved, closing review accepted (local-only)
 
 **Result:** final64d71bf0..202fe957af1bfba90f16ef212e940120a041f204 ACCEPT, actual Claude Opus5.5 low. SDK-consuming CLI and two-community reference app work; tarball path, native multicall invocation and asserted early cooldown recovery repairs accepted. No further source work/review/gate repeats needed.

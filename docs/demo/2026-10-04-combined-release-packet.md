@@ -1,6 +1,49 @@
 # Combined candidate release, test and setup packet — October 4
 
+## Executed P1+D2 result — October 4, 20:04Z
+
+**Exact approved a646abc883131ff411d5dd7bbba536176364fe38 published and web acceptance PASS.** [CI37230455538](https://github.com/FCisco95/hyphae/actions/runs/37230455538) success; Vercel **dpl_A9BMEHKgNn8r9NtGtJhFWAunPY5q READY/production**, GitSource.sha/meta both exact a646, project/team/root/runtime as pinned, production alias **hyphae-delta.vercel.app**. Actual Chromium Lab at 1280 / 390, ten served assets/hash receipts, default-mint redirect and new token recognition 297→295/2.70s PASS; zero new-deployment error records in bounded scan. Rollback not used.
+
+Fresh isolated exact-source 851 tests/1skip, typecheck 0, lint 0 / 286 files, Drizzle 0, disposable Postgres 50/50 and API + web builds 0; source pins 7 trees / 17 files / 13 migrations exact. Normal exact-ref push succeeded without bypass; no configured Git pre-push hook present. Later SDK/adopter/head excluded. [Full portable receipt](../handoffs/2026-10-04-web-release.md) and [current handoff](../HANDOFF.md) own latest state; **preparation/UNKNOWN/not-executed prose below is retained historical evidence and superseded only for the web/access guards measured above**.
+
+Current connection settings remain opaque and unchanged by ID/target/revision, fresh actual new-deployment behavioral token proof PASS. Mac Fly 0.4.111 permitted read-only; frozen API/worker v11 unchanged. D1-build/API and real phone/T1/C21 remain separate; hidden/recruitment hold, verify 0.1.0 through October 12, held refs and exact Oct 8–10 payout dates preserved. No new API rollout, phone test, registration, credential/config/DB write, money effect or shared propagation performed. No broader publication approval. This arc ends; next human step inspect live Lab.
+
+
 Prepared **2026-10-04**, local-only. Source/checkpoint **e5ee300d6ce65231ec2325fef60be1f1ecbcba05**, with documentation reconciliation **315e85b32633b1add3cc48476e40d06511ad7154**. Completed onboarding and operator-assisted setup are independently reviewed. Owner-doc alignment is complete. **Publication hold remains; this packet executes no release, phone test, registration or C14–C22 step.** This is the current combined approval packet; older participant/setup release prose and dated prompts are prior receipts. Current continuation: [HANDOFF](../HANDOFF.md).
+
+## Mac read-only connection checkpoint — October 4, 19:27Z
+
+This checkpoint supersedes the earlier Mac-access/effective-configuration UNKNOWN
+statements below. No source, settings or deployment changed.
+
+- Fly CLI0.4.111 is available on the Mac. Cisco separately approved its local
+  login for read-only hyphae-api checks; this does not authorize Fly writes.
+- Exact API6839d31b317318 and worker817400c9901de8 remain started on the recorded
+  v11 image digest sha256:1c2d6dd52635fc669052dc6b2c40c574af3ecbd0b29b54b99d4002bba4ae70c2.
+- In the API runtime, PUBLIC_WEB_URL and LINK_ORIGIN are the expected bare
+  hyphae-delta.vercel.app and hyphae-api.fly.dev HTTPS origins. Required
+  configuration presence/minimum token length passed; no token was printed.
+- Current READY production remains dpl_G3xB3NRa78G9UR5GzZmXmsBa62mz. The
+  /community streamed redirect points exactly to the recorded MYCEL route.
+- A bounded trusted-call proof establishes effective web/API token equality:
+  the API recognizes its configured token (shared budget3000, visitor300);
+  one fresh deployed-web claim-read proxy returns JSON404/not_found; the
+  same visitor counter moves299→297, exactly proxy+after-probe, in a stable
+  2.39-second window. Three direct API GETs plus one web/proxied API GET; no quotas exhausted, no
+  payment/claim/signature and no Secret value read-out/export.
+- All three expected production settings remain sensitive/Secret/decryptedfalse.
+  Their saved revisions predate this deployment and have no branch/custom
+  overrides. Auth/proxy source is unchanged from frozen b3c82c7 to312cc0ff
+  and through approved a646. Effective live behavior is verified; opaque
+  saved literals were not decrypted.
+
+Next is the existing exact-a646 P1+D2 web milestone after fresh exact-source
+normal gates and unchanged deployment/settings revisions/pins. Carry its
+original approval and named rollback; later SDK/head remains excluded.
+D1 build/API/frozen-worker and actual registered-Lab phone scope/attendance
+remain distinct. This checkpoint is not publication, phone or C21 proof.
+Do not repeat login/screenshots/accepted SDK reviews or export/rotate secrets.
+The Fly >_ icon is Machine logs; use permitted CLI reads for runtime checks.
 
 ## Current result gate — October 4 release checks
 
