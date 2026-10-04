@@ -1,5 +1,7 @@
 # Can a Telegram participant sign Hyphae’s `/link`?
 
+**Current continuation — October4, source/checkpoint e5ee300d6ce65231ec2325fef60be1f1ecbcba05:** The October3 trace below describes its earlier source baseline. Its “no copy/handoff control exists” statement is superseded by completed local B through8841a01; source B has ORIGINAL-fragment copy/selectable fallback, still unpushed/undeployed. Device surfaces remain UNKNOWN/unexecuted; founder wallet linking/historical scoring remain successful prior history. This is not C21 proof. Local-only stage; next gate is the [combined release/preflight and attended-input packet](../../demo/2026-10-04-combined-release-packet.md), not a new build or live operation.
+
 Code-path verdict at `3a361e76801a78f0392ec0ca42dfb8ff1f1445d6`, October 3, 2026. **The participant’s wallet produces the signature in the browser opening the private URL.** No Hyphae device test ran here.
 
 | Platform | PASS / FAIL / UNKNOWN | Required surface |

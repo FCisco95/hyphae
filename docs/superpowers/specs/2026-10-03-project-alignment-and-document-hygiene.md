@@ -1,5 +1,7 @@
 # Research and document alignment before implementation
 
+**Current continuation — October4, source/checkpoint e5ee300d6ce65231ec2325fef60be1f1ecbcba05:** The original dated requirement/proposal wording below is historical for implementation status. Research/doc alignment and owner-doc patch are complete; T/A/B and operator-assisted setup are built and independently reviewed. Raid/one-active/hidden-until-phone-PASS choices are settled. Preserve the requirement and recheck changed evidence; do not schedule T/setup again. Local-only stage; next gate is the [combined release/preflight and attended-input packet](../../demo/2026-10-04-combined-release-packet.md), not a new build or live operation.
+
 **Founder requirement, October 3, 2026:** research the actual behavior and clean/reconcile the documents so work stays aligned with what needs to be built. This requirement travels with every subsequent handoff; it is not a separate product roadmap or an invitation to an open-ended research project.
 
 ## Required start of the next build arc

@@ -1,0 +1,64 @@
+{
+  "observed_at_utc": "2026-10-04T08:59:56Z",
+  "candidate_source_commit": "e5ee300d6ce65231ec2325fef60be1f1ecbcba05",
+  "stage": "local reviewed source; no new release artifacts built",
+  "participant_source_commit": "8841a01e8abdcec4398f1255a8ccd3d1c9423212",
+  "setup_review_base": "072e99ba7918ed30c36bacd5c6cbb66255ec55b5",
+  "setup_source_commit": "cd4c4ef8a3ed4b47669ecd2dd0c4cd73ed9b437f",
+  "origin_main": "312cc0ffae1c4efbf5fd69c2b58a5aaf98af28ac",
+  "git_trees": {
+    "apps/api": "776f7a49982af7d6a5493a66db8d9c19b088e771",
+    "apps/web": "75997fbaa5366be92d4e863d04da77080a301ba0",
+    "packages/db": "2c1a9a328ee3d53b26fab68e5d6cc14bb58c3d3f",
+    "packages/core": "20d4839a74619a82d2e8e678d33d336dac986139",
+    "programs/hyphae": "7133b29cc05d135f0cf4f133fe0ad1b5bf62a512",
+    "packages/db/drizzle": "1b9c59da64d5e0bfe34e8528e5726de94fe7d393",
+    "docs/rubrics": "f5cc9af409c894e6980d95d662bd86d1250e29b5"
+  },
+  "sha256_files": {
+    "pnpm-lock.yaml": "e5054fbc303bdd8d0cf29f11197e69c961c3bbb6a9fd2252063072a3169b0d4f",
+    "apps/api/package.json": "0fdb0d87d4d7c82d510b70d488927236ce81d4aec2cbec88001632f6f4bddfcd",
+    "apps/web/package.json": "b8179b18d424277a2b75ff51e7a37b631d299c87b5bb406b818be86cbdfdc4d3",
+    "package.json": "f38a3d3dd25e522505448b29323fb95aa989040ea5f202b1c7dbda4bab0b173b",
+    "apps/api/fly.toml": "d224695e903e2e4f7b936b7c27b6e9fdf8bea08bcfa496ea2351b63dd1cbc753",
+    "apps/api/Dockerfile": "bec29efa4f955bad423b98d7458b16e34797f1afbcef53cec0f2a579f6bb320f",
+    "apps/api/tsup.config.ts": "350e037369ad463ecd629d4746cd9b656d14b78fd63c454b6511062d2ef2f853",
+    "apps/api/tsup.page.config.ts": "412179853c9812203fb8a7a253815eae28d8e46c14b23e3c656552eca62c419f",
+    "packages/db/src/schema.ts": "8634776e4015a6e8236d3a8d30924afd3db0df74b985a7956769661b41c2f789",
+    "packages/db/src/index.ts": "46a47331e013d3c9a2b8603c838b4e321d86f76871fdca8c7cb5bdd6152f9106",
+    "Cargo.lock": "0e0b5d93ec3b7ad98ba541009eccca07123bd38c2ca38c4839e6bdc3a1416024",
+    "apps/api/src/link/page/index.html": "c63c15d1cd764bc559748b598ff8f28abc2fe55684d96a35b5c2965471424cb6",
+    "apps/api/src/link/page/wallet.ts": "1bba32c12ece291e49b57646f9d33327580be1c6f9ae5be3674db276af14c7ee",
+    "apps/api/src/link/page/flow.ts": "62385333d7e112f53f17e22504fcc8f5e185a847bea5f393ceaf54057aface08",
+    "apps/api/src/link/routes.ts": "97bf51a210b9f9e9a100a33c0feb4185a8cf3e886a27c9297307126811f415fa",
+    "apps/api/src/link/session.ts": "06a87b410c1b4507af4154bf16d781456e1e8c91132e182936a221fef48f01d0",
+    "apps/api/src/link/store.ts": "6ef7ca409c6e5ccecb2f96eea3db6c5d4d076e1a33e2195541ffa106aec050c2"
+  },
+  "sdk": {
+    "package": "@organichub/verify",
+    "manifest_specifier": "0.1.0",
+    "lock_specifier": "0.1.0",
+    "lock_resolution": "0.1.0",
+    "freeze_through": "2026-10-12"
+  },
+  "migration_sha256": {
+    "packages/db/drizzle/0000_dry_ezekiel_stane.sql": "15c45e6aa5dfbcaa1ffc0f48ec4e0220502cea4d0447129a6ceaf6ad14cc81bd",
+    "packages/db/drizzle/0001_drop_x_handle.sql": "6475c8725e3f0eed0145cec7151aa778e1b4ef1b798c68a1d3075f1ea5822bb7",
+    "packages/db/drizzle/0002_x_handles.sql": "b634811335296af4ab2423e5b8d65f0e802bb8dd003d7562caad6b3946542611",
+    "packages/db/drizzle/0003_reward_config_intake.sql": "3da1313df14fa49a5b5bbf36182dd242a77bf256ed5e8e7de8691876e088f216",
+    "packages/db/drizzle/0004_reward_slots_dispatch.sql": "36b86c46cc5ab4cf70d5201f7a36e0c1796bf798bc2be688b61ac75baf13462c",
+    "packages/db/drizzle/0005_reward_decision_notified.sql": "62a762ae2a58c5c241c388c3975251bad3363aa85a15947d26e2c3d14822fbbc",
+    "packages/db/drizzle/0006_reward_decision_corrections.sql": "f3e04f49c982f990f6d1c4a1ab037a4ad5c0de50bc389a34536018c411096f35",
+    "packages/db/drizzle/0007_reward_close_snapshot.sql": "0e12c3137e6c027b55eca1f1d637a7db50d5ff7a6cdd475ce8f34997efe70206",
+    "packages/db/drizzle/0008_verified_wallet_links.sql": "7c9f44cb21a410529643dd4c3be1b29253282d3f310e032c2df0be43c90da9f7",
+    "packages/db/drizzle/0009_payout_gates.sql": "20828a04cc4f7051a144843ccd68a6c03ff1b4ee94603cb443cc68d48f6d1cc4",
+    "packages/db/drizzle/0010_reward_commitment_hashes.sql": "147bdf9e0447da4f86c8b7d3c62e2ae1666bd8c70daa2d7b04f6559de037a550",
+    "packages/db/drizzle/0011_publication_intent.sql": "1f08037f7f8b0ae81527f553ec28e76f5fec151256b8c5ac3d60d23b1d6087a7",
+    "packages/db/drizzle/0012_leaves_wallet_index.sql": "5de5cfecd64965e6e41729157e20e170be5d1c8f1d80eb9319e318ef2ff8a4c4"
+  },
+  "release_artifacts": {
+    "fly_candidate_image_digest": "UNKNOWN: not built in this preparation",
+    "vercel_candidate_deployment_id": "UNKNOWN: not deployed in this preparation"
+  },
+  "equality_baseline": "origin/main; lockfile differs from historical frozen b3c82c7 only by previously accepted unused root Anchor removal/web zod dev relocation"
+}

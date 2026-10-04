@@ -2,6 +2,21 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 — combined release/preflight and Oct 8 readiness (local-only)
+
+**Changed:** completed all five preparation steps. One [combined packet](demo/2026-10-04-combined-release-packet.md) and [source pins](demo/2026-10-04-combined-source-pins.json) cover exact reviewed source/artifact/rollback bounds, frozen API/worker disposition, verified Vercel target, timestamped PASS/UNKNOWN preflight, attended own-account phone matrix, private-manifest setup, Organic consumer contract and exact C14–C22 acceptance. Reconciled dated spec baseline statements without rewriting original receipts.
+
+**Decision:** recommend coupled publication+Vercel release after preflight because fresh settings show **main automatic production deploy/alias assignment enabled**; recommend API-only Fly image update with frozen v11 worker retained. Preparation does not clear the publication hold or authorize any live effect.
+
+**Fresh evidence:** Oct 4 08:55:58–59Z public API/siteHTTP 200, HyphaeLab/epoch 2 open/public counts0/no_settlement; Vercel 08:56:14Z/08:59:17–19Z exactproject/root and READY production from origin**312cc0ff**. DB/bot/Fly/private identity/type/webhook/livejournal/config/attendance remain UNKNOWN at09:00:10Z availability check. No new physical phone test, liveinternal audit or worker proof.
+
+**Validation:** **git diff --check PASS**, **127 local destinations/8 heading anchors**, **7 Git trees/17 file hashes/13 migration hashes**, **18-file docs-only scope**, preserved refs/resume paths and handoff **Valid**; receipt in [closure](handoffs/2026-10-04-release-readiness.md). Source remained accepted; SDK exact0.1.0 and13 local migration hashes verified. Prior **851passed/1skipped +50/50 Postgres**, types/lint/build/Drizzle0 and accepted splitparticipant/setupAPPROVE reused as **prior receipts**; no runtime tests/builds/new review ran today. Actual model **gpt-6.1-sol/high**, confirmed session metadata; no helpers/usage/cost claim.
+
+**Commits/stage:** reconciliation **315e85b32633b1add3cc48476e40d06511ad7154**, starting source **e5ee300d6ce65231ec2325fef60be1f1ecbcba05**. Packet/handoff closure adds one localdocs commit; its exactSHA resolves from snapshot history and finaldelivery. Full15 preceding pendingSHAs in [snapshotledger](handoffs/2026-10-04-release-readiness.md#pending-local-commits); all remain unpushed because concretepublication authorization is absent. Origin**312cc0ffae1c4efbf5fd69c2b58a5aaf98af28ac**; no candidateCI/deployment claim.
+
+**Next bounded action:** Cisco answers packet I1–I6 once with access/genuineURLs/selectedconditionalpublication+deployment/attendance/private setup inputs and originaldated sittingreadiness. Recommend keep unselected effects parked, preserve source/reviews/SDK/refs/history and honestempty/no-payable outcome. Organicauthority/settings implementation stays with Organic; public settlement GET only. No credential/resource/Telegram/production/money/sibling/vault write.
+
+
 ## 2026-10-04 — current-document reconciliation (local-only)
 
 **Changed:** retired stale setup-future resume guidance; aligned current plans/guide/HANDOFF with completed participant and operator-assisted setup at **e5ee300d6ce65231ec2325fef60be1f1ecbcba05**. Historical receipts/prompts remain dated and explicitly superseded for continuation. Owner-doc patch and disjoint/one-active/hidden-until-phone-PASS choices remain settled.

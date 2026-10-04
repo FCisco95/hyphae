@@ -35,3 +35,9 @@ Context7 is unavailable in this session. Official [Drizzle transactions](https:/
 ## Done and parked
 
 Done locally: two distinct fixture communities register safely in a disposable database; prior gate 851 passed/1 skipped and 50/50 real-Postgres checks, final other-family APPROVE. These are prior receipts, not tests run October 4. Production registration, owner credentials, Organic integration, group/menu/pin changes, payment activation, self-service authority and a full administrator dashboard remain explicit future scopes. SDK 0.1.0 through October 12 and Sentinel F-13 remain unchanged.
+
+## Combined release continuation — October4
+
+The [single combined packet](../../demo/2026-10-04-combined-release-packet.md) now owns source/artifact/target pins, selected-effect approvals, timestamped technical preflight, phone matrix, private-manifest readiness, Organic consumer requirements and the one bundled input list. Both candidates remain complete at source/checkpoint **e5ee300d6ce65231ec2325fef60be1f1ecbcba05**, local-only. Prior latest gate851/1 skip + Postgres50/50 is prior evidence; no runtime tests/builds ran in this preparation. Current next gate: existing read-only access/genuine URLs and concrete publication/deployment/test/setup scope.
+
+Fresh Oct4 public/API/site reads passed; internal Lab UUID/chat/admin/type/webhook/migration/Fly health remain UNKNOWN. Vercel production target/source is freshly confirmed, and main auto-deploy is enabled: source publication must account for its web deployment. Recommend coupled publication+selected web release and API-only image update with frozen v11 worker retained after preflight. No actual image build, push, deploy or configuration change.
