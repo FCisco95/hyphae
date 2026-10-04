@@ -1,5 +1,7 @@
 # Place the existing Hyphae Lab in MYCEL's Telegram Community
 
+**Current continuation — October 4:** source/checkpoint `e5ee300d6ce65231ec2325fef60be1f1ecbcba05` contains completed, independently reviewed T/A/B onboarding and operator-assisted setup. Both remain local-only, unpushed/undeployed. The owner-doc patch is applied. Next gate: combined release/target preflight, genuine owner inputs and separately authorized attended phone/setup/live scope; no rebuild of accepted source. [Current handoff](../../HANDOFF.md).
+
 **Prepared only; no Telegram, database or account-setting mutation executed.** Ownership is settled: Cisco created Lab on September 17, and the supplied group-info screenshot shows Cisco as owner and Hyphae as admin; its two members are owner and bot. Mycel Testers is a separate chat, not the registered Lab. Do not ask Cisco to establish ownership again.
 
 ## Evidence and diagnosis

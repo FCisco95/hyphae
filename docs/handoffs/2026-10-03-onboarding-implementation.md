@@ -5,6 +5,9 @@ summary: Approved local T/A/B candidate built and independently reviewed; 803 te
 
 # Local participant onboarding candidate
 
+**Historical receipt:** retain the original evidence/date and resume wording below. Current continuation is local checkpoint `e5ee300d6ce65231ec2325fef60be1f1ecbcba05`: onboarding and operator-assisted setup complete, owner-doc patch applied, publication held. Use [docs/HANDOFF.md](../HANDOFF.md) for combined release/preflight and attended-input gates; setup is no longer future implementation scope. Before a later authorized push, rerun all required gates rather than relying only on this prior run.
+
+
 ## TL;DR
 
 Cisco’s **“yes”** approved local T → A → B in the existing [participant packet](../superpowers/plans/2026-10-03-participant-onboarding-plan.md), plus disjoint Hyphae briefs with Raidar separate, one active brief and hidden pilot until phone PASS. **Built, committed, reviewed and locally verified; unpushed/undeployed.** Android actual signing remains unexecuted, iOS unknown. No owner URLs/access/test attendance or live authorization arrived with approval.

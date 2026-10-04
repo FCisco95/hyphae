@@ -2,6 +2,19 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 — current-document reconciliation (local-only)
+
+**Changed:** retired stale setup-future resume guidance; aligned current plans/guide/HANDOFF with completed participant and operator-assisted setup at **e5ee300d6ce65231ec2325fef60be1f1ecbcba05**. Historical receipts/prompts remain dated and explicitly superseded for continuation. Owner-doc patch and disjoint/one-active/hidden-until-phone-PASS choices remain settled.
+
+**Decision:** use one current continuation and preserve accepted source/reviews; preparation stays local under the publication hold.
+
+**Validation:** no-prune fetch/ff-only, 14/0 ref comparison, accepted-source and SDK/boundary equality checks; `git diff --check`, 82 local destinations and handoff validator Valid (API-route heuristic warning only). Prior **851 tests/1 skip**, **50/50 Postgres** and review APPROVE reused as prior receipts; no test/build/review execution now.
+
+**Commits/state:** start **e5ee300d6ce65231ec2325fef60be1f1ecbcba05**, origin **312cc0ffae1c4efbf5fd69c2b58a5aaf98af28ac**; this documentation milestone's exact SHA resolves from file history and is recorded in the release close. All original 14 pending commits remain local; exact full list will accompany the closure. No push because concrete publication authorization is absent.
+
+**Next bounded action:** complete combined release/image/target packet, timestamp available read-only preflight, park unavailable phone/URLs/setup inputs and preserve exact Oct8–10 gates. No source/live/sibling/vault change.
+
+
 ## 2026-10-04 — shared setup local integration close (2026-10-03T23:01:48Z)
 
 **Changed:** fast-forward integrated the reviewed setup checkpoint **6b31fc6936c54e57a19c9673b4554beb40ab714c** into local main and removed its fully merged temporary worktree/branch. Preserved the participant arc, parked refs and initial-review retention tag. This carryover entry records integration/cleanup, not additional implementation.

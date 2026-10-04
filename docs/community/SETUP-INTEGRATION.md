@@ -1,5 +1,7 @@
 # Community setup and Organic integration
 
+**Current continuation — October 4:** source/checkpoint `e5ee300d6ce65231ec2325fef60be1f1ecbcba05` contains completed, independently reviewed T/A/B onboarding and operator-assisted setup. Both remain local-only, unpushed/undeployed. The owner-doc patch is applied. Next gate: combined release/target preflight, genuine owner inputs and separately authorized attended phone/setup/live scope; no rebuild of accepted source. [Current handoff](../HANDOFF.md).
+
 Local operator tooling; no production community is registered by this guide. Hyphae is a shared bot/service. Each token community uses its own registered Telegram contribution group and `/c/<mint>` audit page. Lab is the MYCEL pilot, not the destination for every community.
 
 ## Current usable boundary
@@ -93,6 +95,6 @@ Hyphae's currently permitted Organic interface is the public settlement GET only
 
 Unit/PGlite tests cover manifest/target refusal, read-only preflight, two-community welcome isolation, paused intake, exact replay, conflicts and rollback. Real Postgres tests use two independent pools for duplicate/conflicting requests, lost-COMMIT reconciliation and expiry during a lock wait. No provider scoring experiment or real holder is used.
 
-Before publication: repository gate, real-Postgres checks and fresh other-family review of this setup arc. No schema, SDK or reward-policy change is included. SDK stays 0.1.0 through October 12; Sentinel remains PARKED F-13; existing payout gates remain unchanged.
+Before a later authorized publication: rerun the complete repository gate, DB consistency and real-Postgres checks. Reuse the accepted unchanged setup review (072e99b..cd4c4ef, APPROVE); review any new sensitive delta separately. No schema, SDK or reward-policy change is included. SDK stays 0.1.0 through October 12; Sentinel remains PARKED F-13; existing payout gates remain unchanged.
 
 Primary sources checked October 3: [Drizzle transactions](https://orm.drizzle.team/docs/transactions), [grammY API](https://grammy.dev/ref/core/api), [Telegram getChatMember](https://core.telegram.org/bots/api#getchatmember). Context7 was unavailable; current official documentation and installed package types were used.

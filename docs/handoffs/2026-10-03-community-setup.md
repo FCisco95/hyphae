@@ -5,6 +5,9 @@ summary: Reusable operator-assisted community setup built, independently reviewe
 
 # Reusable community setup checkpoint
 
+**Historical receipt:** retain the original evidence/date and resume wording below. Current continuation is local checkpoint `e5ee300d6ce65231ec2325fef60be1f1ecbcba05`: onboarding and operator-assisted setup complete, owner-doc patch applied, publication held. Use [docs/HANDOFF.md](../HANDOFF.md) for combined release/preflight and attended-input gates; setup is no longer future implementation scope. Before a later authorized push, rerun all required gates rather than relying only on this prior run.
+
+
 Last Updated: 2026-10-03T22:56:42Z
 
 ## TL;DR

@@ -1,5 +1,7 @@
 # Correct the existing pilot display name to MYCEL
 
+**Current continuation — October 4:** source/checkpoint `e5ee300d6ce65231ec2325fef60be1f1ecbcba05` contains completed, independently reviewed T/A/B onboarding and operator-assisted setup. Both remain local-only, unpushed/undeployed. The owner-doc patch is applied. Next gate: combined release/target preflight, genuine owner inputs and separately authorized attended phone/setup/live scope; no rebuild of accepted source. [Current handoff](../../HANDOFF.md).
+
 **Status: prepared operator plan; NOT executed.** October 3, 2026. Founder naming decision is **MYCEL**, attribution **Powered by Hyphae**, status **Pilot**. This plan changes only the existing database display name after separate production-write authorization. It creates no community, Telegram group, chain account, migration or deployment.
 
 ## Exact target and preflight

@@ -1,5 +1,7 @@
 # October 8–9 operator packet
 
+**Current continuation — October 4:** source/checkpoint `e5ee300d6ce65231ec2325fef60be1f1ecbcba05` contains completed, independently reviewed T/A/B onboarding and operator-assisted setup. Both remain local-only, unpushed/undeployed. The owner-doc patch is applied. Next gate: combined release/target preflight, genuine owner inputs and separately authorized attended phone/setup/live scope; no rebuild of accepted source. [Current handoff](../HANDOFF.md).
+
 Prepared October 2; reconciled October 3, 2026. This packet prepares [Runbook C](../handoffs/2026-09-28-runbook-c.md), C14–C22; it executes none of them. Use UTC throughout. The [October 2 readiness receipt](../handoffs/2026-10-02-payout-readiness.md) distinguishes fresh reads from accepted C13 receipts. Recheck every live precondition at the dated, attended sitting. Existing policy, funding and author-attestation rulings remain approved.
 
 ## October 3 onboarding dependency (no gate/date change)
