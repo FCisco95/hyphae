@@ -1,4 +1,8 @@
-export const PARTICIPANT_KEYS = [["/link", "/rules"], ["/me", "/help brief"], ["/help"]] as const;
+export const PARTICIPANT_KEYS = [
+  ["/link", "/rules"],
+  ["/me", "/help brief"],
+  ["/help", "/notifications"],
+] as const;
 
 export interface OnboardingCommunity {
   name: string;
@@ -51,9 +55,10 @@ export function welcomeContent(c?: OnboardingCommunity): string {
   return [
     heading(c),
     "Start here",
-    "/link — Link your own wallet privately. This signs a free message.\n/rules — Take this epoch's rules test in the private bot chat.\n/me — Your wallet and epoch progress (replied in this group).\n/help brief — Current brief and audit.\n/help — How scores and payment work.",
+    "/link — Link your own wallet privately. This signs a free message.\n/rules — Take this epoch's rules test in the private bot chat.\n/me — Your wallet and epoch progress (replied in this group).\n/help brief — Current brief and audit.\n/help — How scores and payment work.\n/notifications — Choose private raid alerts for this community.",
     "Your work, evidence and verified wallet may appear in the public audit. Points do not promise payment.",
     OWN_LINK,
+    "Private raid alerts are optional: /notifications. Stop them from the private bot chat at any time.",
     audit(c),
   ].join("\n\n");
 }
@@ -74,6 +79,7 @@ export function helpContent(c?: OnboardingCommunity): string {
     "Allocation states what was assigned. Publication is required before it is claimable. Paid requires a confirmed claim receipt. Positive points, a wallet verified at close, rules, holder, author/duplicate and safety gates all apply.",
     "/link signs a free readable message. /claim later signs a transaction on the claim page. Use /me for your own progress and /help brief for the active brief. Ask the owner about evidence or corrections before close.",
     OWN_LINK,
+    "Private raid alerts are optional: /notifications. Stop them from the private bot chat at any time.",
     audit(c),
   ].join("\n\n");
 }

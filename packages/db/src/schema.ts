@@ -10,6 +10,7 @@ import {
   numeric,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -90,6 +91,80 @@ export const tasks = pgTable("tasks", {
   telegramMessageId: integer("telegram_message_id"),
   createdAt: createdAt(),
 });
+
+// Private, voluntary raid alerts. These rows grant no task, scoring or reward authority.
+export const raidSubscriptions = pgTable(
+  "raid_subscriptions",
+  {
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    telegramUserId: bigint("telegram_user_id", { mode: "bigint" }).notNull(),
+    enabled: boolean("enabled").notNull(),
+    revision: integer("revision").notNull().default(1),
+    enabledAt: timestamp("enabled_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.communityId, t.telegramUserId] }),
+    check("raid_subscriptions_user_positive", sql`${t.telegramUserId} > 0`),
+    check("raid_subscriptions_revision_positive", sql`${t.revision} > 0`),
+  ],
+);
+
+export const raidAnnouncements = pgTable(
+  "raid_announcements",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    telegramChatId: bigint("telegram_chat_id", { mode: "bigint" }).notNull(),
+    telegramMessageId: integer("telegram_message_id").notNull(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id),
+  },
+  (t) => [
+    uniqueIndex("raid_announcements_source").on(
+      t.communityId,
+      t.telegramChatId,
+      t.telegramMessageId,
+    ),
+    uniqueIndex("raid_announcements_task").on(t.taskId),
+  ],
+);
+
+export const raidDeliveryStatus = pgEnum("raid_delivery_status", [
+  "pending",
+  "sending",
+  "sent",
+  "skipped",
+  "failed",
+  "uncertain",
+]);
+export const raidDeliveries = pgTable(
+  "raid_deliveries",
+  {
+    id: id(),
+    announcementId: uuid("announcement_id")
+      .notNull()
+      .references(() => raidAnnouncements.id),
+    telegramUserId: bigint("telegram_user_id", { mode: "bigint" }).notNull(),
+    subscriptionRevision: integer("subscription_revision").notNull(),
+    dispatchStarted: boolean("dispatch_started").notNull().default(false),
+    status: raidDeliveryStatus("status").notNull().default("pending"),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull(),
+    attemptedAt: timestamp("attempted_at", { withTimezone: true }),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    reason: text("reason"),
+  },
+  (t) => [
+    uniqueIndex("raid_deliveries_recipient").on(t.announcementId, t.telegramUserId),
+    index("raid_deliveries_pending").on(t.status, t.nextAttemptAt),
+    check("raid_deliveries_user_positive", sql`${t.telegramUserId} > 0`),
+    check("raid_deliveries_revision_positive", sql`${t.subscriptionRevision} > 0`),
+  ],
+);
 
 export const contributionKind = pgEnum("contribution_kind", ["reply", "quote", "post", "text"]);
 

@@ -4,6 +4,7 @@ import type { CommandContext, Context } from "grammy";
 import { db } from "../../db.js";
 import { env } from "../../env.js";
 import { openLinkSession } from "../../link/session.js";
+import { isMemberStatus } from "../membership.js";
 import { reply } from "../reply.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -13,11 +14,7 @@ export const parseStartPayload = (payload: string): string | undefined => {
   const id = payload.startsWith("link_") ? payload.slice(5) : "";
   return UUID.test(id) ? id : undefined;
 };
-export const isMemberStatus = (m: { status: string; is_member?: boolean }): boolean =>
-  m.status === "member" ||
-  m.status === "administrator" ||
-  m.status === "creator" ||
-  (m.status === "restricted" && m.is_member === true);
+export { isMemberStatus } from "../membership.js";
 
 // In a group a link URL would be open to anyone, so /link only points to a private chat. A pasted
 // address is no longer accepted (D1): wallets are linked by signing.
