@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 — accepted adopter result and two closing corrections (local-only)
+
+**Result:** exact010c68cf..64d71bf0 accepted by actual Claude Opus5.5 low. CLI/reference app works with installed SDK; no publication. Repaired two non-blocking notes: preserve native multicall pnpm argv0 and require actual early-timer injection in the browser regression. Restored corrupted UNKNOWN literal in dated handoff with short correction/history retained.
+
+**Validation:** fresh process7/7, real Chromium bootstrap/shared/early cooldown recovery PASS, lint309/0. Both strengthened regressions failed before corrections. Prior actual special-path install/full empty-store demo/run command and891/types are reused evidence. SDK/core/lock/API unchanged; native Windows UNKNOWN, server symlink guard remains documented.
+
+**State/next:** starts64d71bf0df4d845ee28ef91f72e232b1389bef18,25ahead origin312cc0ff. [Closing receipt](handoffs/2026-10-04-adopter-close.md) commit history gives new SHA; send64..closingHEAD for only the two-point static/test check. Sole owner/deadline13:13:09Z unchanged; all commits local under original conditional release/config/phone/date/funds holds. Finish arc without new features or prep.
+
 ## 2026-10-04 — final adopter review repairs (local-only)
 
 **Changed:** candidate010 marked reviewed-NEEDS-FIXES. Fixed the demonstrated Medium tarball path install regression with a copied relative file spec, plus exact pnpm basename/native POSIX resolution and early cooldown rescheduling. SDK/core/lock/API unchanged; existing symlink guard limitation documented.

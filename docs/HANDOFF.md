@@ -5,7 +5,7 @@ summary: Standalone read-only SDK built and packed locally, isolated Node/Chromi
 
 # Hyphae handoff
 
-Last Updated: 2026-10-04T12:38:05Z
+Last Updated: 2026-10-04T12:49:27Z
 
 ## TL;DR
 
@@ -23,9 +23,9 @@ No push/registry/deploy/live/money/shared write in this unattended arc. Existing
 
 ## Current State
 
-Candidate **010c68cfe32fd9db98fcf95e3eb273c05be4edee is reviewed-NEEDS-FIXES**: actual Claude Opus5.5 low found one Medium tarball-path install regression and two Low resolver/timer issues. Sole owner is repairing these inside the existing arc; no publication inferred.
+Local CLI and two-community SDK adopter kit work. Candidate010 was reviewed NEEDS-FIXES; repaired **010c68cfe32fd9db98fcf95e3eb273c05be4edee..64d71bf0df4d845ee28ef91f72e232b1389bef18** is now **ACCEPT**, actual Claude Opus5.5 low. [Final acceptance](reviews/2026-10-04-adopter-final-acceptance.md). Two remaining non-blocking notes are narrowly fixed: preserve native multicall pnpm symlink argv0, and force/assert early cooldown injection. Fresh process tools7/7, real Chromium bootstrap/shared/early cooldown regression PASS, lint309/0. Only these two changed points await the coordinator's final static/test check of **64d71bf0..closing commit**. [Closing receipt](handoffs/2026-10-04-adopter-close.md).
 
-Local fixes now pass for candidate010's Medium and two Low findings: tarball copied into the consumer with fixed relative spec, basename/executable POSIX resolver, and rescheduled cooldown recovery. Fresh Node7/7 (including actual pnpm special-path install/import and executable PATH probe), Chromium bootstrap/cooldown/early-timer/full empty-store flow and run-command smoke pass; lint309. SDK/core/lock/API unchanged. Exact **010c68cf..new fix commit** awaits coordinator final focused check. [Repair receipt](handoffs/2026-10-04-adopter-final-fixes.md), [NEEDS-FIXES review](reviews/2026-10-04-adopter-fix-opus-review.md).
+Prior repair proof remains: actual pnpm install/import from spaced/#/%/non-ASCII archive+consumer, empty-store full demo, run command, broad891/1skip/types and SDK26/starter14. No unchanged gate repetition. SDK/core/lock/API unchanged; native Windows **UNKNOWN/unavailable**. Restored UNKNOWN literals in dated receipt and appended correction; symlink main-module nit stays documented. No publication.
 
 | Component | Actual stage / next gate |
 |---|---|
@@ -40,12 +40,12 @@ Local fixes now pass for candidate010's Medium and two Low findings: tarball cop
 
 ## Validation
 
-Latest adopter follow-ups: fresh root **891passed/1skip**, typecheck0/lint0/**308files**; portable command/URL **3/3 Node tests**, bootstrap/cooldown real-browser regressionsPASS, full demo including **empty store+metadata cache** consumer build/Node-Chromium flowsPASS. Native Windows execution explicitlyUNKNOWN. No SDK/APIruntime/backend/CORS change; SDKlibrary/CLIimplementation accepted at335 remains unchanged except dead test spy removed. Prior APIbuild/SDKpacked/cross-origin receipts retained, not rerun where unchanged.
+Earlier candidate010 follow-ups (prior evidence): root **891passed/1skip**, typecheck0/lint0/**308files**; portable command/URL **3/3 Node tests**, bootstrap/cooldown real-browser regressionsPASS, full demo including **empty store+metadata cache** consumer build/Node-Chromium flowsPASS. Native Windows execution explicitlyUNKNOWN. No SDK/APIruntime/backend/CORS change; SDKlibrary/CLIimplementation accepted at335 remains unchanged except dead test spy removed. Prior APIbuild/SDKpacked/cross-origin receipts retained, not rerun where unchanged.
 
 
 Fresh adoption milestone: **891 passed/1 optional skip** (106core/107web/652API/26SDK), repository typecheck0/lint0/**305files**, API build0. Removed only generated SDKdist before full test: SDK builds first, then the dependent API CLI tests pass with no stale output. SDK26/26 and starter14/14 include L1 custom-fetch/body ignoring cancellation and L2/L3 body-timeout/throwing-refinement regressions, all failed before fixes. API dependency on SDK is dev-only; production server/worker code untouched.
 
-New SDK packed install/types/example/Node/cross-origin Chromium151.0.7922.34 PASS. Tarball 12048bytes, SHA-256 **90ea3f6a1a4e2f07549bdca6e13515492915c1c7470393013bb40ea84e153f25**; browser consumer 107038bytes. Demo installed the real tarball outside workspace, then passes two-community/known-zero-vs-unavailable/503/429/malformed/timeout/recovery/obsolete-read/keyboard/1280-390-320 overflow checks with0pageerrors. Generated fixture screenshots visually inspected, all LOCAL FIXTURES; not phone/C21 proof. Initial actual other-family ACCEPT covers a646..ff only; coordinator focused fix/demo review pending.
+New SDK packed install/types/example/Node/cross-origin Chromium151.0.7922.34 PASS. Tarball 12048bytes, SHA-256 **90ea3f6a1a4e2f07549bdca6e13515492915c1c7470393013bb40ea84e153f25**; browser consumer 107038bytes. Demo installed the real tarball outside workspace, then passes two-community/known-zero-vs-unavailable/503/429/malformed/timeout/recovery/obsolete-read/keyboard/1280-390-320 overflow checks with0pageerrors. Generated fixture screenshots visually inspected, all LOCAL FIXTURES; not phone/C21 proof. Initial a646..ff, focused ff..335 and repaired010..64 reviews are ACCEPT; only the two closing corrections remain under final static/test check.
 
 
 Earlier SDK milestone: `pnpm test` **exit0, 886 passed/1 optional skip** (106 core,107 web,650 API,23 SDK); repository typecheck0; lint0/**297 files**. SDK, API and web builds0. SDK packed install/type/documented example/browser bundling/**actual cross-origin Chromium151.0.7922.34 execution PASS**; seven operations and two fixture communities. Native HTTP-error stream closure and malformed-settlement refinement were fixed **test-first**. Verification helper moved from an env variable to an explicit browser-module argument; original env-example guard unchanged. README/landing snippet parity preserved without changing website code.
@@ -54,7 +54,7 @@ Final tarball **11753 bytes**, SHA-256 **023e3ff0f1886aa4d8e9c3658af6fbf729c8956
 
 Lockfile adds only22lines/new SDK importer; existing importers/resolutions unchanged. Core schema change is only Zod import/comment; definitions, policy and arithmetic unchanged. No DB/migrations/reward jobs/worker/bot/link/program/rubric change. **@organichub/verify exactly0.1.0 throughOct12** remains separate from new read-client0.1.0. No fresh Postgres run needed; earlier50/50 is prior evidence.
 
-Original approved **a646abc** still matches its7trees/17hashes/13migration pins. Current SDK/core-import/lock are **later source**, not that approved release. Accepted unchanged participant/setup reviews retain their original coverage. Initial exact a646..ff other-family ACCEPT is now recorded; only the subsequent fix/demo range needs coordinator focused verification before any future publication. No later commit approved for push/deploy.
+Original approved **a646abc** still matches its7trees/17hashes/13migration pins. Current SDK/core-import/lock are **later source**, not that approved release. Accepted unchanged participant/setup reviews retain their original coverage. Initial exact a646..ff other-family ACCEPT is now recorded; the adopter repair range is accepted; only its tiny closing correction check remains. Future publication still needs its own exact scope authorization. No later commit approved for push/deploy.
 
 ## Recent Changes
 
@@ -76,9 +76,9 @@ Package is private and unpushed; adopters here use its tarball. Browser proof is
 
 ## Next Actions
 
-Coordinator must check the committed **010c68cfe32fd9db98fcf95e3eb273c05be4edee..fixHEAD** range. Receive the focused verdict; repair only demonstrated scoped defects if any. All independent acceptance in this arc now passes. Wait while review is pending; add no features or preparation. Original writer/13:13:09Z deadline/14:10:47Z supervision horizon unchanged; no successor or duplicate reviewer launched.
+Receive coordinator's focused static/test check of **64d71bf0df4d845ee28ef91f72e232b1389bef18..closing commit**, only native multicall argv0 and asserted early-timer injection. All scoped working behavior passes; no new feature/prep arc. Once settled, report the accepted local result and stop this writer if only human gates remain. Sole owner/deadline13:13:09Z and coordinator supervision horizon14:10:47Z unchanged; no successor or duplicate reviewer launched.
 
-Original exact-a646 release remains parked on existing private config, with Windows unavailable. Do not repeat approval/access questions. Later API release and attended own-account phone test remain separate gates.
+Original phone result **Needs Cisco**: use existing authorized operator configuration when available, verify exact-a646 release guards, then execute only the recorded approved P1+D2 action and verify its live build. Windows unavailable here; do not repeat approval/access questions or invent settings. API release/attended own-account phone test remain separate gates; after release guide one phone step at a time.
 
 ## Parked blockers and downstream impacts
 
@@ -116,7 +116,7 @@ Read current handoff/checkpoint; distinguish approved a646 pins from later local
 
 Adoption adds `examples/read-sdk-demo/` source and ignored `dist/` app/report/captioned screenshots; SDKtarball/report rebuilt with new hash above. Temporary external consumer/server/browser cleaned. Current writer remains term_d658b481-81fc-4bad-8e49-c770b6b53989; no successor.
 
-Current checkpoint adds only the tracked execution prompt/ownership receipt and canonical v2 instructions. No new editor/session or product implementation launched here.
+This arc produced the working SDK-consuming CLI/reference app and narrow review repairs. Sole original editor remains owner; no successor launched. Coordinator owns review routing/shared reporting.
 
 | What | Canonical home | Stage |
 |---|---|---|
@@ -130,9 +130,9 @@ No credential, registry publication, deployment, message, registration, wallet s
 ## Resume Prompt
 
 ```text
-Resume only FCisco95/hyphae. Local SDK/CLI/reference demo works; candidate010 is reviewed-NEEDS-FIXES and its Medium + two Low items now repaired locally. Fresh Node7/7 with actual pnpm spaced/#/%/non-ASCII archive+consumer install/import, POSIX executable resolution, early-timer/bootstrap/cooldown browser regressions, empty-store full demo and run-command PASS; lint309. Broad891/1skip/types and SDK26/starter14 are prior evidence, SDK/core/lock/API unchanged. Actual native Windows UNKNOWN.
-Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-04-adopter-final-fixes.md, docs/reviews/2026-10-04-adopter-fix-opus-review.md, examples/read-sdk-demo/README.md, examples/read-sdk-demo/build.test.mjs, examples/read-sdk-demo/regressions.mjs.
-Model: existing configured Codex runner — recommendation only for bounded repairs.
+Resume only FCisco95/hyphae. Local SDK-consuming CLI/reference app works; repaired010..64d71bf0 accepted by Claude Opus5.5 low. Native multicall symlink argv0 and deterministic asserted early-cooldown proof now pass7process tests/browser regressions/lint309. Only those two closing points await coordinator static/test check of64d71bf0..closingHEAD. NativeWindowsUNKNOWN; prior special-path install/empty-store/full demo/root891/types evidence retained, not rerun. SDK/core/lock/API unchanged.
+Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-04-adopter-close.md, docs/reviews/2026-10-04-adopter-final-acceptance.md, examples/read-sdk-demo/README.md, examples/read-sdk-demo/process-tools.test.mjs, examples/read-sdk-demo/regressions.mjs.
+Model: existing configured Codex runner — bounded closing check/repair, recommendation only.
 Skills: handoff-memory, karpathy-guidelines, security-review if scope warrants, orca-cli, handoff.
-Receive coordinator final focused verdict for exact010c68cfe32fd9db98fcf95e3eb273c05be4edee..fixHEAD. No duplicate review/editor or extra features while only review remains. Original sole owner term_d658b481-81fc-4bad-8e49-c770b6b53989; fixed deadline13:13:09Z/coordinator horizon14:10:47Z unchanged. Preserve exact-a646 conditional P1+D2 approval, Windows-unavailable/private-config/phone attendance holds, held refs, verify0.1.0throughOct12, hidden pilot, C21 distinction and exact Oct8–10 funds/date gates. No push/npm/deploy/config/registration/bot/funds/shared write. Empty means no payment. Coordinator owns shared propagation/report.
+Receive coordinator verdict only for64d71bf0..closingHEAD's two points; do not duplicate review/editor or expand arc. Preserve soleownerterm_d658b481-81fc-4bad-8e49-c770b6b53989/deadline13:13:09Z/coordinator horizon14:10:47Z. Original phone result NeedsCisco; existing exacta646 P1+D2 approval stays conditional on private config. Windows unavailable; do not repeat approvals/questions. Keep verify0.1.0throughOct12/heldrefs/hiddenpilot/realphonePASS/C21 distinction/exactOct8–10 dates and funds gates. No push/npm/deploy/config/registration/bot/funds/shared write. Empty means no payment. Coordinator owns shared propagation/report.
 ```

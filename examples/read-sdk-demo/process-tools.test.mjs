@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, realpathSync, rmSync, symlinkSync } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -90,12 +90,33 @@ test("PATH resolution finds an actual extensionless POSIX executable", {
     });
     assert.equal(result.status, 0, result.stderr);
     const invocation = JSON.parse(result.stdout);
-    assert.equal(invocation.command, realpathSync("/bin/echo"));
+    assert.equal(invocation.command, join(root, "pnpm"));
     const probe = spawnSync(invocation.command, invocation.args, {
       encoding: "utf8",
       shell: invocation.shell,
     });
     assert.equal(probe.stdout.trim(), "native-probe");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("native multicall symlink preserves pnpm argv0", {
+  skip: process.platform === "win32",
+}, () => {
+  const root = mkdtempSync(join(tmpdir(), "hyphae-multicall-"));
+  try {
+    symlinkSync(process.execPath, join(root, "pnpm"));
+    const shimCode =
+      "if (process.argv0.split('/').at(-1) !== 'pnpm') process.exit(1); console.log('pnpm-shim');";
+    const code = `import { spawnSync } from 'node:child_process'; import { pnpmInvocation } from ${JSON.stringify(new URL("./process-tools.mjs", import.meta.url).href)}; const i = pnpmInvocation(['-e', ${JSON.stringify(shimCode)}]); const r = spawnSync(i.command, i.args, { encoding: 'utf8', shell: i.shell }); process.stdout.write(r.stdout); process.exit(r.status ?? 1);`;
+    const result = spawnSync(process.execPath, ["--input-type=module", "-e", code], {
+      env: { ...process.env, PATH: root, npm_execpath: "" },
+      encoding: "utf8",
+      timeout: 5000,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout.trim(), "pnpm-shim");
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

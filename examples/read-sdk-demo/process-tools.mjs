@@ -31,7 +31,8 @@ function findPnpm() {
     if (process.platform !== "win32" && extname(path) === "") {
       try {
         accessSync(path, constants.X_OK);
-        return path;
+        // Multicall shims select pnpm from argv0; preserve the original symlink name.
+        return resolve(candidate);
       } catch {
         // Continue looking for an executable pnpm entrypoint.
       }

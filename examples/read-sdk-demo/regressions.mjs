@@ -37,9 +37,16 @@ try {
       await page.addInitScript(() => {
         const original = window.setTimeout;
         let firedEarly = false;
+        window.__cooldownEarlyInjected = false;
+        // Force a clock tick between retryUntil assignment and remaining-delay calculation.
+        const now = Date.now;
+        let ticks = 0;
+        Date.now = () => now() + ticks++;
         window.setTimeout = (callback, delay, ...args) => {
-          if (!firedEarly && delay === 1000) {
+          // SDK reads use 750ms and bootstrap uses 2000ms; target only the cooldown.
+          if (!firedEarly && delay > 750 && delay <= 1000) {
             firedEarly = true;
+            window.__cooldownEarlyInjected = true;
             return original(callback, 0, ...args);
           }
           return original(callback, delay, ...args);
@@ -54,6 +61,13 @@ try {
     await page.waitForFunction(() => document.querySelector("#status").dataset.state === "ready");
     await page.selectOption("#scenario", "rate_limit");
     await page.waitForFunction(() => document.querySelector("#status").dataset.state === "error");
+    if (mode === "all" || mode === "early-cooldown") {
+      assert.equal(
+        await page.evaluate(() => window.__cooldownEarlyInjected),
+        true,
+        "early cooldown injection must actually fire",
+      );
+    }
     const before = reads;
     assert.equal(
       await page.locator("#community").isDisabled(),
@@ -87,7 +101,7 @@ try {
     JSON.stringify({
       status: "PASS",
       mode,
-      bootstrapRecovery: mode !== "cooldown",
+      bootstrapRecovery: mode === "all" || mode === "bootstrap",
       consistentCooldown: mode !== "bootstrap",
       earlyTimerRecovery: mode === "all" || mode === "early-cooldown",
     }),

@@ -9,7 +9,7 @@ Exact335618498ad4bb65ce9fac6ca4353ae6852816c6..010c68cfe32fd9db98fcf95e3eb273c05
 ## Changes and evidence
 
 - Copied packed SDK into disposable consumer as sdk.tgz and use file:./sdk.tgz. Actual pnpm10.29.3 previously failed ENOENT on an encoded archive path containing spaces/#/%/non-ASCII; new automated test installs and imports from such an archive and consumer path successfully. Fetch/process bounds and scripts-disabled install retained.
-- npm_execpath checks exact basename, not parent-directory substrings. Extensionless executable POSIX pnpm resolves and runs directly, shell:false. Tests cover misleading npm path, actual executable PATH resolution/probe, native exe and cmd/bat rejection. Windows-shaped cases run on Mac; native Windows remains UNK2026-10-04T12:38:05ZN/unavailable.
+- npm_execpath checks exact basename, not parent-directory substrings. Extensionless executable POSIX pnpm resolves and runs directly, shell:false. Tests cover misleading npm path, actual executable PATH resolution/probe, native exe and cmd/bat rejection. Windows-shaped cases run on Mac; native Windows remains UNKNOWN/unavailable.
 - Cooldown callback reschedules while still cooling. Actual Chromium regression deliberately fires its first cooldown callback early: old candidate timed out with disabled controls; new app eventually re-enables, makes no premature reads and recovers on deliberate click.
 - Existing symlink main-module guard limitation documented, no unrelated helper rewrite. SDK/core/lock/API/backend/CORS unchanged; tarball hash unchanged90ea3f6a1a4e2f07549bdca6e13515492915c1c7470393013bb40ea84e153f25.
 
@@ -38,9 +38,14 @@ No services, credentials, bot messages, registration, signatures or funds action
 ## Next-session prompt
 
 ```text
-Resume onlyFCisco95/hyphae. Candidate010 reviewed NEEDS-FIXES; tarball path/resolver/cooldown fixes pass Node7/7, actual pnpm special-path install/import, Chromium bootstrap/shared/early cooldown/full empty-store demo/run command and lint309. NativeWindowsUNK2026-10-04T12:38:05ZN; prior broad891/types retained, not rerun. SDK/core/lock/API unchanged.
+Resume onlyFCisco95/hyphae. Candidate010 reviewed NEEDS-FIXES; tarball path/resolver/cooldown fixes pass Node7/7, actual pnpm special-path install/import, Chromium bootstrap/shared/early cooldown/full empty-store demo/run command and lint309. NativeWindowsUNKNOWN; prior broad891/types retained, not rerun. SDK/core/lock/API unchanged.
 Files: CLAUDE.md,AGENTS.md,docs/HANDOFF.md,docs/handoffs/2026-10-04-adopter-final-fixes.md,docs/reviews/2026-10-04-adopter-fix-opus-review.md,examples/read-sdk-demo/README.md.
 Model: existing configured Codex runner — bounded repair/review continuation.
 Skills: handoff-memory,karpathy-guidelines,security-review if applicable,orca-cli,handoff.
 Receive coordinator focused verdict for010c68cfe32fd9db98fcf95e3eb273c05be4edee..fixHEAD; do not duplicate reviewers or add work while only review remains. Preserve sole owner/fixed13:13:09Z deadline/horizon14:10:47Z/all original conditional release, config, phone, verify freeze, held refs and exact money/date gates. No push/live/shared write.
 ```
+
+
+## Closing correction
+
+The earlier date substitution corrupted the literal UNKNOWN in this snapshot; restored above. Native Windows was and remains UNKNOWN/unavailable. Exact010..64d71bf0 received Claude Opus5.5 low ACCEPT. Its two non-blocking multicall/injection notes were then repaired test-first; see [closing receipt](2026-10-04-adopter-close.md). The earlier commit remains in git history. No publication inferred.
