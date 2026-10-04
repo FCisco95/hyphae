@@ -1,7 +1,7 @@
 import { communities, type Db, raidSubscriptions } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import type { Bot } from "grammy";
-import type { Update, UserFromGetMe } from "grammy/types";
+import type { InlineKeyboardMarkup, Update, UserFromGetMe } from "grammy/types";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { claimRaidAlert, deliverRaidAlert } from "../../raid-alerts/alerts.js";
 import { createTestDb, seedCommunity } from "../../rewards/test-db.js";
@@ -52,6 +52,7 @@ let bot: Bot;
 const out: { method: string; payload: Record<string, unknown> }[] = [];
 let memberStatus = "member";
 let membershipFails = false;
+let editFails = false;
 let updateId = 0;
 const command = (
   text: string,
@@ -77,6 +78,7 @@ const stop = (
   from = 42,
   chatId = from,
   type: "group" | "private" = "private",
+  keyboard?: InlineKeyboardMarkup,
 ): Update => ({
   update_id: ++updateId,
   callback_query: {
@@ -92,9 +94,16 @@ const stop = (
           ? { id: chatId, type, first_name: "M" }
           : { id: chatId, type, title: "Lab" },
       text: "Raid",
+      ...(keyboard && { reply_markup: keyboard }),
     },
   },
 });
+const enable = (id: string, from = 42, chatId = from) => {
+  const update = stop(id, from, chatId);
+  if (!update.callback_query) throw new Error("fixture");
+  update.callback_query.data = `raids_on_${id}`;
+  return update;
+};
 const texts = () =>
   out.filter((x) => x.method === "sendMessage").map((x) => String(x.payload.text));
 beforeAll(async () => {
@@ -103,6 +112,8 @@ beforeAll(async () => {
   bot = (await import("../index.js")).bot;
   bot.api.config.use(async (_prev, method, payload) => {
     out.push({ method, payload: payload as Record<string, unknown> });
+    if (method === "editMessageReplyMarkup" && editFails)
+      throw new Error("message is not modified");
     if (method === "getChatMember" && membershipFails) throw new Error("lookup unavailable");
     return {
       ok: true,
@@ -123,6 +134,7 @@ beforeEach(() => {
   out.length = 0;
   memberStatus = "member";
   membershipFails = false;
+  editFails = false;
 });
 
 describe("actual opt-in bot wiring", () => {
@@ -136,6 +148,7 @@ describe("actual opt-in bot wiring", () => {
   it("enables only the caller and requested community after checking membership", async () => {
     const { community } = await seedCommunity(t.db);
     await bot.handleUpdate(command(`/start raids_${community.id}`, 42));
+    await bot.handleUpdate(enable(community.id));
     expect(out.find((x) => x.method === "getChatMember")?.payload).toEqual({
       chat_id: Number(community.telegramChatId),
       user_id: 42,
@@ -148,7 +161,7 @@ describe("actual opt-in bot wiring", () => {
           .where(eq(raidSubscriptions.communityId, community.id))
       )[0],
     ).toMatchObject({ telegramUserId: 42n, enabled: true, revision: 1 });
-    expect(texts()[0]).toContain("Future raids");
+    expect(texts().at(-1)).toContain("Future raids");
   });
   it("refuses invalid/non-private identities, outsiders and failed membership checks", async () => {
     const { community } = await seedCommunity(t.db);
@@ -159,9 +172,9 @@ describe("actual opt-in bot wiring", () => {
     ])
       await bot.handleUpdate(update);
     memberStatus = "left";
-    await bot.handleUpdate(command(`/start raids_${community.id}`, 42));
+    await bot.handleUpdate(enable(community.id));
     membershipFails = true;
-    await bot.handleUpdate(command(`/start raids_${community.id}`, 42));
+    await bot.handleUpdate(enable(community.id));
     expect(
       await t.db
         .select()
@@ -172,7 +185,9 @@ describe("actual opt-in bot wiring", () => {
   it("stops only the caller's community subscription and refuses a group callback", async () => {
     const { community } = await seedCommunity(t.db);
     await bot.handleUpdate(command(`/start raids_${community.id}`, 42));
+    await bot.handleUpdate(enable(community.id));
     await bot.handleUpdate(command(`/start raids_${community.id}`, 99, "private", 99));
+    await bot.handleUpdate(enable(community.id, 99));
     await bot.handleUpdate(stop(community.id, 42, Number(community.telegramChatId), "group"));
     expect(
       (
@@ -194,6 +209,7 @@ describe("actual opt-in bot wiring", () => {
   it("an admin /raid queues the opted-in member; retries cannot create extra alerts", async () => {
     const { community } = await seedCommunity(t.db);
     await bot.handleUpdate(command(`/start raids_${community.id}`, 42));
+    await bot.handleUpdate(enable(community.id));
     const update = command(
       "/raid https://x.com/owner/status/123 1 Explain your view",
       Number(community.telegramChatId),
@@ -232,6 +248,7 @@ describe("actual opt-in bot wiring", () => {
       .set({ telegramChatId: -9007199254740993n })
       .where(eq(communities.id, community.id));
     await bot.handleUpdate(command(`/start raids_${community.id}`, 42));
+    await bot.handleUpdate(enable(community.id));
     expect(out.some((x) => x.method === "getChatMember")).toBe(false);
     expect(
       await t.db
@@ -240,5 +257,50 @@ describe("actual opt-in bot wiring", () => {
         .where(eq(raidSubscriptions.communityId, community.id)),
     ).toHaveLength(0);
     expect(texts()[0]).toContain("configuration is unavailable");
+  });
+  it("opening a deep link offers a named Enable action without subscribing", async () => {
+    const { community } = await seedCommunity(t.db);
+    await bot.handleUpdate(command(`/start raids_${community.id}`, 42));
+    expect(
+      await t.db
+        .select()
+        .from(raidSubscriptions)
+        .where(eq(raidSubscriptions.communityId, community.id)),
+    ).toHaveLength(0);
+    expect(
+      JSON.stringify(out.find((x) => x.method === "sendMessage")?.payload.reply_markup),
+    ).toContain(`raids_on_${community.id}`);
+  });
+  it("stopping one community retains the other community's Stop button", async () => {
+    const a = await seedCommunity(t.db);
+    const b = await seedCommunity(t.db);
+    await bot.handleUpdate(enable(a.community.id));
+    await bot.handleUpdate(enable(b.community.id));
+    const keyboard: InlineKeyboardMarkup = {
+      inline_keyboard: [
+        [{ text: "Stop A", callback_data: `raids_off_${a.community.id}` }],
+        [{ text: "Stop B", callback_data: `raids_off_${b.community.id}` }],
+      ],
+    };
+    out.length = 0;
+    await bot.handleUpdate(stop(a.community.id, 42, 42, "private", keyboard));
+    expect(out.find((x) => x.method === "editMessageReplyMarkup")?.payload.reply_markup).toEqual({
+      inline_keyboard: [[{ text: "Stop B", callback_data: `raids_off_${b.community.id}` }]],
+    });
+  });
+  it("a stale or double-tapped keyboard cannot suppress the Stop confirmation", async () => {
+    const { community } = await seedCommunity(t.db);
+    await bot.handleUpdate(enable(community.id));
+    editFails = true;
+    await bot.handleUpdate(stop(community.id));
+    expect(texts().at(-1)).toContain("Raid alerts stopped");
+    expect(
+      (
+        await t.db
+          .select()
+          .from(raidSubscriptions)
+          .where(eq(raidSubscriptions.communityId, community.id))
+      )[0]?.enabled,
+    ).toBe(false);
   });
 });

@@ -12,6 +12,7 @@ import { type Clock, dbClock } from "../rewards/config.js";
 import type { XPost } from "../x/oembed.js";
 
 export const ALERT_PREFIX = "raids_";
+export const ENABLE_PREFIX = "raids_on_";
 export const STOP_PREFIX = "raids_off_";
 export const COMMUNITY_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export const alertLink = (username: string, communityId: string) =>
@@ -136,8 +137,7 @@ export async function openRaid(
           eq(raidSubscriptions.enabled, true),
           lte(raidSubscriptions.enabledAt, now),
         ),
-      )
-      .for("share");
+      );
     for (let i = 0; i < subscribers.length; i += 500) {
       await tx.insert(raidDeliveries).values(
         subscribers.slice(i, i + 500).map((s) => ({
@@ -152,13 +152,17 @@ export async function openRaid(
   });
 }
 
-// Claim before contacting Telegram. A crash thereafter is uncertain, never blindly resent.
+// Claims interrupted before dispatch may recover. Started sends stay uncertain and are never blindly resent.
 export async function claimRaidAlert(db: Db, now?: Date) {
   return db.transaction(async (tx) => {
     const due = now ? sql`${now.toISOString()}::timestamptz` : sql`clock_timestamp()`;
     await tx
       .update(raidDeliveries)
-      .set({ status: "uncertain", reason: "interrupted_send" })
+      .set({
+        status: sql`case when ${raidDeliveries.dispatchStarted} then 'uncertain'::raid_delivery_status else 'pending'::raid_delivery_status end`,
+        reason: sql`case when ${raidDeliveries.dispatchStarted} then 'interrupted_send' else 'claim_recovered' end`,
+        nextAttemptAt: due,
+      })
       .where(
         and(
           eq(raidDeliveries.status, "sending"),
@@ -282,6 +286,9 @@ export async function deliverRaidAlert(db: Db, id: string, deps: AlertSender) {
       !/^https:\/\/x\.com\/[A-Za-z0-9_]{1,15}\/status\/\d+$/.test(target)
     )
       return finish("skipped", "invalid_task");
+    const beforeLookup = await clock(tx, community.id);
+    if (task.opensAt > beforeLookup || task.closesAt <= beforeLookup)
+      return finish("skipped", "outside_window");
     let member: boolean;
     try {
       member = await deps.membership(community.telegramChatId, row.telegramUserId);
@@ -297,9 +304,11 @@ export async function deliverRaidAlert(db: Db, id: string, deps: AlertSender) {
     const text = [
       `New raid · ${community.name.slice(0, 200)}`,
       task.targetUrl,
+      ...(task.targetText ? [`Post: ${task.targetText.slice(0, 400)}`] : []),
       task.brief ? `Brief: ${task.brief.slice(0, 1000)}` : "Reply or quote with your own view.",
       `Closes ${task.closesAt.toISOString()} (UTC).`,
       "Engage on X, then send /submit <your reply URL> or /submit quote <your quote URL> in the registered group.",
+      "A raid window does not extend the reward epoch’s intake deadline. Check /help brief in the group.",
       "Points do not promise payment. You can stop this community's alerts below.",
     ].join("\n\n");
     try {

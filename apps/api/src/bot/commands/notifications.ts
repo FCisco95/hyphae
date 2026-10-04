@@ -5,6 +5,7 @@ import {
   ALERT_PREFIX,
   alertLink,
   COMMUNITY_ID,
+  ENABLE_PREFIX,
   STOP_PREFIX,
   setRaidSubscription,
 } from "../../raid-alerts/alerts.js";
@@ -44,23 +45,46 @@ export async function raidAlertStart(db: Db, ctx: CommandContext<Context>): Prom
     );
     return true;
   }
+  await ctx.reply(
+    `Receive future raid alerts for ${community.name} here privately? Alerts are optional and can be stopped at any time.`,
+    {
+      reply_markup: new InlineKeyboard().text("Enable raid alerts", `${ENABLE_PREFIX}${id}`),
+    },
+  );
+  return true;
+}
+
+export async function enableRaidAlerts(db: Db, ctx: Context) {
+  const data = ctx.callbackQuery?.data ?? "";
+  const id = data.slice(ENABLE_PREFIX.length);
+  const userId = privateUser(ctx);
+  if (!data.startsWith(ENABLE_PREFIX) || !COMMUNITY_ID.test(id) || userId === undefined) {
+    await ctx.answerCallbackQuery({ text: "Enable alerts from your own private bot chat." });
+    return;
+  }
+  await ctx.answerCallbackQuery({ text: "Checking membership…" });
+  const community = await db.query.communities.findFirst({ where: eq(communities.id, id) });
+  if (!community || !Number.isSafeInteger(Number(community.telegramChatId))) {
+    await ctx.reply("Community configuration is unavailable. Alerts were not enabled.");
+    return;
+  }
   let member: Awaited<ReturnType<Context["api"]["getChatMember"]>>;
   try {
     member = await ctx.api.getChatMember(
       Number(community.telegramChatId),
       userId,
-      // grammY types its node-fetch signal through a polyfill; Node 22+ native signals work too.
+      // grammY types a polyfill signal; installed node-fetch also accepts the native Node signal.
       AbortSignal.timeout(4_000) as unknown as Parameters<Context["api"]["getChatMember"]>[2],
     );
   } catch {
     await ctx.reply("Membership could not be checked. Alerts were not enabled; try again later.");
-    return true;
+    return;
   }
   if (!isMemberStatus(member)) {
     await ctx.reply(
       `Join ${community.name} first, then send /notifications in its registered group.`,
     );
-    return true;
+    return;
   }
   await setRaidSubscription(db, id, BigInt(userId), true);
   await ctx.reply(
@@ -69,7 +93,6 @@ export async function raidAlertStart(db: Db, ctx: CommandContext<Context>): Prom
       reply_markup: new InlineKeyboard().text("Stop these alerts", `${STOP_PREFIX}${id}`),
     },
   );
-  return true;
 }
 
 export async function notifications(db: Db, ctx: CommandContext<Context>) {
@@ -79,7 +102,7 @@ export async function notifications(db: Db, ctx: CommandContext<Context>) {
     });
     if (!community) return reply(ctx, "This chat is not a registered Hyphae community.");
     return ctx.reply(
-      `Choose private raid alerts for ${community.name}. Open the bot and press Start to opt in.`,
+      `Choose private raid alerts for ${community.name}. Open the bot, press Start, then choose Enable raid alerts.`,
       {
         reply_parameters: { message_id: ctx.msg.message_id },
         reply_markup: new InlineKeyboard().url(
@@ -131,7 +154,19 @@ export async function stopRaidAlerts(db: Db, ctx: Context) {
   }
   await ctx.answerCallbackQuery({ text: "Stopping alerts…" });
   await setRaidSubscription(db, id, BigInt(userId), false);
-  await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: [] } });
+  const message = ctx.callbackQuery?.message;
+  const keyboard =
+    message && "reply_markup" in message ? message.reply_markup?.inline_keyboard : undefined;
+  const remaining = (keyboard ?? [])
+    .map((row) =>
+      row.filter((button) => !("callback_data" in button && button.callback_data === data)),
+    )
+    .filter((row) => row.length > 0);
+  try {
+    await ctx.editMessageReplyMarkup({ reply_markup: { inline_keyboard: remaining } });
+  } catch {
+    /* An old/double-tapped keyboard cannot undo consent or suppress confirmation. */
+  }
   await ctx.reply(
     `Raid alerts stopped for ${community.name}. Other communities are unchanged. To enable these again, send /notifications in that group.`,
   );

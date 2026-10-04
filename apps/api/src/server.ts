@@ -12,16 +12,14 @@ import { startQueue } from "./jobs/queue.js";
 import { assertProofConfig, proofConfig } from "./link/proof-config.js";
 import { linkRoutes } from "./link/routes.js";
 import { startRaidNotifier } from "./raid-alerts/runner.js";
+import { stopApiOnSignals } from "./raid-alerts/shutdown.js";
 
 assertProofConfig();
 
 // Scoring/settlement jobs still run in the frozen worker; private raid alerts use the API outbox.
 await startQueue();
 const raidNotifier = startRaidNotifier(db, new Api(env.TELEGRAM_BOT_TOKEN, { timeoutSeconds: 4 }));
-for (const signal of ["SIGINT", "SIGTERM"] as const)
-  process.once(signal, () => {
-    void raidNotifier.stop();
-  });
+stopApiOnSignals(raidNotifier.stop);
 
 const app = new Hono();
 
