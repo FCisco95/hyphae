@@ -2,17 +2,24 @@ import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { build } from "../../packages/read-client/node_modules/esbuild/lib/main.js";
+import { pnpmInvocation } from "./process-tools.mjs";
 
 const home = fileURLToPath(new URL("./", import.meta.url));
 const sdk = fileURLToPath(new URL("../../packages/read-client/", import.meta.url));
 function run(args, cwd) {
-  const result = spawnSync("pnpm", args, { cwd, encoding: "utf8", timeout: 120_000 });
+  const invocation = pnpmInvocation(args);
+  const result = spawnSync(invocation.command, invocation.args, {
+    cwd,
+    encoding: "utf8",
+    timeout: 120_000,
+    shell: false,
+  });
   if (result.status !== 0) throw new Error(`${result.stdout}\n${result.stderr}`);
 }
 
-export async function buildDemo() {
+export async function buildDemo({ storeDir, cacheDir } = {}) {
   const archive = join(sdk, "dist/hyphae-read-client-0.1.0.tgz");
   run(["pack", "--out", archive], sdk);
   const consumer = mkdtempSync(join(tmpdir(), "hyphae-reference-adopter-"));
@@ -24,10 +31,21 @@ export async function buildDemo() {
         version: "0.0.0",
         private: true,
         type: "module",
-        dependencies: { "@hyphae/read-client": `file:${archive}` },
+        dependencies: { "@hyphae/read-client": pathToFileURL(archive).href },
       }),
     );
-    run(["install", "--offline", "--ignore-scripts"], consumer);
+    run(
+      [
+        "install",
+        "--prefer-offline",
+        "--ignore-scripts",
+        "--fetch-retries=1",
+        "--fetch-timeout=20000",
+        ...(storeDir ? ["--store-dir", storeDir] : []),
+        ...(cacheDir ? ["--cache-dir", cacheDir] : []),
+      ],
+      consumer,
+    );
     copyFileSync(join(home, "app.js"), join(consumer, "app.js"));
     const output = join(home, "dist");
     mkdirSync(output, { recursive: true });
@@ -40,7 +58,13 @@ export async function buildDemo() {
       format: "esm",
       minify: true,
     });
-    for (const file of ["index.html", "style.css", "server.mjs", "fixtures.mjs"])
+    for (const file of [
+      "index.html",
+      "style.css",
+      "server.mjs",
+      "fixtures.mjs",
+      "process-tools.mjs",
+    ])
       copyFileSync(join(home, file), join(output, file));
     writeFileSync(join(output, "package.json"), JSON.stringify({ private: true, type: "module" }));
     return output;

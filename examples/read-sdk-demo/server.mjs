@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { communities, fixture } from "./fixtures.mjs";
+import { isMainModule } from "./process-tools.mjs";
 
 export function createDemoServer() {
   return createServer((req, res) => {
@@ -69,7 +70,7 @@ export function createDemoServer() {
   });
 }
 
-if (process.argv[1] && new URL(`file://${process.argv[1]}`).href === import.meta.url) {
+if (isMainModule(import.meta.url)) {
   const port = Number(process.argv[2] ?? 8788);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid local port");
   createDemoServer().listen(port, "127.0.0.1", () => {

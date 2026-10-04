@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { buildDemo } from "./build.mjs";
@@ -7,7 +8,17 @@ import { buildDemo } from "./build.mjs";
 const modulePath = process.argv[2];
 if (!modulePath)
   throw new Error("Usage: node examples/read-sdk-demo/verify.mjs /path/to/playwright/index.mjs");
-const output = await buildDemo();
+const emptyStore = process.argv.includes("--empty-store")
+  ? mkdtempSync(join(tmpdir(), "hyphae-cold-adopter-"))
+  : undefined;
+let output;
+try {
+  output = await buildDemo(
+    emptyStore ? { storeDir: join(emptyStore, "store"), cacheDir: join(emptyStore, "cache") } : {},
+  );
+} finally {
+  if (emptyStore) rmSync(emptyStore, { recursive: true, force: true });
+}
 const { createDemoServer } = await import(pathToFileURL(join(output, "server.mjs")).href);
 const server = createDemoServer();
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -89,6 +100,8 @@ try {
     status: "PASS",
     surface: `local fixture Chromium ${browser.version()}`,
     packedInstall: true,
+    emptyStoreConsumer: Boolean(emptyStore),
+    nativeWindowsProof: "UNKNOWN: no Windows machine available",
     communities: ["DemoA", "DemoB"],
     failures,
     obsoleteRequestIsolation: true,

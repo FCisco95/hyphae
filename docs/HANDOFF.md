@@ -5,7 +5,7 @@ summary: Standalone read-only SDK built and packed locally, isolated Node/Chromi
 
 # Hyphae handoff
 
-Last Updated: 2026-10-04T11:38:07Z
+Last Updated: 2026-10-04T12:18:45Z
 
 ## TL;DR
 
@@ -23,7 +23,7 @@ No push/registry/deploy/live/money/shared write in this unattended arc. Existing
 
 ## Current State
 
-Current scoped implementation is complete locally: custom-transport deadline/cancellation now bounded; starter consumes the packaged SDK; local adopter app boots and browser checks pass. Await coordinator focused review of the committed new fix/demo range. No further prep pass.
+Current scoped implementation is complete locally: custom-transport deadline/cancellation now bounded; starter consumes the packaged SDK; local adopter app boots and browser checks pass. Focused ff97..335 review delivered ACCEPT (ClaudeOpus5.5 low); four actionable Low adopter follow-ups repaired, new335..fix range awaiting coordinator check. No further prep pass.
 
 | Component | Actual stage / next gate |
 |---|---|
@@ -37,6 +37,9 @@ Current scoped implementation is complete locally: custom-transport deadline/can
 | Settled operation | Cisco owns Lab, bot admin, owner+bot; Testers separate. Each token has its own contribution group. Disjoint Hyphae briefs/Raidar separate, one active brief, pilot hidden and recruitment blocked until real phone PASS. Founder prior wallet linking/scoring accepted. |
 
 ## Validation
+
+Latest adopter follow-ups: fresh root **891passed/1skip**, typecheck0/lint0/**308files**; portable command/URL **3/3 Node tests**, bootstrap/cooldown real-browser regressionsPASS, full demo including **empty store+metadata cache** consumer build/Node-Chromium flowsPASS. Native Windows execution explicitlyUNKNOWN. No SDK/APIruntime/backend/CORS change; SDKlibrary/CLIimplementation accepted at335 remains unchanged except dead test spy removed. Prior APIbuild/SDKpacked/cross-origin receipts retained, not rerun where unchanged.
+
 
 Fresh adoption milestone: **891 passed/1 optional skip** (106core/107web/652API/26SDK), repository typecheck0/lint0/**305files**, API build0. Removed only generated SDKdist before full test: SDK builds first, then the dependent API CLI tests pass with no stale output. SDK26/26 and starter14/14 include L1 custom-fetch/body ignoring cancellation and L2/L3 body-timeout/throwing-refinement regressions, all failed before fixes. API dependency on SDK is dev-only; production server/worker code untouched.
 
@@ -53,6 +56,9 @@ Original approved **a646abc** still matches its7trees/17hashes/13migration pins.
 
 ## Recent Changes
 
+Coordinator focused review ACCEPT offf97..335 (actualclaude-opus-5-5 low) delivered with four Low adopter issues. Before fixes: cached-only empty-store install failed, bootstrap remainedLoading and cooldown selectors bypassed. Fixed bounded prefer-offline/network install, all-trigger cooldown andrecoverable configuration bootstrap; Windows-shaped argument/path cases now use Node APIs, no shell. Actual Windows unavailable. Copied focused review into repo; new fix range pending coordinator follow-up, no duplicated review.
+
+
 Sole original writer continued implementation after coordinator clarified ownership. Reused coordinator ACCEPT, fixed relevant Low findings test-first, adopted SDK in CLI and finished independent reference app. SDK/adopter docs spacing repaired; API CORS backend change remains outside scope. No duplicate reviewer/editor launched.
 
 Prepared the authorized autonomous adopter arc and coordinator ownership contract. Applied canonical working-agreement v2 patch once to CLAUDE/AGENTS after clean overlap/applicability checks; only its managed blocks changed, no push. Initial review is coordinator-owned, not executed/claimed by this prompt preparation.
@@ -64,6 +70,9 @@ Built approved private SDK and reproducible local tarball/isolated verification,
 Package is private and unpushed; adopters here use its tarball. Browser proof is local desktop fixture execution, not real phone/signing or two real registrations/load proof. SDK validates shape/identity/arithmetic, not independent chain/Merkle authenticity. Custom Fetch must honor AbortSignal; browser CORS may hide Retry-After. Unavailable states remain explicit. Original bearer-link/clipboard and setup drift/outage/unknown-COMMIT guards remain in linked receipts.
 
 ## Next Actions
+
+Latest working behavior passes: source fix range **335618498ad4bb65ce9fac6ca4353ae6852816c6..follow-up commit** ready for coordinator focused Claude check. Receive verdict/findings, repair only actionable scoped defects if any, then report actual result; no new features/prep while only review remains. Original owner/deadline/release holds unchanged.
+
 
 Current CLI/demo result passes locally. Send coordinator exact committed **ff97f71..adoption milestone** for focused Claude check, receive findings and fix applicable issues test-first; no duplicate initial review or publication. Continue sole ownership or request one sequential replacement only if context requires it, with clean checkpoint and exact next step/deadline13:13:09Z. The run command is `node examples/read-sdk-demo/run.mjs`; scoped implementation is complete, avoid re-planning it.
 

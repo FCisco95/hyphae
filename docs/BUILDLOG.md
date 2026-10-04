@@ -2,6 +2,16 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 — adopter review follow-ups repaired (local-only)
+
+**Changed:** coordinatorfocusedff97..335ClaudeOpus5.5lowACCEPT delivered. Fixed four demonstrated Low items: cold-storeboundeddependencyfetch, consistentall-trigger429cooldown, recoverablebootstrap, portableNodePNPM/pathhandling. Deadstarterspyremoved. No SDKruntime/backend/CORS/contract expansion.
+
+**Validation:** root891/1skip/types0/lint308,portableNode3/3,bootstrap/cooldownbrowserregressions andempty-storefullChromiumdemoPASS,0pageerrors/overflow at1280/390/320. ActualWindows UNKNOWN. SDKtarballSHA unchanged90ea3f6a…153f25; counterfactualofflinecold-storefailedbeforeboundedinstallworked. BusyLoading andselectorbypass regressed beforefixes, recoveriespass.
+
+**Commit/state:** starts335618498ad4bb65ce9fac6ca4353ae6852816c6,23aheadorigin312cc0ff; fixSHA from [receipt](handoffs/2026-10-04-adopter-review-followups.md) history/finaldelivery. Alllocal underreleaseholds, fresh335..fix check pendingcoordinator; no sourcepub orneweditor. Soleowner/deadline13:13:09Z/horizon14:10:47Z preserved.
+
+**Next:** coordinatorfocusedcheckofnewrange, thenfinalactualresult; no morefeatures/prep whileonlyreviewremains. Originalexacta646/privateconfig/Windows/phone/SDKfreeze/heldrefs/hiddenpilot/date/money guardsretained; empty meansnopayment.
+
 ## 2026-10-04 — SDK adopted by CLI and working local reference app (local-only)
 
 **Changed:** sole original writer used coordinator's exact ACCEPT and fixed Low L1–L3 test-first: SDKdeadline/cancel race for ignoredsignals, CLI imports SDK instead of duplicateparser. Added real installed-SDK adopter app with two labelled fixture communities, separate score/settlement and failure/recovery controls. Adopter docs spacing repaired; no backend CORS/production website extension.

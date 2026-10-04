@@ -7,7 +7,15 @@ const status = document.querySelector("#status");
 const summary = document.querySelector("#summary");
 let active;
 let generation = 0;
-let cooldown;
+let retryUntil = 0;
+let configured = false;
+let booting = false;
+function syncControls() {
+  const cooling = Date.now() < retryUntil;
+  communityInput.disabled = cooling || !configured || booting;
+  scenarioInput.disabled = cooling || !configured || booting;
+  reload.disabled = cooling || booting;
+}
 
 const value = (key, text) => {
   document.querySelector(`[data-value="${key}"]`).textContent = text;
@@ -35,13 +43,13 @@ const messages = {
 };
 
 async function load() {
+  if (!configured || Date.now() < retryUntil) return;
   active?.abort();
   active = new AbortController();
   const version = ++generation;
   const mint = communityInput.value;
   const scenario = scenarioInput.value;
-  clearTimeout(cooldown);
-  reload.disabled = false;
+  syncControls();
   clearSummary();
   summary.setAttribute("aria-busy", "true");
   value("name", communityInput.selectedOptions[0].textContent);
@@ -104,10 +112,11 @@ async function load() {
         ? "Rate limited. Wait before deliberately trying again."
         : (messages[code] ?? "This read could not be confirmed.");
     if (code === "rate_limited") {
-      reload.disabled = true;
-      cooldown = setTimeout(
+      retryUntil = Date.now() + (error.retryAfterSeconds ?? 1) * 1000;
+      syncControls();
+      setTimeout(
         () => {
-          if (version === generation) reload.disabled = false;
+          syncControls();
         },
         (error.retryAfterSeconds ?? 1) * 1000,
       );
@@ -117,14 +126,58 @@ async function load() {
   }
 }
 
-const config = await (await fetch("/demo.json")).json();
-for (const community of config.communities) {
-  const option = document.createElement("option");
-  option.value = community.mint;
-  option.textContent = community.name;
-  communityInput.append(option);
+async function bootstrap() {
+  if (booting || Date.now() < retryUntil) return;
+  booting = true;
+  syncControls();
+  clearSummary();
+  summary.setAttribute("aria-busy", "true");
+  status.dataset.state = "loading";
+  status.textContent = "Loading the local example…";
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 2000);
+  try {
+    const response = await fetch("/demo.json", { signal: controller.signal, cache: "no-store" });
+    if (!response.ok) throw new Error("configuration_unavailable");
+    const config = await response.json();
+    if (
+      config.fixture !== true ||
+      !Array.isArray(config.communities) ||
+      config.communities.length === 0 ||
+      !config.communities.every(
+        (c) =>
+          typeof c.mint === "string" &&
+          /^[A-Za-z0-9]{1,64}$/.test(c.mint) &&
+          typeof c.name === "string",
+      )
+    ) {
+      throw new Error("configuration_invalid");
+    }
+    communityInput.replaceChildren();
+    for (const community of config.communities) {
+      const option = document.createElement("option");
+      option.value = community.mint;
+      option.textContent = community.name;
+      communityInput.append(option);
+    }
+    configured = true;
+  } catch {
+    configured = false;
+    value("name", "Community unavailable");
+    value("mint", "Unavailable");
+    status.dataset.state = "error";
+    status.textContent = "The local demo configuration is unavailable. Read again to retry.";
+    summary.setAttribute("aria-busy", "false");
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+    booting = false;
+    syncControls();
+  }
+  if (configured) await load();
 }
+
 communityInput.addEventListener("change", load);
 scenarioInput.addEventListener("change", load);
-reload.addEventListener("click", load);
-await load();
+reload.addEventListener("click", () => (configured ? load() : bootstrap()));
+await bootstrap();

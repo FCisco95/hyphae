@@ -51,11 +51,6 @@ afterEach(() => {
 describe("the public integration example", () => {
   it("reports a body-read deadline as timeout rather than invalid JSON", async () => {
     vi.useFakeTimers();
-    vi.spyOn(AbortSignal, "timeout").mockImplementation(() => {
-      const c = new AbortController();
-      setTimeout(() => c.abort(new DOMException("timeout", "TimeoutError")), 10);
-      return c.signal;
-    });
     const fetchImpl = vi.fn<typeof fetch>(
       async (_url, init) =>
         ({
