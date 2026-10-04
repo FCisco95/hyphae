@@ -32,7 +32,20 @@ try {
     await page.waitForFunction(() => document.querySelector("#status").dataset.state === "ready");
     assert.equal(await page.locator('[data-value="mint"]').textContent(), "DemoA");
   }
-  if (mode === "all" || mode === "cooldown") {
+  if (mode === "all" || mode === "cooldown" || mode === "early-cooldown") {
+    if (mode === "all" || mode === "early-cooldown") {
+      await page.addInitScript(() => {
+        const original = window.setTimeout;
+        let firedEarly = false;
+        window.setTimeout = (callback, delay, ...args) => {
+          if (!firedEarly && delay === 1000) {
+            firedEarly = true;
+            return original(callback, 0, ...args);
+          }
+          return original(callback, delay, ...args);
+        };
+      });
+    }
     let reads = 0;
     page.on("request", (request) => {
       if (new URL(request.url()).pathname.startsWith("/v1/")) reads++;
@@ -63,7 +76,9 @@ try {
     });
     await page.waitForTimeout(100);
     assert.equal(reads, before, "no read trigger may bypass the cooldown");
-    await page.waitForFunction(() => !document.querySelector("#reload").disabled);
+    await page.waitForFunction(() => !document.querySelector("#reload").disabled, null, {
+      timeout: 2500,
+    });
     await page.click("#reload");
     await page.waitForFunction(() => document.querySelector("#status").dataset.state === "ready");
     assert.equal(await page.locator('[data-value="mint"]').textContent(), "DemoB");
@@ -74,6 +89,7 @@ try {
       mode,
       bootstrapRecovery: mode !== "cooldown",
       consistentCooldown: mode !== "bootstrap",
+      earlyTimerRecovery: mode === "all" || mode === "early-cooldown",
     }),
   );
 } finally {

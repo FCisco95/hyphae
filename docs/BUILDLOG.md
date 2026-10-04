@@ -2,6 +2,16 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 — final adopter review repairs (local-only)
+
+**Changed:** candidate010 marked reviewed-NEEDS-FIXES. Fixed the demonstrated Medium tarball path install regression with a copied relative file spec, plus exact pnpm basename/native POSIX resolution and early cooldown rescheduling. SDK/core/lock/API unchanged; existing symlink guard limitation documented.
+
+**Validation:** fresh Node7/7 includes actual pnpm special-character archive/consumer install/import and executable PATH probe. Browser bootstrap/shared/early cooldown recovery and full empty-store Chromium demo PASS; no errors/overflow at1280/390/320. Run command HTTP200/two communities, owned server clean exit. Lint309/0. Prior891/1skip/types/SDK/CLI broad evidence retained, not fresh; native Windows UNKNOWN.
+
+**Commit/state:** starts010c68cfe32fd9db98fcf95e3eb273c05be4edee,24ahead origin312cc0ff; new commit resolves from [receipt](handoffs/2026-10-04-adopter-final-fixes.md) history. All pending local SHAs retained in prior receipts; no push under release conditions. Coordinator final focused010..fix check next, no duplicate editor/review. Deadline13:13:09Z unchanged.
+
+**Next:** wait for exact final check, then report local result. Original exacta646/private-config/phone/date/money holds remain; no publication or early/empty payment.
+
 ## 2026-10-04 — adopter review follow-ups repaired (local-only)
 
 **Changed:** coordinatorfocusedff97..335ClaudeOpus5.5lowACCEPT delivered. Fixed four demonstrated Low items: cold-storeboundeddependencyfetch, consistentall-trigger429cooldown, recoverablebootstrap, portableNodePNPM/pathhandling. Deadstarterspyremoved. No SDKruntime/backend/CORS/contract expansion.

@@ -29,7 +29,9 @@ For a deliberately empty package store and metadata cache:
 ```sh
 node examples/read-sdk-demo/verify.mjs /absolute/path/to/playwright/index.mjs --empty-store
 node examples/read-sdk-demo/regressions.mjs /absolute/path/to/playwright/index.mjs
-node --test examples/read-sdk-demo/process-tools.test.mjs
+node --test examples/read-sdk-demo/build.test.mjs examples/read-sdk-demo/process-tools.test.mjs
 ```
 
-The first command removes its disposable store/cache after building the isolated consumer. The UI regressions prove configuration retry and that every read trigger shares the cooldown. Package-manager JavaScript is invoked through Node with separate arguments, avoiding Windows cmd/bat quoting; main-module detection uses Node path/file-URL APIs. Windows-shaped arguments/URLs are tested on this Mac; actual native Windows execution remains **UNKNOWN/unavailable**. No credential or backend/CORS changes are included.
+The first command removes its disposable store/cache after building the isolated consumer. The UI regressions prove configuration retry, that every read trigger shares the cooldown, and eventual recovery after an early timer callback. The Node tests use actual pnpm to install/import the SDK from a disposable path containing spaces, #, % and non-ASCII characters. The archive is copied into the consumer and referenced as `file:./sdk.tgz`, avoiding pnpm’s handling of encoded absolute paths. Run the build test after the demo has packed the SDK. Package-manager JavaScript is invoked through Node with separate arguments; executable extensionless POSIX pnpm and native pnpm.exe run directly, avoiding cmd/bat quoting; main-module detection uses Node path/file-URL APIs. Windows-shaped arguments/URLs are tested on this Mac; actual native Windows execution remains **UNKNOWN/unavailable**. No credential or backend/CORS changes are included.
+
+Start the generated server by its real path. Launching it through a symlink is not covered by the main-module guard.

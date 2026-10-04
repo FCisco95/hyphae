@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 import { build } from "../../packages/read-client/node_modules/esbuild/lib/main.js";
 import { pnpmInvocation } from "./process-tools.mjs";
 
@@ -19,33 +19,38 @@ function run(args, cwd) {
   if (result.status !== 0) throw new Error(`${result.stdout}\n${result.stderr}`);
 }
 
+export function installDemoDependencies(archive, consumer, { storeDir, cacheDir } = {}) {
+  copyFileSync(archive, join(consumer, "sdk.tgz"));
+  writeFileSync(
+    join(consumer, "package.json"),
+    JSON.stringify({
+      name: "hyphae-reference-adopter",
+      version: "0.0.0",
+      private: true,
+      type: "module",
+      dependencies: { "@hyphae/read-client": "file:./sdk.tgz" },
+    }),
+  );
+  run(
+    [
+      "install",
+      "--prefer-offline",
+      "--ignore-scripts",
+      "--fetch-retries=1",
+      "--fetch-timeout=20000",
+      ...(storeDir ? ["--store-dir", storeDir] : []),
+      ...(cacheDir ? ["--cache-dir", cacheDir] : []),
+    ],
+    consumer,
+  );
+}
+
 export async function buildDemo({ storeDir, cacheDir } = {}) {
   const archive = join(sdk, "dist/hyphae-read-client-0.1.0.tgz");
   run(["pack", "--out", archive], sdk);
   const consumer = mkdtempSync(join(tmpdir(), "hyphae-reference-adopter-"));
   try {
-    writeFileSync(
-      join(consumer, "package.json"),
-      JSON.stringify({
-        name: "hyphae-reference-adopter",
-        version: "0.0.0",
-        private: true,
-        type: "module",
-        dependencies: { "@hyphae/read-client": pathToFileURL(archive).href },
-      }),
-    );
-    run(
-      [
-        "install",
-        "--prefer-offline",
-        "--ignore-scripts",
-        "--fetch-retries=1",
-        "--fetch-timeout=20000",
-        ...(storeDir ? ["--store-dir", storeDir] : []),
-        ...(cacheDir ? ["--cache-dir", cacheDir] : []),
-      ],
-      consumer,
-    );
+    installDemoDependencies(archive, consumer, { storeDir, cacheDir });
     copyFileSync(join(home, "app.js"), join(consumer, "app.js"));
     const output = join(home, "dist");
     mkdirSync(output, { recursive: true });

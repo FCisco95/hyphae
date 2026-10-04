@@ -17,6 +17,12 @@ function syncControls() {
   reload.disabled = cooling || booting;
 }
 
+function scheduleCooldown() {
+  const remaining = retryUntil - Date.now();
+  syncControls();
+  if (remaining > 0) setTimeout(scheduleCooldown, remaining);
+}
+
 const value = (key, text) => {
   document.querySelector(`[data-value="${key}"]`).textContent = text;
 };
@@ -113,13 +119,7 @@ async function load() {
         : (messages[code] ?? "This read could not be confirmed.");
     if (code === "rate_limited") {
       retryUntil = Date.now() + (error.retryAfterSeconds ?? 1) * 1000;
-      syncControls();
-      setTimeout(
-        () => {
-          syncControls();
-        },
-        (error.retryAfterSeconds ?? 1) * 1000,
-      );
+      scheduleCooldown();
     }
   } finally {
     if (version === generation) summary.setAttribute("aria-busy", "false");

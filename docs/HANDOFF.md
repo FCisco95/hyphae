@@ -5,13 +5,13 @@ summary: Standalone read-only SDK built and packed locally, isolated Node/Chromi
 
 # Hyphae handoff
 
-Last Updated: 2026-10-04T12:18:45Z
+Last Updated: 2026-10-04T12:38:05Z
 
 ## TL;DR
 
 **Original phone result still Needs Cisco:** reviewed signing page is not live and registered-Lab phone PASS is untested. Cisco approved exact **a646abc883131ff411d5dd7bbba536176364fe38** P1+D2 publication, automatic Vercel production deployment and named old-web rollback **once existing configuration checks pass**. Those guards remain UNKNOWN. **Windows PC unavailable here**, confirmed by Cisco; do not repeat the Windows question or release approval.
 
-Cisco’s subsequent **“yes”** approved the guide’s local SDK scope. **Standalone @hyphae/read-client0.1.0 is built and privately packed**, with seven typed GETs, shared validation and isolated Node/actual Chromium/type checks. **886 tests passed/1 optional skip**, typecheck/lint297 and SDK/API/web builds pass. [SDK guide](community/INTEGRATING.md), [completion receipt](handoffs/2026-10-04-read-sdk.md). No npm publication, source push, deployment, self-service or scale/device proof. SDK scope complete; do not re-ask its approval or rebuild accepted work.
+Cisco’s subsequent **“yes”** approved the guide’s local SDK scope. **Standalone @hyphae/read-client0.1.0 is built and privately packed**, with seven typed GETs, shared validation and isolated Node/actual Chromium/type checks. Prior SDK milestone: **886 tests passed/1 optional skip**, typecheck/lint297 and SDK/API/web builds pass. Later adoption gate: **891 tests/1 skip**, typecheck0/lint308; those broad results are prior evidence for this repair. [SDK guide](community/INTEGRATING.md), [completion receipt](handoffs/2026-10-04-read-sdk.md). No npm publication, source push, deployment, self-service or scale/device proof. SDK scope complete; do not re-ask its approval or rebuild accepted work.
 
 ## Current Objective
 
@@ -23,7 +23,9 @@ No push/registry/deploy/live/money/shared write in this unattended arc. Existing
 
 ## Current State
 
-Current scoped implementation is complete locally: custom-transport deadline/cancellation now bounded; starter consumes the packaged SDK; local adopter app boots and browser checks pass. Focused ff97..335 review delivered ACCEPT (ClaudeOpus5.5 low); four actionable Low adopter follow-ups repaired, new335..fix range awaiting coordinator check. No further prep pass.
+Candidate **010c68cfe32fd9db98fcf95e3eb273c05be4edee is reviewed-NEEDS-FIXES**: actual Claude Opus5.5 low found one Medium tarball-path install regression and two Low resolver/timer issues. Sole owner is repairing these inside the existing arc; no publication inferred.
+
+Local fixes now pass for candidate010's Medium and two Low findings: tarball copied into the consumer with fixed relative spec, basename/executable POSIX resolver, and rescheduled cooldown recovery. Fresh Node7/7 (including actual pnpm special-path install/import and executable PATH probe), Chromium bootstrap/cooldown/early-timer/full empty-store flow and run-command smoke pass; lint309. SDK/core/lock/API unchanged. Exact **010c68cf..new fix commit** awaits coordinator final focused check. [Repair receipt](handoffs/2026-10-04-adopter-final-fixes.md), [NEEDS-FIXES review](reviews/2026-10-04-adopter-fix-opus-review.md).
 
 | Component | Actual stage / next gate |
 |---|---|
@@ -56,6 +58,9 @@ Original approved **a646abc** still matches its7trees/17hashes/13migration pins.
 
 ## Recent Changes
 
+Candidate010 reviewed NEEDS-FIXES (actual Claude Opus5.5 low). Fixed only the demonstrated tarball path/resolver/cooldown defects; copied public-safe review and recorded fresh targeted proof. Remaining symlink-main guard nit documented in demo README. Native Windows UNKNOWN. Packages/API/backend/CORS unchanged.
+
+
 Coordinator focused review ACCEPT offf97..335 (actualclaude-opus-5-5 low) delivered with four Low adopter issues. Before fixes: cached-only empty-store install failed, bootstrap remainedLoading and cooldown selectors bypassed. Fixed bounded prefer-offline/network install, all-trigger cooldown andrecoverable configuration bootstrap; Windows-shaped argument/path cases now use Node APIs, no shell. Actual Windows unavailable. Copied focused review into repo; new fix range pending coordinator follow-up, no duplicated review.
 
 
@@ -67,19 +72,13 @@ Built approved private SDK and reproducible local tarball/isolated verification,
 
 ## Known Issues / Watch List
 
-Package is private and unpushed; adopters here use its tarball. Browser proof is local desktop fixture execution, not real phone/signing or two real registrations/load proof. SDK validates shape/identity/arithmetic, not independent chain/Merkle authenticity. Custom Fetch must honor AbortSignal; browser CORS may hide Retry-After. Unavailable states remain explicit. Original bearer-link/clipboard and setup drift/outage/unknown-COMMIT guards remain in linked receipts.
+Package is private and unpushed; adopters here use its tarball. Browser proof is local desktop fixture execution, not real phone/signing or two real registrations/load proof. SDK validates shape/identity/arithmetic, not independent chain/Merkle authenticity. SDK caller deadline remains bounded even if custom Fetch ignores abort; underlying work must honor AbortSignal; browser CORS may hide Retry-After. Unavailable states remain explicit. Original bearer-link/clipboard and setup drift/outage/unknown-COMMIT guards remain in linked receipts.
 
 ## Next Actions
 
-Latest working behavior passes: source fix range **335618498ad4bb65ce9fac6ca4353ae6852816c6..follow-up commit** ready for coordinator focused Claude check. Receive verdict/findings, repair only actionable scoped defects if any, then report actual result; no new features/prep while only review remains. Original owner/deadline/release holds unchanged.
+Coordinator must check the committed **010c68cfe32fd9db98fcf95e3eb273c05be4edee..fixHEAD** range. Receive the focused verdict; repair only demonstrated scoped defects if any. All independent acceptance in this arc now passes. Wait while review is pending; add no features or preparation. Original writer/13:13:09Z deadline/14:10:47Z supervision horizon unchanged; no successor or duplicate reviewer launched.
 
-
-Current CLI/demo result passes locally. Send coordinator exact committed **ff97f71..adoption milestone** for focused Claude check, receive findings and fix applicable issues test-first; no duplicate initial review or publication. Continue sole ownership or request one sequential replacement only if context requires it, with clean checkpoint and exact next step/deadline13:13:09Z. The run command is `node examples/read-sdk-demo/run.mjs`; scoped implementation is complete, avoid re-planning it.
-
-
-Under the coordinator's sole-writer dispatch, execute [SDK adoption prompt](superpowers/plans/2026-10-04-sdk-adoption-autonomous.md) before **2026-10-04T13:13:09Z**: receive review/fix findings → actual CLI SDK adoption → local reference app → isolated Node/browser/CLI proof/gate → local verified commits and portable handoff. Independent CLI/demo work can proceed while pinned review runs. No duplicate initial review or independent supervisor. Stop only at actual scoped result/deadline/all-independent-work exhausted, report to coordinator for its next approved arc.
-
-Original exact-a646 release remains parked on private config; no repeat approval/Windows question. Later API release/own-account phone scope/attendance still separate.
+Original exact-a646 release remains parked on existing private config, with Windows unavailable. Do not repeat approval/access questions. Later API release and attended own-account phone test remain separate gates.
 
 ## Parked blockers and downstream impacts
 
@@ -131,9 +130,9 @@ No credential, registry publication, deployment, message, registration, wallet s
 ## Resume Prompt
 
 ```text
-Resume only FCisco95/hyphae. Approved local standalone @hyphae/read-client0.1.0 SDK complete/private packed:7typedGETs, shared validation, isolated Node/Chromium151/type/example proof,886tests/1skip/types/lint297 and SDK/API/web builds pass. Canonical schema only namespace-import optimization; lock adds new importer only. Do not rebuild accepted SDK or re-ask approval.
-Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-04-read-sdk.md, packages/read-client/README.md, packages/read-client/src/index.ts, packages/read-client/scripts/verify-package.mjs, docs/community/INTEGRATING.md, docs/demo/2026-10-04-combined-release-packet.md, docs/demo/2026-10-08-first-payout-readiness.md.
-Model: gpt-6.1-sol (high) — October4 recorded routing for bounded client/release work; recommendation only.
-Skills: handoff-memory, karpathy-guidelines, security-review as applicable, handoff; organic-sync with owning vault session.
-Keep SDK unpushed/unpublished until separately authorized source/package effects and required other-family review of new a646abc..SDK range. Original a646abc883131ff411d5dd7bbba536176364fe38 P1+D2 approval retained conditional on existing configPASS; Windows unavailable, do not re-ask. Never substitute later SDK/core/lock HEAD. Original phone/API artifact/test-scope/attendance gates remain blocked. Carry unchangedv1/local packed SDK proof/task3.6DEP-09 authority dependency into normal producer handoff for sync owner; no shared writes. Preserve SDKverify0.1.0throughOct12/heldrefs/hiddenuntilrealphonePASS/C21distinct/exactOct8–10 money gates; empty means no payment.
+Resume only FCisco95/hyphae. Local SDK/CLI/reference demo works; candidate010 is reviewed-NEEDS-FIXES and its Medium + two Low items now repaired locally. Fresh Node7/7 with actual pnpm spaced/#/%/non-ASCII archive+consumer install/import, POSIX executable resolution, early-timer/bootstrap/cooldown browser regressions, empty-store full demo and run-command PASS; lint309. Broad891/1skip/types and SDK26/starter14 are prior evidence, SDK/core/lock/API unchanged. Actual native Windows UNKNOWN.
+Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-04-adopter-final-fixes.md, docs/reviews/2026-10-04-adopter-fix-opus-review.md, examples/read-sdk-demo/README.md, examples/read-sdk-demo/build.test.mjs, examples/read-sdk-demo/regressions.mjs.
+Model: existing configured Codex runner — recommendation only for bounded repairs.
+Skills: handoff-memory, karpathy-guidelines, security-review if scope warrants, orca-cli, handoff.
+Receive coordinator final focused verdict for exact010c68cfe32fd9db98fcf95e3eb273c05be4edee..fixHEAD. No duplicate review/editor or extra features while only review remains. Original sole owner term_d658b481-81fc-4bad-8e49-c770b6b53989; fixed deadline13:13:09Z/coordinator horizon14:10:47Z unchanged. Preserve exact-a646 conditional P1+D2 approval, Windows-unavailable/private-config/phone attendance holds, held refs, verify0.1.0throughOct12, hidden pilot, C21 distinction and exact Oct8–10 funds/date gates. No push/npm/deploy/config/registration/bot/funds/shared write. Empty means no payment. Coordinator owns shared propagation/report.
 ```
