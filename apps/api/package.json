@@ -39,6 +39,7 @@
     "@wallet-standard/app": "1.1.1",
     "tsup": "^8.0.0",
     "tsx": "^4.0.0",
-    "vitest": "^3.0.0"
+    "vitest": "^3.0.0",
+    "@hyphae/read-client": "workspace:*"
   }
 }

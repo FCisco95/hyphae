@@ -280,6 +280,38 @@ describe("public read client", () => {
     await expect(c.getCommunity("CommunityA")).rejects.toMatchObject({ code: "timeout" });
   });
 
+  it.each(["fetch", "body"])(
+    "enforces the deadline even when a custom %s ignores cancellation",
+    async (phase) => {
+      vi.useFakeTimers();
+      const fetchImpl = vi.fn<typeof fetch>(async () =>
+        phase === "fetch"
+          ? new Promise<Response>(() => {})
+          : ({ ok: true, json: () => new Promise(() => {}) } as Response),
+      );
+      const pending = createHyphaeReadClient({ fetch: fetchImpl, timeoutMs: 10 })
+        .getCommunity("CommunityA")
+        .catch((error) => error);
+      await vi.advanceTimersByTimeAsync(11);
+      const result = await Promise.race([pending, Promise.resolve("still_pending")]);
+      expect(result).toMatchObject({ code: "timeout" });
+    },
+  );
+
+  it("honors caller cancellation even when custom fetch ignores the signal", async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const pending = createHyphaeReadClient({
+      fetch: vi.fn<typeof fetch>(() => new Promise(() => {})),
+    })
+      .getCommunity("CommunityA", { signal: controller.signal })
+      .catch((error) => error);
+    controller.abort();
+    await vi.advanceTimersByTimeAsync(0);
+    const result = await Promise.race([pending, Promise.resolve("still_pending")]);
+    expect(result).toMatchObject({ code: "aborted" });
+  });
+
   it("keeps the deadline active through response-body reading", async () => {
     const fetchImpl = vi.fn<typeof fetch>(
       async (_url, init) =>

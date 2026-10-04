@@ -23,8 +23,8 @@
   "scripts": {
     "build": "tsup && node scripts/copy-license.mjs",
     "prepack": "pnpm build",
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit",
+    "test": "pnpm build && vitest run",
+    "typecheck": "pnpm build && tsc --noEmit",
     "verify:package": "node scripts/verify-package.mjs"
   },
   "dependencies": {

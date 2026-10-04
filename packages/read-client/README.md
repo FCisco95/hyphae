@@ -1,6 +1,6 @@
 # @hyphae/read-client
 
-Read-only ESM client for Hyphae's public APIv1. Node22+ and modern browsers with Fetch/AbortController are supported. The package is **private and locally packed**; it has not been published to npm. It bundles the existing consumer response schemas and has one runtime dependency, Zod4.6.5. No workspace, database, Solana or scoring package is needed by an adopter.
+Read-only ESM client for Hyphae's public API v1. Node 22+ and modern browsers with Fetch/AbortController are supported. The package is **private and locally packed**; it has not been published to npm. It bundles the existing consumer response schemas and has one runtime dependency, Zod 4.6.5. No workspace, database, Solana or scoring package is needed by an adopter.
 
 ## Build and install locally
 
@@ -47,13 +47,13 @@ Use `examples/consumer.mjs` from this repository as a runnable separate-project 
 | `getClaim` | `mint, index, wallet`, optional `{ signal }` |
 | `getWalletClaims` | wallet, optional `{ offset, limit, signal }` |
 
-Epoch indexes1–999999999, pagination offset0–999999999, limit1–100 (default50). UUIDs normalize to lowercase. Method arguments follow the existing API validators; response identity and pagination must match the request. Mint-scoped reads never substitute a default community. Wallet claims may span communities and legitimately be empty.
+Epoch indexes 1–999999999, pagination offset 0–999999999, limit 1–100 (default 50). UUIDs normalize to lowercase. Method arguments follow the existing API validators; response identity and pagination must match the request. Mint-scoped reads never substitute a default community. Wallet claims may span communities and legitimately be empty.
 
 ## Request and response behavior
 
-`createHyphaeReadClient({ baseUrl, fetch, timeoutMs })` defaults to `https://hyphae-api.fly.dev/v1` and a 10-second deadline. The base must end in `/v1`; HTTPS is required except for loopback HTTP development. URL credentials, query strings and fragments are rejected. Requests are GET, omit credentials, refuse redirects and use `cache: "no-store"`, including claims. No ambient tokens or configurable authorization headers are used. A supplied Fetch implementation must honor the provided AbortSignal.
+`createHyphaeReadClient({ baseUrl, fetch, timeoutMs })` defaults to `https://hyphae-api.fly.dev/v1` and a 10-second deadline. The base must end in `/v1`; HTTPS is required except for loopback HTTP development. URL credentials, query strings and fragments are rejected. Requests are GET, omit credentials, refuse redirects and use `cache: "no-store"`, including claims. No ambient tokens or configurable authorization headers are used. The SDK races fetch/body promises against cancellation, so a custom implementation cannot keep the caller waiting beyond the deadline. It must still honor AbortSignal to stop its own underlying work.
 
-The deadline remains active through body reading. Caller abort signals are supported per operation; timers/listeners are cleaned up. `HyphaeReadError.code` distinguishes invalid configuration/input, cancellation, timeout, network failure, HTTP bad request/not found/rate limit/unavailable/other error, invalid JSON, schema mismatch and identity mismatch. HTTP errors carry status. A429 carries `retryAfterSeconds` when a readable numeric/HTTP-date Retry-After is present. There are **no automatic retries**. Browser CORS rules may hide that header; the rate-limit error remains available.
+The deadline remains active through body reading. Caller abort signals are supported per operation; timers/listeners are cleaned up, including when a custom transport ignores cancellation. `HyphaeReadError.code` distinguishes invalid configuration/input, cancellation, timeout, network failure, HTTP bad request/not found/rate limit/unavailable/other error, invalid JSON, schema mismatch and identity mismatch. HTTP errors carry status. A 429 carries `retryAfterSeconds` when a readable numeric/HTTP-date Retry-After is present. There are **no automatic retries**. Browser CORS rules may hide that header; the rate-limit error remains available.
 
 Responses use `ReadApiV1Loose` from the canonical contract. Added v1 fields are tolerated; optional newer fields may be absent. Exact units/lamports stay decimal strings. Unavailable/pending states remain explicit, never coerced to zero, paid or eligible. Schema validation is not independent chain or Merkle-proof verification. Returned text is untrusted content; render it as text, not HTML.
 
@@ -75,6 +75,6 @@ For actual Chromium execution across separate page/API origins, use an existing 
 pnpm --filter @hyphae/read-client verify:package --browser /absolute/path/to/playwright/index.mjs
 ```
 
-Without `--browser`, the report labels Chromium `NOT_RUN`; bundling alone is not browser execution. Build inputs reuse existing locked dependency versions. The license is the repository's unchanged BUSL1.1, copied into the packed artifact. Publishing remains separately authorized.
+Without `--browser`, the report labels Chromium `NOT_RUN`; bundling alone is not browser execution. Build inputs reuse existing locked dependency versions. The license is the repository's unchanged BUSL 1.1, copied into the packed artifact. Publishing remains separately authorized.
 
 Contract/build references: [public OpenAPI](https://hyphae-api.fly.dev/v1/openapi.json), [pnpm pack](https://pnpm.io/cli/pack), [tsup](https://tsup.egoist.dev/), [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal).

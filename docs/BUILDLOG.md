@@ -2,6 +2,16 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 — SDK adopted by CLI and working local reference app (local-only)
+
+**Changed:** sole original writer used coordinator's exact ACCEPT and fixed Low L1–L3 test-first: SDKdeadline/cancel race for ignoredsignals, CLI imports SDK instead of duplicateparser. Added real installed-SDK adopter app with two labelled fixture communities, separate score/settlement and failure/recovery controls. Adopter docs spacing repaired; no backend CORS/production website extension.
+
+**Validation:** full **891passed/1skip**,types0/lint0/**305files**,APIbuild0; SDK26/starter14. Fresh-order proof after removinggeneratedSDKdist. PackedNode/types/example/cross-originChromium PASS. Demo two-community/zero-vs-unavailable/503/429/malformed/timeout/recovery/old-request/keyboard/1280-390-320px checks PASS,0errors/overflow; captionedshots visuallychecked. TarballSHA **90ea3f6a1a4e2f07549bdca6e13515492915c1c7470393013bb40ea84e153f25**,12048bytes; report anddemo underignored canonicaldist.
+
+**Review/state:** initial exacta646..ff97f71 ClaudeOpus5.5 ACCEPT (effortunavailable), copied public-safe receipt. New focusedfix/demo range pending coordinator check, notpublication approval. Startsfc1f379112d21dc7928fc116dabda2355b276024,22aheadorigin312cc0ff; milestoneSHA from [receipt](handoffs/2026-10-04-sdk-adoption-implementation.md) history/finaldelivery. No push under existingconditions; precedingpendingIDs inreceipt.
+
+**Next:** coordinator-focused check, test-first repairs ifneeded, finalverdict/localresultreport. Preview `node examples/read-sdk-demo/run.mjs`. Currentownerterm_d658…unchanged,nosuccessor; deadline13:13:09Z/coordhorizon14:10:47Z preserved. Originalexacta646/privateconfig/Windows/phone/setup/SDKverify0.1/date/funds guards remain; no sharedwrite orrepeatedprep.
+
 ## 2026-10-04 — bounded SDK adoption prompt and canonical agreement v2 (local-only)
 
 **Changed:** saved an executable local SDK review/CLI-adoption/reference-demo arc with goal, acceptance, ownership and end clause. Fixed task deadline **2026-10-04T13:13:09Z**; coordinator supervises throughatleast14:10:47Z and owns sole-worker dispatch/shared report. Initial exacta646..ff97 Claude review already coordinator-dispatched; no duplicate editor/reviewer launched by this sender.

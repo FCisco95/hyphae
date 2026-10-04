@@ -5,7 +5,7 @@ summary: Standalone read-only SDK built and packed locally, isolated Node/Chromi
 
 # Hyphae handoff
 
-Last Updated: 2026-10-04T11:17:15Z
+Last Updated: 2026-10-04T11:38:07Z
 
 ## TL;DR
 
@@ -17,11 +17,13 @@ Cisco’s subsequent **“yes”** approved the guide’s local SDK scope. **Sta
 
 Cisco requested a bounded two-hour unattended continuation. [Execution prompt](superpowers/plans/2026-10-04-sdk-adoption-autonomous.md): review/fixes of post-a646 starter+SDK, CLI SDK consumption, local two-community adopter demo and actual isolated/browser/gate proof. **Fixed task deadline 2026-10-04T13:13:09Z**. Coordinator owns supervision through at least **2026-10-04T14:10:47Z** and shared propagation/reporting; no task deadline reset or time padding.
 
-Initial Claude review already dispatched by coordinator: **run_2714d1f53dc6 / task_68680a3c0c49 / ctx_d5718cc5d85d**, exact **a646abc..ff97f71**, reviewer **term_399e08af-778c-4ec6-8c99-a9dd255f36df**. Do not start another initial review. Current sole Hyphae writer **term_d658b481-81fc-4bad-8e49-c770b6b53989** has launched no successor; coordinator **term_4117bb0c-3765-4e8d-9049-2ac0286fd9f6** dispatches its sole implementation worker once this docs checkpoint settles and ownership release is acknowledged. Worker records actual handle/Run/Dispatch/deadline; no competing editors.
+Initial Claude review delivered **ACCEPT**, actual claude-opus-5-5, effort unobserved; [receipt](reviews/2026-10-04-sdk-initial-opus-review.md). Coordinator run: **run_2714d1f53dc6 / task_68680a3c0c49 / ctx_d5718cc5d85d**, exact **a646abc..ff97f71**, reviewer **term_399e08af-778c-4ec6-8c99-a9dd255f36df**. Do not start another initial review. Current sole Hyphae writer **term_d658b481-81fc-4bad-8e49-c770b6b53989** has launched no successor; coordinator **term_4117bb0c-3765-4e8d-9049-2ac0286fd9f6** supervises. Latest ownership clarification keeps this original terminal as implementation writer; do not wait for a transfer or create a replacement without actual context need and coordinator coordination.
 
 No push/registry/deploy/live/money/shared write in this unattended arc. Existing exact-a646 conditional approval and Windows/access/phone blockers remain. SDK implementation at ff97f71 is complete; new arc builds actual adoption behavior, not another SDK/release preparation pass.
 
 ## Current State
+
+Current scoped implementation is complete locally: custom-transport deadline/cancellation now bounded; starter consumes the packaged SDK; local adopter app boots and browser checks pass. Await coordinator focused review of the committed new fix/demo range. No further prep pass.
 
 | Component | Actual stage / next gate |
 |---|---|
@@ -36,15 +38,22 @@ No push/registry/deploy/live/money/shared write in this unattended arc. Existing
 
 ## Validation
 
-Fresh SDK result: `pnpm test` **exit0, 886 passed/1 optional skip** (106 core,107 web,650 API,23 SDK); repository typecheck0; lint0/**297 files**. SDK, API and web builds0. SDK packed install/type/documented example/browser bundling/**actual cross-origin Chromium151.0.7922.34 execution PASS**; seven operations and two fixture communities. Native HTTP-error stream closure and malformed-settlement refinement were fixed **test-first**. Verification helper moved from an env variable to an explicit browser-module argument; original env-example guard unchanged. README/landing snippet parity preserved without changing website code.
+Fresh adoption milestone: **891 passed/1 optional skip** (106core/107web/652API/26SDK), repository typecheck0/lint0/**305files**, API build0. Removed only generated SDKdist before full test: SDK builds first, then the dependent API CLI tests pass with no stale output. SDK26/26 and starter14/14 include L1 custom-fetch/body ignoring cancellation and L2/L3 body-timeout/throwing-refinement regressions, all failed before fixes. API dependency on SDK is dev-only; production server/worker code untouched.
+
+New SDK packed install/types/example/Node/cross-origin Chromium151.0.7922.34 PASS. Tarball 12048bytes, SHA-256 **90ea3f6a1a4e2f07549bdca6e13515492915c1c7470393013bb40ea84e153f25**; browser consumer 107038bytes. Demo installed the real tarball outside workspace, then passes two-community/known-zero-vs-unavailable/503/429/malformed/timeout/recovery/obsolete-read/keyboard/1280-390-320 overflow checks with0pageerrors. Generated fixture screenshots visually inspected, all LOCAL FIXTURES; not phone/C21 proof. Initial actual other-family ACCEPT covers a646..ff only; coordinator focused fix/demo review pending.
+
+
+Earlier SDK milestone: `pnpm test` **exit0, 886 passed/1 optional skip** (106 core,107 web,650 API,23 SDK); repository typecheck0; lint0/**297 files**. SDK, API and web builds0. SDK packed install/type/documented example/browser bundling/**actual cross-origin Chromium151.0.7922.34 execution PASS**; seven operations and two fixture communities. Native HTTP-error stream closure and malformed-settlement refinement were fixed **test-first**. Verification helper moved from an env variable to an explicit browser-module argument; original env-example guard unchanged. README/landing snippet parity preserved without changing website code.
 
 Final tarball **11753 bytes**, SHA-256 **023e3ff0f1886aa4d8e9c3658af6fbf729c895671bfefab4b6d96401c8a07d8e**; five files, canonical unchanged license, only runtime Zod4.6.5. Minified installed browser consumer **106688 bytes**, down from initial464347 after equivalent shared-schema namespace import. Temporary consumer/server/browser cleaned up. Node24.14.0/pnpm10.29.3/tsup8.5.1. Live built-SDK Lab/epoch2 public GETs at **2026-10-04T10:30:57.202000Z** succeeded, payment unavailable; dated before final error-branch repair, not phone/payment proof.
 
 Lockfile adds only22lines/new SDK importer; existing importers/resolutions unchanged. Core schema change is only Zod import/comment; definitions, policy and arithmetic unchanged. No DB/migrations/reward jobs/worker/bot/link/program/rubric change. **@organichub/verify exactly0.1.0 throughOct12** remains separate from new read-client0.1.0. No fresh Postgres run needed; earlier50/50 is prior evidence.
 
-Original approved **a646abc** still matches its7trees/17hashes/13migration pins. Current SDK/core-import/lock are **later source**, not that approved release. Accepted unchanged participant/setup reviews retain their original coverage. No fresh other-family SDK review run; required before later sensitive source/package publication. No later commit approved for push/deploy.
+Original approved **a646abc** still matches its7trees/17hashes/13migration pins. Current SDK/core-import/lock are **later source**, not that approved release. Accepted unchanged participant/setup reviews retain their original coverage. Initial exact a646..ff other-family ACCEPT is now recorded; only the subsequent fix/demo range needs coordinator focused verification before any future publication. No later commit approved for push/deploy.
 
 ## Recent Changes
+
+Sole original writer continued implementation after coordinator clarified ownership. Reused coordinator ACCEPT, fixed relevant Low findings test-first, adopted SDK in CLI and finished independent reference app. SDK/adopter docs spacing repaired; API CORS backend change remains outside scope. No duplicate reviewer/editor launched.
 
 Prepared the authorized autonomous adopter arc and coordinator ownership contract. Applied canonical working-agreement v2 patch once to CLAUDE/AGENTS after clean overlap/applicability checks; only its managed blocks changed, no push. Initial review is coordinator-owned, not executed/claimed by this prompt preparation.
 
@@ -55,6 +64,9 @@ Built approved private SDK and reproducible local tarball/isolated verification,
 Package is private and unpushed; adopters here use its tarball. Browser proof is local desktop fixture execution, not real phone/signing or two real registrations/load proof. SDK validates shape/identity/arithmetic, not independent chain/Merkle authenticity. Custom Fetch must honor AbortSignal; browser CORS may hide Retry-After. Unavailable states remain explicit. Original bearer-link/clipboard and setup drift/outage/unknown-COMMIT guards remain in linked receipts.
 
 ## Next Actions
+
+Current CLI/demo result passes locally. Send coordinator exact committed **ff97f71..adoption milestone** for focused Claude check, receive findings and fix applicable issues test-first; no duplicate initial review or publication. Continue sole ownership or request one sequential replacement only if context requires it, with clean checkpoint and exact next step/deadline13:13:09Z. The run command is `node examples/read-sdk-demo/run.mjs`; scoped implementation is complete, avoid re-planning it.
+
 
 Under the coordinator's sole-writer dispatch, execute [SDK adoption prompt](superpowers/plans/2026-10-04-sdk-adoption-autonomous.md) before **2026-10-04T13:13:09Z**: receive review/fix findings → actual CLI SDK adoption → local reference app → isolated Node/browser/CLI proof/gate → local verified commits and portable handoff. Independent CLI/demo work can proceed while pinned review runs. No duplicate initial review or independent supervisor. Stop only at actual scoped result/deadline/all-independent-work exhausted, report to coordinator for its next approved arc.
 
@@ -82,6 +94,8 @@ Read current handoff/checkpoint; distinguish approved a646 pins from later local
 
 ## Quick Reference
 
+[Adoption milestone](handoffs/2026-10-04-sdk-adoption-implementation.md), [reference app](../examples/read-sdk-demo/README.md), [initial ACCEPT](reviews/2026-10-04-sdk-initial-opus-review.md).
+
 [Autonomous execution prompt](superpowers/plans/2026-10-04-sdk-adoption-autonomous.md), [coordinator ownership checkpoint](handoffs/2026-10-04-autonomous-sdk-adoption.md).
 
 [Guide/SDK](community/INTEGRATING.md), [SDK completion](handoffs/2026-10-04-read-sdk.md), [integration checkpoint](handoffs/2026-10-04-integration-starter.md), [approval](handoffs/2026-10-04-publication-approval.md), [release row](demo/2026-10-04-combined-release-packet.md), [source pins](demo/2026-10-04-combined-source-pins.json), [setup contract](community/SETUP-INTEGRATION.md).
@@ -91,6 +105,8 @@ Read current handoff/checkpoint; distinguish approved a646 pins from later local
 `handoff-memory`, `karpathy-guidelines`, `security-review` for new client/deployment/sensitive changes, `handoff`. `organic-sync` in its owning vault session consumes the producer handoff. No helpers or Sentinel product work.
 
 ## Generated artifacts this session
+
+Adoption adds `examples/read-sdk-demo/` source and ignored `dist/` app/report/captioned screenshots; SDKtarball/report rebuilt with new hash above. Temporary external consumer/server/browser cleaned. Current writer remains term_d658b481-81fc-4bad-8e49-c770b6b53989; no successor.
 
 Current checkpoint adds only the tracked execution prompt/ownership receipt and canonical v2 instructions. No new editor/session or product implementation launched here.
 

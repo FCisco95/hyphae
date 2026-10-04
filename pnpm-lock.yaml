@@ -63,6 +63,9 @@ importers:
       '@electric-sql/pglite':
         specifier: ^0.5.8
         version: 0.5.8
+      '@hyphae/read-client':
+        specifier: workspace:*
+        version: link:../../packages/read-client
       '@ledgerhq/hw-app-solana':
         specifier: 7.11.0
         version: 7.11.0

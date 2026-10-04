@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ReadError, readCommunity } from "./read-community.js";
 
 const time = "2026-10-04T09:00:00.000000Z";
@@ -43,8 +43,74 @@ const epoch = (mint = "CommunityA") => ({
 });
 const json = (body: unknown, status = 200, headers?: HeadersInit) =>
   new Response(JSON.stringify(body), { status, ...(headers ? { headers } : {}) });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
 
 describe("the public integration example", () => {
+  it("reports a body-read deadline as timeout rather than invalid JSON", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(AbortSignal, "timeout").mockImplementation(() => {
+      const c = new AbortController();
+      setTimeout(() => c.abort(new DOMException("timeout", "TimeoutError")), 10);
+      return c.signal;
+    });
+    const fetchImpl = vi.fn<typeof fetch>(
+      async (_url, init) =>
+        ({
+          ok: true,
+          json: () =>
+            new Promise((_resolve, reject) => {
+              init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+                once: true,
+              });
+            }),
+        }) as Response,
+    );
+    const opts = { fetchImpl, timeoutMs: 10 };
+    const pending = readCommunity("CommunityA", opts).catch((error) => error);
+    await vi.advanceTimersByTimeAsync(11);
+    expect(await pending).toMatchObject({ code: "timeout" });
+  });
+
+  it("contains throwing settlement refinements as schema_mismatch", async () => {
+    const address = "1".repeat(32);
+    const body = {
+      ...epoch(),
+      settlement: {
+        allocation: {
+          status: "published",
+          network: "solana:devnet",
+          program_id: address,
+          community_address: address,
+          vault_address: address,
+          epoch_address: address,
+          publish_tx: "1".repeat(64),
+          published_at: time,
+          root: "0".repeat(64),
+          audit_hash: "0".repeat(64),
+          gross_lamports: "not-an-integer",
+          fee_bps: "300",
+          fee_lamports: "0",
+          fee_recipient: address,
+          net_lamports: "0",
+          allocated_lamports: "0",
+          cap_remainder_lamports: "0",
+          dust_lamports: "0",
+          payable_members: "0",
+        },
+        payment: { status: "unavailable", reason: "no_settlement" },
+      },
+    };
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(json(community()))
+      .mockResolvedValueOnce(json(body));
+    await expect(readCommunity("CommunityA", { fetchImpl })).rejects.toMatchObject({
+      code: "schema_mismatch",
+    });
+  });
   it("uses consumer schemas, preserves exact strings and unavailable states, and makes only bounded public reads", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
@@ -111,7 +177,7 @@ describe("the public integration example", () => {
   it.each([
     [404, "not_found"],
     [429, "rate_limited"],
-    [503, "http_error"],
+    [503, "unavailable"],
   ] as const)(
     "reports HTTP %i without retrying or returning invented zero data",
     async (status, code) => {
@@ -121,7 +187,7 @@ describe("the public integration example", () => {
       await expect(readCommunity("CommunityA", { fetchImpl })).rejects.toMatchObject({
         code,
         status,
-        retryAfterSeconds: 30,
+        retryAfterSeconds: status === 429 ? 30 : undefined,
       });
       expect(fetchImpl).toHaveBeenCalledTimes(1);
     },
@@ -148,7 +214,7 @@ describe("the public integration example", () => {
   it("refuses path injection and credential-bearing or insecure origins before any request", async () => {
     const fetchImpl = vi.fn<typeof fetch>();
     await expect(readCommunity("../wrong", { fetchImpl })).rejects.toMatchObject({
-      code: "invalid_mint",
+      code: "invalid_input",
     });
     for (const api of [
       "http://remote.test/v1",
@@ -158,7 +224,7 @@ describe("the public integration example", () => {
       "not a URL",
     ]) {
       await expect(readCommunity("CommunityA", { api, fetchImpl })).rejects.toMatchObject({
-        code: "invalid_api_url",
+        code: "invalid_configuration",
       });
     }
     expect(fetchImpl).not.toHaveBeenCalled();

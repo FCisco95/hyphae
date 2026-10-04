@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hyphae · local SDK adopter demo</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <div class="brand">✳ Hyphae <span class="badge">LOCAL FIXTURES</span></div>
+      <h1>A clear view of<br />community work.</h1>
+      <p class="intro">A small adopter app built with the read-only SDK. These two communities and their data are simulated.</p>
+    </header>
+    <section class="controls" aria-label="Read a fixture community">
+      <label>Community<select id="community"></select></label>
+      <label>API response<select id="scenario">
+        <option value="normal">Healthy read</option>
+        <option value="unavailable">API unavailable · 503</option>
+        <option value="rate_limit">Rate limited · 429</option>
+        <option value="malformed">Malformed response</option>
+        <option value="slow">Slow response · timeout</option>
+      </select></label>
+      <button type="button" id="reload">Read again <span aria-hidden="true">↗</span></button>
+    </section>
+    <p id="status" role="status" aria-live="polite" data-state="loading">Loading the local example…</p>
+    <section id="summary" aria-busy="true" aria-label="Validated community summary">
+      <div class="identity"><h2 data-value="name">Community</h2><code data-value="mint">Unavailable</code></div>
+      <div class="details"><p>Current epoch <strong data-value="epoch">Unavailable</strong></p><p>Intake <strong data-value="intake">Unavailable</strong></p></div>
+      <div class="metrics">
+        <article><h3>Contributions</h3><div data-value="contributions">Unavailable</div></article>
+        <article><h3>Counted</h3><div data-value="counted">Unavailable</div></article>
+        <article><h3>Pending</h3><div data-value="pending">Unavailable</div></article>
+        <article class="points"><h3>Points</h3><div data-value="points">Unavailable</div><p>Points are not payments.</p></article>
+      </div>
+      <div class="settlement">
+        <article><h3>Allocation</h3><p data-value="allocation">Unavailable</p></article>
+        <article><h3>Payment</h3><p data-value="payment">Unavailable</p></article>
+      </div>
+      <p class="asof">API observation: <span data-value="asof">Unavailable</span></p>
+    </section>
+    <footer>Read-only example · no real registration, wallet signing or payment.<br />Installation and source: <code>examples/read-sdk-demo</code></footer>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

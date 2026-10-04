@@ -124,19 +124,39 @@ export function createHyphaeReadClient(options: ClientOptions = {}) {
     const abort = () => controller.abort();
     signal?.addEventListener("abort", abort, { once: true });
     let timedOut = false;
+    const cancelled = new Promise<never>((_resolve, reject) => {
+      controller.signal.addEventListener(
+        "abort",
+        () => {
+          reject(new HyphaeReadError(timedOut ? "timeout" : "aborted"));
+        },
+        { once: true },
+      );
+    });
+    const wait = <U>(operation: () => Promise<U>) =>
+      Promise.race([
+        Promise.resolve().then(() => {
+          if (controller.signal.aborted)
+            throw new HyphaeReadError(timedOut ? "timeout" : "aborted");
+          return operation();
+        }),
+        cancelled,
+      ]);
     const timer = setTimeout(() => {
       timedOut = true;
       controller.abort();
     }, timeoutMs);
     try {
-      const response = await fetchImpl(`${origin}${path}`, {
-        method: "GET",
-        headers: { accept: "application/json" },
-        credentials: "omit",
-        redirect: "error",
-        cache: "no-store",
-        signal: controller.signal,
-      });
+      const response = await wait(() =>
+        fetchImpl(`${origin}${path}`, {
+          method: "GET",
+          headers: { accept: "application/json" },
+          credentials: "omit",
+          redirect: "error",
+          cache: "no-store",
+          signal: controller.signal,
+        }),
+      );
       if (!response.ok) {
         const codes: Record<number, ReadErrorCode> = {
           400: "bad_request",
@@ -152,8 +172,10 @@ export function createHyphaeReadClient(options: ClientOptions = {}) {
       }
       let body: unknown;
       try {
-        body = await response.json();
-      } catch {
+        body = await wait(() => response.json());
+      } catch (error) {
+        if (error instanceof Error && error.name === "TimeoutError")
+          throw new HyphaeReadError("timeout");
         if (controller.signal.aborted) throw new HyphaeReadError(timedOut ? "timeout" : "aborted");
         throw new HyphaeReadError("invalid_json");
       }
@@ -170,7 +192,11 @@ export function createHyphaeReadClient(options: ClientOptions = {}) {
     } catch (error) {
       if (error instanceof HyphaeReadError) throw error;
       throw new HyphaeReadError(
-        timedOut ? "timeout" : signal?.aborted ? "aborted" : "network_error",
+        timedOut || (error instanceof Error && error.name === "TimeoutError")
+          ? "timeout"
+          : signal?.aborted
+            ? "aborted"
+            : "network_error",
       );
     } finally {
       // Abort also closes an unread HTTP-error body; never leave that stream running.
