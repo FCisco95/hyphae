@@ -2,6 +2,20 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 · Member journey built locally; paused with review fixes outstanding
+
+**Built locally:** explicit private reply/quote submission bound to caller/community/raid; membership/window/admission checks; durable receipt and private refresh; append-only scoring issues; designated-admin close/cancel with history retained; one active brief; private read-only operator visibility of delivery/scoring/job/spend uncertainty and issue reports. Actual bot/notifier transport fixtures and an attended-phone checklist are included. Council grant/revoke remains blocked on Organic's verified role/Telegram contract; target relation and X ownership remain explicitly unverified.
+
+**Decision:** preserve the frozen worker, current epoch/payout calculations, human-attestation process and scheduled safeguards. Cancellation stops new work and alerts without reversing earned credit. Existing scorer group announcements are disclosed before submission; private IDs never become group reply IDs. No spend cap or invented steward allowlist.
+
+**Validation:** source96b3629: **974 unit/integration passed,1 optional skip;59/59 real disposable PostgreSQL; types0,lint338files0,Drizzle check0/no generation delta,API build0,diff-check0**. New58unit/integration +4PG tests. Local fixtures only; no real Telegram, signatures, phone, claim or production proof.
+
+**Review/stage:** fresh actual `claude-opus-5-5`, high requested, tools disabled, reviewed `e1f2c51..96b3629`: **NEEDS-FIXES**. Open blockers: Unicode-safe operator text, new unproved limitations labels in frozen reward capture, and Telegram network I/O under the shared reward lock. All13 advisories retained, especially concurrent/lost-ack legacy enqueue and missing full reward-lane bot coverage. Exact committedPG59 run finished after the review was submitted. **User requested pause before any review fixes; none applied.** [Full review and repair order](reviews/2026-10-04-member-journey.md), [portable pause snapshot](handoffs/2026-10-04-member-journey-paused.md).
+
+**Commit/publication:** `96b36296902775b6618c584b37fdaf973f3eb291` — `feat: complete private raid submissions and member audit journey`, **local-only, review-blocked**. Documentation-only checkpoint subject `docs: checkpoint paused member journey and open review findings` will also remain local. Existing14 unpublished commits are listed in the handoff (including previous checkpoint `e1f2c51cc4d3060aaa695a79b001503cb04e05f1`). No push: this session explicitly forbids full-main publication and production changes. Original candidate `candidate/raid-alerts-2026-10-04` remains exactly `c58aa27efdb5bc5492c2f96d45c090c9fc91d379`, with release approval pending; the changed member journey cannot inherit it. Historical0000–0013 migrations, all held refs, live web and Fly runtime unchanged.
+
+**Next bounded action after resume:** reproduce/fix B1/B2/B3 test-first, investigate enqueue ambiguity and triage remaining advisories, validate and commit repairs, obtain a fresh closing review. Organic council contract, independent X verification, new release approval, attended phone/signatures/claims remain separate dependencies. Preserve Oct8–10 payout/hold gates and no empty-payment claim. No running test/reviewer/worker was found at pause.
+
 ## 2026-10-04 · Private raid notifications built and reviewed locally
 
 **Built locally:** explicit community-specific private alerts. /notifications → private Start offer → Enable → exact membership → future admin-selected target/excerpt/brief/UTC deadline with Engage/Stop buttons. Atomic outbox/event dedupe, consent revisions, current-membership/deadline checks, safe unstarted-claim recovery and conservative uncertain-started-send handling. API hosts delivery; no extra Fly VM or reward-worker source/config change.
