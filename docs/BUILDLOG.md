@@ -2,6 +2,16 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 · Member journey repaired and accepted for main publication
+
+**Completed:** all member-journey review blockers. Unicode/control-safe receipts and operator text, frozen capture semantics preserved, exact reward acceptance timestamps, Telegram membership outside shared reward locks, atomic queue job+receipt with concurrent/rollback/lost-ack proof, and cancellation that waits for in-flight alerts without holding the reward lock. Historical brief closure, effort guidance, technical prompt/report bounds and unavailable-telemetry savepoints covered. Actual bot reward flow tested through scoring/effort/public audit with fixtures.
+
+**Decision:** Cisco explicitly resumed and authorized finish/commit/merge/push current main for Windows after the previous source/deployment holds were explained. Publish this reviewed source and prior accepted SDK/adopter work through existing Git/Vercel integration. Main already contains the feature. Frozen API/worker, DB, money, real Telegram/phone/signature/claim scope stays separate. No spending cap or credit reversal selected.
+
+**Validation:** final **1,000unit/integration passed,1 optionalskip;69/69 disposable PostgreSQL;types0,lint343files0,Drizzle0,API+webbuilds0,diff0;16Python hashes reproduced**. Three fresh actualClaudeOpus5.5 reviews: initial NEEDS-FIXES, second confirms earlier fixes but finds transitive cancellation lock, final **ACCEPT** for `e1f2c51..23a4f9c472c1ad06741632b57f83718ddf70b535`. Tools disabled/static review; owner ran tests. Frozen paths inspected: no task write/lock inversion; no source changes to worker/jobs/rewards/payout/core/programs. CI/program workflows contain no Fly/API deployment or production migration; repository webhooks empty.
+
+**Commits/stage:** implementation96b36296902775b6618c584b37fdaf973f3eb291; first repairsf3aa3e08477ca1f95c68ed8245f9aa539d76678e; final repairs23a4f9c472c1ad06741632b57f83718ddf70b535. All currentlylocal, main18ahead before this documentation checkpoint. **Next: approved main push and remote CI/Vercel verification**; currentorigin remainsa646. Oldc58aa27candidate tag and all epoch-held refs unchanged. [Review/verbatim evidence](reviews/2026-10-04-member-journey.md), [current handoff](HANDOFF.md).
+
 ## 2026-10-04 · Member journey built locally; paused with review fixes outstanding
 
 **Built locally:** explicit private reply/quote submission bound to caller/community/raid; membership/window/admission checks; durable receipt and private refresh; append-only scoring issues; designated-admin close/cancel with history retained; one active brief; private read-only operator visibility of delivery/scoring/job/spend uncertainty and issue reports. Actual bot/notifier transport fixtures and an attended-phone checklist are included. Council grant/revoke remains blocked on Organic's verified role/Telegram contract; target relation and X ownership remain explicitly unverified.
