@@ -5,7 +5,7 @@ summary: Standalone read-only SDK built and packed locally, isolated Node/Chromi
 
 # Hyphae handoff
 
-Last Updated: 2026-10-04T10:38:14Z
+Last Updated: 2026-10-04T11:17:15Z
 
 ## TL;DR
 
@@ -15,7 +15,11 @@ Cisco’s subsequent **“yes”** approved the guide’s local SDK scope. **Sta
 
 ## Current Objective
 
-Completed approved local SDK arc. Keep its source/tarball ready for a separately scoped adopter or publication; future sensitive publication needs a fresh other-family review of the new unreviewed post-a646 range (starter plus SDK). Original exact-a646 release resumes only when existing access/configuration guards pass. No independent required work remains in this local build arc.
+Cisco requested a bounded two-hour unattended continuation. [Execution prompt](superpowers/plans/2026-10-04-sdk-adoption-autonomous.md): review/fixes of post-a646 starter+SDK, CLI SDK consumption, local two-community adopter demo and actual isolated/browser/gate proof. **Fixed task deadline 2026-10-04T13:13:09Z**. Coordinator owns supervision through at least **2026-10-04T14:10:47Z** and shared propagation/reporting; no task deadline reset or time padding.
+
+Initial Claude review already dispatched by coordinator: **run_2714d1f53dc6 / task_68680a3c0c49 / ctx_d5718cc5d85d**, exact **a646abc..ff97f71**, reviewer **term_399e08af-778c-4ec6-8c99-a9dd255f36df**. Do not start another initial review. Current sole Hyphae writer **term_d658b481-81fc-4bad-8e49-c770b6b53989** has launched no successor; coordinator **term_4117bb0c-3765-4e8d-9049-2ac0286fd9f6** dispatches its sole implementation worker once this docs checkpoint settles and ownership release is acknowledged. Worker records actual handle/Run/Dispatch/deadline; no competing editors.
+
+No push/registry/deploy/live/money/shared write in this unattended arc. Existing exact-a646 conditional approval and Windows/access/phone blockers remain. SDK implementation at ff97f71 is complete; new arc builds actual adoption behavior, not another SDK/release preparation pass.
 
 ## Current State
 
@@ -42,6 +46,8 @@ Original approved **a646abc** still matches its7trees/17hashes/13migration pins.
 
 ## Recent Changes
 
+Prepared the authorized autonomous adopter arc and coordinator ownership contract. Applied canonical working-agreement v2 patch once to CLAUDE/AGENTS after clean overlap/applicability checks; only its managed blocks changed, no push. Initial review is coordinator-owned, not executed/claimed by this prompt preparation.
+
 Built approved private SDK and reproducible local tarball/isolated verification, preserving public v1 contract. README/guide point to actual installation and methods. Normal Organic-sync producer handoff now carries local package evidence, unchanged contract, owner-authority dependency and exact release/access boundaries; no full sync/shared writes.
 
 ## Known Issues / Watch List
@@ -50,9 +56,9 @@ Package is private and unpushed; adopters here use its tarball. Browser proof is
 
 ## Next Actions
 
-1. Local SDK build is complete. For a separately authorized adopter, use the packed package and documented example. Before new source/package publication, obtain applicable fresh other-family review of **a646abc..SDK completion**, approve the exact publication effects and refresh required gate; no automatic npm publish/production deployment.
-2. When existing operator access returns, privately prove original Vercel/API configuration guards. Recheck refs/approved pins/hooks; only onPASS push `a646abc883131ff411d5dd7bbba536176364fe38:refs/heads/main`. Later SDK commits excluded. Verify actual deployment/source/assets; only named old-web rollback if acceptance fails.
-3. After separately approved API release and valid own-account scope/attendance, guide group `/link` andwait, original URL/close old page/named wallet browser/free message/same-wallet own `/me`. Record real surfacePASS/FAIL; unattempted UNKNOWN. MessagePASS is notC21 transaction proof.
+Under the coordinator's sole-writer dispatch, execute [SDK adoption prompt](superpowers/plans/2026-10-04-sdk-adoption-autonomous.md) before **2026-10-04T13:13:09Z**: receive review/fix findings → actual CLI SDK adoption → local reference app → isolated Node/browser/CLI proof/gate → local verified commits and portable handoff. Independent CLI/demo work can proceed while pinned review runs. No duplicate initial review or independent supervisor. Stop only at actual scoped result/deadline/all-independent-work exhausted, report to coordinator for its next approved arc.
+
+Original exact-a646 release remains parked on private config; no repeat approval/Windows question. Later API release/own-account phone scope/attendance still separate.
 
 ## Parked blockers and downstream impacts
 
@@ -76,6 +82,8 @@ Read current handoff/checkpoint; distinguish approved a646 pins from later local
 
 ## Quick Reference
 
+[Autonomous execution prompt](superpowers/plans/2026-10-04-sdk-adoption-autonomous.md), [coordinator ownership checkpoint](handoffs/2026-10-04-autonomous-sdk-adoption.md).
+
 [Guide/SDK](community/INTEGRATING.md), [SDK completion](handoffs/2026-10-04-read-sdk.md), [integration checkpoint](handoffs/2026-10-04-integration-starter.md), [approval](handoffs/2026-10-04-publication-approval.md), [release row](demo/2026-10-04-combined-release-packet.md), [source pins](demo/2026-10-04-combined-source-pins.json), [setup contract](community/SETUP-INTEGRATION.md).
 
 ## Suggested skills
@@ -83,6 +91,8 @@ Read current handoff/checkpoint; distinguish approved a646 pins from later local
 `handoff-memory`, `karpathy-guidelines`, `security-review` for new client/deployment/sensitive changes, `handoff`. `organic-sync` in its owning vault session consumes the producer handoff. No helpers or Sentinel product work.
 
 ## Generated artifacts this session
+
+Current checkpoint adds only the tracked execution prompt/ownership receipt and canonical v2 instructions. No new editor/session or product implementation launched here.
 
 | What | Canonical home | Stage |
 |---|---|---|

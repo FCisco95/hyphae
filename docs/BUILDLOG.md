@@ -2,6 +2,16 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 — bounded SDK adoption prompt and canonical agreement v2 (local-only)
+
+**Changed:** saved an executable local SDK review/CLI-adoption/reference-demo arc with goal, acceptance, ownership and end clause. Fixed task deadline **2026-10-04T13:13:09Z**; coordinator supervises throughatleast14:10:47Z and owns sole-worker dispatch/shared report. Initial exacta646..ff97 Claude review already coordinator-dispatched; no duplicate editor/reviewer launched by this sender.
+
+**Decision:** complete real SDK adoption behavior while Windows/live gates are held. Applied sync owner's canonical agreementv2 once toCLAUDE/AGENTS at this natural docs checkpoint; explicit release conditions and one-action human help now in managed blocks. No separate document arc or push.
+
+**Validation:** clean instruction files, patch applicability/managed-block-only/canonical equality, prompt paths, diff and portable handoff checked before commit. Prior886/1skip etc remain prior; no fresh product tests or claimed review verdict during prompt preparation.
+
+**Commit/state:** starts ff97f71595b7fde2de88da0f5b788d166aef56cd,21ahead origin312cc0ff. This docs milestone SHA resolves from [ownership checkpoint](handoffs/2026-10-04-autonomous-sdk-adoption.md) history/final delivery, unpushed under release hold. Next: coordinator dispatches one implementation writer from this checkpoint; independent CLI/demo can advance while pinned review runs. Exacta646 approval/access/phone/date gates and SDKverify0.1.0 preserved.
+
 ## 2026-10-04 — standalone read SDK built and installed independently (local-only)
 
 **Changed:** completed Cisco-approved local **@hyphae/read-client0.1.0**: seven typed publicv1 GETs, canonical response validation, structured failures, precision/identity/paging checks, deadline/cancellation/no-store, independent ESM/types tarball. SDK is private and not npm-published; original phone release still blocked on existing access.
