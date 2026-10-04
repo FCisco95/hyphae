@@ -61,6 +61,18 @@ beforeEach(() => {
 });
 
 describe("raid close/cancel commands", () => {
+  it("lets the designated admin terminally close or cancel a historical open brief", async () => {
+    for (const command of ["close_raid", "cancel_raid"]) {
+      const { task, chatId } = await fixture();
+      await t.db.update(tasks).set({ kind: "open" }).where(eq(tasks.id, task.id));
+      await bot.handleUpdate(update(`/${command} ${task.id} Historical brief ended`, chatId));
+      expect(sent.at(-1)).toContain(
+        command === "close_raid" ? "Brief closed." : "Brief cancelled.",
+      );
+      expect(sent.at(-1)).toContain(`Brief: ${task.id}`);
+      expect(sent.at(-1)).toContain("Existing submissions, scores and credit remain unchanged");
+    }
+  });
   it("requires the registered group and a raid identifier with a bounded reason", async () => {
     const { task, chatId } = await fixture();
     await bot.handleUpdate(update(`/close_raid ${task.id} Done`, 7, 7, "private"));

@@ -70,13 +70,8 @@ export async function transitionRaid(
     const [task] = await tx
       .select()
       .from(tasks)
-      .where(
-        and(
-          eq(tasks.id, value.taskId),
-          eq(tasks.communityId, value.communityId),
-          eq(tasks.kind, "raid"),
-        ),
-      )
+      // Historical open briefs also hold the one-active-brief gate and need the same audited exit.
+      .where(and(eq(tasks.id, value.taskId), eq(tasks.communityId, value.communityId)))
       .for("update");
     if (!task) return { status: "not_found" };
     const [previous] = await tx

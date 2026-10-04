@@ -129,6 +129,9 @@ describe("private member receipts", () => {
     expect(text).toContain("X account ownership: unverified");
     expect(text).toContain(`/x/${l.intake.contributionId}`);
     expect(text).toContain("Payment: not verified here");
+    expect(text).toContain(
+      "The existing scorer may post this result publicly in the group, replying to the raid message.",
+    );
     expect(text).not.toContain("Paid");
   });
 
@@ -193,6 +196,9 @@ describe("private member receipts", () => {
     expect(text).toContain(`/x/${row.receipt.contributionId}`);
     expect(text).toContain(`/issue ${row.receipt.id}`);
     expect(text).toContain("Payment: not verified here");
+    expect(text).toContain(
+      "The existing scorer may post this result publicly in the group, replying to the raid message.",
+    );
     expect(text).not.toMatch(
       /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u,
     );
@@ -291,6 +297,38 @@ describe("private member receipts", () => {
     ]);
     expect(await l.issue(81, 42n, " ")).toEqual({ status: "invalid" });
     expect(await l.issue(81, 42n, "a".repeat(1001))).toEqual({ status: "invalid" });
+  });
+
+  it("allows the first report, enforces a per-receipt cooldown and cap, and always replays existing reports", async () => {
+    const l = await lane();
+    const report = (messageId: number, ms: number, userId = 42n) =>
+      reportSubmissionIssue(
+        t.db,
+        {
+          receiptId: l.receipt.id,
+          telegramUserId: userId,
+          telegramMessageId: messageId,
+          text: `Report ${messageId}`,
+        },
+        { clock: later(ms) },
+      );
+    const first = await report(100, 0);
+    expect(first.status).toBe("recorded");
+    expect(await report(101, 59_001)).toEqual({ status: "cooldown", retryAfterSeconds: 1 });
+    expect(await report(100, 59_001)).toEqual({ ...first, status: "duplicate" });
+    expect((await report(101, MIN)).status).toBe("recorded");
+    expect((await report(102, 2 * MIN)).status).toBe("recorded");
+    expect(await report(103, 3 * MIN)).toEqual({ status: "limit" });
+    expect(await report(100, 3 * MIN)).toEqual({ ...first, status: "duplicate" });
+    expect(await report(100, 3 * MIN, 43n)).toEqual({ status: "not_found" });
+    expect(
+      await t.db
+        .select()
+        .from(submissionIssues)
+        .where(eq(submissionIssues.receiptId, l.receipt.id)),
+    ).toHaveLength(3);
+    const other = await lane();
+    expect((await other.issue()).status).toBe("recorded");
   });
 
   it("shows the frozen selected revision even when a later correction has different points", async () => {

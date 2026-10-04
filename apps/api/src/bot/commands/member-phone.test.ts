@@ -1,8 +1,11 @@
+import { type Prompt, ReadApiV1, ReadApiV1Loose, type RewardPurpose } from "@hyphae/core";
 import {
   contributions,
   raidSubmissionReceipts,
   raidSubmissionSessions,
   raidSubscriptions,
+  rewardIntakes,
+  rewardNominations,
   submissionIssues,
   tasks,
 } from "@hyphae/db";
@@ -10,8 +13,11 @@ import { eq } from "drizzle-orm";
 import type { Bot } from "grammy";
 import type { InlineKeyboardMarkup, Message, Update, UserFromGetMe } from "grammy/types";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { readContribution } from "../../http/read-service.js";
 import { startRaidNotifier } from "../../raid-alerts/runner.js";
-import { createTestDb, seedCommunity, seedTask } from "../../rewards/test-db.js";
+import { bootstrapRewardEpochs, buildRewardConfigPayload } from "../../rewards/config.js";
+import { runEvaluation } from "../../rewards/evaluation.js";
+import { at, createTestDb, rubric, seedCommunity, seedTask } from "../../rewards/test-db.js";
 
 const state = vi.hoisted(() => ({
   db: null as unknown,
@@ -138,6 +144,7 @@ async function prompt(taskId: string, kind: "reply" | "quote" = "reply") {
 async function fixture() {
   const { community } = await seedCommunity(t.db);
   const task = await seedTask(t.db, community.id, new Date(Date.now() - 1000));
+  await t.db.update(tasks).set({ telegramMessageId: ++nextUpdate }).where(eq(tasks.id, task.id));
   return { community, task };
 }
 beforeAll(async () => {
@@ -191,6 +198,126 @@ beforeEach(() => {
 });
 
 describe("first-time member journey through actual bot handlers (fixture only)", () => {
+  it("preserves frozen reward capture through private intake, evaluation, effort nomination and public parsing", async () => {
+    const { community } = await seedCommunity(t.db);
+    await bootstrapRewardEpochs(
+      t.db,
+      {
+        communityId: community.id,
+        payload: buildRewardConfigPayload(rubric),
+        opensAt: new Date(Math.floor(Date.now() / 1000) * 1000 - 60_000),
+        proposedBy: "fixture",
+      },
+      { clock: at(new Date(Date.now() - 3_600_000)) },
+    );
+    const chat = Number(community.telegramChatId);
+    await bot.handleUpdate(
+      message("/raid https://x.com/owner/status/601 1 Reproduce the target's claim", 7, chat),
+    );
+    const task = required(
+      await t.db.query.tasks.findFirst({ where: eq(tasks.communityId, community.id) }),
+    );
+    const opened = await prompt(task.id);
+    const url = "https://x.com/member/status/602";
+    await bot.handleUpdate(message(url, 42, 42, opened.promptId));
+    const receipt = required(
+      await t.db.query.raidSubmissionReceipts.findFirst({
+        where: eq(raidSubmissionReceipts.sessionId, opened.session.id),
+      }),
+    );
+    const intake = required(
+      await t.db.query.rewardIntakes.findFirst({
+        where: eq(rewardIntakes.contributionId, receipt.contributionId),
+      }),
+    );
+    expect(receipt).toMatchObject({
+      queueStatus: "queued",
+      relationStatus: "unverified",
+      ownershipStatus: "unverified",
+    });
+    expect(intake.capture).toMatchObject({ source: "x_oembed", limitations: ["text_only"] });
+    expect(state.queue).toHaveBeenCalledWith(
+      "reward-evaluation",
+      {
+        communityId: community.id,
+        target: { contributionId: receipt.contributionId },
+      },
+      expect.objectContaining({ id: receipt.id, db: expect.anything() }),
+    );
+    const provider = vi.fn(async (capturedPrompt: Prompt, purpose: RewardPurpose) => {
+      expect(capturedPrompt.user).toContain("Capture limitations: text_only");
+      expect(capturedPrompt.user).not.toContain("target_relation_unverified");
+      expect(capturedPrompt.user).not.toContain("account_ownership_unverified");
+      const effort = {
+        originalSubstance: { met: true, note: "own reproducible fixture work" },
+        inspectableWork: { met: true, note: "captured steps and observations" },
+        communityContribution: { met: true, note: "useful evidence for the target" },
+        missingEssentialEvidence: null,
+        explanation:
+          "You documented the observed result and enough steps for another member to check it.",
+      };
+      return {
+        output:
+          purpose === "effort"
+            ? { effort }
+            : {
+                score: 85,
+                rubricHits: [{ key: "context_fit", met: true, note: "specific" }],
+                flags: [],
+                aiSlop: { patterns: [], templateRhythm: false },
+                reasoning:
+                  "You addressed the selected target with a specific and inspectable result.",
+              },
+        latencyMs: 1,
+        costMicroUsd: 0,
+      };
+    });
+    const evaluation = { model: "test:fake", call: provider, horizonMs: 300_000 }; // Fixture routing only; no provider request.
+    expect(
+      await runEvaluation(
+        t.db,
+        { communityId: community.id, target: { contributionId: receipt.contributionId } },
+        evaluation,
+      ),
+    ).toMatchObject({ status: "completed" });
+    await bot.handleUpdate(callback(`receipt_${receipt.id}`));
+    expect(texts().at(-1)).toContain("85 provisional");
+    expect(texts().at(-1)).toContain("X account ownership: unverified");
+    const captures = state.fetchPost.mock.calls.length;
+    await bot.handleUpdate(message(`/effort ${url}`, 42, chat));
+    expect(texts().at(-1)).toContain("Nominated for an effort upgrade");
+    const nomination = required(
+      await t.db.query.rewardNominations.findFirst({
+        where: eq(rewardNominations.contributionId, receipt.contributionId),
+      }),
+    );
+    expect(nomination).toMatchObject({ kind: "upgrade", state: "ready", pendingReason: null });
+    expect(state.fetchPost).toHaveBeenCalledTimes(captures);
+    expect(
+      await runEvaluation(
+        t.db,
+        { communityId: community.id, target: { nominationId: nomination.id } },
+        evaluation,
+      ),
+    ).toMatchObject({ status: "completed" });
+    expect(provider.mock.calls.map((call) => call[1])).toEqual(["quality", "effort"]);
+    const audit = ReadApiV1.contribution.parse(
+      await readContribution(t.db, receipt.contributionId, new Date()),
+    );
+    // The web app and read-client both consume this tolerant schema.
+    expect(ReadApiV1Loose.contribution.parse(audit)).toMatchObject({
+      id: receipt.contributionId,
+      raid_id: task.id,
+      state: "counted",
+      capture: { limitations: ["text_only"] },
+      selected: { effort: "eligible", multiplier_bps: 30_000, points: "255" },
+      nomination: { kind: "upgrade", state: "completed_eligible" },
+    });
+    await bot.handleUpdate(callback(`receipt_${receipt.id}`));
+    expect(texts().at(-1)).toContain("255 provisional");
+    expect(texts().at(-1)).toContain("Target relation: unverified");
+    expect(texts().at(-1)).toContain("Payment: not verified here");
+  });
   it("delivers a private raid, submits the exact reply and quote, refreshes receipts and records a tied issue", async () => {
     const { community } = await seedCommunity(t.db);
     const chat = Number(community.telegramChatId);

@@ -104,6 +104,7 @@ describe("receipt and scoring-issue bot commands", () => {
   it("privately reads the caller's receipt with refresh controls and no queued-success claim", async () => {
     await bot.handleUpdate(command(`/receipt ${receiptId}`));
     expect(texts()[0]).toContain("Pending dispatch: received");
+    expect(texts()[0]).toContain("may post this result publicly in the group");
     expect(
       JSON.stringify(output.find((o) => o.method === "sendMessage")?.payload.reply_markup),
     ).toContain(`receipt_${receiptId}`);
@@ -146,6 +147,17 @@ describe("receipt and scoring-issue bot commands", () => {
       },
     });
     expect(texts()[0]).toContain(receiptId);
+  });
+
+  it("refuses rapid follow-up issues clearly while preserving the first report", async () => {
+    await bot.handleUpdate(command(`/issue ${receiptId} Another detail`));
+    expect(texts()[0]).toContain("Wait");
+    expect(texts()[0]).toContain("Existing reports remain recorded");
+    expect(texts()[0]).toContain("designated admin");
+    expect(texts()[0]).not.toContain("Issue recorded:");
+    expect(
+      await t.db.select().from(submissionIssues).where(eq(submissionIssues.receiptId, receiptId)),
+    ).toHaveLength(1);
   });
 
   it("labels the stored legacy score as credited quality when the raw model score differs", async () => {

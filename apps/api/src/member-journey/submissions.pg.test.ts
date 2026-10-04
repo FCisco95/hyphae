@@ -4,13 +4,15 @@ import {
   communities,
   contributions,
   createDb,
+  type Db,
   members,
   raidDeliveries,
   raidLifecycleEvents,
   raidSubmissionReceipts,
 } from "@hyphae/db";
-import { eq, sql } from "drizzle-orm";
+import { count, eq, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
+import { PgBoss } from "pg-boss";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   claimRaidAlert,
@@ -18,20 +20,31 @@ import {
   openRaid,
   setRaidSubscription,
 } from "../raid-alerts/alerts.js";
+import { withCommunityLock } from "../rewards/config.js";
 import { rubric } from "../rewards/test-db.js";
 import { transitionRaid } from "./lifecycle.js";
-import { acceptSubmission, beginSubmission } from "./submissions.js";
+import { submissionQueueDb } from "./queue-db.js";
+import { acceptSubmission, beginSubmission, queueSubmission } from "./submissions.js";
 
 const url = process.env.HYPHAE_TEST_PG_URL;
 if (!url) throw new Error("Use disposable test:pg runner");
 const a = createDb(url);
 const b = createDb(url);
+const queue = new PgBoss({
+  connectionString: url,
+  schema: "journey_jobs",
+  supervise: false,
+  schedule: false,
+});
 beforeAll(async () => {
   await migrate(a, {
     migrationsFolder: fileURLToPath(new URL("../../../../packages/db/drizzle", import.meta.url)),
   });
+  await queue.start();
+  await queue.createQueue("score");
 });
 afterAll(async () => {
+  await queue.stop();
   await Promise.all([a.$client.end(), b.$client.end()]);
 });
 const post = { id: "1", handle: "target", text: "Target", url: "https://x.com/target/status/1" };
@@ -240,5 +253,143 @@ describe("private journey on two real PostgreSQL pools", () => {
       "skipped",
     );
     expect(send).not.toHaveBeenCalled();
+  });
+  it("slow post-fetch membership does not hold the reward lock and a concurrent close still wins", async () => {
+    const { submit, community, task, input } = await setup();
+    const gate = barrier();
+    let calls = 0;
+    const accepting = acceptSubmission(a, submit, {
+      ...deps,
+      membership: async () => {
+        if (++calls === 2) {
+          gate.enter();
+          await gate.wait;
+        }
+        return true;
+      },
+    });
+    await gate.entered;
+    try {
+      const independent = await b.transaction(async (tx) => {
+        await tx.execute(sql`set local lock_timeout = '500ms'`);
+        return withCommunityLock(tx, community.id, {}, async () => "lock available");
+      });
+      expect(independent).toBe("lock available");
+      const closed = await transitionRaid(b, {
+        communityId: input.communityId,
+        chatId: input.chatId,
+        actorId: input.actorId,
+        messageId: 2,
+        taskId: task.id,
+        action: "closed",
+        reason: "Closed during membership lookup",
+      });
+      expect(closed.status).toBe("changed");
+    } finally {
+      gate.release();
+      await accepting;
+    }
+    expect(await accepting).toEqual({ error: "task_closed" });
+  });
+  it("demonstrates singletonKey alone is not unique in the unchanged standard queue", async () => {
+    const key = randomUUID();
+    const first = await queue.send("score", { proof: key }, { singletonKey: key });
+    const second = await queue.send("score", { proof: key }, { singletonKey: key });
+    expect(first).toBeTruthy();
+    expect(second).toBeTruthy();
+    expect(second).not.toBe(first);
+  });
+  it("commits one real job with its receipt across concurrent stale retries", async () => {
+    const { submit } = await setup();
+    const accepted = await acceptSubmission(a, submit, deps);
+    if (!("receipt" in accepted)) throw new Error("receipt");
+    const receipt = accepted.receipt;
+    const enqueue = (tx: Db) =>
+      queue.send(
+        "score",
+        { contributionId: receipt.contributionId },
+        { id: receipt.id, db: submissionQueueDb(tx) },
+      );
+    expect(
+      await Promise.all([
+        queueSubmission(a, receipt, enqueue),
+        queueSubmission(b, receipt, enqueue),
+      ]),
+    ).toEqual([true, true]);
+    const [jobs] = await a
+      .select({ n: count() })
+      .from(sql`journey_jobs.job`)
+      .where(sql`id = ${receipt.id}::uuid`);
+    expect(jobs?.n).toBe(1);
+    expect(
+      (
+        await a.query.raidSubmissionReceipts.findFirst({
+          where: eq(raidSubmissionReceipts.id, receipt.id),
+        })
+      )?.queueStatus,
+    ).toBe("queued");
+  });
+  it("rolls a real job back if receipt confirmation fails, then retries exactly once", async () => {
+    const { submit } = await setup();
+    const accepted = await acceptSubmission(a, submit, deps);
+    if (!("receipt" in accepted)) throw new Error("receipt");
+    const receipt = accepted.receipt;
+    const enqueue = (tx: Db) =>
+      queue.send(
+        "score",
+        { contributionId: receipt.contributionId },
+        { id: receipt.id, db: submissionQueueDb(tx) },
+      );
+    expect(
+      await queueSubmission(a, receipt, async (tx) => {
+        await enqueue(tx);
+        throw new Error("simulated receipt write failure");
+      }),
+    ).toBe(false);
+    const [before] = await a
+      .select({ n: count() })
+      .from(sql`journey_jobs.job`)
+      .where(sql`id = ${receipt.id}::uuid`);
+    expect(before?.n).toBe(0);
+    expect(
+      (
+        await a.query.raidSubmissionReceipts.findFirst({
+          where: eq(raidSubmissionReceipts.id, receipt.id),
+        })
+      )?.queueStatus,
+    ).toBe("pending");
+    expect(await queueSubmission(b, receipt, enqueue)).toBe(true);
+    const [after] = await a
+      .select({ n: count() })
+      .from(sql`journey_jobs.job`)
+      .where(sql`id = ${receipt.id}::uuid`);
+    expect(after?.n).toBe(1);
+  });
+  it("a lost commit acknowledgement resolves from the receipt without another job", async () => {
+    const { submit } = await setup();
+    const accepted = await acceptSubmission(a, submit, deps);
+    if (!("receipt" in accepted)) throw new Error("receipt");
+    const receipt = accepted.receipt;
+    const enqueue = vi.fn((tx: Db) =>
+      queue.send(
+        "score",
+        { contributionId: receipt.contributionId },
+        { id: receipt.id, db: submissionQueueDb(tx) },
+      ),
+    );
+    const lost = {
+      transaction: async (fn: (tx: Db) => Promise<unknown>) => {
+        await a.transaction(fn);
+        throw new Error("lost commit ack");
+      },
+    } as unknown as Db;
+    expect(await queueSubmission(lost, receipt, enqueue)).toBe(false);
+    expect(await queueSubmission(b, receipt, enqueue)).toBe(true);
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    const [jobs] = await a
+      .select({ n: count() })
+      .from(sql`journey_jobs.job`)
+      .where(sql`id = ${receipt.id}::uuid`);
+    expect(jobs?.n).toBe(1);
   });
 });

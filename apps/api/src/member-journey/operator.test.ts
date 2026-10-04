@@ -24,6 +24,7 @@ import {
   seedTask,
   T0,
 } from "../rewards/test-db.js";
+import { raidState } from "./lifecycle.js";
 import { operatorMessage, readOperatorSummary } from "./operator.js";
 import { reportSubmissionIssue } from "./receipts.js";
 
@@ -203,6 +204,17 @@ describe("community operator summary", () => {
     expect(s.raids).toHaveLength(4);
     expect(s.activeRaids.map((r) => r.id)).toEqual([active.id]);
     expect(operatorMessage(s)).toContain("expired 1, closed 1, cancelled 1");
+  });
+
+  it("uses the lifecycle upcoming state for a raid whose window has not opened", async () => {
+    const a = await seedCommunity(t.db);
+    const task = await seedTask(t.db, a.community.id, new Date(T0.getTime() + 60_000));
+    const s = await summary(a);
+    expect(raidState(task, null, T0)).toBe("upcoming");
+    expect(s.raids).toEqual([{ state: raidState(task, null, T0), count: 1 }]);
+    expect(s.activeRaids).toEqual([]);
+    expect(operatorMessage(s)).toContain("upcoming 1");
+    expect(operatorMessage(s)).not.toContain("scheduled");
   });
 
   it("scopes delivery failures and uncertain sends through their community announcement", async () => {
@@ -465,19 +477,57 @@ describe("community operator summary", () => {
     expect(operatorMessage(s)).not.toContain(other.id);
   });
 
-  it("keeps the full bounded summary within Telegram's message limit", async () => {
+  it("keeps Unicode issue reasons well-formed after the SQL and message length bounds", async () => {
+    const a = await seedCommunity(t.db);
+    const r = await receipt(a);
+    const reported = await reportSubmissionIssue(t.db, {
+      receiptId: r.id,
+      telegramUserId: a.member.telegramUserId,
+      telegramMessageId: 80,
+      text: `a${"🌱".repeat(79)}`,
+    });
+    expect(reported.status).toBe("recorded");
+    const s = await summary(a);
+    expect(s.issues.count).toBe(1);
+    const text = operatorMessage(s);
+    expect(text).toContain(`receipt ${r.id}: a🌱`);
+    expect(text).not.toMatch(
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u,
+    );
+    expect(text.length).toBeLessThanOrEqual(4096);
+  });
+
+  it.each(["name", "target", "delivery reason"])(
+    "keeps the Unicode %s boundary well-formed",
+    async (field) => {
+      const a = await seedCommunity(t.db);
+      const s = await summary(a);
+      const long = `a${"🌱".repeat(200)}`;
+      if (field === "name") s.communityName = long;
+      if (field === "target") s.activeRaids = [{ id: randomUUID(), targetUrl: long, closesAt: T0 }];
+      if (field === "delivery reason")
+        s.deliveryProblems = [{ status: "uncertain", reason: long, count: 1 }];
+      const text = operatorMessage(s);
+      expect(text).not.toMatch(
+        /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u,
+      );
+      expect(text.length).toBeLessThanOrEqual(4096);
+    },
+  );
+
+  it("keeps the full Unicode summary within Telegram's UTF-16 message limit", async () => {
     const a = await seedCommunity(t.db);
     const s = await summary(a);
-    s.communityName = "Long community\n".repeat(30);
+    s.communityName = `a\nb${"🌱".repeat(300)}`;
     s.raids = [{ state: "active", count: 6 }];
     s.activeRaids = Array.from({ length: 5 }, () => ({
       id: randomUUID(),
-      targetUrl: `https://x.com/${"a".repeat(500)}`,
+      targetUrl: `https://x.com/${"🌱".repeat(300)}`,
       closesAt: T0,
     }));
     s.deliveryProblems = Array.from({ length: 5 }, () => ({
       status: "uncertain",
-      reason: "Long reason\n".repeat(30),
+      reason: `a${"🌱".repeat(300)}`,
       count: 999_999,
     }));
     s.issues = {
@@ -485,7 +535,7 @@ describe("community operator summary", () => {
       recent: Array.from({ length: 3 }, () => ({
         id: randomUUID(),
         receiptId: randomUUID(),
-        reason: "Long reason\n".repeat(30),
+        reason: `a${"🌱".repeat(300)}`,
       })),
     };
     s.jobs = {
@@ -510,7 +560,39 @@ describe("community operator summary", () => {
     expect(text.length).toBeLessThan(4096);
     expect(text).toContain("Showing the five most recent active raids");
     expect(text).toContain("Recorded model cost estimate");
-    expect(text).not.toContain("Long community\n");
+    expect(text).not.toContain("a\nb");
+    expect(text).not.toMatch(
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u,
+    );
+  });
+
+  it("recovers missing queue inside a read-only transaction without poisoning later reads", async () => {
+    const a = await seedCommunity(t.db);
+    await t.db.execute(sql`alter table pgboss.job rename to unavailable_job`);
+    try {
+      await t.db.transaction(
+        async (tx) => {
+          const result = await readOperatorSummary(
+            tx,
+            { communityId: a.community.id, actorId: 7n },
+            T0,
+          );
+          expect(result.status).toBe("ok");
+          if (result.status !== "ok") throw new Error("Expected available operator summary");
+          expect(result.summary.jobs).toEqual({ status: "unavailable" });
+          expect(operatorMessage(result.summary)).toContain("Failed-job count is unknown");
+          expect(
+            await tx
+              .select({ id: communities.id })
+              .from(communities)
+              .where(eq(communities.id, a.community.id)),
+          ).toEqual([{ id: a.community.id }]);
+        },
+        { accessMode: "read only" },
+      );
+    } finally {
+      await t.db.execute(sql`alter table pgboss.unavailable_job rename to job`);
+    }
   });
 
   it("labels missing queue telemetry as unknown, without leaking the database error", async () => {

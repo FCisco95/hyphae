@@ -8,7 +8,7 @@ import {
   raidSubmissionSessions,
   tasks,
 } from "@hyphae/db";
-import { and, eq, like } from "drizzle-orm";
+import { and, count, eq, gte, isNull, like } from "drizzle-orm";
 import { bindHandle } from "../bot/commands/handles.js";
 import { COMMUNITY_ID } from "../raid-alerts/alerts.js";
 import { type Clock, dbClock, withCommunityLock } from "../rewards/config.js";
@@ -26,6 +26,8 @@ export type Receipt = typeof raidSubmissionReceipts.$inferSelect;
 
 export const REFUSALS = {
   unavailable: "That submission is unavailable in your private chat.",
+  prompt_limited:
+    "Too many submission prompts in the last hour. Reuse an existing prompt or try again later.",
   link_required: "Link your wallet first: send /link in this community's registered group.",
   not_member: "You must currently belong to this raid's registered group.",
   membership_unavailable: "Membership could not be checked. Nothing new was accepted; try again.",
@@ -75,7 +77,7 @@ async function inactiveReason(
   return "outside_window";
 }
 
-async function currentMember(db: Db, communityId: string, userId: bigint, deps: SubmissionDeps) {
+async function memberContext(db: Db, communityId: string, userId: bigint) {
   const community = await db.query.communities.findFirst({
     where: eq(communities.id, communityId),
   });
@@ -85,12 +87,58 @@ async function currentMember(db: Db, communityId: string, userId: bigint, deps: 
     where: and(eq(members.communityId, communityId), eq(members.telegramUserId, userId)),
   });
   if (!member) return "link_required" as const;
+  return { community, member };
+}
+
+async function currentMember(db: Db, communityId: string, userId: bigint, deps: SubmissionDeps) {
+  const found = await memberContext(db, communityId, userId);
+  if (typeof found === "string") return found;
   try {
-    if (!(await deps.membership(community.telegramChatId, userId))) return "not_member" as const;
+    if (!(await deps.membership(found.community.telegramChatId, userId)))
+      return "not_member" as const;
   } catch {
     return "membership_unavailable" as const;
   }
-  return { community, member };
+  return found;
+}
+
+async function promptLimited(db: Db, communityId: string, userId: bigint, now: Date) {
+  const [row] = await db
+    .select({ n: count() })
+    .from(raidSubmissionSessions)
+    .where(
+      and(
+        eq(raidSubmissionSessions.communityId, communityId),
+        eq(raidSubmissionSessions.telegramUserId, userId),
+        gte(raidSubmissionSessions.createdAt, new Date(now.getTime() - 3_600_000)),
+      ),
+    );
+  // A technical bound on abandoned prompts; it does not limit reward credit or model spending.
+  return (row?.n ?? 0) >= 10;
+}
+
+async function duplicateKind(
+  db: Db,
+  session: Session,
+  memberId: string,
+  statusId: string,
+): Promise<Refusal | undefined> {
+  const seen = await db.query.contributions.findFirst({
+    where: and(
+      eq(contributions.communityId, session.communityId),
+      like(contributions.url, `%/status/${statusId}`),
+    ),
+  });
+  if (seen) return "duplicate_artifact";
+  const taken = await db.query.contributions.findFirst({
+    where: and(
+      eq(contributions.communityId, session.communityId),
+      eq(contributions.memberId, memberId),
+      eq(contributions.taskId, session.taskId),
+      eq(contributions.kind, session.kind),
+    ),
+  });
+  return taken ? "kind_taken" : undefined;
 }
 
 export async function beginSubmission(
@@ -104,6 +152,16 @@ export async function beginSubmission(
     return { error: "unavailable" };
   const task = await db.query.tasks.findFirst({ where: eq(tasks.id, taskId) });
   if (task?.kind !== "raid" || !task.targetUrl) return { error: "unavailable" };
+  if (!task.telegramMessageId || task.telegramMessageId <= 0) return { error: "unavailable" };
+  if (
+    await promptLimited(
+      db,
+      task.communityId,
+      userId,
+      await (deps.clock ?? dbClock)(db, task.communityId),
+    )
+  )
+    return { error: "prompt_limited" };
   const found = await currentMember(db, task.communityId, userId, deps);
   if (typeof found === "string") return { error: found };
   return withCommunityLock(db, task.communityId, deps, async (tx, community, now) => {
@@ -114,6 +172,9 @@ export async function beginSubmission(
       return { error: await inactiveReason(tx, current, now) };
     if (community.telegramChatId !== found.community.telegramChatId)
       return { error: "membership_unavailable" };
+    if (!current.telegramMessageId || current.telegramMessageId <= 0)
+      return { error: "unavailable" };
+    if (await promptLimited(tx, community.id, userId, now)) return { error: "prompt_limited" };
     const [session] = await tx
       .insert(raidSubmissionSessions)
       .values({
@@ -130,19 +191,35 @@ export async function beginSubmission(
   });
 }
 
-export async function cancelSubmission(db: Db, sessionId: string, userId: bigint) {
-  if (!COMMUNITY_ID.test(sessionId)) return false;
-  const [row] = await db
-    .update(raidSubmissionSessions)
-    .set({ cancelledAt: new Date() })
-    .where(
-      and(
-        eq(raidSubmissionSessions.id, sessionId),
-        eq(raidSubmissionSessions.telegramUserId, userId),
-      ),
-    )
-    .returning();
-  return !!row;
+export async function cancelSubmission(
+  db: Db,
+  sessionId: string,
+  userId: bigint,
+  clock: Clock = dbClock,
+) {
+  if (!COMMUNITY_ID.test(sessionId) || userId <= 0n) return false;
+  return db.transaction(async (tx) => {
+    const [session] = await tx
+      .select()
+      .from(raidSubmissionSessions)
+      .where(
+        and(
+          eq(raidSubmissionSessions.id, sessionId),
+          eq(raidSubmissionSessions.telegramUserId, userId),
+        ),
+      )
+      .for("update");
+    if (!session) return false;
+    if (session.cancelledAt) return true;
+    const now = await clock(tx, session.communityId);
+    await tx
+      .update(raidSubmissionSessions)
+      .set({ cancelledAt: now })
+      .where(
+        and(eq(raidSubmissionSessions.id, sessionId), isNull(raidSubmissionSessions.cancelledAt)),
+      );
+    return true;
+  });
 }
 
 export async function acceptSubmission(
@@ -150,7 +227,12 @@ export async function acceptSubmission(
   input: { sessionId: string; userId: bigint; url: string },
   deps: SubmissionDeps,
 ): Promise<{ receipt: Receipt; lane: "reward" | "legacy"; replay: boolean } | { error: Refusal }> {
-  if (!COMMUNITY_ID.test(input.sessionId) || input.userId <= 0n) return { error: "unavailable" };
+  if (
+    !COMMUNITY_ID.test(input.sessionId) ||
+    input.userId <= 0n ||
+    !Number.isSafeInteger(Number(input.userId))
+  )
+    return { error: "unavailable" };
   const session = await db.query.raidSubmissionSessions.findFirst({
     where: and(
       eq(raidSubmissionSessions.id, input.sessionId),
@@ -158,7 +240,7 @@ export async function acceptSubmission(
     ),
   });
   if (!session) return { error: "unavailable" };
-  const found = await currentMember(db, session.communityId, input.userId, deps);
+  const found = await memberContext(db, session.communityId, input.userId);
   if (typeof found === "string") return { error: found };
   const parsed = parsePostUrl(input.url);
   if (!parsed || /\s/.test(input.url)) return { error: "invalid_url" };
@@ -172,10 +254,13 @@ export async function acceptSubmission(
         where: (r, { eq }) => eq(r.contributionId, old.contributionId),
       })
     : undefined;
-  if (old)
-    return old.memberId === found.member.id && old.artifactKey === artifactKey
-      ? { receipt: old, lane: oldIntake ? "reward" : "legacy", replay: true }
-      : { error: "unavailable" };
+  if (old) {
+    if (old.memberId !== found.member.id || old.artifactKey !== artifactKey)
+      return { error: "unavailable" };
+    const checked = await currentMember(db, session.communityId, input.userId, deps);
+    if (typeof checked === "string") return { error: checked };
+    return { receipt: old, lane: oldIntake ? "reward" : "legacy", replay: true };
+  }
   const before = await (deps.clock ?? dbClock)(db, session.communityId);
   if (session.cancelledAt || session.expiresAt <= before) return { error: "session_expired" };
   const task = await db.query.tasks.findFirst({
@@ -188,7 +273,12 @@ export async function acceptSubmission(
     task.closesAt <= before
   )
     return { error: await inactiveReason(db, task, before) };
+  if (!task.telegramMessageId || task.telegramMessageId <= 0) return { error: "unavailable" };
   if (parsePostUrl(task.targetUrl ?? "")?.id === parsed.id) return { error: "target_itself" };
+  const duplicate = await duplicateKind(db, session, found.member.id, parsed.id);
+  if (duplicate) return { error: duplicate };
+  const beforeFetch = await currentMember(db, session.communityId, input.userId, deps);
+  if (typeof beforeFetch === "string") return { error: beforeFetch };
   let post: XPost | null;
   try {
     post = await deps.fetchPost(input.url);
@@ -202,15 +292,21 @@ export async function acceptSubmission(
     parsePostUrl(post.url)?.id !== parsed.id
   )
     return { error: "post_unavailable" };
-  // Serialize with task lifecycle and existing reward admission; recheck membership after retrieval.
+  // Telegram cannot participate in a DB transaction. Check immediately after retrieval, then
+  // revalidate the same registered chat/member/window under the lock without network I/O.
+  const checked = await currentMember(db, session.communityId, input.userId, deps);
+  if (typeof checked === "string") return { error: checked };
   return withCommunityLock(db, session.communityId, deps, async (tx, community) => {
     const [lockedSession] = await tx
       .select()
       .from(raidSubmissionSessions)
       .where(eq(raidSubmissionSessions.id, session.id))
       .for("update");
-    const caller = await currentMember(tx, community.id, input.userId, deps);
+    if (community.telegramChatId !== checked.community.telegramChatId)
+      return { error: "membership_unavailable" };
+    const caller = await memberContext(tx, community.id, input.userId);
     if (typeof caller === "string") return { error: caller };
+    if (caller.member.id !== checked.member.id) return { error: "unavailable" };
     const now = await (deps.clock ?? dbClock)(tx, community.id);
     const existing = await tx.query.raidSubmissionReceipts.findFirst({
       where: eq(raidSubmissionReceipts.sessionId, session.id),
@@ -235,22 +331,10 @@ export async function acceptSubmission(
       current.closesAt <= now
     )
       return { error: await inactiveReason(tx, current, now) };
-    const seen = await tx.query.contributions.findFirst({
-      where: and(
-        eq(contributions.communityId, community.id),
-        like(contributions.url, `%/status/${parsed.id}`),
-      ),
-    });
-    if (seen) return { error: "duplicate_artifact" };
-    const taken = await tx.query.contributions.findFirst({
-      where: and(
-        eq(contributions.communityId, community.id),
-        eq(contributions.memberId, caller.member.id),
-        eq(contributions.taskId, current.id),
-        eq(contributions.kind, session.kind),
-      ),
-    });
-    if (taken) return { error: "kind_taken" };
+    if (!current.telegramMessageId || current.telegramMessageId <= 0)
+      return { error: "unavailable" };
+    const duplicate = await duplicateKind(tx, session, caller.member.id, parsed.id);
+    if (duplicate) return { error: duplicate };
     // A handle is an unverified claim with the existing cap, never proof of ownership.
     const [lockedMember] = await tx
       .select()
@@ -261,8 +345,7 @@ export async function acceptSubmission(
     const binding = bindHandle(lockedMember.xHandles, post.handle);
     if (!binding.ok) return { error: "handle_limit" };
     // The frozen worker replies in the group. Never give it a private-chat message identifier.
-    const captured = capturedEvidence({ post }, current.telegramMessageId ?? 0, now);
-    captured.capture.limitations.push("target_relation_unverified", "account_ownership_unverified");
+    const captured = capturedEvidence({ post }, current.telegramMessageId, now);
     const admission = {
       communityId: community.id,
       memberId: caller.member.id,
@@ -314,16 +397,36 @@ export async function acceptSubmission(
   });
 }
 
-// Queue failure never erases durable intake or turns it into a second contribution.
-export async function queueSubmission(db: Db, receipt: Receipt, enqueue: () => Promise<unknown>) {
-  if (receipt.queueStatus === "queued") return true;
+// The callback must insert its pg-boss job using this transaction's adapter. Job and receipt
+// commit together; a lost commit acknowledgement is resolved by rereading this durable row.
+export async function queueSubmission(
+  db: Db,
+  receipt: Receipt,
+  enqueue: (tx: Db) => Promise<string | null>,
+) {
   try {
-    await enqueue();
-    await db
-      .update(raidSubmissionReceipts)
-      .set({ queueStatus: "queued" })
-      .where(eq(raidSubmissionReceipts.id, receipt.id));
-    return true;
+    return await db.transaction(async (tx) => {
+      const [current] = await tx
+        .select()
+        .from(raidSubmissionReceipts)
+        .where(
+          and(
+            eq(raidSubmissionReceipts.id, receipt.id),
+            eq(raidSubmissionReceipts.communityId, receipt.communityId),
+            eq(raidSubmissionReceipts.memberId, receipt.memberId),
+            eq(raidSubmissionReceipts.contributionId, receipt.contributionId),
+          ),
+        )
+        .for("update");
+      if (!current) return false;
+      if (current.queueStatus === "queued") return true;
+      if (!(await enqueue(tx))) throw new Error("Submission queue did not accept job");
+      await tx
+        .update(raidSubmissionReceipts)
+        .set({ queueStatus: "queued" })
+        .where(eq(raidSubmissionReceipts.id, current.id));
+      return true;
+    });
   } catch {
     return false;
   }

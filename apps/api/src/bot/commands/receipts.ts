@@ -2,6 +2,7 @@ import type { Db } from "@hyphae/db";
 import { type CommandContext, type Context, InlineKeyboard } from "grammy";
 import {
   ISSUE_MAX_LENGTH,
+  ISSUE_MAX_REPORTS,
   loadReceipt,
   RECEIPT_ID,
   receiptText,
@@ -71,6 +72,16 @@ export async function issueCommand(db: Db, ctx: CommandContext<Context>) {
     return ctx.reply(`Explain the issue in 1–${ISSUE_MAX_LENGTH} characters.`);
   if (result.status === "not_found")
     return ctx.reply("Receipt not found for your account. No issue was recorded.");
+  if (result.status === "limit" || result.status === "cooldown")
+    return ctx.reply(
+      [
+        result.status === "limit"
+          ? `This receipt has reached the ${ISSUE_MAX_REPORTS}-report storage limit. No additional report was stored.`
+          : `Wait ${result.retryAfterSeconds} seconds before another report for this receipt. No additional report was stored.`,
+        "Existing reports remain recorded. Further context can be taken to the community's designated admin; a response or action is not guaranteed.",
+        "These technical limits do not change scores, frozen decisions or allocations.",
+      ].join("\n"),
+    );
   return ctx.reply(
     `${result.status === "duplicate" ? "Issue already recorded" : "Issue recorded"}: ${result.issueId}\nOriginal receipt: ${match[1]}\nThis is a request for review. No score, frozen decision or allocation was changed. Review timing is not guaranteed.`,
   );

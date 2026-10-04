@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { communities, contributions, raidLifecycleEvents, scoringRuns, tasks } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { openRaid } from "../raid-alerts/alerts.js";
 import { at, createTestDb, seedCommunity, seedTask } from "../rewards/test-db.js";
 import { type RaidTransition, raidState, transitionRaid } from "./lifecycle.js";
 
@@ -93,7 +94,7 @@ describe("authorized raid terminal actions", () => {
       "existing",
     );
   });
-  it("rejects foreign community tasks, unknown tasks and non-raid tasks", async () => {
+  it("rejects foreign community tasks and unknown tasks", async () => {
     const a = await fixture();
     const b = await fixture();
     for (const taskId of [b.task.id, randomUUID()]) {
@@ -101,9 +102,42 @@ describe("authorized raid terminal actions", () => {
         status: "not_found",
       });
     }
-    await t.db.update(tasks).set({ kind: "open" }).where(eq(tasks.id, a.task.id));
-    expect(await transitionRaid(t.db, a.input, at(NOW))).toEqual({ status: "not_found" });
     expect(await t.db.select().from(tasks).where(eq(tasks.id, b.task.id))).toEqual([b.task]);
+  });
+  it("keeps one active brief until an authorized terminal action closes a historical open task", async () => {
+    for (const action of ["closed", "cancelled"] as const) {
+      const { input, task } = await fixture();
+      await t.db.update(tasks).set({ kind: "open" }).where(eq(tasks.id, task.id));
+      const next = {
+        communityId: input.communityId,
+        chatId: input.chatId,
+        actorId: input.actorId,
+        messageId: 100,
+        hours: 1,
+        brief: "Next target",
+        post: { id: "222", handle: "owner", text: "Target", url: "https://x.com/owner/status/222" },
+      };
+      expect(await openRaid(t.db, next, at(NOW))).toMatchObject({
+        status: "active_exists",
+        task: { id: task.id, kind: "open" },
+      });
+      expect(await transitionRaid(t.db, { ...input, action, actorId: 42n }, at(NOW))).toEqual({
+        status: "unauthorized",
+      });
+      expect(await openRaid(t.db, next, at(NOW))).toMatchObject({ status: "active_exists" });
+      expect(await transitionRaid(t.db, { ...input, action }, at(NOW))).toMatchObject({
+        status: "changed",
+        state: action,
+        task: { id: task.id, kind: "open", status: "closed", closesAt: task.closesAt },
+      });
+      expect(await transitionRaid(t.db, { ...input, action }, at(NOW))).toMatchObject({
+        status: "existing",
+      });
+      expect(await openRaid(t.db, next, at(NOW))).toMatchObject({
+        status: "created",
+        task: { kind: "raid" },
+      });
+    }
   });
   it("validates bounded nonempty reasons and identifiers before mutation", async () => {
     const { input, task } = await fixture();

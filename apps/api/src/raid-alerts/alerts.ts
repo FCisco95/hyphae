@@ -9,6 +9,7 @@ import {
 } from "@hyphae/db";
 import { and, asc, eq, gt, lte, sql } from "drizzle-orm";
 import { GrammyError } from "grammy";
+import { clipMessageText } from "../bot/text.js";
 import { type Clock, dbClock } from "../rewards/config.js";
 import type { XPost } from "../x/oembed.js";
 
@@ -331,10 +332,12 @@ export async function deliverRaidAlert(db: Db, id: string, deps: AlertSender) {
     const now = await clock(tx, community.id);
     if (task.opensAt > now || task.closesAt <= now) return finish("skipped", "outside_window");
     const text = [
-      `New raid · ${community.name.slice(0, 200)}`,
+      `New raid · ${clipMessageText(community.name, 200)}`,
       task.targetUrl,
-      ...(task.targetText ? [`Post: ${task.targetText.slice(0, 400)}`] : []),
-      task.brief ? `Brief: ${task.brief.slice(0, 1000)}` : "Reply or quote with your own view.",
+      ...(task.targetText ? [`Post: ${clipMessageText(task.targetText, 400)}`] : []),
+      task.brief
+        ? `Brief: ${clipMessageText(task.brief, 1000)}`
+        : "Reply or quote with your own view.",
       `Closes ${task.closesAt.toISOString()} (UTC).`,
       "Engage on X, then tap Submit my reply or Submit my quote below. Your private submission is bound to this exact raid; /submit never chooses a raid for you.",
       "A raid window does not extend the reward epoch’s intake deadline. Check /help brief in the group.",

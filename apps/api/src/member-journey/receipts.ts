@@ -21,6 +21,8 @@ import { raidState } from "./lifecycle.js";
 
 export const RECEIPT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const ISSUE_MAX_LENGTH = 1_000;
+export const ISSUE_MAX_REPORTS = 3;
+export const ISSUE_COOLDOWN_MS = 60_000;
 
 // The receipt ID is a reference, never a credential. Check all immutable links as well as the
 // current caller so a malformed cross-community row cannot disclose another member's work.
@@ -210,6 +212,7 @@ export function receiptText(row: MemberReceipt, webBase = ""): string {
     `Raid: ${row.task.id} (${row.raidState})`,
     `Target: ${clip(row.task.targetUrl ?? "not recorded", 250)}`,
     `Your submission: ${clip(row.contribution.url ?? "not recorded", 250)}`,
+    "The existing scorer may post this result publicly in the group, replying to the raid message.",
     ...(audit
       ? resultLines(audit)
       : row.legacy
@@ -247,10 +250,13 @@ export function receiptText(row: MemberReceipt, webBase = ""): string {
 export async function reportSubmissionIssue(
   db: Db,
   input: { receiptId: string; telegramUserId: bigint; telegramMessageId: number; text: string },
+  deps: RewardDeps = {},
 ): Promise<
   | { status: "recorded" | "duplicate"; issueId: string }
   | { status: "invalid" }
   | { status: "not_found" }
+  | { status: "limit" }
+  | { status: "cooldown"; retryAfterSeconds: number }
 > {
   const text = input.text.trim();
   if (
@@ -262,31 +268,49 @@ export async function reportSubmissionIssue(
     return { status: "invalid" };
   const owned = await ownedReceipt(db, input.receiptId, input.telegramUserId);
   if (!owned) return { status: "not_found" };
-  const [created] = await db
-    .insert(submissionIssues)
-    .values({
-      receiptId: owned.receipt.id,
-      communityId: owned.receipt.communityId,
-      memberId: owned.receipt.memberId,
-      telegramMessageId: input.telegramMessageId,
-      text,
-    })
-    .onConflictDoNothing({
-      target: [submissionIssues.receiptId, submissionIssues.telegramMessageId],
-    })
-    .returning({ id: submissionIssues.id });
-  if (created) return { status: "recorded", issueId: created.id };
-  const [existing] = await db
-    .select({ id: submissionIssues.id })
-    .from(submissionIssues)
-    .where(
-      and(
-        eq(submissionIssues.receiptId, owned.receipt.id),
-        eq(submissionIssues.communityId, owned.receipt.communityId),
-        eq(submissionIssues.memberId, owned.receipt.memberId),
-        eq(submissionIssues.telegramMessageId, input.telegramMessageId),
-      ),
+  return db.transaction(async (tx) => {
+    // Only lock this receipt. Taking the shared reward/community lock after it would invert
+    // private submission's lock order. All report writers serialize here before reading limits.
+    await tx
+      .select({ id: raidSubmissionReceipts.id })
+      .from(raidSubmissionReceipts)
+      .where(eq(raidSubmissionReceipts.id, owned.receipt.id))
+      .for("update");
+    const scoped = await ownedReceipt(tx, input.receiptId, input.telegramUserId);
+    if (!scoped) return { status: "not_found" };
+    const scope = and(
+      eq(submissionIssues.receiptId, scoped.receipt.id),
+      eq(submissionIssues.communityId, scoped.receipt.communityId),
+      eq(submissionIssues.memberId, scoped.receipt.memberId),
     );
-  if (!existing) throw new Error("issue: conflicting report scope");
-  return { status: "duplicate", issueId: existing.id };
+    const [existing] = await tx
+      .select({ id: submissionIssues.id })
+      .from(submissionIssues)
+      .where(and(scope, eq(submissionIssues.telegramMessageId, input.telegramMessageId)));
+    if (existing) return { status: "duplicate", issueId: existing.id };
+    const reports = await tx
+      .select({ createdAt: submissionIssues.createdAt })
+      .from(submissionIssues)
+      .where(scope)
+      .orderBy(desc(submissionIssues.createdAt), desc(submissionIssues.id))
+      .limit(ISSUE_MAX_REPORTS);
+    if (reports.length >= ISSUE_MAX_REPORTS) return { status: "limit" };
+    const now = await (deps.clock ?? dbClock)(tx, scoped.receipt.communityId);
+    const latest = reports[0];
+    const waitMs = latest ? latest.createdAt.getTime() + ISSUE_COOLDOWN_MS - now.getTime() : 0;
+    if (waitMs > 0) return { status: "cooldown", retryAfterSeconds: Math.ceil(waitMs / 1_000) };
+    const [created] = await tx
+      .insert(submissionIssues)
+      .values({
+        receiptId: scoped.receipt.id,
+        communityId: scoped.receipt.communityId,
+        memberId: scoped.receipt.memberId,
+        telegramMessageId: input.telegramMessageId,
+        text,
+        createdAt: now,
+      })
+      .returning({ id: submissionIssues.id });
+    if (!created) throw new Error("issue: insert returned no report");
+    return { status: "recorded", issueId: created.id };
+  });
 }

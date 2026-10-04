@@ -2,7 +2,7 @@ import { type Db, raidSubmissionSessions } from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
 import { type CommandContext, type Context, InlineKeyboard, type NextFunction } from "grammy";
 import { boss, QUEUES } from "../../jobs/queue.js";
-import { sendEvaluation } from "../../jobs/reward-jobs.js";
+import { submissionQueueDb } from "../../member-journey/queue-db.js";
 import {
   acceptSubmission,
   beginSubmission,
@@ -88,17 +88,17 @@ async function receive(db: Db, ctx: Context, sessionId: string, url: string, web
   if (userId === undefined) return;
   const result = await acceptSubmission(db, { sessionId, url, userId }, deps(ctx));
   if ("error" in result) return ctx.reply(REFUSALS[result.error]);
-  const queued = await queueSubmission(db, result.receipt, () =>
-    result.lane === "reward"
-      ? sendEvaluation({
-          communityId: result.receipt.communityId,
-          target: { contributionId: result.receipt.contributionId },
-        })
-      : boss.send(
-          QUEUES.score,
-          { contributionId: result.receipt.contributionId },
-          { singletonKey: result.receipt.contributionId },
-        ),
+  const queued = await queueSubmission(db, result.receipt, (tx) =>
+    boss.send(
+      result.lane === "reward" ? QUEUES.rewardEvaluation : QUEUES.score,
+      result.lane === "reward"
+        ? {
+            communityId: result.receipt.communityId,
+            target: { contributionId: result.receipt.contributionId },
+          }
+        : { contributionId: result.receipt.contributionId },
+      { id: result.receipt.id, db: submissionQueueDb(tx) },
+    ),
   );
   await sendReceipt(db, ctx, result.receipt.id, webUrl);
   if (!queued)

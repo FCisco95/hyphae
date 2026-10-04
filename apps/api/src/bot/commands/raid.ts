@@ -7,6 +7,7 @@ import { db } from "../../db.js";
 import { alertLink, openRaid } from "../../raid-alerts/alerts.js";
 import { fetchPost } from "../../x/oembed.js";
 import { reply } from "../reply.js";
+import { clipMessageText } from "../text.js";
 import { parseRaidArgs } from "./args.js";
 
 export async function raid(ctx: CommandContext<Context>) {
@@ -45,7 +46,7 @@ export async function raid(ctx: CommandContext<Context>) {
   return ctx.reply(
     [
       `Raid open for ${args.hours}h — @${post.handle}:`,
-      `"${post.text.slice(0, 200)}"`,
+      `"${clipMessageText(post.text, 200)}"`,
       post.url,
       args.brief ? `Brief: ${args.brief}` : "",
       `Raid ID: ${opened.task.id}`,

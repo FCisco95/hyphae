@@ -12,7 +12,7 @@ async function endRaid(ctx: CommandContext<Context>, action: "closed" | "cancell
   const command = action === "closed" ? "close_raid" : "cancel_raid";
   const match = ctx.match.trim().match(/^(\S+)\s+([\s\S]+)$/);
   if (!match?.[1] || !match[2])
-    return reply(ctx, `Usage: /${command} <raid id> <reason, 1–500 characters>`);
+    return reply(ctx, `Usage: /${command} <raid or brief id> <reason, 1–500 characters>`);
   const community = await db.query.communities.findFirst({
     where: eq(communities.telegramChatId, BigInt(ctx.chat.id)),
   });
@@ -27,18 +27,25 @@ async function endRaid(ctx: CommandContext<Context>, action: "closed" | "cancell
     reason: match[2],
   });
   if (result.status === "invalid")
-    return reply(ctx, `Usage: /${command} <raid id> <reason, 1–500 characters>`);
+    return reply(ctx, `Usage: /${command} <raid or brief id> <reason, 1–500 characters>`);
   if (result.status === "unauthorized")
-    return reply(ctx, "Only this community's current designated admin can close or cancel raids.");
+    return reply(
+      ctx,
+      "Only this community's current designated admin can close or cancel raids and briefs.",
+    );
   if (result.status === "not_found")
-    return reply(ctx, "That raid was not found in this community.");
+    return reply(ctx, "That raid or brief was not found in this community.");
   if (result.status === "terminal")
-    return reply(ctx, `Raid is already ${result.state}. Its recorded decision was not changed.`);
+    return reply(
+      ctx,
+      `This brief is already ${result.state}. Its recorded decision was not changed.`,
+    );
+  const label = result.task.kind === "raid" ? "Raid" : "Brief";
   return reply(
     ctx,
     [
-      `Raid ${result.state}${result.status === "existing" ? " (already recorded)" : ""}.`,
-      `Raid: ${result.task.id}`,
+      `${label} ${result.state}${result.status === "existing" ? " (already recorded)" : ""}.`,
+      `${label}: ${result.task.id}`,
       `Reason: ${result.event.reason}`,
       `Receipt: ${result.event.id}`,
       `Recorded: ${result.event.createdAt.toISOString()}`,

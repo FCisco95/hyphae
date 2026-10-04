@@ -10,7 +10,7 @@ import { parseSubmitArgs } from "./args.js";
 import { ADMIT_REFUSAL, communityAndMember, preflight } from "./submit.js";
 
 const USAGE =
-  "Usage: /effort <link to your post or reply>, or /effort <text of your work>. Nominates it for this epoch's effort slot (3× if the work qualifies).";
+  "Use /effort <link to your already submitted work> to nominate it for this epoch's effort slot (3× if it qualifies). Submit new replies/quotes through the exact raid's private Submit button first. /effort <text of your separate work> submits and nominates standalone text.";
 
 const REFUSAL: Record<Exclude<NominateResult["status"], "nominated">, string> = {
   not_admitted: "That work has not been submitted in this community.",
@@ -28,8 +28,8 @@ const REFUSAL: Record<Exclude<NominateResult["status"], "nominated">, string> = 
   paused: "Reward intake is paused in this community.",
 };
 
-// Explicit nomination (O2). Already admitted work is nominated as it is; new work goes through
-// the /submit preflight and admission first. Plain /submit never touches the slot.
+// Explicit nomination (O2). Existing admitted URLs keep their original task; new URLs must
+// first use the exact raid's private prompt. New text stays separate. /submit never uses the slot.
 export async function effort(ctx: CommandContext<Context>) {
   const args = parseSubmitArgs(ctx.match);
   if (!args) return reply(ctx, USAGE);

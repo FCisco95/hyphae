@@ -15,12 +15,13 @@ import {
 } from "@hyphae/db";
 import { and, count, desc, eq, sql } from "drizzle-orm";
 import { COMMUNITY_ID } from "../raid-alerts/alerts.js";
+import type { RaidState } from "./lifecycle.js";
 
 export type OperatorSummary = {
   communityId: string;
   communityName: string;
   observedAt: Date;
-  raids: { state: string; count: number }[];
+  raids: { state: RaidState; count: number }[];
   activeRaids: { id: string; targetUrl: string | null; closesAt: Date }[];
   deliveries: { status: string; count: number }[];
   deliveryProblems: { status: string; reason: string | null; count: number }[];
@@ -60,26 +61,33 @@ async function readJobs(db: Db, communityId: string): Promise<OperatorSummary["j
     )
   )`;
   try {
-    const groups = await db
-      .select({
-        name: sql<string>`j.name`,
-        state: sql<string>`j.state::text`,
-        count: count(),
-      })
-      .from(sql`pgboss.job j`)
-      .where(scope)
-      .groupBy(sql`j.name`, sql`j.state`);
-    const [uncertain] = await db
-      .select({ count: count() })
-      .from(sql`pgboss.job j`)
-      .where(
-        sql`${scope} and j.name = 'score' and (j.retry_count > 0 or j.state::text in ('active', 'failed'))`,
-      );
-    return {
-      status: "available",
-      groups,
-      legacyJobsWithUnknownAttempts: uncertain?.count ?? 0,
-    };
+    // Nested transactions use a savepoint, so optional telemetry cannot abort the caller's
+    // transaction. Direct calls get a read-only transaction for these two queue reads.
+    return await db.transaction(
+      async (tx) => {
+        const groups = await tx
+          .select({
+            name: sql<string>`j.name`,
+            state: sql<string>`j.state::text`,
+            count: count(),
+          })
+          .from(sql`pgboss.job j`)
+          .where(scope)
+          .groupBy(sql`j.name`, sql`j.state`);
+        const [uncertain] = await tx
+          .select({ count: count() })
+          .from(sql`pgboss.job j`)
+          .where(
+            sql`${scope} and j.name = 'score' and (j.retry_count > 0 or j.state::text in ('active', 'failed'))`,
+          );
+        return {
+          status: "available" as const,
+          groups,
+          legacyJobsWithUnknownAttempts: uncertain?.count ?? 0,
+        };
+      },
+      { accessMode: "read only" },
+    );
   } catch {
     // Missing queue schema, permissions or a query outage must never look like zero failures.
     return { status: "unavailable" };
@@ -106,12 +114,12 @@ export async function readOperatorSummary(
   const [community] = await authorized();
   if (!community) return { status: "unauthorized" };
   const communityId = community.id;
-  const raidState = sql<string>`case
+  const raidState = sql<RaidState>`case
     when exists (select 1 from ${raidLifecycleEvents} e where e.task_id = ${tasks}.${sql.identifier("id")}
       and e.community_id = ${communityId} and e.action = 'cancelled') then 'cancelled'
     when ${tasks.status} = 'closed' then 'closed'
     when ${tasks.status} = 'open' and ${tasks.closesAt} <= ${now.toISOString()}::timestamptz then 'expired'
-    when ${tasks.status} = 'open' and ${tasks.opensAt} > ${now.toISOString()}::timestamptz then 'scheduled'
+    when ${tasks.status} = 'open' and ${tasks.opensAt} > ${now.toISOString()}::timestamptz then 'upcoming'
     when ${tasks.status} = 'open' then 'active'
     else ${tasks.status}::text end`;
   const raids = await db
@@ -255,8 +263,17 @@ export async function readOperatorSummary(
 
 const usd = (micro: bigint) =>
   `$${micro / 1_000_000n}.${(micro % 1_000_000n).toString().padStart(6, "0")}`;
-const safeLine = (value: string, length: number) =>
-  value.replace(/[\p{Cc}\p{Cf}]/gu, " ").slice(0, length);
+const safeLine = (value: string, length: number) => {
+  const text = value.replace(/[\p{Cc}\p{Cf}]/gu, " ");
+  if (text.length <= length) return text;
+  let clipped = "";
+  // Preserve the UTF-16 budget without splitting a supplementary Unicode character.
+  for (const character of text) {
+    if (clipped.length + character.length > length - 1) break;
+    clipped += character;
+  }
+  return `${clipped}…`;
+};
 
 export function operatorMessage(s: OperatorSummary): string {
   const countState = (rows: { state: string; count: number }[], state: string) =>
@@ -270,7 +287,7 @@ export function operatorMessage(s: OperatorSummary): string {
     `Operator view: ${safeLine(s.communityName, 100)}`,
     `Community: ${s.communityId}`,
     `Observed ${s.observedAt.toISOString()} · read only`,
-    `Raids: active ${countState(s.raids, "active")}, expired ${countState(s.raids, "expired")}, closed ${countState(s.raids, "closed")}, cancelled ${countState(s.raids, "cancelled")}, scheduled ${countState(s.raids, "scheduled")}.`,
+    `Raids: active ${countState(s.raids, "active")}, expired ${countState(s.raids, "expired")}, closed ${countState(s.raids, "closed")}, cancelled ${countState(s.raids, "cancelled")}, upcoming ${countState(s.raids, "upcoming")}.`,
     countState(s.raids, "active") > 1
       ? "Attention: more than one active brief; inspect before opening another."
       : "",

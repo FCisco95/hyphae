@@ -83,7 +83,7 @@ describe("explicit private raid submissions", () => {
           where: eq(rewardIntakes.contributionId, result.receipt.contributionId),
         });
         expect(intake?.capture).toMatchObject({
-          limitations: ["text_only", "target_relation_unverified", "account_ownership_unverified"],
+          limitations: ["text_only"],
         });
       }
     },
@@ -206,5 +206,95 @@ describe("explicit private raid submissions", () => {
         where: eq(raidSubmissionSessions.id, input.sessionId),
       }),
     ).toBeDefined();
+  });
+  it("rejects duplicate/kind exhaustion before Telegram or provider work", async () => {
+    const { d, input, task } = await setup();
+    expect(await acceptSubmission(t.db, input, d)).toHaveProperty("receipt");
+    const second = await beginSubmission(t.db, task.id, input.userId, "reply", d);
+    if (!("session" in second)) throw new Error("prompt");
+    d.membership.mockClear();
+    d.fetchPost.mockClear();
+    expect(await acceptSubmission(t.db, { ...input, sessionId: second.session.id }, d)).toEqual({
+      error: "duplicate_artifact",
+    });
+    expect(d.membership).not.toHaveBeenCalled();
+    expect(d.fetchPost).not.toHaveBeenCalled();
+    expect(
+      await acceptSubmission(
+        t.db,
+        { ...input, sessionId: second.session.id, url: "https://x.com/member/status/333" },
+        d,
+      ),
+    ).toEqual({ error: "kind_taken" });
+    expect(d.membership).not.toHaveBeenCalled();
+    expect(d.fetchPost).not.toHaveBeenCalled();
+  });
+  it("refuses a raid with no group message reference instead of writing message zero", async () => {
+    const { d, input, task } = await setup();
+    await t.db.update(tasks).set({ telegramMessageId: null }).where(eq(tasks.id, task.id));
+    expect(await acceptSubmission(t.db, input, d)).toEqual({ error: "unavailable" });
+    expect(d.fetchPost).not.toHaveBeenCalled();
+  });
+  it("serializes queue retries even when callers both hold a stale pending receipt", async () => {
+    const { d, input } = await setup();
+    const accepted = await acceptSubmission(t.db, input, d);
+    if (!("receipt" in accepted)) throw new Error("receipt");
+    const enqueue = vi.fn(async () => "job");
+    const results = await Promise.all([
+      queueSubmission(t.db, accepted.receipt, enqueue),
+      queueSubmission(t.db, accepted.receipt, enqueue),
+    ]);
+    expect(results).toEqual([true, true]);
+    expect(enqueue).toHaveBeenCalledTimes(1);
+  });
+  it("does not confirm queued when the queue declined the job", async () => {
+    const { d, input } = await setup();
+    const accepted = await acceptSubmission(t.db, input, d);
+    if (!("receipt" in accepted)) throw new Error("receipt");
+    expect(await queueSubmission(t.db, accepted.receipt, async () => null)).toBe(false);
+    expect(
+      (
+        await t.db.query.raidSubmissionReceipts.findFirst({
+          where: eq(raidSubmissionReceipts.id, accepted.receipt.id),
+        })
+      )?.queueStatus,
+    ).toBe("pending");
+  });
+  it("retains the first cancellation timestamp on retry", async () => {
+    const { input } = await setup();
+    await cancelSubmission(t.db, input.sessionId, input.userId);
+    const first = await t.db.query.raidSubmissionSessions.findFirst({
+      where: eq(raidSubmissionSessions.id, input.sessionId),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(await cancelSubmission(t.db, input.sessionId, input.userId)).toBe(true);
+    const again = await t.db.query.raidSubmissionSessions.findFirst({
+      where: eq(raidSubmissionSessions.id, input.sessionId),
+    });
+    expect(again?.cancelledAt).toEqual(first?.cancelledAt);
+  });
+  it("bounds abandoned prompts per caller/community while preserving existing prompts", async () => {
+    const { d, input, task, community } = await setup();
+    for (let i = 0; i < 9; i++)
+      expect(await beginSubmission(t.db, task.id, input.userId, "reply", d)).toHaveProperty(
+        "session",
+      );
+    expect(await beginSubmission(t.db, task.id, input.userId, "quote", d)).toEqual({
+      error: "prompt_limited",
+    });
+    expect(await acceptSubmission(t.db, input, d)).toHaveProperty("receipt");
+    const other = await seedCommunity(t.db);
+    const otherTask = await seedTask(t.db, other.community.id, T0);
+    await t.db.update(tasks).set({ telegramMessageId: 3 }).where(eq(tasks.id, otherTask.id));
+    expect(await beginSubmission(t.db, otherTask.id, input.userId, "reply", d)).toHaveProperty(
+      "session",
+    );
+    expect(
+      await beginSubmission(t.db, task.id, input.userId, "quote", {
+        ...d,
+        clock: at(new Date(NOW.getTime() + 3_600_001)),
+      }),
+    ).toHaveProperty("session");
+    expect(community.id).not.toBe(other.community.id);
   });
 });
