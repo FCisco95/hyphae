@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 — local adopter arc achieved, closing review accepted (local-only)
+
+**Result:** final64d71bf0..202fe957af1bfba90f16ef212e940120a041f204 ACCEPT, actual Claude Opus5.5 low. SDK-consuming CLI and two-community reference app work; tarball path, native multicall invocation and asserted early cooldown recovery repairs accepted. No further source work/review/gate repeats needed.
+
+**Evidence:** reviewer fresh process7/7/syntax/actual old-new multicall counterfactual; owner Chromium bootstrap/shared/early recovery andlint309 reused. Prior special-path actual pnpm install/full empty-store demo/run command/root891/types remain prior. Native Windows UNKNOWN; documented server symlink guard nit remains. Final docs-only commit adds accepted verdict and portable closing state; no tests repeated for docs.
+
+**State:** accepted source202fe957 is26ahead origin312cc0ff, final documentation makes27ahead; full final SHA from [closing snapshot](handoffs/2026-10-04-adopter-close.md) history/final delivery. Everything unpushed: original exacta646 private config guards UNKNOWN, laterSDK/adopter publication not authorized. Deadline13:13:09Z preserved. Writer ends/idles; coordinator keeps broader supervision/shared propagation. Phone result NeedsCisco, existing access/attendance next; no repeat approval/access question, push or live action. All held refs/freeze/hiddenpilot/exactOct8–10/funds gates retained.
+
 ## 2026-10-04 — accepted adopter result and two closing corrections (local-only)
 
 **Result:** exact010c68cf..64d71bf0 accepted by actual Claude Opus5.5 low. CLI/reference app works with installed SDK; no publication. Repaired two non-blocking notes: preserve native multicall pnpm argv0 and require actual early-timer injection in the browser regression. Restored corrupted UNKNOWN literal in dated handoff with short correction/history retained.
