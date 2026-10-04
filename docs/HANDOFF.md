@@ -9,7 +9,7 @@ summary: Exact approved a646 published; Vercel production and live web acceptanc
 
 Project: Hyphae. Scope: completed exact-a646 web release.
 
-Last Updated: 2026-10-04T20:06:47Z
+Last Updated: 2026-10-04T20:14:53Z
 
 ## TL;DR
 
@@ -19,7 +19,7 @@ Last Updated: 2026-10-04T20:06:47Z
 
 ## Current Objective
 
-The exact approved web publication and actual Vercel acceptance are complete. End this arc; no API or phone execution is included.
+Web release complete. Cisco's subsequent [engagement-authority ruling](handoffs/2026-10-04-engagement-authority.md) is recorded: only the community admin and authorized council stewards choose engagement targets; members submit their own engagement evidence. Source inspection confirms /raid is designated-admin-only, council access is absent, and /submit can still admit untargeted work. No implementation or new live scope inferred. The next dependency is verified Organic council authority bound to the Telegram actor, followed by explicit target/evidence validation.
 
 ## Current State
 
@@ -46,11 +46,13 @@ Actual session runner **gpt-6.1-sol / xhigh**, attested from turn metadata. No u
 
 ## Recent Changes
 
+Recorded Cisco’s admin/council target-selection rule and the concrete current authorization/intake gaps after read-only source inspection. No source/config/deployment changed in the follow-up.
+
 Applied the checked technical connection checkpoint, published exact a646, verified green CI and live Vercel/Lab/asset/token behavior, and saved portable release evidence. No product source or settings changed.
 
 ## Git State and publication hold
 
-Started clean main 7f4494aa,27ahead/0behind origin 312cc0ff. No-prune fetch preserved refs; published only exact a646. Local main retained every later commit; before this receipt commit it is7f4494aa,9ahead/0behind origin a646. Documentation checkpoint remains **local-only**, titled `docs: record exact approved web release acceptance`; final commit ID is the local main tip. Do not publish full main or these docs under the old exact-a646 approval.
+Started clean main 7f4494aa,27ahead/0behind origin 312cc0ff. No-prune fetch preserved refs; published only exact a646. Local main retained every later commit; before this receipt commit it is7f4494aa,9ahead/0behind origin a646. Release documentation commit **b5ba48a42c6ac4a029d21d16bd04282ca63af35d** remains **local-only**, titled `docs: record exact approved web release acceptance`. The engagement-authority follow-up adds another local documentation commit; identify it by subject `docs: clarify engagement target authority and intake gaps`. Do not publish full main or these docs under the old exact-a646 approval.
 
 Unpublished existing commit IDs:
 
@@ -68,9 +70,13 @@ Held scoring 158452fe2b22a1e42e5efd42f3f7e11bfdf59c70 and Jev 707d7daf21e217d9a8
 
 ## Next Actions
 
+Carry the [engagement-authority ruling and verified gaps](handoffs/2026-10-04-engagement-authority.md) into the owning authority/transport workstream. Resolve community-scoped council-to-Telegram authorization before implementing steward access; do not substitute Telegram admin status or invent roles. Engagement evidence needs an explicit approved task and verified target relation. Current active-epoch/payout behavior is unchanged; a prospective implementation needs a bounded reviewed scope.
+
 Stop this completed web arc. No source work, review, release-gate repetition or extra publication is authorized. Owning organic-sync should propagate the receipt. Next human step is inspect live Lab page. Before any separately authorized D1/API work, reverify image/target/config and private identity/bot/webhook/schema/jobs guards; a new immutable API artifact must be named, frozen worker retained. Renew actual T1 scope/attendance only in that later arc.
 
 ## Known Issues / Watch List
+
+Engagement flow is not fully enforced: council permissions absent, linked submissions without an active task accepted, latest-task selection implicit, oEmbed lacks structural reply/quote target and independent author proof. Public bot access does not grant /raid permission. These are source findings, not observed unauthorized live raids. No new scoring experiment or production write.
 
 Private registered UUID/chat/admin, bot/webhook/journal/queues/current intake audit remain separately unverified; runtime presence is not their health. No DB/bot/registration/rename/menu/pin/activation effect inferred. Each token has its own contribution group, one disjoint active Hyphae brief, Raidar separate. SDK validates public shapes/identity/arithmetic, not independent chain/Merkle proof. Real phone/C21/scale and actual two-registration proof absent.
 
@@ -84,6 +90,8 @@ Read this receipt/CLAUDE/AGENTS before acting; check writer ownership and curren
 
 ## Quick Reference
 
+[Engagement-authority ruling](handoffs/2026-10-04-engagement-authority.md).
+
 [Release receipt](handoffs/2026-10-04-web-release.md), [combined packet](demo/2026-10-04-combined-release-packet.md), [source pins](demo/2026-10-04-combined-source-pins.json), [approval](handoffs/2026-10-04-publication-approval.md), [payout gates](demo/2026-10-08-first-payout-readiness.md), [adopter close](handoffs/2026-10-04-adopter-close.md), [SDK guide](community/INTEGRATING.md), [local demo](../examples/read-sdk-demo/README.md).
 
 ## Suggested skills
@@ -91,6 +99,8 @@ Read this receipt/CLAUDE/AGENTS before acting; check writer ownership and curren
 handoff-memory, orca-cli for ownership, security-review for a separately authorized sensitive/deployment scope, handoff. organic-sync in its owning vault session. Reuse accepted SDK/adopter reviews; no helpers or Sentinel product work.
 
 ## Generated artifacts this session
+
+Follow-up: docs/handoffs/2026-10-04-engagement-authority.md records the ruling and source findings; HANDOFF/BUILDLOG updated, local-only.
 
 | What | Canonical home | Status |
 |---|---|---|
@@ -109,9 +119,9 @@ Use the following prompt; the completed web arc must stay closed.
 ```text
 Hyphae exact a646abc883131ff411d5dd7bbba536176364fe38 is published with green CI and accepted Vercel production dpl_A9BMEHKgNn8r9NtGtJhFWAunPY5q/source/alias/assets/Lab/token-recognition proof. No rollback used; later SDK/adopter/main remains local. This web arc is complete; no successor scope inferred.
 
-Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-04-web-release.md, docs/demo/2026-10-04-combined-release-packet.md, docs/demo/2026-10-08-first-payout-readiness.md, docs/handoffs/2026-10-04-adopter-close.md
+Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-04-engagement-authority.md, docs/handoffs/2026-10-04-web-release.md, docs/demo/2026-10-04-combined-release-packet.md, docs/demo/2026-10-08-first-payout-readiness.md, docs/handoffs/2026-10-04-adopter-close.md
 Model: Codex Sonnet 5 — bounded engineering continuation per the project routing table; recommendation only, previous actual gpt-6.1-sol/xhigh.
 Skills: handoff-memory, orca-cli, security-review if separately needed, handoff.
 
-Propagate this release receipt through owning organic-sync; siblings/vault read-only here. Inspect live Lab as next human step. API D1 immutable build/rollout and real registered Lab phone test require their separate scope/preconditions; preserve frozen v11 worker, hidden recruitment until real phone PASS, C21 distinction, verify0.1.0through Oct 12, heldrefs/exact Oct 8–10 money/close/hold gates and no empty-payment claim. Never push full local main from exact a646 approval or repeat accepted SDK/reviews/unchanged gates.
+Carry the new admin/council engagement rule and verified intake gaps into owning authority/transport work; no source fix has been made. Propagate this release receipt through owning organic-sync; siblings/vault read-only here. Inspect live Lab as next human step. API D1 immutable build/rollout and real registered Lab phone test require their separate scope/preconditions; preserve frozen v11 worker, hidden recruitment until real phone PASS, C21 distinction, verify0.1.0through Oct 12, heldrefs/exact Oct 8–10 money/close/hold gates and no empty-payment claim. Never push full local main from exact a646 approval or repeat accepted SDK/reviews/unchanged gates.
 ```

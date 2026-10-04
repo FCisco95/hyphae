@@ -2,6 +2,16 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 · Engagement target authority clarified
+
+**Recorded:** Cisco's rule: community admin and authorized council stewards add engagement targets; members submit evidence of their own replies/quotes. A public bot user cannot create a raid. Read-only source inspection confirms the designated-admin guard, missing council authorization and standalone /submit admission when no target is open. The current capture also lacks structural reply/quote target proof.
+
+**Decision:** use verified community-scoped Organic council authority bound to the Telegram actor; never equate access to the bot or Telegram admin status with council permission. Engagement intake should require an explicit approved task; no frozen reward-flow change made here.
+
+**Validation:** five source paths inspected; unchanged from published a646. No test/provider/bot/production operations. [Technical receipt](handoffs/2026-10-04-engagement-authority.md) and HANDOFF updated. Exact-a646 web remains shipped/accepted; release-record commit b5ba48a42c6ac4a029d21d16bd04282ca63af35d and nine later source commits remain local. This follow-up commit is local-only, subject `docs: clarify engagement target authority and intake gaps`; full-main publication remains excluded.
+
+**Next:** owning authority/transport workstream establishes the council-role/Telegram identity contract, then scopes prospective target/evidence enforcement. API rollout, real phone and exact October8–10 reward gates remain separate.
+
 ## 2026-10-04 · Exact approved web release live
 
 **Shipped:** exact **a646abc883131ff411d5dd7bbba536176364fe38** to GitHub main, with successful [CI37230455538](https://github.com/FCisco95/hyphae/actions/runs/37230455538) and Vercel production **dpl_A9BMEHKgNn8r9NtGtJhFWAunPY5q READY** at [hyphae-delta.vercel.app](https://hyphae-delta.vercel.app). Actual Git source/owner/target/alias, Lab onboarding/epoch rendering, ten served assets and new web/API token recognition PASS. No rollback needed.
