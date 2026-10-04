@@ -1,0 +1,21 @@
+# Community authority and operator visibility
+
+Hyphae currently authorizes a privileged action against the registered community's exact `adminTelegramUserId`. The caller comes from the authenticated Telegram update, never a username, button payload or declared role. Every operator read checks the current stored designation; changing that designation revokes the old actor on subsequent reads. The private `/ops <community ID>` view also rechecks before returning its result. Being a Telegram group administrator, opening the bot, linking a wallet or receiving alerts grants no council permission.
+
+Organic owns council membership and the verified identity contract. Its currently permitted public settlement GET endpoint supplies no council-to-Telegram authority. The owning Organic task 3.6 / DEP-09 authority and transport contract is still missing. Hyphae cannot safely implement steward grant/revoke operations until that contract establishes:
+
+- The canonical community/mint identity and exact role capabilities, including who can grant or revoke a steward and whether delegation is allowed.
+- A verified, stable binding from the Organic principal to a numeric Telegram user ID, with binding replacement and revocation semantics. A Telegram username, group-admin flag or member assertion is insufficient.
+- A server-verifiable issuer, audience, scope, signature or authenticated transport, plus a version and freshness/revocation rule. Hyphae must fail closed when authority cannot be verified and recheck it on every privileged action.
+- Grant/revoke event IDs, authorized actor, subject, community, effective time and reason, including replay protection and a durable audit trail. Hyphae must record the authority version used for each action.
+- Defined error and outage behavior, including how already-open operations are fenced when authority is revoked. A stale cached grant must not outlive the accepted revocation window.
+
+These are required contract properties, not a newly invented API or permission scheme. Until Organic provides and approves the contract, Hyphae retains the designated-admin guard. There is no local steward allowlist, grant/revoke command, or claim that Telegram administration is council membership. Raid lifecycle events retain the local actor, community, task, transition, source message, reason and time; they do not substitute for Organic's role audit.
+
+## Read-only operator view
+
+The designated admin can send `/ops <community ID>` in their own private bot chat. It shows current raid states, up to five active targets, failed/uncertain delivery reasons, saved contributions without scores/decisions, pending queue confirmations, pending effort nominations by stage, and retained jobs by community and state. It does not expose another community, member wallet, Telegram recipient ID, raw job payload or provider error. A missing or unreadable pg-boss table is reported as unavailable telemetry, never zero failed jobs. Queue reads follow the [pg-boss job-table contract](https://pgboss.io/sql/job-table); job retention means this is not a historical incident ledger. Global recovery jobs without a community identity cannot be attributed and are omitted.
+
+Spend is the independent sum of `scoring_runs.cost_micro_usd` and possibly sent `reward_dispatches.cost_micro_usd`. Reward decisions and corrections are not summed: they are not additional provider calls. Proven non-dispatch records are excluded. Null reward costs and zero-cost records are surfaced separately; the current provider cost calculator can record zero when usage is absent. Legacy scoring jobs with retries or active/failed state indicate possible unrecorded attempts, but do not prove a billable call. Missing partial usage and deleted historical jobs cannot be reconstructed. These values are recorded model-cost estimates, not an invoice, total operating cost or enforceable spending limit.
+
+No operator action here changes queues, scores, frozen decisions, rewards, epoch rules or spending limits. Spending limits and any cancellation effect on earned credit/allocation require a separate founder decision. Steward integration, release, production migration and real Telegram testing remain separate scopes.

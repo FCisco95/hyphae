@@ -16,11 +16,14 @@ export function startRaidNotifier(db: Db, api: Api) {
           const status = await deliverRaidAlert(db, row.id, {
             membership: async (chat, user) =>
               isMemberStatus(await api.getChatMember(Number(chat), Number(user))),
-            send: (user, text, target, stop) =>
+            send: (user, text, target, stop, taskId) =>
               api.sendMessage(Number(user), text, {
                 link_preview_options: { is_disabled: true },
                 reply_markup: new InlineKeyboard()
                   .url("Engage on X", target)
+                  .row()
+                  .text("Submit my reply", `raid_reply_${taskId}`)
+                  .text("Submit my quote", `raid_quote_${taskId}`)
                   .row()
                   .text("Stop these alerts", stop),
               }),

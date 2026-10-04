@@ -3,10 +3,11 @@ import {
   type Db,
   raidAnnouncements,
   raidDeliveries,
+  raidLifecycleEvents,
   raidSubscriptions,
   tasks,
 } from "@hyphae/db";
-import { and, asc, eq, lte, sql } from "drizzle-orm";
+import { and, asc, eq, gt, lte, sql } from "drizzle-orm";
 import { GrammyError } from "grammy";
 import { type Clock, dbClock } from "../rewards/config.js";
 import type { XPost } from "../x/oembed.js";
@@ -67,6 +68,7 @@ export interface OpenRaid {
 }
 type RaidResult =
   | { status: "unauthorized" }
+  | { status: "active_exists"; task: typeof tasks.$inferSelect }
   | { status: "created" | "existing"; task: typeof tasks.$inferSelect };
 export async function openRaid(
   db: Db,
@@ -78,7 +80,7 @@ export async function openRaid(
       .select()
       .from(communities)
       .where(eq(communities.id, input.communityId))
-      .for("share");
+      .for("no key update");
     if (
       !community ||
       community.telegramChatId !== input.chatId ||
@@ -102,6 +104,14 @@ export async function openRaid(
       );
     if (old[0]) return { status: "existing", task: old[0].task };
     const now = await clock(tx, input.communityId);
+    const active = await tx.query.tasks.findFirst({
+      where: and(
+        eq(tasks.communityId, community.id),
+        eq(tasks.status, "open"),
+        gt(tasks.closesAt, now),
+      ),
+    });
+    if (active) return { status: "active_exists", task: active };
     const [task] = await tx
       .insert(tasks)
       .values({
@@ -118,6 +128,15 @@ export async function openRaid(
       })
       .returning();
     if (!task) throw new Error("Raid creation failed");
+    await tx.insert(raidLifecycleEvents).values({
+      communityId: community.id,
+      taskId: task.id,
+      actorTelegramUserId: input.actorId,
+      action: "opened",
+      reason: input.brief || "Raid opened",
+      telegramMessageId: input.messageId,
+      createdAt: now,
+    });
     const [event] = await tx
       .insert(raidAnnouncements)
       .values({
@@ -191,7 +210,13 @@ export async function claimRaidAlert(db: Db, now?: Date) {
 export interface AlertSender {
   clock?: Clock;
   membership(chatId: bigint, userId: bigint): Promise<boolean>;
-  send(userId: bigint, text: string, target: string, stop: string): Promise<unknown>;
+  send(
+    userId: bigint,
+    text: string,
+    target: string,
+    stop: string,
+    taskId: string,
+  ): Promise<unknown>;
 }
 export async function deliverRaidAlert(db: Db, id: string, deps: AlertSender) {
   const [started] = await db
@@ -299,6 +324,10 @@ export async function deliverRaidAlert(db: Db, id: string, deps: AlertSender) {
       await disable();
       return finish("skipped", "not_member");
     }
+    // Close/cancel waits for an in-flight alert; after confirmation no new send may start.
+    const [liveTask] = await tx.select().from(tasks).where(eq(tasks.id, task.id)).for("share");
+    if (!liveTask || liveTask.communityId !== community.id || liveTask.status !== "open")
+      return finish("skipped", "invalid_task");
     const now = await clock(tx, community.id);
     if (task.opensAt > now || task.closesAt <= now) return finish("skipped", "outside_window");
     const text = [
@@ -307,12 +336,12 @@ export async function deliverRaidAlert(db: Db, id: string, deps: AlertSender) {
       ...(task.targetText ? [`Post: ${task.targetText.slice(0, 400)}`] : []),
       task.brief ? `Brief: ${task.brief.slice(0, 1000)}` : "Reply or quote with your own view.",
       `Closes ${task.closesAt.toISOString()} (UTC).`,
-      "Engage on X, then send /submit <your reply URL> or /submit quote <your quote URL> in the registered group.",
+      "Engage on X, then tap Submit my reply or Submit my quote below. Your private submission is bound to this exact raid; /submit never chooses a raid for you.",
       "A raid window does not extend the reward epoch’s intake deadline. Check /help brief in the group.",
       "Points do not promise payment. You can stop this community's alerts below.",
     ].join("\n\n");
     try {
-      await deps.send(row.telegramUserId, text, target, `${STOP_PREFIX}${community.id}`);
+      await deps.send(row.telegramUserId, text, target, `${STOP_PREFIX}${community.id}`, task.id);
     } catch (err) {
       if (err instanceof GrammyError && err.error_code === 429) {
         const delay = err.parameters.retry_after;

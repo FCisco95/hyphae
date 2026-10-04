@@ -2,6 +2,7 @@ import { RubricSchema } from "@hyphae/core";
 import { communities } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import type { CommandContext, Context } from "grammy";
+import { InlineKeyboard } from "grammy";
 import { db } from "../../db.js";
 import { alertLink, openRaid } from "../../raid-alerts/alerts.js";
 import { fetchPost } from "../../x/oembed.js";
@@ -35,18 +36,36 @@ export async function raid(ctx: CommandContext<Context>) {
   if (opened.status === "unauthorized") return reply(ctx, "Admins only in the registered group.");
   if (opened.status === "existing")
     return reply(ctx, "That raid was already opened. No extra alerts were queued.");
+  if (opened.status === "active_exists")
+    return reply(
+      ctx,
+      `An active brief already exists: ${opened.task.id}. Close it before opening another.`,
+    );
   const fullHours = rubric.timing.fullUntil / 60;
-  return reply(
-    ctx,
+  return ctx.reply(
     [
       `Raid open for ${args.hours}h — @${post.handle}:`,
       `"${post.text.slice(0, 200)}"`,
       post.url,
       args.brief ? `Brief: ${args.brief}` : "",
-      `Reply or quote on X, then /submit <link to your reply> or /submit quote <link>. One of each per member. Full credit for the first ${fullHours}h, decaying to zero at ${args.hours}h.`,
+      `Raid ID: ${opened.task.id}`,
+      `Reply or quote on X, then open a private submission below. One of each per member. Full credit for the first ${fullHours}h, decaying to zero at ${args.hours}h.`,
       `Optional private alerts for future raids: ${alertLink(ctx.me.username, community.id)}`,
     ]
       .filter(Boolean)
       .join("\n"),
+    {
+      reply_markup: new InlineKeyboard()
+        .url(
+          "Submit my reply privately",
+          `https://t.me/${ctx.me.username}?start=reply_${opened.task.id}`,
+        )
+        .row()
+        .url(
+          "Submit my quote privately",
+          `https://t.me/${ctx.me.username}?start=quote_${opened.task.id}`,
+        ),
+      link_preview_options: { is_disabled: true },
+    },
   );
 }

@@ -1,4 +1,4 @@
-import { raidDeliveries, raidSubscriptions } from "@hyphae/db";
+import { raidDeliveries, raidSubscriptions, tasks } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { Api } from "grammy";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -47,9 +47,14 @@ describe("API notifier runner with intercepted Telegram transport", () => {
     expect(message?.chat_id).toBe(42);
     expect(message?.text).toContain(community.name);
     expect(message?.parse_mode).toBeUndefined();
+    const task = (await t.db.select().from(tasks))[0];
     expect(message?.reply_markup).toEqual({
       inline_keyboard: [
         [{ text: "Engage on X", url: "https://x.com/owner/status/1" }],
+        [
+          { text: "Submit my reply", callback_data: `raid_reply_${task?.id}` },
+          { text: "Submit my quote", callback_data: `raid_quote_${task?.id}` },
+        ],
         [{ text: "Stop these alerts", callback_data: `raids_off_${community.id}` }],
       ],
     });

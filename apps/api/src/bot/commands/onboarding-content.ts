@@ -75,6 +75,7 @@ export function helpContent(c?: OnboardingCommunity): string {
     "Rules and score help",
     rules,
     "Raw quality is the model's assessment. Credited quality applies the pinned rules; reasons and correction history explain the difference. Timing and accepted effort determine exact point units, combined before whole-point rounding.",
+    "Open the exact raid’s private Submit button, then send your own reply/quote URL. Use /receipt <receipt ID> privately to refresh its result, or /issue <receipt ID> <reason> to report a scoring issue. X oEmbed does not verify the target relation or your account ownership.",
     "Pending means no decision yet. Open-epoch points are provisional; final points belong to the closed snapshot and are not SOL.",
     "Allocation states what was assigned. Publication is required before it is claimable. Paid requires a confirmed claim receipt. Positive points, a wallet verified at close, rules, holder, author/duplicate and safety gates all apply.",
     "/link signs a free readable message. /claim later signs a transaction on the claim page. Use /me for your own progress and /help brief for the active brief. Ask the owner about evidence or corrections before close.",
@@ -109,7 +110,7 @@ export function briefContent(
     task
       ? `Current brief\n${limited(task.brief, 1000) || "Ask the owner for this task's brief."}\n${target}\nTask opens ${utc(task.opensAt)}; closes ${utc(task.closesAt)}.`
       : "No active brief. Ask the owner before submitting linked work.",
-    "URL submissions use the latest active task. Keep one active brief; confirm its target before /submit. A task window does not extend the epoch's intake deadline.",
+    "Use the exact raid’s private Submit my reply or Submit my quote button. Links never select a raid automatically. One active brief is allowed. A task window does not extend the epoch’s intake deadline.",
     audit(c),
   ].join("\n\n");
 }

@@ -103,7 +103,7 @@ describe("participant guidance", () => {
     expect(text).toContain("https://x.com/owner/status/123");
     expect(text).toContain("Task opens 2026-10-03 10:00 UTC");
     expect(text).toContain("2026-10-04 10:00 UTC");
-    expect(text).toContain("one active brief");
+    expect(text).toContain("One active brief");
     expect(briefContent(community, null)).toContain("No active brief");
   });
 

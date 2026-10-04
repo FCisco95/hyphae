@@ -211,6 +211,113 @@ export const scoringRuns = pgTable("scoring_runs", {
   createdAt: createdAt(),
 });
 
+// Private intake prompts bind a single caller to an explicit raid and declared kind.
+export const raidSubmissionSessions = pgTable(
+  "raid_submission_sessions",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id),
+    telegramUserId: bigint("telegram_user_id", { mode: "bigint" }).notNull(),
+    kind: text("kind").$type<"reply" | "quote">().notNull(),
+    promptMessageId: integer("prompt_message_id"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("raid_submission_sessions_prompt").on(t.telegramUserId, t.promptMessageId),
+    check("raid_submission_sessions_kind", sql`${t.kind} in ('reply', 'quote')`),
+    check("raid_submission_sessions_user", sql`${t.telegramUserId} > 0`),
+  ],
+);
+
+// One receipt per accepted prompt; verification describes evidence, never a model verdict.
+export const raidSubmissionReceipts = pgTable(
+  "raid_submission_receipts",
+  {
+    id: id(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .unique()
+      .references(() => raidSubmissionSessions.id),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id),
+    contributionId: uuid("contribution_id")
+      .notNull()
+      .unique()
+      .references(() => contributions.id),
+    artifactKey: text("artifact_key").notNull(),
+    relationStatus: text("relation_status").notNull().default("unverified"),
+    ownershipStatus: text("ownership_status").notNull().default("unverified"),
+    queueStatus: text("queue_status").notNull().default("pending"),
+    receivedAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("raid_submission_receipts_artifact").on(t.communityId, t.artifactKey),
+    check("raid_submission_receipts_queue", sql`${t.queueStatus} in ('pending', 'queued')`),
+    check(
+      "raid_submission_receipts_verification",
+      sql`${t.relationStatus} = 'unverified' and ${t.ownershipStatus} = 'unverified'`,
+    ),
+  ],
+);
+
+// Member reports are append-only requests, never score corrections or allocation writes.
+export const submissionIssues = pgTable(
+  "submission_issues",
+  {
+    id: id(),
+    receiptId: uuid("receipt_id")
+      .notNull()
+      .references(() => raidSubmissionReceipts.id),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    telegramMessageId: integer("telegram_message_id").notNull(),
+    text: text("text").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("submission_issues_retry").on(t.receiptId, t.telegramMessageId)],
+);
+
+// Cancellation stops future intake only. Existing contribution/reward history remains intact.
+export const raidLifecycleEvents = pgTable(
+  "raid_lifecycle_events",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id),
+    actorTelegramUserId: bigint("actor_telegram_user_id", { mode: "bigint" }).notNull(),
+    action: text("action").$type<"opened" | "closed" | "cancelled">().notNull(),
+    reason: text("reason").notNull(),
+    telegramMessageId: integer("telegram_message_id").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("raid_lifecycle_events_transition").on(t.taskId, t.action),
+    check("raid_lifecycle_events_action", sql`${t.action} in ('opened', 'closed', 'cancelled')`),
+  ],
+);
+
 export const epochStatus = pgEnum("epoch_status", ["open", "closed", "published"]);
 
 export const epochs = pgTable(

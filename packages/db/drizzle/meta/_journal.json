@@ -99,6 +99,13 @@
       "when": 1791145987015,
       "tag": "0013_raid_alerts",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791150690052,
+      "tag": "0014_member_journey",
+      "breakpoints": true
     }
   ]
 }

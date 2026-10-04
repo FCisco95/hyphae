@@ -93,9 +93,11 @@ describe("private raid alerts", () => {
   });
   it("does not backfill old raids, and repeated opt-in preserves pending new alerts", async () => {
     const { community } = await seedCommunity(t.db);
-    await raid(t.db, community);
+    const first = await raid(t.db, community);
     await setRaidSubscription(t.db, community.id, 42n, true, clock);
     expect(await claimRaidAlert(t.db, NOW)).toBeUndefined();
+    if (first.status !== "created") throw new Error("raid");
+    await t.db.update(tasks).set({ status: "closed" }).where(eq(tasks.id, first.task.id));
     await raid(t.db, community, 2);
     await setRaidSubscription(t.db, community.id, 42n, true, clock);
     const d = deps();

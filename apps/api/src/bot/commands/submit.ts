@@ -1,5 +1,5 @@
-import { communities, contributions, members, tasks } from "@hyphae/db";
-import { and, desc, eq, gt, like } from "drizzle-orm";
+import { communities, contributions, members } from "@hyphae/db";
+import { and, eq } from "drizzle-orm";
 import type { CommandContext, Context } from "grammy";
 import { db } from "../../db.js";
 import { boss, QUEUES } from "../../jobs/queue.js";
@@ -11,13 +11,11 @@ import {
   capturedEvidence,
 } from "../../rewards/intake.js";
 import { routeSubmission } from "../../rewards/submission.js";
-import { fetchPost, parsePostUrl } from "../../x/oembed.js";
 import { reply } from "../reply.js";
 import { parseSubmitArgs, type SubmitArgs } from "./args.js";
-import { bindMemberHandle, MAX_HANDLES } from "./handles.js";
 
 const USAGE =
-  "Usage: /submit <link to your reply>, /submit quote <link to your quote>, or /submit <text of your work>";
+  "Use the exact raid’s Submit button for replies/quotes, or /submit <text of your separate work> in the group.";
 
 type Community = typeof communities.$inferSelect;
 type Member = typeof members.$inferSelect;
@@ -39,8 +37,7 @@ export async function communityAndMember(
   return { community, member };
 }
 
-// Format, oEmbed read, handle binding, one reply and one quote per raid, and the URL dedupe run
-// before admission and before any model call. Returns the admission input or the refusal text.
+// Linked raid work must use an explicit private prompt. Standalone text stays separate.
 export async function preflight(
   ctx: CommandContext<Context>,
   args: SubmitArgs,
@@ -64,50 +61,7 @@ export async function preflight(
       capture,
     };
   }
-  const openTask = await db.query.tasks.findFirst({
-    where: and(
-      eq(tasks.communityId, community.id),
-      eq(tasks.status, "open"),
-      gt(tasks.closesAt, new Date()),
-    ),
-    orderBy: [desc(tasks.opensAt)],
-  });
-  // One reply and one quote per member per raid, refused before any model call.
-  if (openTask) {
-    const dup = await db.query.contributions.findFirst({
-      where: and(
-        eq(contributions.memberId, member.id),
-        eq(contributions.taskId, openTask.id),
-        eq(contributions.kind, args.kind),
-      ),
-    });
-    if (dup) return `You already submitted a ${args.kind} for this raid.`;
-  }
-  const parsed = parsePostUrl(args.url);
-  if (!parsed) return USAGE;
-  const seen = await db.query.contributions.findFirst({
-    where: and(
-      eq(contributions.communityId, community.id),
-      like(contributions.url, `%/status/${parsed.id}`),
-    ),
-  });
-  if (seen) return "That post was already submitted.";
-
-  const post = await fetchPost(args.url);
-  if (!post) return "Could not read that post. Is it public?";
-  const bind = await bindMemberHandle(db, member.id, post.handle);
-  if (!bind.ok) {
-    const known = bind.handles.map((h) => `@${h}`).join(", ");
-    return `That post is by @${post.handle}; you submit as ${known} (max ${MAX_HANDLES}).`;
-  }
-  const { contribution, capture } = capturedEvidence({ post }, messageId, new Date());
-  return {
-    ...base,
-    taskId: openTask?.id ?? null,
-    contribution: { kind: args.kind, ...contribution },
-    artifactKey: artifactKeyFor({ statusId: post.id }),
-    capture,
-  };
+  return "For a reply or quote, open the exact raid's private Submit button. A link alone cannot select a raid. Free-form /submit text is separate work.";
 }
 
 export const ADMIT_REFUSAL: Record<Exclude<AdmitResult["status"], "admitted">, string> = {
