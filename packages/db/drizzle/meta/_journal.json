@@ -92,6 +92,13 @@
       "when": 1790521992081,
       "tag": "0012_leaves_wallet_index",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791145987015,
+      "tag": "0013_raid_alerts",
+      "breakpoints": true
     }
   ]
 }

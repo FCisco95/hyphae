@@ -21,7 +21,14 @@ const community = {
 
 describe("participant guidance", () => {
   it("makes every quick action an existing command, with brief/help as presentation", () => {
-    expect(PARTICIPANT_KEYS.flat()).toEqual(["/link", "/rules", "/me", "/help brief", "/help"]);
+    expect(PARTICIPANT_KEYS.flat()).toEqual([
+      "/link",
+      "/rules",
+      "/me",
+      "/help brief",
+      "/help",
+      "/notifications",
+    ]);
     const text = welcomeContent(community);
     for (const command of PARTICIPANT_KEYS.flat()) expect(text).toContain(command);
     expect(text).toContain("Hyphae Lab");

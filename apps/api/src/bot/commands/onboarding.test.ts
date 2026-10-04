@@ -109,7 +109,7 @@ describe("actual bot onboarding wiring", () => {
       (p?.reply_markup as ReplyKeyboardMarkup)?.keyboard
         .flat()
         .map((b) => (typeof b === "string" ? b : b.text)),
-    ).toEqual(["/link", "/rules", "/me", "/help brief", "/help"]);
+    ).toEqual(["/link", "/rules", "/me", "/help brief", "/help", "/notifications"]);
     expect((p?.reply_markup as ReplyKeyboardMarkup)?.selective).toBe(true);
     expect(p?.parse_mode).toBeUndefined();
     expect(await inventory()).toEqual(before);
