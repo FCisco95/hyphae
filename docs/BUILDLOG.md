@@ -2,6 +2,32 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 · Private raid notifications built and reviewed locally
+
+**Built locally:** explicit community-specific private alerts. /notifications → private Start offer → Enable → exact membership → future admin-selected target/excerpt/brief/UTC deadline with Engage/Stop buttons. Atomic outbox/event dedupe, consent revisions, current-membership/deadline checks, safe unstarted-claim recovery and conservative uncertain-started-send handling. API hosts delivery; no extra Fly VM or reward-worker source/config change.
+
+**Decision:** opt-in is separate from wallet/reward/council authority. A deep link only offers; a named Enable confirms consent. Unknown sends are retained rather than duplicated. Source is isolated onto a646 so pending SDK/adopter work remains excluded from the proposed release.
+
+**Validation:** exact minimalc58aa27efdb5bc5492c2f96d45c090c9fc91d379 **876tests/1skip, types0/lint297/Drizzle0/Postgres55/55/API+web builds0**. Owner main closing916/1skip/lint320/types/builds0. New25unit/integration+5realPG cases, intercepted actual bot/API transport, real SIGINT/SIGTERM failure→fix and lost-receipt counterfactual FAIL→PASS. Closing actualClaudeOpus5.5 ACCEPT/high requested; effortunobserved, staticno-tools review. Snapshot present/no generation delta. Initial unchanged cutoff-race failure retained as watch item; later full PG passes, no reward patch. Actualprimarygpt-6.1-sol/xhigh, no usage/cost claim.
+
+**Commits/stage:** featuref8a360b19352b76a78e57adce2d4222795d20d5f, fixes050753615b456645ac7d95f5de243bec59ec68c4 **local-only**. Minimal candidate retained in localtag candidate/raid-alerts-2026-10-04; no source push/image/migration/API rollout/real message/subscription. Existing publisheda646 web remains acceptedlive. Documentation checkpoint subject `docs: record reviewed private raid alert candidate and release scope` also local-only. Full-main publication held; pending existing IDs:
+
+- `5d2cf6ebf8a4071827a7a53041f6aa12cd800562` — docs: record exact publication approval and pending configuration access
+- `eb454d228934c96c98b01da72520a7189561e95f` — feat: add validated public integration starter for communities
+- `ff97f71595b7fde2de88da0f5b788d166aef56cd` — feat: add standalone typed public read SDK
+- `fc1f379112d21dc7928fc116dabda2355b276024` — docs: authorize bounded SDK adoption arc and sync agreement v2
+- `335618498ad4bb65ce9fac6ca4353ae6852816c6` — feat: adopt SDK in CLI and add local community reference app
+- `010c68cfe32fd9db98fcf95e3eb273c05be4edee` — fix: harden adopter bootstrap cooldown and portable build
+- `64d71bf0df4d845ee28ef91f72e232b1389bef18` — fix(demo): install tarballs portably and recover cooldown
+- `202fe957af1bfba90f16ef212e940120a041f204` — fix(demo): preserve multicall entrypoint and prove timer injection
+- `7f4494aa88580451d89c44dfe55c0c0aa8e3f1d6` — docs: close accepted local SDK adoption arc
+- `b5ba48a42c6ac4a029d21d16bd04282ca63af35d` — docs: record exact approved web release acceptance
+- `3d23691f8afc1ea7535c2e440efed0eb19bbb662` — docs: clarify engagement target authority and intake gaps
+- `f8a360b19352b76a78e57adce2d4222795d20d5f` — feat: add opt-in private community raid alerts
+- `050753615b456645ac7d95f5de243bec59ec68c4` — fix: harden raid alert consent recovery and API shutdown
+
+**Next bounded action:** Cisco approves or holds the exact [release plan](demo/2026-10-04-raid-alerts-release-plan.md); async question issued/pending, no preselection/time approval. New migration/API effects were not in the old web/read-only-login approval. [Portable completion/review](handoffs/2026-10-04-raid-notifications.md) for owning organic-sync. Council bridge, real phone/hidden recruitment and exactOct8–10 money/hold scopes remain separate; empty/no-payable means no payment.
+
 ## 2026-10-04 · Engagement target authority clarified
 
 **Recorded:** Cisco's rule: community admin and authorized council stewards add engagement targets; members submit evidence of their own replies/quotes. A public bot user cannot create a raid. Read-only source inspection confirms the designated-admin guard, missing council authorization and standalone /submit admission when no target is open. The current capture also lacks structural reply/quote target proof.
