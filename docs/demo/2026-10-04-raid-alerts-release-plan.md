@@ -1,5 +1,7 @@
 # Private raid alerts — bounded live-release plan
 
+**Historical exact-candidate plan.** Later, Cisco authorized reviewed current-main source publication for Windows:774b97e was pushed and GitHub CI/Vercel passed. This older c58aa27-only plan was not executed and is not authority for a current-source API rollout. Production still needs a newly approved artifact plan and both migrations0013+0014, preserving the frozen worker. See `docs/HANDOFF.md` for current evidence.
+
 Last Updated: 2026-10-04T21:25:07Z
 
 **Prepared and reviewable, NOT AUTHORIZED / NOT EXECUTED.** User accepted building private alerts; prior exact-a646 publication/web approval and local read-only Fly login do not include these new production effects. [Local completion/gates](../handoffs/2026-10-04-raid-notifications.md), [fresh other-family ACCEPT/advisories](../reviews/2026-10-04-raid-alerts-opus.md), [member flow](../community/RAID-ALERTS.md).

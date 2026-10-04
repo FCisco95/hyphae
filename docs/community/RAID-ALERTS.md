@@ -1,6 +1,6 @@
 # Private community raid alerts
 
-**Implementation is local and tested; not live.** Production still uses the previously approved web and frozen API/worker. This feature needs a reviewed source release, migrations `0013_raid_alerts.sql` and `0014_member_journey.sql`, and an API-only rollout before members can use it. No new Fly machine is required. Keep the frozen reward worker on its existing image.
+**Source is published and reviewed; the production bot rollout is pending.** The API and reward worker still run their frozen image. This feature requires separately approved migrations `0013_raid_alerts.sql` and `0014_member_journey.sql`, plus an API-only rollout. No extra Fly machine is required; keep the reward worker on its existing image.
 
 Members choose alerts separately for each registered community:
 
@@ -19,4 +19,4 @@ A Stop request acknowledges that stopping has begun, then waits for any already 
 
 Migration0013 adds new tables and an enum; all historical migrations0000–0012 stay unchanged. Do not auto-migrate production, backfill subscriptions, alter the frozen reward worker, change secrets, or send test messages without the separately approved live scope. The old API remains compatible with this additive schema; an API-only rollback retains the new tables and consent/evidence rather than deleting production data.
 
-The local member-journey extension requires a new release pin and review; the old `candidate/raid-alerts-2026-10-04` remains untouched. The designated admin can run `/close_raid <raid ID> <reason>` or `/cancel_raid <raid ID> <reason>` in the registered group. Both stop future intake and alerts; cancellation is visibly recorded and preserves prior submissions and credit. Removing credit/allocation would require a separate founder decision. One active brief per community is enforced under a database lock. `/ops <community ID>` in the admin's own private chat reads community operations without changing jobs or spending limits.
+The published member-journey source passed closing review; a new production artifact pin and rollout approval are still required; the old `candidate/raid-alerts-2026-10-04` remains untouched. The designated admin can run `/close_raid <raid ID> <reason>` or `/cancel_raid <raid ID> <reason>` in the registered group. Both stop future intake and alerts; cancellation is visibly recorded and preserves prior submissions and credit. Removing credit/allocation would require a separate founder decision. One active brief per community is enforced under a database lock. `/ops <community ID>` in the admin's own private chat reads community operations without changing jobs or spending limits.

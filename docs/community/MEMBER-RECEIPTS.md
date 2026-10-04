@@ -1,6 +1,6 @@
 # Private member submission receipts
 
-This journey is implemented and tested locally. It is not a production release. The existing private-alert release approval is still pending; the new source and additive migration need their own reviewed release scope. No real Telegram message, wallet signature, phone session or claim transaction is proved by these fixtures.
+**Source is published on GitHub main and reviewed; the production bot rollout is pending.** The running API and reward worker remain on their frozen image. Using this new bot journey requires separately approved migrations0013+0014 and an API-only rollout. Fixtures do not prove a real Telegram message, wallet signature, attended phone session or claim transaction.
 
 An authorized designated admin selects a raid target. A member who enabled that community's private alerts can choose **Submit my reply** or **Submit my quote** from the raid, then reply to the bot's specific prompt with their own post URL. The server binds that prompt to the caller, community, raid and declared kind. A different or newer raid cannot silently take that submission. The declared kind is the member's assertion, not evidence that X actually linked the post to that target.
 

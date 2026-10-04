@@ -2,6 +2,20 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 · Member journey source published; Windows handoff ready
+
+**Published:** all accepted current-main work through `774b97e61ae71cf6704908b28822c36c019ca097`, including the member journey, fixes and previously accepted SDK/adopter/private-alert source. [GitHub CI37241042904](https://github.com/FCisco95/hyphae/actions/runs/37241042904) **success**. Existing Git integration produced Vercel **READY/production** `dpl_JDXN7V9yUZzRpFkYdQpmNgSUdjwp`, exact774b97e, alias [hyphae-delta.vercel.app](https://hyphae-delta.vercel.app). HTTP200 home/community/Lab/API-health and8served assets passed. No rollback. No separate feature branch existed to merge; all current work is integrated on main.
+
+**Decision/authority:** Cisco explicitly requested finish/fix/commit/merge/push for Windows after being told about held-source and automatic web effects. That superseded the earlier pause and full-main source hold after reviews passed. Production API/migrations, frozen worker, money, real Telegram/phone/signatures/claims remain outside scope. Repository workflow/webhook checks found no Git-triggered Fly/API deployment.
+
+**Validation:** finalsource23a4f9c472c1ad06741632b57f83718ddf70b535: **1000tests/1optional skip,69PG,types0,lint343files0,Drizzle0,API+webbuilds0,16Python hashes reproduced**; final fresh other-family **ACCEPT**. Initial failed regressions/reviews and every repair retained in the [review record](reviews/2026-10-04-member-journey.md). Native Windows/real-phone evidence remains unknown.
+
+**Runtime boundary:** afterpush both API6839d31b317318 andworker817400c9901de8 remainstarted on actualdigest `sha256:1c2d6dd52635fc669052dc6b2c40c574af3ecbd0b29b54b99d4002bba4ae70c2`. No production DB read/write/migration, Fly update, live message, wallet signature, payment, credential or schedule change. Bot feature still needs separately approved migrations0013+0014 and API-only rollout. Oldc58aa27tag and all epoch-held refs unchanged. SDK source is on GitHub; no npm package publication.
+
+**Commits:** `96b3629` implementation, `f3aa3e0` first repair, `23a4f9c` final repair, `774b97e` accepted-review/publication checkpoint—all pushed. Final docs-only checkpoint subject `docs: record successful publication and Windows handoff` follows. Earlier pending lists below are historical and superseded for main. [Portable published snapshot](handoffs/2026-10-04-member-journey-published.md) and [HANDOFF](HANDOFF.md) own the current state.
+
+**Next bounded action:** on Windows, inspect the checkout and pull main with `git pull --ff-only origin main`, preserving unrelated local changes. Reuse completed source/reviews. New API rollout approval, Organic authority contract, independent X verification and attended phone/signature/claim steps remain separate; preserve Oct8–10 payout/hold guards and no empty-payment claim.
+
 ## 2026-10-04 · Member journey repaired and accepted for main publication
 
 **Completed:** all member-journey review blockers. Unicode/control-safe receipts and operator text, frozen capture semantics preserved, exact reward acceptance timestamps, Telegram membership outside shared reward locks, atomic queue job+receipt with concurrent/rollback/lost-ack proof, and cancellation that waits for in-flight alerts without holding the reward lock. Historical brief closure, effort guidance, technical prompt/report bounds and unavailable-telemetry savepoints covered. Actual bot reward flow tested through scoring/effort/public audit with fixtures.

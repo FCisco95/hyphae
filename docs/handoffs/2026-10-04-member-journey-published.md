@@ -12,7 +12,7 @@ Project: Hyphae. Scope: reviewed member journey, source publication and Windows 
 
 ## TL;DR
 
-**The member journey is implemented and reviewed ACCEPT at `23a4f9c472c1ad06741632b57f83718ddf70b535`.** Private raid reply/quote buttons bind intake to the caller, community and exact raid. Receipts, scoring issues, lifecycle controls and a private operator view work in local fixtures. **1,000 tests passed /1 optional skip; 69/69 real PostgreSQL tests; types, lint, schema checks, API/web builds and16Python contract hashes passed.** [Full review and all repair evidence](reviews/2026-10-04-member-journey.md).
+**The member journey is implemented and reviewed ACCEPT at `23a4f9c472c1ad06741632b57f83718ddf70b535`.** Private raid reply/quote buttons bind intake to the caller, community and exact raid. Receipts, scoring issues, lifecycle controls and a private operator view work in local fixtures. **1,000 tests passed /1 optional skip; 69/69 real PostgreSQL tests; types, lint, schema checks, API/web builds and16Python contract hashes passed.** [Full review and all repair evidence](../reviews/2026-10-04-member-journey.md).
 
 **Source push is now approved; production bot rollout is not.** After the earlier pause and explanation of held source/Git-triggered Vercel effects, Cisco said: “then fix it finish work and the push and commit and merge because tomorow ill be back at working with windows pc”. This authorizes finishing/reviewing/committing/pushing current main, including prior accepted SDK/adopter work and the existing Vercel integration. It supersedes the earlier source-publication hold; do not ask again. No production migration, Fly/API/worker update, credentials, money, real Telegram, wallet signature or attended phone testing is inferred.
 
@@ -34,7 +34,7 @@ Project: Hyphae. Scope: reviewed member journey, source publication and Windows 
 | Operator | `/ops <community ID>` in the designated admin's own private chat reads raid states, delivery failures/uncertainty, scoring/queue backlog, retained jobs, issue reports and recorded/unknown model cost. Read-only, community-scoped and reauthorized before returning. Missing job telemetry is unknown, not zero. |
 | Technical bounds | 10 new prompts per caller/community per rolling hour; 3 reports per receipt,60seconds between distinct reports; exact message retries exempt. These bound abuse, not spending or reward entitlement. Unicode/control-safe receipts/operator messages;4-second notification call bounds. |
 | Frozen behavior | Worker/jobs/rewards/payout/core/program source unchanged through this arc. Existing scorer still announces in group, disclosed before intake and on receipt; only group raid message IDs are passed to it. Private legacy intake respects pause; old standalone group-text behavior remains unchanged. |
-| Phone | Actual bot/notifier transport fixtures cover reply/quote, cancellation/retry, receipt/dispute, and reward scoring→effort upgrade→public audit parsing. [Phone script](community/MEMBER-PHONE-TEST.md) also maps joining/wallet/rules fixtures. No real phone/signature/claim execution or native Windows proof. |
+| Phone | Actual bot/notifier transport fixtures cover reply/quote, cancellation/retry, receipt/dispute, and reward scoring→effort upgrade→public audit parsing. [Phone script](../community/MEMBER-PHONE-TEST.md) also maps joining/wallet/rules fixtures. No real phone/signature/claim execution or native Windows proof. |
 
 ## Validation
 
@@ -82,7 +82,7 @@ The next bounded live step, if Cisco wants it, is a separately approved current-
 
 ## Quick Reference
 
-[Review](reviews/2026-10-04-member-journey.md) · [member guide](community/MEMBER-RECEIPTS.md) · [authority dependency](community/COUNCIL-AUTHORITY.md) · [phone script](community/MEMBER-PHONE-TEST.md) · [prior paused snapshot](handoffs/2026-10-04-member-journey-paused.md) · [payout runbook](demo/2026-10-08-first-payout-readiness.md).
+[Review](../reviews/2026-10-04-member-journey.md) · [member guide](../community/MEMBER-RECEIPTS.md) · [authority dependency](../community/COUNCIL-AUTHORITY.md) · [phone script](../community/MEMBER-PHONE-TEST.md) · [prior paused snapshot](../handoffs/2026-10-04-member-journey-paused.md) · [payout runbook](../demo/2026-10-08-first-payout-readiness.md).
 
 ## Resume Checklist
 
