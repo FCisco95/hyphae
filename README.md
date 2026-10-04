@@ -24,6 +24,8 @@ The [operator setup guide](docs/community/SETUP-INTEGRATION.md) describes the lo
 
 Public, read-only, unauthenticated JSON at `https://hyphae-api.fly.dev/v1`. The reference is at [`/docs`](https://hyphae-api.fly.dev/docs), which renders the OpenAPI 3.1 document at [`/v1/openapi.json`](https://hyphae-api.fly.dev/v1/openapi.json). The document is generated from the same schemas the API's tests check its responses with. To run it locally, see [Develop](#develop).
 
+For a runnable, schema-validated reader and the community/launchpad adoption boundaries, see the [integration guide](docs/community/INTEGRATING.md). The example uses the current public API; it is local repository tooling, not a published SDK or self-service setup.
+
 - A section the API cannot confirm is `{ "status": "unavailable", "reason": … }`, never a zero.
 - Settlement and payments are read against Solana. A transaction is shown only when the chain proves it created the account it names.
 - Every response carries `RateLimit-*` headers. Past 300 requests a minute from one address, the API answers `429` with `Retry-After`.

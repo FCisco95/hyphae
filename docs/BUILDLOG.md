@@ -2,6 +2,18 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 — working public integration starter (local-only)
+
+**Changed:** after Cisco confirmed Windows unavailable and steered toward easier adoption, added a public reader using existing consumer schemas and exact community/epoch identity, plus [integration guide](community/INTEGRATING.md) linked from README. It preserves exact strings/unavailable states, omits credentials, refuses unsafe origins/redirects and handles failures without automatic retries. Standalone SDK scope proposed, not built/published.
+
+**Decision:** reuse public APIv1 and operator setup before new APIs/site redesign. Gives adopters a tested read path without invented owner authority. Organic-sync loader/references resolve; producer handoff ready, full sync/vault writes not run.
+
+**Validation:** focused **12/12**, full **863 passed/1 optional skip**, repository typecheck0/lint0/**288 files**. Live Lab/epoch2/unavailable settlement read at09:47:29Z. Two-mint/identity/failure/precision/additive tests pass. No DB/worker/schema/lock/SDK/signing changes; earlier Postgres/Drizzle/builds remain dated prior evidence. Diff/links/handoff checked before commit.
+
+**Commit/state:** starting **5d2cf6ebf8a4071827a7a53041f6aa12cd800562**,19ahead origin312cc0ff. Integration SHA resolves from dated checkpoint history/final delivery. [Pending ledger](handoffs/2026-10-04-integration-starter.md#pending-commits) includes all preceding full SHAs. No push: approved exacta646 config guards UNKNOWN; later commits excluded. No deployment or phonePASS.
+
+**Next:** approve only the guide's local standalone read-only SDK/isolated-install scope, then implement it. Original release resumes when existing access returns; no repeated Windows question/preparation/unchanged review. Organic task3.6/DEP-09 owns authority/settings/provisioning; public settlement GET only. Original Oct8–10 gates, hidden pilot and SDK0.1.0 retained; no external writes or money.
+
 ## 2026-10-04 — exact publication approval recorded; configuration access pending (local-only)
 
 **Changed:** recorded Cisco’s “I approve” for exact **a646abc883131ff411d5dd7bbba536176364fe38** P1+D2 publication/automatic Vercel production release/rollback to **dpl_G3xB3NRa78G9UR5GzZmXmsBa62mz**, once existing configuration checks pass. Scope preserved in [approval checkpoint](handoffs/2026-10-04-publication-approval.md); no repeated approval or new packet.
