@@ -5,7 +5,7 @@ summary: Completed onboarding and operator-assisted setup at e5ee300d remain loc
 
 # Hyphae handoff
 
-Last Updated: 2026-10-04T09:03:41Z
+Last Updated: 2026-10-04T09:13:24Z
 
 ## TL;DR
 
@@ -15,7 +15,7 @@ October 4 documentation reconciliation retires the older resume block that calle
 
 ## Current Objective
 
-The authorized five-step preparation arc is complete. Publication/deployment, attended device testing and real setup remain parked for concrete scope/access/attendance; no work beyond step5 is inferred. [Portable release-readiness snapshot](handoffs/2026-10-04-release-readiness.md).
+The authorized five-step preparation arc is complete. Read-only continuation at local **28367f37a48c9bb66a5ee2955b9cf32fca871491** rechecked pins/Git and narrowed Vercel configuration access; selected API URL/default-mint values are sensitive/unreadable from this API. Existing Windows operator connection settings are the next access path to clarify. Publication/deployment, attended device testing and real setup remain parked for concrete scope/access/attendance; no work beyond step5 is inferred. [Portable release-readiness snapshot](handoffs/2026-10-04-release-readiness.md).
 
 ## Current State
 
@@ -44,6 +44,8 @@ Accepted unchanged other-family coverage: participant **d26357e101195019688b981c
 This session: Git/ref and source-boundary comparisons, 13 local migration file hashes and exact SDK equality, fresh public HTTP/Vercel read-only evidence, documentation/diff/path/handoff checks. No runtime tests/builds, review helper or live mutation. Source pins verified against Git/file contents; final **127 local destinations/8 heading anchors**, **7 Git trees/17 file hashes/13 migration hashes**, **18-file documentation-only scope**, preserved refs/resume paths, diff PASS and handoff Valid in the release-readiness snapshot. **Before any later authorized push:** `pnpm test`, `pnpm typecheck`, `pnpm lint`, `pnpm --filter @hyphae/db exec drizzle-kit check`, `pnpm --filter @hyphae/api test:pg` because the combined candidate changes packages/db. Never bypass hooks.
 
 ## Recent Changes
+
+Oct4 09:12Z continuation: scoped Vercel target PASS; selected public configuration values returned sensitive/decrypted=false, so private value equality remains UNKNOWN. No credentials queried/exported or release authorization inferred. Filename-only discovery including ignored Hyphae files and usual local Fly paths found no saved database/bot/Fly settings. Earlier Windows environment remains unconfirmed; the pending simple owner check is `Test-Path -LiteralPath .env -PathType Leaf` in that project root. [Continuation receipt](handoffs/2026-10-04-read-only-continuation.md).
 
 October 4 current-doc reconciliation replaces contradictory resume guidance, marks completed local milestones/reviews and removes settled choices from the input queue. Source remains e5ee300d; original receipts are preserved with current routing notes. Combined packet and machine-readable pins added; Vercel automatic production-on-main is a fresh concrete publication prerequisite. The older platform trace is marked historical for its no-copy claim.
 
@@ -87,6 +89,7 @@ Read current handoff and latest dated checkpoint. Fetch without pruning, compare
 | Current-doc reconciliation | Existing plans/guide, docs/HANDOFF.md, docs/BUILDLOG.md | Local documentation only |
 | Portable reconciliation snapshot | docs/handoffs/2026-10-04-document-reconciliation.md | Local checkpoint; original dated evidence retained |
 | Combined release/readiness packet and pins | docs/demo/2026-10-04-combined-release-packet.md, docs/demo/2026-10-04-combined-source-pins.json | Local preparation only; artifacts not built/deployed |
+| Read-only configuration-access receipt | docs/handoffs/2026-10-04-read-only-continuation.md | Source preserved; selected Vercel values UNKNOWN; operator environment pending |
 | Portable release-readiness snapshot | docs/handoffs/2026-10-04-release-readiness.md | Fresh/prior/UNKNOWN stages, pending full SHAs and downstream contract |
 
 No credentials, keys, deployed resources, schedules, messages, real registrations or transactions generated. Runtime metadata: **gpt-6.1-sol, high**, read from this session's turn_context; usage/cost unavailable. No borrowed prior counters.

@@ -2,6 +2,17 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-04 — read-only configuration access continuation (local-only)
+
+**Changed:** narrowed the combined packet’s Vercel configuration-access row. Exact project/team/root inspection succeeds, but selected API URL/default-mint reads return sensitive/decrypted=false with no readable value. Private equality remains UNKNOWN; no token export/query or settings change. Existing DB/bot/Fly settings remain absent in this Mac checkout; filename-only search including ignored Hyphae files/usual Fly paths found no saved settings here; Windows presence-only file check is pending.
+
+**Validation:** no-prune fetch, clean main16 ahead at28367f37a48c9bb66a5ee2955b9cf32fca871491, all7source trees/17file hashes/13migration hashes unchanged. DiffPASS,37local destinations,4-file docs-only scope/source pins/prompt paths and handoffValid. Prior851tests/1skip+50Postgres and accepted reviews remain prior; no runtime tests/builds/live action.
+
+**Commit/state:** this documentation receipt adds one local milestone; exact SHA resolves from its file history/final delivery. The16preceding pending SHAs are in the earlier release ledger plus28367f37a48c9bb66a5ee2955b9cf32fca871491. Publication hold retains all; origin312cc0ffae1c4efbf5fd69c2b58a5aaf98af28ac unchanged. SDK/parkedrefs/Oct8–10 gates preserved.
+
+**Next:** clarify where the existing owner connection settings/login are available, use them for read-only exact identity/runtime preflight, then select only concrete packet rows. No new credential, deployment, Telegram, registration, money or sibling/vault write.
+
+
 ## 2026-10-04 — combined release/preflight and Oct 8 readiness (local-only)
 
 **Changed:** completed all five preparation steps. One [combined packet](demo/2026-10-04-combined-release-packet.md) and [source pins](demo/2026-10-04-combined-source-pins.json) cover exact reviewed source/artifact/rollback bounds, frozen API/worker disposition, verified Vercel target, timestamped PASS/UNKNOWN preflight, attended own-account phone matrix, private-manifest setup, Organic consumer contract and exact C14–C22 acceptance. Reconciled dated spec baseline statements without rewriting original receipts.
