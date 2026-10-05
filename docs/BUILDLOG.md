@@ -2,6 +2,18 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-05 (later) · API rollout plan rehearsed and made ready
+
+**Shipped:** the rollout plan is now concrete. Three small scripts in `scripts/rollout/` do the read-only database and bot checks, run the 0013+0014 migration, and read image digests from the registry, without ever printing a credential. The full migration path was rehearsed on a throwaway local Postgres: it applies both files together, a blocked lock fails in 3 seconds with nothing applied, and a second run refuses.
+
+**Found and fixed in the plan:** the migration tool uses the `pg` driver, not the one the first draft named. And `drizzle-kit migrate` exits with no error text on a lock timeout, so the plan could not tell "safe to retry" from "stop". The new script prints the Postgres error code and exits 2 only for a clean lock timeout. The machine update and the rollback now point at immutable image digests, and the rollback digest was confirmed in the registry.
+
+**Decision:** keep the checks as committed scripts rather than session-scratch code, so any machine can run the exact rehearsed commands. They sit outside the Docker build context, so the image is unchanged.
+
+**Numbers:** 15/15 migration hashes match; rehearsal PASS on every case, including one deliberate mismatch caught; gate 1,000 tests passed (1 optional skip), typecheck 0, lint 0. Production: 0 writes, 0 database connections, 0 Telegram calls, 0 machine changes.
+
+**Stage:** pushed to GitHub as docs and scripts (triggers the existing web build only). Not authorized, not executed. Blocked on two things from Cisco: the production `.env` on this Mac, then the one exact yes.
+
 ## 2026-10-05 · API rollout plan written for the member journey
 
 **Shipped:** a written, reviewable plan to put the reviewed member journey on the live API: build one image from the published source `774b97e`, apply the two additive migrations (0013, then 0014) in one atomic run, update only the API machine, leave the worker frozen. It names every command and target, the read-only pre-checks (all 13 prior migration hashes, the Lab's identity, the bot's rights), the acceptance checks and a rollback to the frozen image. [Plan](demo/2026-10-05-api-rollout-plan.md).

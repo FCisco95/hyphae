@@ -1,16 +1,18 @@
 ---
-date: 2026-10-04
-summary: Member journey finished, reviewed ACCEPT and published to main; GitHubCI success and Vercel READY verified. Windows can pull main. Production bot rollout remains separate.
+date: 2026-10-05
+summary: Member journey published (774b97e). API rollout plan rehearsed and ready with committed check/migrate scripts; blocked on the production .env on this Mac and Cisco's exact yes. Nothing live changed.
 ---
 
 # Hyphae handoff
 
 ## Metadata
 
-Last Updated: 2026-10-04T22:49:56Z
-Project: Hyphae. Scope: reviewed member journey, source publication and Windows continuation.
+Last Updated: 2026-10-05T10:55Z
+Project: Hyphae. Scope: API-only rollout of the reviewed member journey (prepared, rehearsed, not executed).
 
 ## TL;DR
+
+**Now (2026-10-05): the API rollout plan is ready but blocked on Cisco.** [docs/demo/2026-10-05-api-rollout-plan.md](demo/2026-10-05-api-rollout-plan.md) is rehearsed end to end on a disposable Postgres. Checks and the migration run through committed scripts in `scripts/rollout/` (`db.mjs`, `telegram.mjs`, `registry-digest.sh`). Corrections made: the migrator uses `pg`, not postgres.js; `drizzle-kit migrate` hides lock-timeout errors, so `db.mjs migrate` classifies `55P03` (exit 2) vs stop (exit 1); the machine update and rollback use immutable digests (rollback digest confirmed `200` in the registry; new tag unused). Gate: 1,000 passed/1 skip, typecheck 0, lint 0. **Needs you, in order:** (1) create the gitignored `.env` on this Mac with `DATABASE_URL` and `TELEGRAM_BOT_TOKEN` (editor only, never chat); (2) the exact yes in the plan's Approval wording, before Oct 8 12:00Z. Nothing live has changed: no DB connection, migration, machine update or Telegram call.
 
 **The member journey is implemented and reviewed ACCEPT at `23a4f9c472c1ad06741632b57f83718ddf70b535`.** Private raid reply/quote buttons bind intake to the caller, community and exact raid. Receipts, scoring issues, lifecycle controls and a private operator view work in local fixtures. **1,000 tests passed /1 optional skip; 69/69 real PostgreSQL tests; types, lint, schema checks, API/web builds and16Python contract hashes passed.** [Full review and all repair evidence](reviews/2026-10-04-member-journey.md).
 
@@ -20,7 +22,7 @@ Project: Hyphae. Scope: reviewed member journey, source publication and Windows 
 
 ## Current Objective
 
-**Source arc complete.** Leave the final documentation synchronized on main for Windows. Current feature work is already integrated directly on main; no separate feature branch or PR merge is needed. Do not merge the older epoch-held reward/scoring/Jev refs. Next source work requires a new task; production bot activation remains separately gated.
+**Current:** the API-only rollout plan. Preparation is complete; execution waits for the `.env` and Cisco's exact yes. Earlier: **source arc complete.** Current feature work is already integrated directly on main; no separate feature branch or PR merge is needed. Do not merge the older epoch-held reward/scoring/Jev refs. Next source work requires a new task; production bot activation remains separately gated.
 
 ## Current State
 
@@ -78,7 +80,7 @@ C1–C13 complete; C14–C22 unexecuted. `docs/demo/2026-10-08-first-payout-read
 
 On Windows, inspect `git status -sb`, preserve any unrelated local changes, switch to main if needed, then `git pull --ff-only origin main`. Read this handoff. Do not reset/stash/drop unknown work automatically. Current source is on GitHub; no secrets or local logs need copying from this Mac. Node22.12+ is required by installed pg-boss; locally validated onNode24.14/pnpm10.29.3 and GitHubCI onNode22. Native Windows execution remains unobserved. PostgreSQL runner uses bash/Docker (WSL where needed); never point it at production.
 
-**API rollout plan written, awaiting Cisco's exact yes (2026-10-05):** [docs/demo/2026-10-05-api-rollout-plan.md](demo/2026-10-05-api-rollout-plan.md) pins runtime source `774b97e`, migrations 0013+0014 (hashes verified) in one atomic run, an update of only API machine `6839d31b317318`, the frozen worker untouched, and a rollback to the frozen digest. Prepared, not authorized, not executed; this Mac has no `.env` (open item 1). Not during the Oct 8 23:00Z to Oct 10 00:00Z sitting.
+**API rollout plan ready (2026-10-05T10:50Z):** [plan](demo/2026-10-05-api-rollout-plan.md). Step 2 rehearsal is done; do not repeat it. Next human action: Cisco creates `$REPO/.env` with `DATABASE_URL` and `TELEGRAM_BOT_TOKEN`. Then the agent runs Steps 0, 1 and 3 (read-only) and shows the PASS reports; then Cisco gives the exact yes and Steps 4 to 7 run in one attended sitting before Oct 8 12:00Z. Not during the Oct 8 23:00Z to Oct 10 00:00Z sitting. A yes covers E1 to E4 only.
 
 The next bounded live step, if Cisco wants it, is a separately approved current-source API-only release plan with migrations0013+0014 and frozen-worker/epoch guards. Existing c58aa27plan is historical and must not be reused for newer source. Actual Telegram/phone/signatures/claims remain their own scopes. Organic's verified role/Telegram contract is the independent steward integration dependency.
 
@@ -102,6 +104,7 @@ handoff-memory; Vercel deployment/CLI for existing Git integration acceptance; s
 | Additive schema | `packages/db/drizzle/0014_member_journey.sql`, snapshot/journal | Production unapplied |
 | Review and proof | `docs/reviews/2026-10-04-member-journey.md`, member/operator/phone guides | Portable, no secret or private-vault content |
 | Handoff/build log | `docs/HANDOFF.md`, `docs/BUILDLOG.md`, `docs/handoffs/2026-10-04-member-journey-published.md` | Portable completed publication checkpoint |
+| Rollout scripts and rehearsal | `scripts/rollout/`, plan Step 2 | Committed; rehearsed on disposable Postgres only |
 | Temporary logs/review JSON | ignored `.member-journey-*.log` inside repo | Optional local diagnostics; necessary facts preserved in tracked docs |
 
 GitHub main updated and its automatic Vercel web deployment created; no other production resource changed. No credential, OS privilege change, real message/signature/transaction, payout or schedule created. Test PostgreSQL containers removed by runners. No active source worker remains; final review complete.
@@ -113,9 +116,9 @@ Use the next-session prompt after pulling main on Windows. The implementation/re
 ## Next-session prompt
 
 ```text
-Resume Hyphae on Windows after pulling main. The member journey is finished and published: source23a4f9c, publication774b97e, fresh ClaudeOpus5.5 ACCEPT;1000unit/1skip,69PG,types/lint343/Drizzle/API+web builds and16Python hashes pass. GitHubCI37241042904 success; VercelREADY dpl_JDXN7V9yUZzRpFkYdQpmNgSUdjwp served exact774b97e at hyphae-delta.vercel.app; home/community/Lab/APIhealth and8assets pass. Later documentation-only HEAD may differ; runtime source is unchanged. All prior accepted SDK/adopter/private-alert main commits were pushed. No feature branch merge remains.
-Files: CLAUDE.md, AGENTS.md, docs/HANDOFF.md, docs/handoffs/2026-10-04-member-journey-published.md, docs/reviews/2026-10-04-member-journey.md, docs/community/MEMBER-RECEIPTS.md, docs/community/COUNCIL-AUTHORITY.md, docs/community/MEMBER-PHONE-TEST.md, docs/demo/2026-10-08-first-payout-readiness.md
-Model: Codex Sonnet5 per repository routing recommendation — bounded continuation; use the available runtime truthfully.
-Skills: handoff-memory, handoff; security-review/Vercel skills only if the next authorized task needs them.
-Verify local Git status and preserve any unrelated Windows changes. Reuse this completed work. Production bot features are NOT deployed: FlyAPI6839d31b317318 andworker817400c9901de8 remain started on originalsha256:1c2d6dd52635fc669052dc6b2c40c574af3ecbd0b29b54b99d4002bba4ae70c2. API-only rollout needs a newly approved current-source artifact/migrations0013+0014 plan; oldc58aa27candidate is retained but not the current release. Keep frozen worker/epoch/payout calculations and Oct8–10 safeguards, held refs and sibling/vault boundaries. Council contract and independent X verification remain missing; designated-admin guard, explicit unverified receipt states and current human attestation remain. Real Telegram/phone/signatures/claims need separate scope. Native Windows tests are unproved until run. No OS password task remains.
+Continue Hyphae on this Mac. Read CLAUDE.md, docs/HANDOFF.md and docs/demo/2026-10-05-api-rollout-plan.md.
+The member journey is published (source 774b97e). The API-only rollout plan is rehearsed and ready: committed scripts scripts/rollout/{db.mjs,telegram.mjs,registry-digest.sh}; disposable-Postgres rehearsal passed (pg driver, 3 s lock timeout -> exit 2/55P03, atomic 13->15, rerun refused). Do not repeat preparation or the rehearsal.
+If $REPO/.env exists (check existence only, never print it): run plan Steps 0, 1 and 3 read-only and report the PASS/FAIL verdicts. If all pass, ask Cisco for the exact yes in the plan's Approval wording. Only after that yes, run Steps 4-7 with Cisco present, before Oct 8 12:00Z and never during Oct 8 23:00Z - Oct 10 00:00Z.
+If .env is missing: say Needs you, and ask Cisco to create it in an editor with DATABASE_URL and TELEGRAM_BOT_TOKEN.
+Preserve: frozen worker 817400c9901de8 on sha256:1c2d6dd5...; only API 6839d31b317318 changes; reward/epoch/payout rules, held refs (158452fe, 707d7daf, 2fd2470a, tag c58aa27), Oct 8-10 safeguards; real Telegram messages, raids, subscriptions, phone tests, signatures and claims stay separately authorized; designated-admin fallback until Organic's council contract; X relation/ownership stays unverified.
 ```
