@@ -101,6 +101,15 @@ Second round, 2026-10-05T11:56Z, after the Codex review fixes (fresh disposable 
 | A counted table shrinks | FAIL: "tasks lost rows (delta -5)" |
 | `migrate` again | Refused: journal not 0000-0012, schema exists |
 
+Third round, 2026-10-05T12:1xZ, after the fix-check:
+
+| Case | Result |
+|---|---|
+| Trust-auth server (no SASL at all), `channel_binding=require` | `no verified -PLUS login`, refused; the same server without the parameter connects (control) |
+| TLS server (`ssl=on`, SCRAM), `sslmode=no-verify&channel_binding=require` | Connects via `SCRAM-SHA-256-PLUS` and reaches the queries |
+| Baseline PASS, worker tick, then intake paused | `NOT MIGRATING`: "reward intake is paused", "public intake state differs", exit 1 |
+| Intake unpaused | `APPLIED … exactly 0000-0014`, exit 0; `postcheck` PASS, `liveness=true` |
+
 ### Step 3. Read-only pre-checks (all must PASS; any FAIL stops the plan)
 
 ```
@@ -187,7 +196,7 @@ cd $WT/packages/db
 node --env-file=$REPO/.env $REPO/scripts/rollout/db.mjs migrate $RUN/pre.json; echo $?
 ```
 
-Before any DDL, `db.mjs migrate` refuses (exit 1, nothing changed) unless: the migrations folder is exactly 0000 to 0012 plus the pinned 0013 and 0014; the baseline is a PASS precheck of the same target, under 2 hours old, with valid counts; the live journal **content** (every hash and `created_at`, not just the count) is exactly 0000 to 0012; no new table or enum exists; no other transaction is older than 5 s; no counted table lost rows; and a `reward-recovery` completion newer than the baseline exists (identity). If that last one is missing, wait about 5 minutes and rerun. It then runs the `drizzle-orm@0.45.2` migrator, which applies every pending file's SQL and journal row inside one transaction, in journal order. The foreign keys take brief locks on `communities`, `tasks`, `members` and `contributions`; the 3 s lock timeout fails fast instead of queueing members behind it.
+Before any DDL, on every attempt, `db.mjs migrate` re-runs **every precheck condition on fresh state** (including the live public reads, queue health, intake and epochs) and refuses (exit 1, nothing changed) unless they all pass and: the migrations folder is exactly 0000 to 0012 plus the pinned 0013 and 0014; the baseline is a PASS precheck of the same target, under 2 hours old, with valid counts; the live journal **content** (every hash and `created_at`, not just the count) is exactly 0000 to 0012; no new table or enum exists; no other transaction is older than 5 s; no counted table lost rows; and a `reward-recovery` completion newer than the baseline exists (identity). If that last one is missing, wait about 5 minutes and rerun. It then runs the `drizzle-orm@0.45.2` migrator, which applies every pending file's SQL and journal row inside one transaction, in journal order. The foreign keys take brief locks on `communities`, `tasks`, `members` and `contributions`; the 3 s lock timeout fails fast instead of queueing members behind it.
 
 After the migrator returns or fails, the script reads the journal and schema back and reports one outcome:
 
@@ -252,6 +261,8 @@ Codex CLI 0.160.0 (`gpt-6-astra`, read-only sandbox, offline; session `01a10be3-
 
 The reviewer found no credential leak path and no wrong flyctl flag, and confirmed the normal path matches drizzle-kit and is atomic.
 
+Fix-check (same tool, session `01a10bed-9742-79b3-8647-9f74e5cf28ff`) on `38ae3e7..463967d`: findings 1, 2, 3, 5 and 6 **FIXED**; 4 **NOT FIXED** (a login without any SASL exchange still became ready) and one new major (migrate checked liveness but not current health, so a stopped worker or paused intake after the baseline could still migrate). Both fixed in the next commit and re-rehearsed (third round above).
+
 ## Read-only checks added 2026-10-05T10:38Z to 10:50Z (completion pass)
 
 By Claude Opus 5.5 (`claude-opus-5-5`) on this Mac, from `main` `f551677` = `origin/main`, clean tree. No production write, no message, no secret read.
@@ -302,7 +313,7 @@ By Claude Opus 5.5 (`claude-opus-5-5`) on this Mac, from `main` `f551677` = `ori
 4. ~~Migrator driver and timeout.~~ Resolved by the Step 2 rehearsal: `pg` driver, `lock_timeout` 3 s reaches the server, lock failure is classified by `55P03`.
 5. **Bot rights** have no fixed pass threshold in the repo beyond "bot is in the registered chat and the designated admin is creator or administrator". `telegram.mjs` enforces exactly that; anything else stops.
 6. DB target identity rests on two things: Cisco confirming the printed direct host is the production branch endpoint in the Neon console, and the liveness rule (a `reward-recovery` completion newer than the baseline, which only the live worker's database can show). The public-API match is a consistency check, not identity.
-8. `channel_binding=require` is enforced by refusing any authentication without `SCRAM-SHA-256-PLUS`; this relies on pg 8.23 internals (`_handleAuthSASL`) and was proven only in the refusal direction locally (the local server has no TLS). If the production precheck fails with `server offered no -PLUS`, stop and ask; do not drop the parameter alone.
+8. `channel_binding=require` is enforced by refusing any authentication without `SCRAM-SHA-256-PLUS`; this relies on pg 8.23 internals (`_handleAuthSASL`) and was proven locally in both directions (refused without SASL or without `-PLUS`; connected through `-PLUS` on a TLS server). If the production precheck fails with `server offered no -PLUS`, stop and ask; do not drop the parameter alone.
 7. `fly deploy --build-only --push` writes a new image to the registry and may start the existing remote builder. This is part of E1 and is why it needs the yes.
 
 ## Approval wording

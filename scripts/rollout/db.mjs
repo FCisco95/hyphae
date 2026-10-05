@@ -63,7 +63,8 @@ const { drizzle } = requireOrm("drizzle-orm/node-postgres");
 const { migrate } = requireOrm("drizzle-orm/node-postgres/migrator");
 
 // pg 8.23 treats channel binding as a preference and ignores channel_binding=require. This client
-// refuses any authentication that cannot bind the TLS channel.
+// refuses any authentication that cannot bind the TLS channel, and refuses to become ready unless
+// a SCRAM-SHA-256-PLUS exchange was verified (a trust login would otherwise skip SASL entirely).
 class ChannelBoundClient extends pg.Client {
   _handleAuthSASL(msg) {
     if (!msg.mechanisms.includes("SCRAM-SHA-256-PLUS")) {
@@ -71,6 +72,19 @@ class ChannelBoundClient extends pg.Client {
       return;
     }
     super._handleAuthSASL(msg);
+  }
+  _handleAuthSASLFinal(msg) {
+    const plus = this.saslSession?.mechanism === "SCRAM-SHA-256-PLUS";
+    super._handleAuthSASLFinal(msg);
+    // pg clears the session only after the server signature verifies.
+    if (plus && this.saslSession === null) this.channelBound = true;
+  }
+  _handleReadyForQuery(msg) {
+    if (this._connecting && !this.channelBound) {
+      this.connection.emit("error", new Error("channel_binding=require: no verified -PLUS login"));
+      return;
+    }
+    super._handleReadyForQuery(msg);
   }
   _handleAuthCleartextPassword() {
     this.connection.emit("error", new Error("channel_binding=require: password auth refused"));
@@ -384,12 +398,10 @@ async function runMigrate(baselinePath) {
     state: await readState(c),
   }));
   if (problems.length === 0) problems.push(...compareToBaseline(baseline, gate.state).problems);
+  // Every precheck condition must still hold now, not only when the baseline was taken.
+  problems.push(...checkState(gate.state, await publicReads(), journalExpected, "pre"));
   if (!journalMatches(gate.journal, before))
     problems.push("journal is not exactly 0000-0012 as expected");
-  if (Object.values(gate.state.new_tables).some((n) => n !== null) || gate.state.new_enum_exists)
-    problems.push("new schema already partly exists");
-  if (gate.state.long_transactions.length > 0)
-    problems.push("another transaction is older than 5 s");
   if (problems.length) {
     console.error(`NOT MIGRATING (nothing changed):\n- ${problems.join("\n- ")}`);
     return 1;
