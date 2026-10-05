@@ -1,11 +1,11 @@
 ---
 date: 2026-10-05
-summary: API-only release of the guided /setup checklist and the wallet-browser link message (runtime source 5808972). No migration, worker untouched, one machine updated by digest. Reuses the build, update-by-digest, acceptance and rollback steps of the 2026-10-05 API rollout plan. Not authorized, not executed.
+summary: API-only release of the guided /setup checklist and the wallet-browser link message (runtime source 5808972). No migration, worker untouched, one machine updated by digest. Reuses the build, update-by-digest, acceptance and rollback steps of the 2026-10-05 API rollout plan. Executed 2026-10-05.
 ---
 
 # Setup release plan: guided /setup on the live Hyphae API
 
-**Status: PREPARED, NOT AUTHORIZED, NOT EXECUTED.** Written 2026-10-05 by Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort high) on the Windows PC from `main`. Nothing in this document changed Fly, the database, Telegram, secrets or Vercel settings. The only effect of pushing it is the existing Vercel web build.
+**Status: EXECUTED 2026-10-05T21:19Z to 21:22Z (see [Execution record](#execution-record-2026-10-05)).** Authorized by Cisco's exact sentence "yes, run the 2026-10-05 setup release plan at 5808972". Written 2026-10-05 by Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort high) on the Windows PC from `main`. Nothing in this document changed Fly, the database, Telegram, secrets or Vercel settings. The only effect of pushing it is the existing Vercel web build.
 
 **Why:** invited members never reached the wallet-link step (the database holds one Telegram account with a link session: Cisco's). The old private link message did not say that Telegram's built-in browser cannot sign, there was no guide through the five steps, and the 100,000 MYCEL hold was never shown. This release adds `/setup` (a private five-step checklist), a new link message with Phantom/Solflare instructions and a tap-to-copy link, and an honest "what payment needs" text.
 
@@ -94,6 +94,27 @@ fly image show --app hyphae-api
 ```
 
 `fly image show` must print `$PREV` for the API machine again, `/health` 200, worker unchanged. Pending `/setup` buttons then do nothing (the old code ignores `setup_` callbacks and `setup_<uuid>` start payloads), which is harmless. If the rollback itself fails, stop live work and keep the exact state for read-only diagnosis.
+
+## Execution record (2026-10-05)
+
+By Claude Sonnet 5.5 on the Windows PC with Cisco present. Reports and the worktree `hyphae-setup-5808972` are local only.
+
+| Step | Time (UTC) | Result |
+|---|---|---|
+| 0 Guards | 21:18 | Clean `main` = `origin/main`, no locks; `5808972` is an ancestor; runtime-tree diff to `origin/main` empty; tag `setup-5808972` was `404`; `$PREV` and `$FROZEN` both `200` in the registry; API and worker `started` on `$PREV` / `$FROZEN`; `telegram.mjs` **PASS**, 0 pending, no last error |
+| 1 Worktree | 21:19 | Detached at exactly `58089727a0ab397e3fc1e9be60307e7345b12406`, `pnpm install --frozen-lockfile` 12.8 s |
+| 2 Build | 21:20 | `fly deploy --build-only --push --image-label setup-5808972 --depot=false`, 350 MB. Pushed `setup-5808972` -> **`NEW=sha256:d9955c7665c31e3ebdc4953e3902275ccf7191f53accc2a98428f9c8443fef6f`** (manifest v2). Registry read by tag and by digest both `200 $NEW`. Machines unchanged |
+| 3 Update, digest form | 21:20:50 | **flyctl 0.4.104 rejected it** before changing anything (`config.image: invalid image identifier`; it appended the digest twice). Machines verified untouched |
+| 3 Update, guarded tag fallback | 21:21:07 to 20:21:28 | Registry re-read: tag still `200 $NEW`. `fly machine update 6839d31b317318 --image registry.fly.io/hyphae-api:setup-5808972 --yes`: updated successfully, "Machine created and started in 11.363s" |
+| 4 Fly | 21:21 | API `6839d31b317318` `started`, digest **`$NEW`**, updated 21:21:27Z. Worker `817400c9901de8` `started`, digest **`$FROZEN`**, updated `2026-10-02T09:19:01Z`, unchanged |
+| 4 HTTP | 21:22 | `/health` 200 `{"ok":true}`; `/v1/communities/<mint>` 200 (intake open, epoch 2 open, closes `2026-10-09T00:00Z`); `/epochs/2`, `/link`, `/link/app.js`, `/docs` 200; `hyphae-delta.vercel.app` 200 |
+| 4 Logs | 21:21:32 | API: `api listening on :8080`, no stack trace (pg's known `sslmode` alias warning only) |
+| 4 Telegram | 21:22 | `telegram.mjs` **PASS**: webhook matches, 0 pending, no last error |
+| 4 Worker proof | 21:21 to 21:30 | **PASS**: worker completed `reward-recovery` at 21:25:16Z and 21:30:16Z after the update (about every 5 min), all counters 0, no error lines. API logs show no error since the restart |
+
+Digest-form note for next time: on flyctl 0.4.104 use the tag form after the registry check; the plan's fallback worked as written. The rollback command below uses the digest form and may hit the same rejection; the tag `member-journey-774b97e` points to `$PREV`, so use `--image registry.fly.io/hyphae-api:member-journey-774b97e` after `registry-digest.sh member-journey-774b97e` prints `$PREV`.
+
+Not done by this plan: no migration, secret, env, Fly config, Vercel, webhook, message, subscription, raid, payout or worker change. Rollback was not needed. The attended `/setup` check in the real group is Cisco's.
 
 ## What this plan does not do
 
