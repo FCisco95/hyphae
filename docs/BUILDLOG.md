@@ -2,6 +2,22 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-05 (night) · Why invited members never got set up, and the fix
+
+**What I found:** I invited people on October 5, and the database shows none of them got as far as linking a wallet. The only Telegram account that ever opened a link session is mine. Three likely reasons: Telegram's built-in browser cannot sign a wallet message and the old bot message never said so; setup was five steps with no guide; and the 100,000 MYCEL a member must hold to be paid was never shown to anyone.
+
+**Shipped (code on `main`, not deployed yet):** a guided `/setup`. In the group it gives one button into a private chat. There a five-step checklist (join, link wallet, rules test, alerts, first reply) shows what is done, one next button, a Refresh button, and a plain “what payment needs” text. The wallet message now tells people to open Phantom or Solflare's own browser and gives the link in a tap-to-copy block. I also fixed a test that would have started failing on October 8 because it read the wall clock.
+
+**Review:** an independent Codex pass (`gpt-6-astra`, read-only) said NEEDS-FIXES with two real findings. The hold amount was rounded down (a half-token minimum showed as zero and dropped the line), and the payment text left out conditions the payout gate really checks. Both are fixed with tests written first, plus a test that both buttons refuse a group chat. It found no way to forge or replay a link session and no token leak.
+
+**Decision:** ship the checklist and the instructions first, and test on a real phone before building “Open in Phantom” buttons. Those buttons would pass the link's one-time secret through the wallet vendor, so I want proof the copy-and-paste step is the real blocker before taking that risk.
+
+**Numbers:** gate 788 API tests passed (3 skipped), typecheck 0, lint 0. Production writes 0, Telegram messages 0, deployments 0.
+
+**Commits:** `1f4a9a3` (feature), `5808972` (review fixes), plus this record and the release plan.
+
+**Next:** release plan `docs/demo/2026-10-05-setup-release-plan.md` waits for my exact yes; then I run the phone test myself from a second Telegram account.
+
 ## 2026-10-05 (late evening) · Payout day prepared against live receipts
 
 **Shipped:** the three documents for the October 8 to 10 stretch (the payout packet, the video script and the submission checklist) now say only what was just read from the live system. I read each claim back before writing it: the web, the API image, the migrations, the frozen worker, the epoch 2 database state and the mainnet accounts. A new read-only runner, `docs/demo/oct8-audit.mts`, does the midnight audit in one transaction: the packet's own SQL, the real payout gate, and each member's expected share.
