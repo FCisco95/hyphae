@@ -5,7 +5,7 @@ summary: API-only rollout plan for the reviewed member journey at runtime source
 
 # API-only rollout plan: member journey on the live Hyphae API
 
-**Status: READY, REHEARSED. NOT AUTHORIZED. NOT EXECUTED.** First prepared 2026-10-05T09:05Z by a Hyphae product worker (Claude Sonnet 5.5, `claude-sonnet-5-5`, effort not observable) from `main` `0c02e38`. Completed 2026-10-05T10:50Z by Claude Opus 5.5 (`claude-opus-5-5`) from `main` `f551677`: disposable-Postgres rehearsal done, migrator driver corrected to `pg`, checks and migration moved into committed scripts (`scripts/rollout/`), machine update and rollback pinned to registry digests. Nothing in this document changed Fly, the database, Telegram, secrets or Vercel settings. The only effect of writing it is the docs/scripts push that triggers the existing Vercel web build.
+**Status: EXECUTED 2026-10-05T14:22Z to 14:35Z, ACCEPTED (see [Execution record](#execution-record-2026-10-05)).** Authorized by Cisco's exact sentence "yes, run the 2026-10-05 API rollout plan at 774b97e". First prepared 2026-10-05T09:05Z by a Hyphae product worker (Claude Sonnet 5.5, `claude-sonnet-5-5`, effort not observable) from `main` `0c02e38`. Completed 2026-10-05T10:50Z by Claude Opus 5.5 (`claude-opus-5-5`) from `main` `f551677`: disposable-Postgres rehearsal done, migrator driver corrected to `pg`, checks and migration moved into committed scripts (`scripts/rollout/`), machine update and rollback pinned to registry digests. Nothing in this document changed Fly, the database, Telegram, secrets or Vercel settings. The only effect of writing it is the docs/scripts push that triggers the existing Vercel web build.
 
 The old [c58aa27 plan](2026-10-04-raid-alerts-release-plan.md) is historical and is not authority for any of this. The earlier web-release and read-only Fly approvals do not cover these effects.
 
@@ -231,7 +231,7 @@ The digest reference is immutable, so the machine cannot receive anything other 
 - `telegram.mjs` again (`> $RUN/telegram-post.json`): PASS, `pending_update_count` back to its recorded level or 0.
 - `db.mjs postcheck $RUN/pre.json > $RUN/post-update.json` PASS (includes liveness: the worker kept completing `reward-recovery` into this database): 15 journal rows; new tables still empty (nothing creates rows until a raid exists); no counted table lost rows; queue healthy. Repeat after 10 minutes: `reward-recovery` completions continue about every 5 minutes (same proof as the Oct 2 C7 run).
 - `fly logs --app hyphae-api --machine 6839d31b317318` (read-only, Cisco present): `api listening on :8080`, no stack trace. Worker logs show no new error.
-- Attended, Cisco's own admin private chat, read-only: `/ops <community UUID>` answers with the operator view (empty states, unknown telemetry shown as unknown), and `/receipt` answers with no receipts. These send no group message and create no raid or subscription.
+- Attended, Cisco's own admin private chat, read-only: `/ops <community UUID>` answers with the operator view (empty states, unknown telemetry shown as unknown), and `/receipt` without an ID answers with its usage hint (by design, `apps/api/src/bot/commands/receipts.ts:43`); `/receipt 00000000-0000-0000-0000-000000000000` answers "Receipt not found for your account" (a real read of the new receipts table). These send no group message and create no raid or subscription.
 - Vercel is unaffected by this plan: `hyphae-delta.vercel.app` still 200.
 - Outside this plan, needs its own approval: a real raid brief, reply/quote buttons, `/issue` on a real receipt, private alert subscriptions and the registered-Lab phone test.
 
@@ -247,6 +247,33 @@ fly image show --app hyphae-api
 `fly image show` must print `$FROZEN` for the API machine again, `/health` 200, worker unchanged. On 2026-10-05 the registry served this digest (`200`, `application/vnd.docker.distribution.manifest.v2+json`), and the tag `deployment-01M3XYDW5XW7AEAY68CKVPKC2X` that both machines run resolved to the same digest. The additive tables stay; the frozen code ignores them. Never drop or delete a table, reseed, reset a queue, change a credential or force a resend. If the rollback itself fails, stop live work and keep the exact state for read-only diagnosis.
 
 If Step 5 stops with exit 1 or 2 before DDL, or with `LOCK TIMEOUT` or `ROLLED BACK`, nothing was applied and only the built image tag exists. `COMMITTED`, `INCONSISTENT` or `UNKNOWN` means the database state must be reconciled first (Step 5). If Step 4 fails, nothing has changed.
+
+## Execution record (2026-10-05)
+
+By Claude Opus 5.5 (`claude-opus-5-5`) on this Mac with Cisco present. Reports are in the session scratchpad on this Mac (not committed: they hold the endpoint host and Telegram IDs).
+
+| Step | Time (UTC) | Result |
+|---|---|---|
+| Reports moved | 14:21 | `$RUN` moved out of `$WT` so the Fly build context carries no check reports (they were never in the image; the Dockerfile copies only `packages` and `apps/api`) |
+| Fresh baseline | 14:22:02 | `precheck` **PASS** (the 12:39 baseline would have passed its 2-hour limit during the sitting). Counts unchanged from 12:39; last `reward-recovery` 14:20:14 |
+| 4 Build | 14:22 to 14:24 | `fly deploy --build-only --push`, remote builder (docker 24.0.7, linux x86_64), `node:22-slim@sha256:43ac6c60…772c`, pnpm 10.29.3. Pushed `member-journey-774b97e` → **`NEW=sha256:798e18880fd0ce8684c6f4627010e0653ede8a3e3e33584654f6e53cc31ac90c`** (manifest v2, 349 MB uncompressed). Registry read by tag and by digest both `200 $NEW`. Machines unchanged |
+| 5 Migrate, gate | 14:24:55 | `NOT MIGRATING (nothing changed)`: no `reward-recovery` completion newer than the baseline yet. Liveness guard working as designed |
+| 5 Liveness | 14:25:14 | Live worker completed `reward-recovery` into this database |
+| 5 Migrate | 14:25:37 to 14:25:46 | **Attempt 1: `APPLIED: journal 13 -> 15 rows, exactly 0000-0014`**, exit 0. No lock timeout |
+| 5 Post-check | 14:25:5x | **PASS**: liveness true, 15 rows, 7 new tables exist and are empty, enum exists, all counted-table deltas 0. Old API `/health` 200 |
+| 6 Update | 14:26:12 to 14:26:38 | Registry re-read `200 $NEW`; `fly machine update 6839d31b317318 --image registry.fly.io/hyphae-api@$NEW --yes`: flyctl accepted the digest form, "updated successfully". Restart gap ~10 s (proxy errors 14:26:27, app up 14:26:35). The tag fallback was not needed |
+| 7 Fly | 14:27 | API `6839d31b317318` `started`, digest **`$NEW`**, updated 14:26:31Z. Worker `817400c9901de8` `started`, digest **`$FROZEN`**, updated `2026-10-02T09:19:01Z`, unchanged |
+| 7 HTTP | 14:27 | `/health` 200 `{"ok":true}`; `/v1/communities/<mint>` 200 (intake open, epoch 2 open); `/epochs/2` 200; `/link`, `/link/app.js`, `/docs` 200; `hyphae-delta.vercel.app` 200 |
+| 7 Logs | 14:26:35 | API: `api listening on :8080`, no stack trace (pg's known `sslmode` alias warning only). Worker: no error lines today |
+| 7 Telegram | 14:27 | `telegram.mjs` **PASS**: webhook matches, 0 pending, no last error |
+| 7 DB | 14:27:2x | `postcheck` **PASS**: liveness, 15 rows, new tables empty, deltas 0, 0 failed, 0 stale |
+| 7 Attended `/ops` | 14:28:39 | Operator view returned, read-only: raids active 1 / expired 2; private deliveries all 0; scoring backlog 0; jobs failed/retrying/running/waiting 0; recorded model cost $0.100893; unknown cost 0 |
+| 7 Attended `/receipt` | 14:30 | No ID → usage hint (designed). Zero UUID → "Receipt not found for your account" |
+| 7 Worker proof | 14:26:38 to 14:35:17 | **PASS**: worker completed `reward-recovery` at 14:30:06 and 14:35:17 after the update (about every 5 min); 0 failed jobs |
+
+Observation, not a defect: `/ops` shows **one active raid** (`f6799bae…`, an `organic_mycel` X post, open until `2026-10-07T11:56:15Z`). It is an existing `tasks` row (count 3 before and after); this rollout created nothing. Private deliveries are 0 and `raid_subscriptions` is empty, so the new notifier has nobody to alert. Members using reply/quote buttons on it, alert subscriptions and the registered-Lab phone test remain their own scope.
+
+Not done by this plan: no secret, env, Fly config, Vercel, webhook, message, subscription, raid, payout or worker change. Rollback was not needed.
 
 ## Read-only run of Steps 0, 1 and 3 (2026-10-05T12:39Z): all PASS
 

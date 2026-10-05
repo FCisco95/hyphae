@@ -2,6 +2,20 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-05 (afternoon) · Member journey live on the API
+
+**Shipped:** the reviewed member journey now runs on the live Telegram API. Private raid buttons, receipts, `/issue`, the operator view and private raid alerts are deployed. One new image was built from the published source and the two additive migrations were applied in one transaction. Only the API machine moved; the worker that runs rewards stayed on its frozen image.
+
+**How it went:** the migration script refused the first try because the live worker had not yet written a fresh job record since the baseline check. That is the guard that proves the script is on the real database and not a copy. Five minutes later it passed, and the migration applied on the first attempt. The machine update used the image's exact digest, and the restart gap was about ten seconds.
+
+**Checks:** database pre/post checks PASS (13 → 15 migrations, new tables empty, no other row changed), bot and webhook healthy, every public endpoint 200, clean boot log, worker untouched and still completing jobs. Cisco ran `/ops` and `/receipt` in his private chat, and both answered from the new code.
+
+**Decision:** keep the worker frozen until the October 8 payout is done. Deploy only the API by digest, so a rollback is one command.
+
+**Numbers:** 1 image, 2 migrations, 1 machine updated, 0 worker changes, 0 Telegram messages sent, 0 rollbacks. Image `sha256:798e1888…c90c`.
+
+**Next:** the October 8 first-payout sitting. Real raid use with members, alert subscriptions and the phone test each need their own approval.
+
 ## 2026-10-05 (later) · API rollout plan rehearsed and made ready
 
 **Shipped:** the rollout plan is now concrete. Three small scripts in `scripts/rollout/` do the read-only database and bot checks, run the 0013+0014 migration, and read image digests from the registry, without ever printing a credential. The full migration path was rehearsed on a throwaway local Postgres: it applies both files together, a blocked lock fails in 3 seconds with nothing applied, and a second run refuses.
