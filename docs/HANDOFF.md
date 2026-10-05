@@ -65,7 +65,7 @@ Main source publication through774b97e is complete. Vercel project `prj_zGEwnzy5
 
 After source push, Fly API `6839d31b317318` and worker `817400c9901de8` both freshly read as **started**, image tag `deployment-01M3XYDW5XW7AEAY68CKVPKC2X`, actual digest `sha256:1c2d6dd52635fc669052dc6b2c40c574af3ecbd0b29b54b99d4002bba4ae70c2`. No machine/config change. Source publication does not make the bot feature live. A future API rollout requires a new approved artifact/database plan and migrations0013+0014 first, preserving the frozen worker; no live DB connection, migration or message was used for this arc.
 
-Old tag `candidate/raid-alerts-2026-10-04` remains exactly `c58aa27efdb5bc5492c2f96d45c090c9fc91d379`, retained locally. Its old exact-source migration/API plan is not permission for current main. Held scoring158452fe2b22a1e42e5efd42f3f7e11bfdf59c70 andJev707d7daf21e217d9a8a64e58514065f5e3bca45e remain unmerged until epoch3; rewardbranch2fd2470a26ff9a349bceeb697b2731bd1bff0e07/reviewtag2ca35057c3efbd43df191bda0d9527d526f6886f retained. No reset/rebase/prune/tag movement/force push.
+Old tag `candidate/raid-alerts-2026-10-04` remains exactly `c58aa27efdb5bc5492c2f96d45c090c9fc91d379` and, with `review/community-setup-initial-2026-10-03` (`2ca35057`), was pushed to GitHub on 2026-10-05 so every ref exists off this Mac. Its old exact-source migration/API plan is not permission for current main. Held scoring158452fe2b22a1e42e5efd42f3f7e11bfdf59c70 andJev707d7daf21e217d9a8a64e58514065f5e3bca45e remain unmerged until epoch3; rewardbranch2fd2470a26ff9a349bceeb697b2731bd1bff0e07/reviewtag2ca35057c3efbd43df191bda0d9527d526f6886f retained. No reset/rebase/prune/tag movement/force push.
 
 ## Known Issues / Watch List
 
@@ -114,6 +114,17 @@ GitHub main updated and its automatic Vercel web deployment created; no other pr
 ## Resume Prompt
 
 Use the next-session prompt after pulling main on Windows. The implementation/review/publication arc is complete; do not restart it.
+
+## Resume on Windows (2026-10-05)
+
+Everything needed is on GitHub: `main`, the held branches `feat/rules-v2` (scoring `158452fe`) and `feat/jev-eval` (Jev `707d7daf`), and every tag. The reward branch `2fd2470a` is already in `main`. Nothing on the Mac is required.
+
+1. `git fetch origin --tags`, then `git switch main` and `git pull --ff-only origin main`. Expect the head of `main` at or after the commit carrying this section.
+2. Keep the existing Windows `.env`. It must have the same `DATABASE_URL` and `TELEGRAM_BOT_TOKEN` as production. Never commit it.
+3. `pnpm install --frozen-lockfile`, then the gate: `pnpm test`, `pnpm typecheck`, `pnpm lint`.
+4. Read the TL;DR above. The API rollout is done; do not rerun it.
+
+Mac-only items you can ignore: `.member-journey-*.log` diagnostics (their facts are in `docs/reviews/`); the rollout check reports in the Mac session scratchpad (their results are in the plan's execution record; the raw files hold the DB host and Telegram IDs, so they stay off the repo); generated `apps/web/AGENTS.md`/`CLAUDE.md`, `next-env.d.ts` and `packages/read-client/LICENSE`; the `docs/plans/` mirror (copy from the vault when needed). The Mac `.env` stays on the Mac; after the Oct 10 password rotation, update the Windows `.env` too.
 
 ## Next-session prompt
 
