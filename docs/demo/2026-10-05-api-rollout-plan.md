@@ -248,6 +248,20 @@ fly image show --app hyphae-api
 
 If Step 5 stops with exit 1 or 2 before DDL, or with `LOCK TIMEOUT` or `ROLLED BACK`, nothing was applied and only the built image tag exists. `COMMITTED`, `INCONSISTENT` or `UNKNOWN` means the database state must be reconciled first (Step 5). If Step 4 fails, nothing has changed.
 
+## Read-only run of Steps 0, 1 and 3 (2026-10-05T12:39Z): all PASS
+
+Cisco created the gitignored `.env` on this Mac (values never displayed; both set, URL is Neon's pooled string with `sslmode` and `channel_binding`). Reports are in the untracked `$WT/rollout-run/` on this Mac; the endpoint host, chat ID and admin ID are kept there, not here.
+
+| Step | Result |
+|---|---|
+| 0 Guards | Clean `main` = `origin/main` `2bb4ec3`, no locks; `774b97e` is an ancestor; runtime tree diff empty; held refs unchanged; `member-journey-774b97e` → `404`; rollback tag and `$FROZEN` → `200 $FROZEN` |
+| 1 Worktree | `$WT` at exactly `774b97e`, frozen-lockfile install, 0013/0014 hashes match |
+| 3 `db.mjs precheck` | **PASS**, 0 problems. Direct endpoint (pooler swapped), `channel_binding` enforced and satisfied (`SCRAM-SHA-256-PLUS` on Neon), `read only on`, `lock_timeout 3s`, PostgreSQL 18.6 (rehearsal used 17; the migrations are plain `CREATE`s). Journal exactly 0000-0012; new schema absent; 1 community, Hyphae Lab, paid from epoch 2, intake open; epoch 1 closed with 1 snapshot, epoch 2 open to `2026-10-09T00:00Z`; public reads consistent. Counts: members 1, contributions 4, reward_intakes 1, reward_decisions 1, epochs 2, tasks 3, snapshot entries 0, leaves 0. No long transaction, 0 failed jobs, 0 stale, last `reward-recovery` `12:35:14Z`. Reference `12:39:39Z`, LSN `0/135E1A28` |
+| 3 `telegram.mjs` | **PASS**: `@hyphaeprotocol_bot`, group chat, bot `administrator`, designated admin `creator`, webhook URL matches, 0 pending, no last error |
+| 3 Fly | API and worker `started`, both `$FROZEN`, updated `09:18:28Z` / `09:19:01Z` Oct 2 |
+
+Remaining before Step 4: Cisco confirms the printed direct host is the production branch endpoint in the Neon console, then gives the exact yes. `$RUN/pre.json` from this run is the baseline for Step 5 (under 2 hours old when used; otherwise rerun the precheck).
+
 ## Other-family review of the scripts and plan
 
 Codex CLI 0.160.0 (`gpt-6-astra`, read-only sandbox, offline; session `01a10be3-4caf-7500-a877-2701a969520b`) reviewed `f551677..38ae3e7`: **NEEDS-FIXES**, 6 findings, all accepted and fixed in the next commit, then re-rehearsed (second round above):
