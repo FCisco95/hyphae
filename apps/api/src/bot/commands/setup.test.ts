@@ -1,4 +1,4 @@
-import { communities, type Db, epochs, members, raidSubscriptions } from "@hyphae/db";
+import { type Db, epochs, members, raidSubscriptions } from "@hyphae/db";
 import { eq, sql } from "drizzle-orm";
 import type { Bot } from "grammy";
 import type { InlineKeyboardMarkup, Update, UserFromGetMe } from "grammy/types";
@@ -61,7 +61,7 @@ const command = (text: string, chatId: number, type: "group" | "private", from =
     entities: [{ type: "bot_command", offset: 0, length: text.split(" ")[0]?.length ?? 0 }],
   },
 });
-const press = (data: string, from = 42): Update => ({
+const press = (data: string, from = 42, chatType: "private" | "group" = "private"): Update => ({
   update_id: ++updateId,
   callback_query: {
     id: String(updateId),
@@ -71,7 +71,10 @@ const press = (data: string, from = 42): Update => ({
     message: {
       message_id: 9,
       date: 0,
-      chat: { id: from, type: "private", first_name: "M" },
+      chat:
+        chatType === "private"
+          ? { id: from, type: "private", first_name: "M" }
+          : { id: -100123, type: "group", title: "Lab" },
     },
   },
 });
@@ -249,10 +252,23 @@ describe("setup buttons", () => {
     expect(String(sent("editMessageText")[0]?.payload.text)).toContain("Set up for");
   });
 
-  it("refuses a forged callback and a callback from a group chat", async () => {
+  it("refuses a forged callback", async () => {
     await bot.handleUpdate(press("setup_link_not-a-uuid"));
     expect(String(sent("answerCallbackQuery")[0]?.payload.text)).toContain("private chat");
     expect(sent()).toHaveLength(0);
-    expect(await t.db.select().from(communities).limit(1)).toBeDefined();
+  });
+
+  it("refuses both callbacks from a group chat, even for a real community, and writes nothing", async () => {
+    const { community } = await seedRewardLane(t.db);
+    const before = await inventory();
+    for (const data of [`setup_link_${community.id}`, `setup_${community.id}`]) {
+      out.length = 0;
+      await bot.handleUpdate(press(data, 42, "group"));
+      expect(String(sent("answerCallbackQuery")[0]?.payload.text)).toContain("private chat");
+      expect(sent()).toHaveLength(0);
+      expect(sent("editMessageText")).toHaveLength(0);
+      expect(sent("getChatMember")).toHaveLength(0);
+    }
+    expect(await inventory()).toEqual(before);
   });
 });

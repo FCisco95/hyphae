@@ -28,6 +28,14 @@ export const SETUP_PREFIX = "setup_";
 export const SETUP_LINK_PREFIX = "setup_link_";
 export const setupPayload = (communityId: string): string => `${SETUP_PREFIX}${communityId}`;
 
+// The exact amount, never rounded: "at least N" must not understate the pinned minimum.
+export const formatTokens = (units: bigint, decimals: number): string => {
+  const scale = 10n ** BigInt(decimals);
+  const whole = (units / scale).toLocaleString("en-US");
+  const fraction = (units % scale).toString().padStart(decimals, "0").replace(/0+$/, "");
+  return fraction ? `${whole}.${fraction}` : whole;
+};
+
 const utc = (d: Date) => `${d.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 const shortMint = (mint: string) => `${mint.slice(0, 6)}…${mint.slice(-4)}`;
 const escapeHtml = (s: string) =>
@@ -63,11 +71,17 @@ export function setupContent(s: SetupState): { text: string; buttons: SetupButto
   const hold = s.holdMin
     ? `at least ${s.holdMin} of the community token (mint ${shortMint(s.mint)})`
     : "at least the minimum balance of the community token set in the rules";
-  const conditions =
-    s.holdMin === "0"
-      ? `a verified wallet and the rules test passed before ${closes}`
-      : `a verified wallet, the rules test passed before ${closes}, and ${hold} in that wallet after the epoch closes`;
-  const needs = `To be paid you need all of these: ${conditions}. Points are not a payment: they only decide your share if you meet every condition.`;
+  const conditions = [
+    `a wallet linked by signing before ${closes}`,
+    `the rules test passed before ${closes}`,
+    "at least one reply that counts for points",
+    ...(s.holdMin === "0"
+      ? []
+      : [
+          `${hold} in that wallet from the close until 24 hours after it (the balance is read once in that window and the result is final)`,
+        ]),
+  ];
+  const needs = `To be paid you need all of these: ${conditions.join("; ")}. Points are not a payment: they only decide your share if you meet every condition.`;
 
   const text = [
     `Set up for ${s.name}`,

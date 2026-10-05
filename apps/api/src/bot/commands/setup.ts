@@ -14,6 +14,7 @@ import { isMemberStatus } from "../membership.js";
 import { sendLinkMessage } from "./link.js";
 import { mintDecimals } from "./mint-decimals.js";
 import {
+  formatTokens,
   SETUP_LINK_PREFIX,
   SETUP_PREFIX,
   type SetupState,
@@ -26,11 +27,6 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export const parseSetupPayload = (payload: string): string | undefined => {
   const id = payload.startsWith(SETUP_PREFIX) ? payload.slice(SETUP_PREFIX.length) : "";
   return UUID.test(id) ? id : undefined;
-};
-
-const wholeTokens = (units: bigint, decimals: number) => {
-  const whole = units / 10n ** BigInt(decimals);
-  return whole.toLocaleString("en-US");
 };
 
 async function loadState(
@@ -95,7 +91,7 @@ async function loadState(
   if (pinned.success) {
     const units = BigInt(pinned.data.rubric.minHoldUnits);
     const decimals = units === 0n ? 0 : await mintDecimals(community.mint);
-    if (decimals !== undefined) holdMin = wholeTokens(units, decimals);
+    if (decimals !== undefined) holdMin = formatTokens(units, decimals);
   }
 
   return {

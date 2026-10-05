@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { linkMessage, type SetupState, setupContent } from "./setup-content.js";
+import { formatTokens, linkMessage, type SetupState, setupContent } from "./setup-content.js";
 
 const id = "3f1c2a9e-0b4d-4c8e-9f11-2a3b4c5d6e7f";
 const base: SetupState = {
@@ -73,6 +73,15 @@ describe("setup checklist", () => {
     expect(text).toMatch(/points are not a payment/i);
   });
 
+  it("matches the payout gate: signed wallet and rules pass before close, counted points, hold window", () => {
+    const { text } = setupContent(base);
+    expect(text).toMatch(/linked by signing before 2026-10-09 00:00 UTC/);
+    expect(text).toMatch(/rules test passed before 2026-10-09 00:00 UTC/);
+    expect(text).toMatch(/at least one reply that counts for points/);
+    expect(text).toMatch(/from the close until 24 hours after it/);
+    expect(text).toMatch(/read once in that window and the result is final/);
+  });
+
   it("omits the amount when it is unknown rather than guessing one", () => {
     const { text } = setupContent(state({ holdMin: null }));
     expect(text).toContain("minimum balance");
@@ -105,5 +114,16 @@ describe("wallet-link message", () => {
     expect(html).toMatch(/Telegram.s own browser cannot sign/);
     expect(html).toContain("15 minutes");
     expect(html).toMatch(/moves no funds/);
+  });
+});
+
+describe("hold amount in tokens", () => {
+  it("shows the exact pinned amount and never rounds it down", () => {
+    expect(formatTokens(100_000_000_000n, 6)).toBe("100,000");
+    expect(formatTokens(1_500_000n, 6)).toBe("1.5");
+    expect(formatTokens(500_000n, 6)).toBe("0.5");
+    expect(formatTokens(1n, 6)).toBe("0.000001");
+    expect(formatTokens(5n, 0)).toBe("5");
+    expect(formatTokens(0n, 6)).toBe("0");
   });
 });
