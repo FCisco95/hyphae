@@ -42,7 +42,7 @@ The checks and the migration run through committed, rehearsed scripts in `$REPO/
 
 | Script | Does | Never |
 |---|---|---|
-| `db.mjs precheck \| migrate \| postcheck` | Read-only checks in a `read only` transaction; the 0013+0014 migration through the same `pg` driver and `drizzle-orm/node-postgres/migrator` that `drizzle-kit migrate` uses, with the Postgres error code printed | Prints the URL or any credential. Exit 0 pass/applied, 1 fail (stop), 2 lock timeout (nothing applied) |
+| `db.mjs precheck`, `migrate <pre.json>`, `postcheck <pre.json>` | Read-only checks in a `read only` transaction; the 0013+0014 migration through the same `pg` driver and `drizzle-orm/node-postgres/migrator` that `drizzle-kit migrate` uses, with the Postgres error code printed | Prints the URL or any credential. Exit 0 pass/applied, 1 fail (stop), 2 lock timeout (nothing applied) |
 | `telegram.mjs <chat id> <admin id>` | `getMe`, `getChat`, `getChatMember` x2, `getWebhookInfo` | Sends, reads updates, or changes the webhook. Prints no token |
 | `registry-digest.sh <tag\|sha256:…>` | `HEAD` of the manifest on `registry.fly.io/hyphae-api`; prints HTTP code, digest, media type | Pushes or tags anything. Token goes to curl on stdin only |
 
@@ -82,7 +82,24 @@ Ran on a disposable `postgres:17` (17.11) container on this Mac, never productio
 | Same lock, `db.mjs migrate` | Exit **2** after 3 s: `code=55P03 message=canceling statement due to lock timeout`, journal 13 |
 | Lock released, `drizzle-kit migrate` and later `db.mjs migrate` | Exit 0, journal 15, all 15 hashes and `created_at` equal the table, 7 tables and the enum exist. The failed runs left no partial 0013, which proves the single-transaction atomicity. |
 | `db.mjs postcheck` | `PASS`, new tables empty, row deltas 0 |
-| `db.mjs migrate` again | Refuses: "journal has 15 rows, expected 13" |
+| `db.mjs migrate` again | Refuses |
+
+Second round, 2026-10-05T11:56Z, after the Codex review fixes (fresh disposable DB, seeded Lab, real pg-boss 12 schema; a "worker tick" completes one `reward-recovery` job):
+
+| Case | Result |
+|---|---|
+| `precheck` | PASS, exit 0 |
+| `migrate pre.json` with no newer `reward-recovery` completion | `NOT MIGRATING (nothing changed)`: liveness missing, exit 1 |
+| `migrate` without a baseline | Refused, exit 1 |
+| URL with `?host=evil.example` | `unsupported param host`, exit 1 |
+| `channel_binding=require` against a server without `-PLUS` | `server offered no -PLUS`, exit 1 |
+| 13 journal rows whose last row is 0013's identity (the review's partial-apply scenario) | `journal is not exactly 0000-0012`, exit 1, nothing changed |
+| After a worker tick, `ROW EXCLUSIVE` lock held | `55P03`, `LOCK TIMEOUT: journal and schema unchanged`, exit 2 |
+| Lock released | `APPLIED: journal 13 -> 15 rows, exactly 0000-0014`, exit 0 |
+| `postcheck pre.json` | PASS, `liveness=true`, all deltas 0 |
+| Baseline edited to `FAIL` / count removed / other target | FAIL each: "not a passing precheck" / "count of contributions is invalid" / "target differs" |
+| A counted table shrinks | FAIL: "tasks lost rows (delta -5)" |
+| `migrate` again | Refused: journal not 0000-0012, schema exists |
 
 ### Step 3. Read-only pre-checks (all must PASS; any FAIL stops the plan)
 
@@ -91,7 +108,11 @@ cd $WT/packages/db
 node --env-file=$REPO/.env $REPO/scripts/rollout/db.mjs precheck > $RUN/pre.json; echo $?
 ```
 
-`db.mjs` swaps Neon's `-pooler` host for the direct host and sets `lock_timeout=3s` as a startup option. It prints `verdict`, `problems`, the target host and database name (never credentials) and the full state. It enforces:
+`db.mjs` swaps Neon's `-pooler` host for the direct host and sets `lock_timeout=3s` as a startup option. It refuses a URL with any query parameter other than `sslmode` and `channel_binding` (a `host=` parameter would silently redirect pg), checks that pg's effective host, port and database equal the reported ones, and enforces `channel_binding=require` when the URL asks for it (pg 8.23 alone treats it as a preference). It prints `verdict`, `problems`, the target (host, port, database, TLS settings; never credentials) and the full state.
+
+**Cisco confirms one thing by eye:** the printed `target.host` is the endpoint of the production branch in the Neon console. That plus liveness (below) is the identity proof.
+
+It enforces:
 
 | Check | Expected |
 |---|---|
@@ -100,7 +121,8 @@ node --env-file=$REPO/.env $REPO/scripts/rollout/db.mjs precheck > $RUN/pre.json
 | New schema absent | All 7 new tables and the `raid_delivery_status` enum absent |
 | Lab identity | Exactly 1 community: mint `HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg`, `Hyphae Lab`, `first_paid_epoch = 2`, intake not paused. Its UUID, `telegram_chat_id` and `admin_telegram_user_id` are in the report for the next check. |
 | Epochs | Epoch 1 closed with one snapshot, epoch 2 open, closes `2026-10-09T00:00:00Z` |
-| DB is the one the live API reads | Name, intake state, every epoch's index, status, opens and closes, and epoch 2's reward config UUID (`df5be064-4cee-4f69-84f8-939b46140b1a` on 2026-10-05) equal the live `GET https://hyphae-api.fly.dev/v1/communities/<mint>` and `/epochs/2`. Fly secrets cannot be read back and their listed digests are not a reproducible hash, so this cross-check is the target-identity proof. |
+| Consistent with the live API | Name, intake state, every epoch's index, status, opens and closes, and epoch 2's reward config UUID (`df5be064-4cee-4f69-84f8-939b46140b1a` on 2026-10-05) equal the live `GET https://hyphae-api.fly.dev/v1/communities/<mint>` and `/epochs/2`. This is consistency only: a recent Neon branch or copy would match too. |
+| Identity (enforced later, by `migrate` and `postcheck`) | A `reward-recovery` completion **newer than this precheck's** must exist. Only the database the live worker writes to gets new completions, so a branch, copy or stale target cannot pass. Fly secrets cannot be read back and their listed digests are not a reproducible hash. |
 | Activity | No other client transaction older than 5 s |
 | Queue | `pgboss.job`: 0 failed, nothing `created`/`retry` older than 10 min, last `reward-recovery` completion within 10 min |
 | Recorded, not judged | Row counts of `members`, `contributions`, `reward_intakes`, `reward_decisions`, `epochs`, `tasks`, `reward_snapshot_entries`, `leaves`; `now()` and `pg_current_wal_lsn()` as a point-in-time reference (not a rollback) |
@@ -158,18 +180,20 @@ Record `$NEW`, the media type, and Node and pnpm versions from the build log. `$
 
 ### Step 5. Apply 0013 then 0014 (one atomic run)
 
-Immediately before: rerun `db.mjs precheck > $RUN/pre.json`; it must still PASS. Then:
+Keep the Step 3 `$RUN/pre.json` as the baseline (do not overwrite it). Then:
 
 ```
 cd $WT/packages/db
-node --env-file=$REPO/.env $REPO/scripts/rollout/db.mjs migrate; echo $?
+node --env-file=$REPO/.env $REPO/scripts/rollout/db.mjs migrate $RUN/pre.json; echo $?
 ```
 
-`db.mjs migrate` re-checks the pinned 0013/0014 hashes and refuses unless the journal has exactly 13 rows. It then runs the `drizzle-orm@0.45.2` migrator, which applies every pending file's SQL and journal row inside one transaction, in journal order. The foreign keys take brief locks on `communities`, `tasks`, `members` and `contributions`; the 3 s lock timeout fails fast instead of queueing members behind it.
+Before any DDL, `db.mjs migrate` refuses (exit 1, nothing changed) unless: the migrations folder is exactly 0000 to 0012 plus the pinned 0013 and 0014; the baseline is a PASS precheck of the same target, under 2 hours old, with valid counts; the live journal **content** (every hash and `created_at`, not just the count) is exactly 0000 to 0012; no new table or enum exists; no other transaction is older than 5 s; no counted table lost rows; and a `reward-recovery` completion newer than the baseline exists (identity). If that last one is missing, wait about 5 minutes and rerun. It then runs the `drizzle-orm@0.45.2` migrator, which applies every pending file's SQL and journal row inside one transaction, in journal order. The foreign keys take brief locks on `communities`, `tasks`, `members` and `contributions`; the 3 s lock timeout fails fast instead of queueing members behind it.
 
-- **Exit 0**, `APPLIED: journal 13 -> 15 rows`: continue.
-- **Exit 2**, `LOCK TIMEOUT: nothing applied` (Postgres `55P03`, journal still 13): wait 30 s, rerun `precheck`, retry. **At most three attempts**, then stop and ask Cisco.
-- **Exit 1**, anything else: stop. Do not retry. If the connection was lost, the script reports the journal row count it could read; never replay or change target.
+After the migrator returns or fails, the script reads the journal and schema back and reports one outcome:
+
+- **Exit 0**, `APPLIED: journal 13 -> 15 rows, exactly 0000-0014`: continue.
+- **Exit 2**, `LOCK TIMEOUT` (Postgres `55P03` **and** journal content and schema read back unchanged): wait 30 s, retry the same command. **At most three attempts**, then stop and ask Cisco.
+- **Exit 1** with `ROLLED BACK` (another error, nothing applied), `COMMITTED` (e.g. a lost commit acknowledgement after both files applied), `INCONSISTENT` or `UNKNOWN` (read-back failed): stop. Do not retry. Reconcile the journal and schema read-only on the same target, never replay or change target, and ask Cisco. `COMMITTED` continues with the post-check only after Cisco agrees.
 
 Post-check:
 
@@ -196,7 +220,7 @@ The digest reference is immutable, so the machine cannot receive anything other 
 - `fly image show`: API machine `6839d31b317318` digest **equals `$NEW`**, `started`. Worker `817400c9901de8` **unchanged**: digest `$FROZEN`, `started`, last updated `2026-10-02T09:19:01Z`. Any other result goes to Rollback.
 - `GET https://hyphae-api.fly.dev/health` 200 `{"ok":true}`; `/v1/communities/<mint>` and `/v1/communities/<mint>/epochs/2` 200 with epoch 2 open and intake open as before; `/link` and `/link/app.js` 200; `/docs` 200.
 - `telegram.mjs` again (`> $RUN/telegram-post.json`): PASS, `pending_update_count` back to its recorded level or 0.
-- `db.mjs postcheck $RUN/pre.json > $RUN/post-update.json` PASS: 15 journal rows; new tables still empty (nothing creates rows until a raid exists); no counted table lost rows; queue healthy. Repeat after 10 minutes: `reward-recovery` completions continue about every 5 minutes (same proof as the Oct 2 C7 run).
+- `db.mjs postcheck $RUN/pre.json > $RUN/post-update.json` PASS (includes liveness: the worker kept completing `reward-recovery` into this database): 15 journal rows; new tables still empty (nothing creates rows until a raid exists); no counted table lost rows; queue healthy. Repeat after 10 minutes: `reward-recovery` completions continue about every 5 minutes (same proof as the Oct 2 C7 run).
 - `fly logs --app hyphae-api --machine 6839d31b317318` (read-only, Cisco present): `api listening on :8080`, no stack trace. Worker logs show no new error.
 - Attended, Cisco's own admin private chat, read-only: `/ops <community UUID>` answers with the operator view (empty states, unknown telemetry shown as unknown), and `/receipt` answers with no receipts. These send no group message and create no raid or subscription.
 - Vercel is unaffected by this plan: `hyphae-delta.vercel.app` still 200.
@@ -213,7 +237,20 @@ fly image show --app hyphae-api
 
 `fly image show` must print `$FROZEN` for the API machine again, `/health` 200, worker unchanged. On 2026-10-05 the registry served this digest (`200`, `application/vnd.docker.distribution.manifest.v2+json`), and the tag `deployment-01M3XYDW5XW7AEAY68CKVPKC2X` that both machines run resolved to the same digest. The additive tables stay; the frozen code ignores them. Never drop or delete a table, reseed, reset a queue, change a credential or force a resend. If the rollback itself fails, stop live work and keep the exact state for read-only diagnosis.
 
-If Step 5 fails, nothing was applied and nothing else has changed except the built image tag. If Step 4 fails, nothing has changed.
+If Step 5 stops with exit 1 or 2 before DDL, or with `LOCK TIMEOUT` or `ROLLED BACK`, nothing was applied and only the built image tag exists. `COMMITTED`, `INCONSISTENT` or `UNKNOWN` means the database state must be reconciled first (Step 5). If Step 4 fails, nothing has changed.
+
+## Other-family review of the scripts and plan
+
+Codex CLI 0.160.0 (`gpt-6-astra`, read-only sandbox, offline; session `01a10be3-4caf-7500-a877-2701a969520b`) reviewed `f551677..38ae3e7`: **NEEDS-FIXES**, 6 findings, all accepted and fixed in the next commit, then re-rehearsed (second round above):
+
+1. Major, DB identity not established (a recent branch/copy passes; a URL `host=` parameter overrides the hostname): liveness rule, query-parameter allowlist, pg effective-target check, Cisco's host confirmation.
+2. Major, journal guards compared counts, not contents: full content comparison before DDL and after a lock timeout.
+3. Major, postcheck accepted an invalid baseline: phase/verdict/target/count/age validation.
+4. Minor, `channel_binding=require` silently ignored by pg: enforced by refusing non-`-PLUS` authentication.
+5. Major, plan said every Step 5 failure applied nothing: outcomes now `ROLLED BACK`/`COMMITTED`/`INCONSISTENT`/`UNKNOWN`.
+6. Minor, `registry-digest.sh` kept `\r` in the HTTP status: stripped before parsing.
+
+The reviewer found no credential leak path and no wrong flyctl flag, and confirmed the normal path matches drizzle-kit and is atomic.
 
 ## Read-only checks added 2026-10-05T10:38Z to 10:50Z (completion pass)
 
@@ -264,7 +301,8 @@ By Claude Opus 5.5 (`claude-opus-5-5`) on this Mac, from `main` `f551677` = `ori
 3. That `fly machine update` leaves the worker and app release untouched is expected and checked by Step 7 (worker digest and `updated` timestamp), not proven in advance.
 4. ~~Migrator driver and timeout.~~ Resolved by the Step 2 rehearsal: `pg` driver, `lock_timeout` 3 s reaches the server, lock failure is classified by `55P03`.
 5. **Bot rights** have no fixed pass threshold in the repo beyond "bot is in the registered chat and the designated admin is creator or administrator". `telegram.mjs` enforces exactly that; anything else stops.
-6. DB target identity is proven by the Step 3 cross-check against the live public API, including the epoch 2 reward config UUID, not by reading the Fly secret.
+6. DB target identity rests on two things: Cisco confirming the printed direct host is the production branch endpoint in the Neon console, and the liveness rule (a `reward-recovery` completion newer than the baseline, which only the live worker's database can show). The public-API match is a consistency check, not identity.
+8. `channel_binding=require` is enforced by refusing any authentication without `SCRAM-SHA-256-PLUS`; this relies on pg 8.23 internals (`_handleAuthSASL`) and was proven only in the refusal direction locally (the local server has no TLS). If the production precheck fails with `server offered no -PLUS`, stop and ask; do not drop the parameter alone.
 7. `fly deploy --build-only --push` writes a new image to the registry and may start the existing remote builder. This is part of E1 and is why it needs the yes.
 
 ## Approval wording

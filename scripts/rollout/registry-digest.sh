@@ -11,7 +11,8 @@ fly auth token 2>/dev/null | {
 } | curl -sS -o /dev/null -D - -H @- \
   -H 'Accept: application/vnd.docker.distribution.manifest.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.index.v1+json' \
   "https://registry.fly.io/v2/hyphae-api/manifests/${ref}" |
+  tr -d '\r' |
   awk -v ref="$ref" 'tolower($1) ~ /^http/ { code = $2 }
     tolower($1) == "content-type:" { type = $2 }
     tolower($1) == "docker-content-digest:" { digest = $2 }
-    END { gsub(/\r/, "", type); gsub(/\r/, "", digest); print ref, code, digest, type }'
+    END { print ref, code, digest, type }'
