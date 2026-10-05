@@ -2,6 +2,16 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-05 · API rollout plan written for the member journey
+
+**Shipped:** a written, reviewable plan to put the reviewed member journey on the live API: build one image from the published source `774b97e`, apply the two additive migrations (0013, then 0014) in one atomic run, update only the API machine, leave the worker frozen. It names every command and target, the read-only pre-checks (all 13 prior migration hashes, the Lab's identity, the bot's rights), the acceptance checks and a rollback to the frozen image. [Plan](demo/2026-10-05-api-rollout-plan.md).
+
+**Decision:** build the image without deploying, then move only one machine, because a plain deploy would also restart the worker that the October 8 payout depends on. Migrations go first so the new code never runs without its tables.
+
+**Numbers:** both migration hashes re-verified; no runtime source change since `774b97e`; 0 deployments, 0 database connections, 0 Telegram calls. Read-only Fly reads show both machines still on the frozen image.
+
+**Stage:** local commit pushed to GitHub as docs only (it triggers the existing web build). Not authorized and not executed: it waits for Cisco's one exact yes. Open item: this Mac has no `.env`, so the database and bot checks need it or the Windows PC.
+
 ## 2026-10-04 · Member journey source published; Windows handoff ready
 
 **Published:** all accepted current-main work through `774b97e61ae71cf6704908b28822c36c019ca097`, including the member journey, fixes and previously accepted SDK/adopter/private-alert source. [GitHub CI37241042904](https://github.com/FCisco95/hyphae/actions/runs/37241042904) **success**. Existing Git integration produced Vercel **READY/production** `dpl_JDXN7V9yUZzRpFkYdQpmNgSUdjwp`, exact774b97e, alias [hyphae-delta.vercel.app](https://hyphae-delta.vercel.app). HTTP200 home/community/Lab/API-health and8served assets passed. No rollback. No separate feature branch existed to merge; all current work is integrated on main.

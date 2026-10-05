@@ -78,6 +78,8 @@ C1–C13 complete; C14–C22 unexecuted. `docs/demo/2026-10-08-first-payout-read
 
 On Windows, inspect `git status -sb`, preserve any unrelated local changes, switch to main if needed, then `git pull --ff-only origin main`. Read this handoff. Do not reset/stash/drop unknown work automatically. Current source is on GitHub; no secrets or local logs need copying from this Mac. Node22.12+ is required by installed pg-boss; locally validated onNode24.14/pnpm10.29.3 and GitHubCI onNode22. Native Windows execution remains unobserved. PostgreSQL runner uses bash/Docker (WSL where needed); never point it at production.
 
+**API rollout plan written, awaiting Cisco's exact yes (2026-10-05):** [docs/demo/2026-10-05-api-rollout-plan.md](demo/2026-10-05-api-rollout-plan.md) pins runtime source `774b97e`, migrations 0013+0014 (hashes verified) in one atomic run, an update of only API machine `6839d31b317318`, the frozen worker untouched, and a rollback to the frozen digest. Prepared, not authorized, not executed; this Mac has no `.env` (open item 1). Not during the Oct 8 23:00Z to Oct 10 00:00Z sitting.
+
 The next bounded live step, if Cisco wants it, is a separately approved current-source API-only release plan with migrations0013+0014 and frozen-worker/epoch guards. Existing c58aa27plan is historical and must not be reused for newer source. Actual Telegram/phone/signatures/claims remain their own scopes. Organic's verified role/Telegram contract is the independent steward integration dependency.
 
 ## Quick Reference
