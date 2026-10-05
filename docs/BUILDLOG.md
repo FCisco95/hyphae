@@ -2,6 +2,18 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-05 (evening) · Windows resume and an epoch 2 preview
+
+**Shipped:** the project now runs and passes its full gate on native Windows, not only on the Mac. And a read-only preview of epoch 2 shows the October 8 sitting has a real member to pay, not an empty epoch.
+
+**What the preview found:** epoch 2 holds one admitted contribution, a reply, scored and counted at 66 points. Its member has a wallet linked by signature, a rules-test pass from before the close, and a current MYCEL balance about ten times the 100,000 hold threshold. Nothing is decided yet: the hold result counts only if it is read after the close, and the author attestation happens in the 23:45Z audit. The community's on-chain binding is still empty, as expected before C16/C17.
+
+**Decision:** read the payout prerequisites now, three days early, in one read-only transaction. A missing wallet link or rules pass can still be fixed before close; on October 8 it could not.
+
+**Numbers:** gate 998 passed, 3 skipped (106 core, 26 read-client, 107 web, 759 API; the 2 extra Windows skips are the POSIX-signal shutdown tests, plus the optional devnet run), typecheck 0, lint 345 files 0. Live: API on `sha256:798e1888…`, worker on `sha256:1c2d6dd5…` unchanged and completing `reward-recovery` every 5 minutes, `/health` 200. Production writes 0, Telegram messages 0.
+
+**Next:** Cisco confirms the epoch 2 payee question in the handoff, then the October 8 sitting.
+
 ## 2026-10-05 (afternoon) · Member journey live on the API
 
 **Shipped:** the reviewed member journey now runs on the live Telegram API. Private raid buttons, receipts, `/issue`, the operator view and private raid alerts are deployed. One new image was built from the published source and the two additive migrations were applied in one transaction. Only the API machine moved; the worker that runs rewards stayed on its frozen image.

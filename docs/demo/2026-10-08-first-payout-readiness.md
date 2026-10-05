@@ -1,6 +1,6 @@
 # October 8–9 operator packet
 
-**Current continuation — October 4:** source/checkpoint `e5ee300d6ce65231ec2325fef60be1f1ecbcba05` contains completed, independently reviewed T/A/B onboarding and operator-assisted setup. Both remain local-only, unpushed/undeployed. The owner-doc patch is applied. Next gate: combined release/target preflight, genuine owner inputs and separately authorized attended phone/setup/live scope; no rebuild of accepted source. [Current handoff](../HANDOFF.md).
+**Current state — October 5, 15:27Z:** the member journey is live on the API machine; the worker stays frozen on `sha256:1c2d6dd5…` through this sitting. A read-only epoch 2 preview found **1 counted contribution (66 points) from 1 member** with a signature-linked wallet, a rules-test pass before close and a current balance above the hold threshold; the URL author is the founder's own account. The empty-epoch fallback below is therefore not the expected path, but every gate is still rechecked at the sitting. The October 4 notes further down are history. [Current handoff](../HANDOFF.md).
 
 Prepared October 2; reconciled October 3, 2026. This packet prepares [Runbook C](../handoffs/2026-09-28-runbook-c.md), C14–C22; it executes none of them. Use UTC throughout. The [October 2 readiness receipt](../handoffs/2026-10-02-payout-readiness.md) distinguishes fresh reads from accepted C13 receipts. Recheck every live precondition at the dated, attended sitting. Existing policy, funding and author-attestation rulings remain approved.
 
