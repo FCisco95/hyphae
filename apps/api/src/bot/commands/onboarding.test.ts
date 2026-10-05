@@ -109,7 +109,7 @@ describe("actual bot onboarding wiring", () => {
       (p?.reply_markup as ReplyKeyboardMarkup)?.keyboard
         .flat()
         .map((b) => (typeof b === "string" ? b : b.text)),
-    ).toEqual(["/link", "/rules", "/me", "/help brief", "/help", "/notifications"]);
+    ).toEqual(["/setup", "/me", "/link", "/rules", "/help brief", "/help", "/notifications"]);
     expect((p?.reply_markup as ReplyKeyboardMarkup)?.selective).toBe(true);
     expect(p?.parse_mode).toBeUndefined();
     expect(await inventory()).toEqual(before);
@@ -183,6 +183,11 @@ describe("actual bot onboarding wiring", () => {
 
   it("shows the pinned epoch and quiz, not a mutable community rubric or completed pass", async () => {
     const { community } = await seedRewardLane(t.db);
+    // The seeded epoch is dated from a fixed day; the guidance reads the live clock.
+    await t.db
+      .update(epochs)
+      .set({ opensAt: new Date(Date.now() - 60_000), closesAt: new Date(Date.now() + 3_600_000) })
+      .where(eq(epochs.communityId, community.id));
     await t.db
       .update(communities)
       .set({ rubricVersion: "future-version" })

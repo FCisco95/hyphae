@@ -22,9 +22,10 @@ const community = {
 describe("participant guidance", () => {
   it("makes every quick action an existing command, with brief/help as presentation", () => {
     expect(PARTICIPANT_KEYS.flat()).toEqual([
+      "/setup",
+      "/me",
       "/link",
       "/rules",
-      "/me",
       "/help brief",
       "/help",
       "/notifications",

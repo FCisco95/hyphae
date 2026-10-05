@@ -24,6 +24,7 @@ import { raid } from "./commands/raid.js";
 import { cancelRaid, closeRaid } from "./commands/raid-lifecycle.js";
 import { issueCommand, receiptCommand, refreshReceipt } from "./commands/receipts.js";
 import { rulesStart, rulesTest } from "./commands/rules.js";
+import { setupInGroup, setupLink, setupRefresh, setupStart } from "./commands/setup.js";
 import { submit } from "./commands/submit.js";
 import { containBotError } from "./errors.js";
 
@@ -37,6 +38,7 @@ commands.command("start", async (ctx) => {
   if (
     ctx.chat.type === "private" &&
     ((await linkStart(ctx)) ||
+      (await setupStart(db, ctx)) ||
       (await rulesStart(db, ctx)) ||
       (await raidAlertStart(db, ctx)) ||
       (await submissionStart(db, ctx)))
@@ -48,6 +50,13 @@ commands.command("start", async (ctx) => {
 commands.command("link", (ctx) =>
   ctx.chat.type === "private" ? ctx.reply("Send /link in your community chat.") : linkInGroup(ctx),
 );
+commands.command("setup", (ctx) =>
+  ctx.chat.type === "private"
+    ? ctx.reply("Send /setup in your community chat to begin.")
+    : setupInGroup(db, ctx),
+);
+commands.callbackQuery(/^setup_link_/, (ctx) => setupLink(db, ctx));
+commands.callbackQuery(/^setup_(?!link_)/, (ctx) => setupRefresh(db, ctx));
 commands.command("me", me);
 commands.command("help", (ctx) => onboardingHelp(db, ctx, env.PUBLIC_WEB_URL));
 commands.command("submit", (ctx) =>

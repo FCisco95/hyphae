@@ -1,7 +1,8 @@
 export const PARTICIPANT_KEYS = [
+  ["/setup", "/me"],
   ["/link", "/rules"],
-  ["/me", "/help brief"],
-  ["/help", "/notifications"],
+  ["/help brief", "/help"],
+  ["/notifications"],
 ] as const;
 
 export interface OnboardingCommunity {
@@ -55,7 +56,7 @@ export function welcomeContent(c?: OnboardingCommunity): string {
   return [
     heading(c),
     "Start here",
-    "/link — Link your own wallet privately. This signs a free message.\n/rules — Take this epoch's rules test in the private bot chat.\n/me — Your wallet and epoch progress (replied in this group).\n/help brief — Current brief and audit.\n/help — How scores and payment work.\n/notifications — Choose private raid alerts for this community.",
+    "/setup — Guided setup: a short checklist in a private chat. Start here.\n/link — Link your own wallet privately. This signs a free message.\n/rules — Take this epoch's rules test in the private bot chat.\n/me — Your wallet and epoch progress (replied in this group).\n/help brief — Current brief and audit.\n/help — How scores and payment work.\n/notifications — Choose private raid alerts for this community.",
     "Your work, evidence and verified wallet may appear in the public audit. Points do not promise payment.",
     OWN_LINK,
     "Private raid alerts are optional: /notifications. Stop them from the private bot chat at any time.",

@@ -6,6 +6,7 @@ import { env } from "../../env.js";
 import { openLinkSession } from "../../link/session.js";
 import { isMemberStatus } from "../membership.js";
 import { reply } from "../reply.js";
+import { linkMessage } from "./setup-content.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -29,12 +30,37 @@ export async function linkInGroup(ctx: CommandContext<Context>) {
   );
 }
 
-// The private chat opened by that deep link. Membership in the community is checked here, when the
-// session opens; the session then lives 15 minutes and is single-use.
-export async function linkStart(ctx: CommandContext<Context>): Promise<boolean> {
+// Opens a link session for a verified member of the community and sends the wallet-browser
+// instructions with the link. The session lives 15 minutes and is single-use.
+export async function sendLinkMessage(
+  ctx: Context,
+  community: { id: string; name: string; telegramChatId: bigint },
+): Promise<void> {
   const from = ctx.from;
+  if (!from) return;
+  const member = await ctx.api
+    .getChatMember(Number(community.telegramChatId), from.id)
+    .catch(() => undefined);
+  if (!member || !isMemberStatus(member)) {
+    await ctx.reply(`Join ${community.name} first, then send /link there.`);
+    return;
+  }
+  const token = await openLinkSession(db, {
+    communityId: community.id,
+    telegramUserId: BigInt(from.id),
+    telegramUsername: from.username ?? null,
+  });
+  await ctx.reply(linkMessage(community.name, `${env.LINK_ORIGIN}/link#${token}`), {
+    parse_mode: "HTML",
+    link_preview_options: { is_disabled: true },
+  });
+}
+
+// The private chat opened by that deep link. Membership in the community is checked when the
+// session opens.
+export async function linkStart(ctx: CommandContext<Context>): Promise<boolean> {
   const communityId = parseStartPayload(ctx.match);
-  if (!from || !communityId) return false;
+  if (!ctx.from || !communityId) return false;
   const community = await db.query.communities.findFirst({
     where: eq(communities.id, communityId),
   });
@@ -42,21 +68,6 @@ export async function linkStart(ctx: CommandContext<Context>): Promise<boolean> 
     await ctx.reply("That community is not registered with Hyphae.");
     return true;
   }
-  const member = await ctx.api
-    .getChatMember(Number(community.telegramChatId), from.id)
-    .catch(() => undefined);
-  if (!member || !isMemberStatus(member)) {
-    await ctx.reply(`Join ${community.name} first, then send /link there.`);
-    return true;
-  }
-  const token = await openLinkSession(db, {
-    communityId: community.id,
-    telegramUserId: BigInt(from.id),
-    telegramUsername: from.username ?? null,
-  });
-  await ctx.reply(
-    `Open this within 15 minutes to link your wallet to ${community.name}:\n${env.LINK_ORIGIN}/link#${token}\n\nYour wallet will ask you to sign a readable message. It is free and moves no funds. Do not forward this link.`,
-    { link_preview_options: { is_disabled: true } },
-  );
+  await sendLinkMessage(ctx, community);
   return true;
 }
