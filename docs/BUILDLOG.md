@@ -12,6 +12,10 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 
 **Numbers:** 15/15 migration hashes match; rehearsal PASS on every case, including one deliberate mismatch caught; gate 1,000 tests passed (1 optional skip), typecheck 0, lint 0. Production: 0 writes, 0 database connections, 0 Telegram calls, 0 machine changes.
 
+**Review:** Codex (`gpt-6-astra`, read-only) found 6 issues in the scripts, then 2 more in the fix-check; all fixed test-first and re-rehearsed. Closing check **ACCEPT**. The biggest catch: matching public data does not prove which database you are on, since a fresh Neon branch matches too. The migration now also requires the live worker to have written a newer job completion into that database since the precheck.
+
+**Commits:** `38ae3e7`, `25b2952`, `463967d`, `fe09625`, plus this record.
+
 **Stage:** pushed to GitHub as docs and scripts (triggers the existing web build only). Not authorized, not executed. Blocked on two things from Cisco: the production `.env` on this Mac, then the one exact yes.
 
 ## 2026-10-05 · API rollout plan written for the member journey

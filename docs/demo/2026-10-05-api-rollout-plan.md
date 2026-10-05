@@ -261,7 +261,9 @@ Codex CLI 0.160.0 (`gpt-6-astra`, read-only sandbox, offline; session `01a10be3-
 
 The reviewer found no credential leak path and no wrong flyctl flag, and confirmed the normal path matches drizzle-kit and is atomic.
 
-Fix-check (same tool, session `01a10bed-9742-79b3-8647-9f74e5cf28ff`) on `38ae3e7..463967d`: findings 1, 2, 3, 5 and 6 **FIXED**; 4 **NOT FIXED** (a login without any SASL exchange still became ready) and one new major (migrate checked liveness but not current health, so a stopped worker or paused intake after the baseline could still migrate). Both fixed in the next commit and re-rehearsed (third round above).
+Fix-check (same tool, session `01a10bed-9742-79b3-8647-9f74e5cf28ff`) on `38ae3e7..463967d`: findings 1, 2, 3, 5 and 6 **FIXED**; 4 **NOT FIXED** (a login without any SASL exchange still became ready) and one new major (migrate checked liveness but not current health, so a stopped worker or paused intake after the baseline could still migrate). Both fixed in `fe09625` and re-rehearsed (third round above).
+
+Closing check (same tool, session `01a10bf1-de0c-7ef3-81ae-705090d5f850`) on `463967d..fe09625`: **ACCEPT**. Both items FIXED, no new findings; 17 offline cases with pg's real authentication handlers. Live Neon behaviour is untested until Step 3.
 
 ## Read-only checks added 2026-10-05T10:38Z to 10:50Z (completion pass)
 
