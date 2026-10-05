@@ -2,6 +2,22 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-05 (late evening) · Payout day prepared against live receipts
+
+**Shipped:** the three documents for the October 8 to 10 stretch (the payout packet, the video script and the submission checklist) now say only what was just read from the live system. I read each claim back before writing it: the web, the API image, the migrations, the frozen worker, the epoch 2 database state and the mainnet accounts. A new read-only runner, `docs/demo/oct8-audit.mts`, does the midnight audit in one transaction: the packet's own SQL, the real payout gate, and each member's expected share.
+
+**What the audit shows:** epoch 2 has one counted contribution from one member, and that member is me. The SQL in the packet ran clean against the production schema, which it had never done. The chain still has no community, vault or payout, as it should before the sitting.
+
+**Decision:** say it plainly. If I am the only member paid, the public line is “the first mainnet payout went to one member: me”, because the payee is on-chain for anyone to read. Computed from the allocation code, that payout would be 0.12125 SOL of a 0.5 SOL pot, with 0.36375 SOL staying in the vault for later weeks. These are computed numbers, not receipts, and the packet says so. The wording is waiting for my confirmation.
+
+**Decision:** no pushes to `main` from October 8 22:00Z until October 10 00:00Z. A docs push redeploys the web, and the payout window forbids any deployment.
+
+**Numbers:** 1 counted contribution, 1 member, 66 points, 0 duplicate groups, 0 undecided; gate 998 passed (3 skipped), typecheck 0, lint 346 files 0. Production writes 0, Telegram messages 0, deployments 0 by me.
+
+**Commits:** `e1b4125`, plus this record.
+
+**Next:** confirm the wording, re-run the audit an hour before the sitting, then the attended sitting on October 8.
+
 ## 2026-10-05 (evening) · Windows resume and an epoch 2 preview
 
 **Shipped:** the project now runs and passes its full gate on native Windows, not only on the Mac. And a read-only preview of epoch 2 shows the October 8 sitting has a real member to pay, not an empty epoch.
