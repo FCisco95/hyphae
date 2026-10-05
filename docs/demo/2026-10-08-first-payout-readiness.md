@@ -37,7 +37,7 @@ This holds only if the sole member is still payable at the close (signature link
 
 ## When the founder is the only payable member
 
-The only person epoch 2 can pay today is Cisco's own account, through the existing rules: no ruling excludes the founder, so the sitting proceeds as written. What is open is the public wording, which is Cisco's call. **Recommended (pending Cisco's confirmation): say it plainly.** A payee anyone can look up on-chain would make any vaguer line fail a judge's check.
+The only person epoch 2 can pay today is Cisco's own account, through the existing rules: no ruling excludes the founder, so the sitting proceeds as written. The public wording was Cisco's call: **on 2026-10-05, asked to confirm “say it plainly”, Cisco answered “Yes, let's continue”, so the plain wording below stands.** Inviting real members before the close was not authorized by that answer. A payee anyone can look up on-chain would make any vaguer line fail a judge's check.
 
 - **Say, only after C19 to C21 receipts exist:** "The first mainnet payout went to one member: me. One reply of mine, scored 66 by the published rubric, paid to the wallet I signed with. I funded the pot, so no one else's money moved. It shows the whole path working on mainnet: rules, signed wallet, merkle root, claim, receipt. The rest of the pot stays in the vault for later weeks." Replace every figure with C19's printed numbers and the funding line with C18's receipt.
 - **Never say:** "contributors were paid", "members" in the plural, a community payout, traction or retention numbers, or that the system verified the post relation or that the account is the member's (it records an attestation by Cisco; oEmbed proves neither).
