@@ -4,7 +4,9 @@ Plan Week 4 #7. The deadline is 2026-10-12 23:59 PDT; Oct 11–12 are buffer. On
 
 ## Scope, as it stands
 
-**October 2 readiness checkpoint:** C1–C13 completed, with Fly v11 on frozen `b3c82c7`, Neon 0000–0012 and the reviewed mainnet program under the Ledger. Fresh 17:02–17:04Z reads still show no initialized MYCEL mainnet community/vault, publication or contributor payment; epoch-2 submissions/intakes are 0/0. Read the [October 8–9 operator packet](2026-10-08-first-payout-readiness.md) and [readiness receipt](../handoffs/2026-10-02-payout-readiness.md) before advancing the status. C14–C22 remain dated/attended, with publication after the October 9 close and all safety gates.
+**Live state, October 5:** web serves `main` with the runtime of source `774b97e`; the API runs image `sha256:798e1888…` (migrations 0013+0014 applied) and the worker the frozen `sha256:1c2d6dd5…`; the reviewed mainnet program is under the Ledger (C1–C13, October 2). No MYCEL community, vault or payout exists on mainnet as of the October 5 reads; epoch 2 holds one counted contribution from one member, the founder. Read the [October 8–9 operator packet](2026-10-08-first-payout-readiness.md) (its [live receipts](2026-10-08-first-payout-readiness.md#live-receipts-october-5-read-only) are the source for every status line) before advancing the status. C14–C22 remain dated and attended, with publication after the October 9 close and all safety gates.
+
+**Push hold:** do not push to `main` from 2026-10-08T22:00Z until 2026-10-10T00:00Z, because a docs push redeploys the web and the sitting forbids any deployment in that window. This checklist starts on October 10; its pushes begin after 00:00Z.
 
 | Plan item | State | Evidence |
 |---|---|---|
@@ -14,6 +16,7 @@ Plan Week 4 #7. The deadline is 2026-10-12 23:59 PDT; Oct 11–12 are buffer. On
 | Week 4 #4 empty, error and phone states | Built | `236905e`, screenshots `ffdfac0` |
 | Week 4 #5 security review and CI | Program review 2026-09-27; whole-repo review 2026-09-28; CI on every push | `docs/handoffs/2026-09-27-afternoon-arc.md`, `docs/handoffs/2026-09-28-arc.md` |
 | Week 4 #6 final video | Script: `docs/demo/2026-10-09-final-video.md` | Recorded by Cisco on Oct 9 |
+| Member journey (private raid buttons, receipts, `/issue`, `/ops`, raid alerts) | Live on the API since 2026-10-05T14:26Z; Cisco exercised `/ops` and `/receipt` only. No member use, alert subscriber or real-phone test yet | [Execution record](2026-10-05-api-rollout-plan.md#execution-record-2026-10-05) |
 | Not built | Soulbound Token-2022 points (Week 3 #1); the Codama client (Week 3 #5) | No points mint in `programs/hyphae`, no `clients/`; the README's Status says "Planned, not built" |
 
 ## Steps
@@ -26,12 +29,13 @@ Plan Week 4 #7. The deadline is 2026-10-12 23:59 PDT; Oct 11–12 are buffer. On
 2. **README status matches reality (agent writes, Cisco reads).**
    - The README's "Status" says exactly what is deployed: the api image, the Vercel site (https://hyphae-delta.vercel.app, live since the Sep 29 cutover), and whether the program is on mainnet. It is updated from the build log, not from this file.
    - Runbook C's Parts 1–2 completed October 2 (C1–C13; see the C13 receipt):
-     - the api routes that went live with C7: a wallet's claims, `/v1/openapi.json` and `/docs`;
+     - the api routes that went live with C7: a wallet's claims, `/v1/openapi.json` and `/docs`; and the API image and migrations of October 5 as the packet's receipts state them;
      - the mainnet program id and its upgrade authority `2kz1Zq…`;
      - the verified hash `7e902d1b…43ac` and how to reproduce it.
    - If Parts 3–4 ran (C14–C22, Oct 8–9):
      - MYCEL's community and vault addresses;
-     - the publish and claim signatures.
+     - the publish and claim signatures;
+     - who was paid, in the [plain wording](2026-10-08-first-payout-readiness.md#when-the-founder-is-the-only-payable-member) Cisco confirmed (as of October 5 the only possible payee is the founder), never as a community payout.
    - If only Parts 1–2 ran: the program is on mainnet, and MYCEL has no community, vault or payout there. Say that, not "mainnet payouts".
    - If no eligible epoch-2 members or a safety gate blocks Parts 3–4, retain the actual blocker and say mainnet program deployed, no contributor payment. Do not substitute fixture leaves or the devnet payout as mainnet evidence.
    - Closes when: every status line cites a build-log entry or a signature.
@@ -59,6 +63,7 @@ Plan Week 4 #7. The deadline is 2026-10-12 23:59 PDT; Oct 11–12 are buffer. On
    - The "anything else judges should know" field keeps the no-token disclosure and the prior-work disclosure (build log 2026-09-17, afternoon).
    - State the licence as the README does: Business Source License 1.1 on both repositories (Change Date 2028-10-12, Change License GPL-2.0-or-later). Never "open source".
    - Say mainnet only if step 2 did.
+   - Any member-journey claim stays inside what the receipts show (live on the API; no member use).
    - Closes when: the page is saved and reads back.
 8. **Submit (Cisco).**
    - Closes when: Colosseum shows the submission.

@@ -12,7 +12,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 ## Before recording
 
-**October 2 checkpoint:** C1–C13 are complete: Fly v11/candidate `b3c82c7`, Neon 0000–0012, API docs/claims live and mainnet program/hash/Ledger authority recorded in [C13](../handoffs/2026-10-02-c13-mainnet-receipt.md). Fresh [readiness reads](../handoffs/2026-10-02-payout-readiness.md) at 17:02–17:04Z still show zero epoch-2 uptake, no MYCEL mainnet community/vault and no contributor payment. Beats 4–6 keep their devnet evidence until their specific October 8–9 receipts exist; beat 7 may use the verified mainnet program, and beat 8 may show the live read API. Follow the [operator packet](2026-10-08-first-payout-readiness.md). If the epoch is empty or blocked, show its actual unavailable settlement and say “mainnet program deployed; no contributor payment” instead of implying a first payout.
+**Live state, October 5 (re-read it before recording):** web serves `main` with the runtime of source `774b97e`; the API runs image `sha256:798e1888…` (source `774b97e`, migrations 0013+0014) since 2026-10-05T14:26Z; the worker stays frozen on `sha256:1c2d6dd5…` (source `b3c82c7`, since October 2). C1–C13 are complete: the mainnet program, hash and Ledger authority are recorded in [C13](../handoffs/2026-10-02-c13-mainnet-receipt.md). On October 5 no MYCEL community, vault or epoch account exists on mainnet and no payout has happened. Epoch 2 holds one counted contribution from one member, the founder. The [live receipts](2026-10-08-first-payout-readiness.md#live-receipts-october-5-read-only) are the only source for live claims. Beats 4–6 keep their devnet evidence until their specific October 8–9 receipts exist; beat 7 may use the verified mainnet program, and beat 8 may show the live read API. If the epoch is empty or blocked, show its actual unavailable settlement and say “mainnet program deployed; no contributor payment” instead of implying a first payout. If it pays only the founder, use [the plain wording](2026-10-08-first-payout-readiness.md#when-the-founder-is-the-only-payable-member) (recommended; Cisco confirms it before recording).
 
 1. Read the newest build-log entries. Runbook C (`docs/handoffs/2026-09-28-runbook-c.md`) runs in two blocks: Parts 1–2 (C1–C13, the candidate on Fly and Vercel, then the program on mainnet) on Oct 2–3, and Parts 3–4 (C14–C22, MYCEL's community and vault, then the first payout) on Oct 8–9. Use each **mainnet swap-in** below only if the steps it names ran, with the signatures the build log records for them. Otherwise that beat says "devnet" on screen.
 2. `git switch main && git pull --ff-only`. Note the SHA and the latest CI run; say those, not the numbers in this file.
@@ -90,7 +90,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 - run 7 `publish_epoch` `3oJ4T6NeYonVRgi1JBfofsRHEkd5RfuTKaEhUc7AHqFL8Pio2r2s6o4n7YtLm7zMPpLCw38mDa1efEzBBpAgy6DD`: gross 50,000,000 lamports, fee 1,500,000, 30,460,365 allocated across 3 payable members;
 - the settlement panel: commit `4ca3abf`; a real devnet publication in it: `git show ffdfac0:docs/screenshots/epoch-1180.png` (the earlier design).
 
-**Mainnet swap-in:** C20's `publish_epoch`, with C19's printed numbers.
+**Mainnet swap-in:** C20's `publish_epoch`, with C19's printed numbers. If the founder is the only payable member, say so here: “One member is paid this week, and it is me.” Do not call it a community payout; the unallocated remainder stays in the vault, and the figure is C19's, not the computed preview.
 
 ## Beat 6 — a member claims, and can't claim twice (devnet) · ~25 s
 
@@ -103,7 +103,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 - the duplicate, refused on-chain: `5ob9A3Sg7DYoxCAMLDyX5EpuT2jSF6QBsruPRLf4tdTdTCSkfZCdXSkMuWLuqkFEPQC3eQJVGgzosxdLQbA2EknP`;
 - the claim page: commit `44c495d`; its phone layout in `docs/showcase/claim-390-dark.png` (fixture data).
 
-**Mainnet swap-in:** C21's claim and C22's P14 read.
+**Mainnet swap-in:** C21's claim and C22's P14 read. Say “paid” only with C21's claim signature and the receipt C22 shows. Say “my own reply, my own signed wallet” if that is the claimant; the system records Cisco's attestation of the author and does not verify the X account.
 
 **Don't claim:** soulbound points in the wallet. The Token-2022 points mint (plan Week 3 #1) was not built.
 
@@ -136,7 +136,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 - the wallet-claims route and rate limits: `d712289`, `6e48b12`; OpenAPI and `/docs`: `135a80f`;
 - the README integration: `1d56e5d`.
 
-Say "deployed" for the community/epoch routes, wallet claims, `/v1/openapi.json` and `/docs`: production has run Fly v11 on frozen candidate `b3c82c7` since October 2 C7. The September 29 `86ff258` image is the prior rollback image. Cite the attended run and newest read-back, not a deployment inferred from current `main`.
+Say "deployed" for the community/epoch routes, wallet claims, `/v1/openapi.json` and `/docs`: they have answered 200 from production since October 2 C7 and again on October 5 (receipts in the packet). The API now runs image `sha256:798e1888…` (source `774b97e`) and the worker `sha256:1c2d6dd5…` (source `b3c82c7`); never say "Fly v11" for the API. Cite the packet's newest read-back, not a deployment inferred from current `main`.
 
 ## Close · ~5 s
 
@@ -152,5 +152,7 @@ These were not built or are not live; the video must not imply them:
 - the web `/admin` page (plan Week 4 #3, dropped by Cisco on 2026-09-27);
 - the fixture data in `docs/showcase/`'s settled-epoch and claim pages, as if it were real;
 - "open source" (both repositories are BUSL 1.1, source available; the application repo is private, and the program and rubrics are public in `FCisco95/hyphae-program`);
-- tester or member counts past what the build log records;
+- tester or member counts past what the build log records (on October 5: one member with a counted contribution, the founder);
+- members using the private raid buttons, receipts, `/issue` or raid alerts: they are deployed on the API since October 5 and the operator view and receipt lookup were exercised by Cisco only; no member has used them, and no alert subscriber or real-phone test exists;
+- X relation or account ownership as verified (the system records an attestation, not proof);
 - any mainnet transaction that Runbook C did not record.

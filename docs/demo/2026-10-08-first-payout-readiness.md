@@ -1,16 +1,73 @@
 # October 8–9 operator packet
 
-**Current state — October 5, 15:27Z:** the member journey is live on the API machine; the worker stays frozen on `sha256:1c2d6dd5…` through this sitting. A read-only epoch 2 preview found **1 counted contribution (66 points) from 1 member** with a signature-linked wallet, a rules-test pass before close and a current balance above the hold threshold; the URL author is the founder's own account. The empty-epoch fallback below is therefore not the expected path, but every gate is still rechecked at the sitting. The October 4 notes further down are history. [Current handoff](../HANDOFF.md).
+**Current state — October 5, 18:42Z:** the member journey is live on the API machine and the worker stays frozen on `sha256:1c2d6dd5…` through this sitting ([receipts](#live-receipts-october-5-read-only)). Epoch 2 is not empty: a read-only audit found **one counted contribution (66 points) from one member**, who has a signature-linked wallet, a rules-test pass before close and a current balance above the hold threshold; the URL author is the founder's own X account. So the expected path is a payout to one member, the founder ([expected outcome](#expected-epoch-2-outcome-computed-not-a-receipt); [how to say it](#when-the-founder-is-the-only-payable-member)). The empty-epoch fallback below remains the truthful path if any gate fails. [Current handoff](../HANDOFF.md).
 
-Prepared October 2; reconciled October 3, 2026. This packet prepares [Runbook C](../handoffs/2026-09-28-runbook-c.md), C14–C22; it executes none of them. Use UTC throughout. The [October 2 readiness receipt](../handoffs/2026-10-02-payout-readiness.md) distinguishes fresh reads from accepted C13 receipts. Recheck every live precondition at the dated, attended sitting. Existing policy, funding and author-attestation rulings remain approved.
+Prepared October 2; reconciled October 3 and October 5, 2026. This packet prepares [Runbook C](../handoffs/2026-09-28-runbook-c.md), C14–C22; it executes none of them. Use UTC throughout. The [October 2 readiness receipt](../handoffs/2026-10-02-payout-readiness.md) distinguishes fresh reads from accepted C13 receipts. Recheck every live precondition at the dated, attended sitting. Existing policy, funding and author-attestation rulings remain approved.
 
-## October 3 onboarding dependency (no gate/date change)
+## Live receipts, October 5 (read-only)
+
+Read 2026-10-05T18:38Z to 18:42Z from the Windows machine. Nothing was written, sent or deployed. These are the only live claims the three demo documents may make.
+
+| Surface | Receipt |
+|---|---|
+| Web | `hyphae-delta.vercel.app` serves the production deployment of `main` `56146ba` (GitHub deployment status success 15:28:26Z; CI run 37333057889 success). That commit changes only `docs/`: `git diff 774b97e HEAD -- apps packages pnpm-lock.yaml package.json` is empty, so the web runtime is the source published as `774b97e`. Every docs push redeploys the web with a newer displayed SHA and the same runtime. Home and the epoch 2 page answer 200 |
+| API | Machine `6839d31b317318`, `started`, image `sha256:798e18880fd0ce8684c6f4627010e0653ede8a3e3e33584654f6e53cc31ac90c` (built from `774b97e`), updated 2026-10-05T14:26:31Z. `/health`, `/docs` and `/v1/openapi.json` answer 200; the link page serves its copy control. The only error lines in the retained log are the two proxy errors from the ten-second restart gap at 14:26:27Z |
+| Migrations | 0013 and 0014 applied 14:25:37Z to 14:25:46Z, journal 13 → 15 rows ([execution record](2026-10-05-api-rollout-plan.md#execution-record-2026-10-05)); none since |
+| Worker | Machine `817400c9901de8`, `started`, image `sha256:1c2d6dd52635fc669052dc6b2c40c574af3ecbd0b29b54b99d4002bba4ae70c2` (source `b3c82c7`), updated 2026-10-02T09:19:01Z, unchanged. `reward-recovery` completed every five minutes, latest read 18:40:07Z |
+| Epoch 2 | `oct8-audit` at 18:40:31Z (read-only transaction): epoch open to 2026-10-09T00:00Z, intake not paused, 1 admitted contribution (a reply, revision 1, 66 points, accepted 12:03Z today), 0 intakes without a decision, 0 duplicate groups, 1 completed quality dispatch, 0 nominations. Payout gate: blocked solely by `not_final`, as expected before the close |
+| Chain, finalized slot 453661976 | Genesis exact. Program `EAz8Wk…4d6E` executable; its ProgramData authority is the Ledger admin `2kz1Zq…fjR`. Community, vault and epoch 2 accounts **absent**. The Ledger admin account does not exist (0 lamports): C14 has not happened. The Treasury fee recipient `rRceAU…u7MK` is System-owned with 895,047,823 lamports |
+
+Not read or not claimed: the program's verifiable-build hash (last receipt is C13 on October 2; the video's `solana-verify` beat re-reads it live), Vercel Pro and usage alerts, Colosseum collaborator access, any real phone, signature or claim.
+
+## Expected epoch 2 outcome (computed, not a receipt)
+
+Computed at 18:40Z by `oct8-audit` from the committed `allocate` code with the audit's own member list, for the pot already approved (gross 500,000,000 lamports):
+
+| Item | Lamports | SOL |
+|---|---:|---:|
+| Gross pot | 500,000,000 | 0.5 |
+| Fee, 3% to the Treasury vault | 15,000,000 | 0.015 |
+| Net pot | 485,000,000 | 0.485 |
+| Per-wallet cap, 25% of net (fewer than 20 payable) | 121,250,000 | 0.12125 |
+| One payable member: allocated | 121,250,000 | 0.12125 |
+| Cap remainder, stays in the vault for later epochs | 363,750,000 | 0.36375 |
+| Dust | 0 | 0 |
+
+This holds only if the sole member is still payable at the close (signature link in force, 66 points, hold result decided `holder` after the close, author attestation recorded) and no other member is admitted first. A second or later payable member changes every line from the split down; four or more make the cap stop binding. C19's printed numbers replace this table; never quote it as paid.
+
+## When the founder is the only payable member
+
+The only person epoch 2 can pay today is Cisco's own account, through the existing rules: no ruling excludes the founder, so the sitting proceeds as written. What is open is the public wording, which is Cisco's call. **Recommended (pending Cisco's confirmation): say it plainly.** A payee anyone can look up on-chain would make any vaguer line fail a judge's check.
+
+- **Say, only after C19 to C21 receipts exist:** "The first mainnet payout went to one member: me. One reply of mine, scored 66 by the published rubric, paid to the wallet I signed with. I funded the pot, so no one else's money moved. It shows the whole path working on mainnet: rules, signed wallet, merkle root, claim, receipt. The rest of the pot stays in the vault for later weeks." Replace every figure with C19's printed numbers and the funding line with C18's receipt.
+- **Never say:** "contributors were paid", "members" in the plural, a community payout, traction or retention numbers, or that the system verified the post relation or that the account is the member's (it records an attestation by Cisco; oEmbed proves neither).
+- **If real members are admitted before the close** (a separate approval: real raid use), recount from the audit and change the wording to match the receipts.
+- **If any gate fails or the member is not payable:** use the fallback below ("mainnet program deployed; no contributor payment").
+
+## Sitting timeline (UTC)
+
+Every row's check is a read-back printed or recorded, not a feeling. Anything that fails parks the rows after it.
+
+| When | Step | Who | Closes when |
+|---|---|---|---|
+| Before October 8 22:00Z | Last docs push to `main`, with Vercel READY verified. **From 22:00Z on October 8 until 00:00Z on October 10 do not push to `main`**: a docs push redeploys the web, and the hold forbids any deployment in that window. Commit locally and record pending SHAs in the handoff; push after October 10 00:00Z | agent | `git status -sb` shows `main` even with `origin/main` |
+| Oct 8, an hour before starting | Re-run `oct8-audit` (below) and the live reads in the table above. Confirm attendance, the Ledger and funds: 0.02 SOL for C14 and about 0.5 SOL for C18 plus fees | Cisco, agent | audit prints the same shape; chain accounts still absent |
+| Oct 8, attended, finished by about 21:30Z | C14 to C18, in order. Finishing early leaves room for the 22:00Z push of their receipts; if it runs later, the receipts wait for October 10 | Cisco, agent | each step's read-back |
+| 23:00Z | C18b: pause intake, read back `reward_intake_paused_at` and public `reward_intake = paused` | Cisco | both read-backs |
+| 23:00Z to 23:45Z | Attest authors; run `oct8-audit`; correct any extra original or unconfirmed author | Cisco | audit shows every row resolved |
+| 23:45Z to before 00:00Z | Final `oct8-audit`; record the printed audit time, paused state and counts; corrections accepted strictly before 00:00Z (stop starting new ones by 23:55Z) | agent, Cisco | counts recorded, zero unresolved |
+| Just after 00:00Z | Resume intake and read back epoch 3 open; verify the close, snapshot and gate per the October 9 table | Cisco, agent | close and snapshot receipts |
+| After the gate says `ready`, within the window | C19 to C22; the hold window ends 00:00Z on October 10 inclusive | Cisco, agent | P14 read |
+
+**Audit runner.** From `apps/api` with the variables below, `node --env-file=$hyphaeEnv --import tsx ../../docs/demo/oct8-audit.mts` prints, from one repeatable-read read-only transaction, the C18b inventories (it executes the SQL block in this packet, so they cannot drift), the real payout gate, each member's wallet, rules-test pass and expected allocation, and one finalized balance read for orientation. Rehearsed against production on October 5; it fails closed if the SQL block changes shape. Its output names members and contributions by ID: keep it private and record counts only.
+
+## Onboarding dependency (written October 3, reconciled October 5; no gate/date change)
 
 [Fresh receipt](../handoffs/2026-10-03-onboarding-preparation.md), October 3 18:41Z: live name Hyphae Lab, epoch 2/intake open, rubric 1.2.0, public contributions/counted/pending/leaderboard 0, no settlement; finalized slot 453017150 derived community/vault/epoch accounts absent. DB jobs/schema and program authority/hash below remain prior October 2 receipts, not fresh reads on this Mac. No credentials were provisioned or production state changed.
 
-[Code-path verdict and fifteen-minute test](../superpowers/specs/2026-10-03-link-platform-verdict.md): the signing browser must register Wallet Standard connect/message-signing features. Telegram without them fails; Hyphae's actual Android/Desktop opening behavior and system/wallet browsers are device-unconfirmed. Copy the original private bot URL into the wallet in-app browser, not the stripped address bar. The copy control is implemented in the local reviewed candidate, not deployed; no real phone PASS follows. Recruitment is parked until an owner-attended phone journey succeeds; this test creates link/proof/member records when separately authorized, but sends no work/model call or funds.
+[Code-path verdict and fifteen-minute test](../superpowers/specs/2026-10-03-link-platform-verdict.md): the signing browser must register Wallet Standard connect/message-signing features. Telegram without them fails; Hyphae's actual Android/Desktop opening behavior and system/wallet browsers are device-unconfirmed. Copy the original private bot URL into the wallet in-app browser, not the stripped address bar. The copy control is live on the API's link page since October 5 (the page serves it); no real phone PASS follows. Recruitment is parked until an owner-attended phone journey succeeds; this test creates link/proof/member records when separately authorized, but sends no work/model call or funds.
 
-The existing MYCEL group stack includes Raidar; [recommend a separate bounded Hyphae paid pilot](../superpowers/specs/2026-10-03-raid-system-decision-memo.md) in the already registered chat. Disjoint Hyphae briefs/Raidar separate, one active brief and hidden pilot until phone PASS are recorded choices; technical registered-chat mapping and genuine invite/support/publishing links remain inputs before activation. No duplicated campaign, changed reward policy, replacement registration or live rename. The [design](../superpowers/specs/2026-10-03-participant-onboarding-design.md) and amended [T/A/B candidate/release packet](../superpowers/plans/2026-10-03-participant-onboarding-plan.md#candidate-and-release-packet--october-3) now describe a local reviewed implementation, unpushed/undeployed ([receipt](../handoffs/2026-10-03-onboarding-implementation.md)). The [owner research/doc pass is complete for this scope](../handoffs/2026-10-03-onboarding-scope-packet.md); local T/A/B scope is approved and completed; recruitment/activation still needs phone/type/owner inputs and separate live authorization. Current registered row/bot binding/type/migration health are UNKNOWN without access; no deployment failure is inferred.
+The existing MYCEL group stack includes Raidar; [recommend a separate bounded Hyphae paid pilot](../superpowers/specs/2026-10-03-raid-system-decision-memo.md) in the already registered chat. Disjoint Hyphae briefs/Raidar separate, one active brief and hidden pilot until phone PASS are recorded choices; technical registered-chat mapping and genuine invite/support/publishing links remain inputs before activation. No duplicated campaign, changed reward policy, replacement registration or live rename. The [design](../superpowers/specs/2026-10-03-participant-onboarding-design.md) and amended [T/A/B candidate/release packet](../superpowers/plans/2026-10-03-participant-onboarding-plan.md#candidate-and-release-packet--october-3) describe the implementation, now in `main` and live on the API ([receipt](../handoffs/2026-10-03-onboarding-implementation.md)). The [owner research/doc pass is complete for this scope](../handoffs/2026-10-03-onboarding-scope-packet.md); T/A/B scope is complete; recruitment/activation still needs the phone test, owner inputs and separate live authorization. The October 5 rollout checks read the registered row, the bot (administrator in the registered chat, webhook matching, 0 pending, no error) and the migrations as healthy.
 
 **These dependencies do not move the first-payout gates:** real admitted own-account work, signed wallet and 6/6 pass strictly before close; October 8 **23:00Z pause**, final C18b **after 23:45Z** with author attestation and duplicate-original mappings/corrections accepted **before October 9 00:00Z**; then post-00:00Z close/snapshot, hold/safety gates, attended Ledger publication, genuine claim and P14 evidence. Unknown authors/duplicates park C19. An empty/no-payable epoch remains no payment; never seed fake work to meet a date. A signed-message phone test does not prove the later transaction-signing `/claim` path; C21 must evidence the actual claimant's compatible wallet surface at that sitting.
 
@@ -79,7 +136,7 @@ On **October 8 from 23:00Z**, Cisco pauses intake:
 node --env-file=$hyphaeEnv --import tsx scripts/reward-intake.ts $hyphaeMint pause
 ```
 
-Record the printed pause timestamp; read back `reward_intake_paused_at` and public `reward_intake = paused`. Admission and re-entry must refuse while paused; epochs keep their schedule. Do not stop the worker. Run the following two inventories together in one **repeatable-read, read-only** transaction. Retain only the IDs needed to resolve the audit, URL author, revisions and correction references; omit Telegram IDs/usernames, member text and model input/output. An operator may keep row-level attestation evidence privately; public receipts need counts and the verdict, not identities.
+Record the printed pause timestamp; read back `reward_intake_paused_at` and public `reward_intake = paused`. Admission and re-entry must refuse while paused; epochs keep their schedule. Do not stop the worker. Run the following two inventories together in one **repeatable-read, read-only** transaction; the [audit runner](#sitting-timeline-utc) executes exactly this SQL block and adds the gate and allocation read-outs. Retain only the IDs needed to resolve the audit, URL author, revisions and correction references; omit Telegram IDs/usernames, member text and model input/output. An operator may keep row-level attestation evidence privately; public receipts need counts and the verdict, not identities.
 
 ```sql
 begin transaction isolation level repeatable read read only;
@@ -177,7 +234,7 @@ https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e
 
 | Owner action | Recommendation and reason |
 |---|---|
-| Real uptake, wallet/rules prerequisites | After the attended phone path and founder raid choice are verified, Cisco brings real own-account work through the existing registered raid/submit flow, with signed `/link` and rules pass before close, leaving time for scoring and attestation. October 3 public reads show no epoch-2 entries to pay. No agent community message or scoring experiment was sent. |
+| Real uptake, wallet/rules prerequisites | After the attended phone path and founder raid choice are verified, Cisco brings real own-account work through the existing registered raid/submit flow, with signed `/link` and rules pass before close, leaving time for scoring and attestation. On October 5 epoch 2 holds one counted contribution from one member (the founder's own account), already satisfying the signed-wallet and rules-pass prerequisites; more real own-account work before the close needs its own approval. No agent community message or scoring experiment was sent. |
 | October 8–9 attendance and Ledger | Reserve C14–C18, 23:00Z pause and the 23:45Z audit, then post-close publication/claim time; check the exact Ledger derivation live before any irreversible action. Availability remains unverified today. |
 | Squads Receive screen and funding wallet | Compare the fixed Treasury vault at C15 and the exact transfer destination at C18; current RPC ownership is necessary but does not replace Cisco's dashboard comparison. The already approved amounts/source need no new funding decision. |
 | Vercel Pro and usage alerts | Confirm the previously approved Pro upgrade/alerts in the dashboard before C20 earns a fee; completion is not evidenced in this arc. |
@@ -185,10 +242,8 @@ https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e
 
 If epoch 2 remains empty or has no payable members, preserve the actual gate refusal and `no_settlement` surfaces. Wallet claims may correctly be 200/empty; a missing leaf is 404 `not_found`, including `/api/claims/<mint>/2/<wallet>` with `cache-control: no-store`. Neither response proves service failure or payment. An RPC/chain-read failure means payment unavailable with its actual reason; never translate it to paid/claimable. Record “mainnet program deployed; no contributor payment,” retain the labeled devnet proof for the video, and omit mainnet payout swap-ins without C20/C21/C22 receipts. Fixture screenshots remain fixtures. See the [video script](2026-10-09-final-video.md) and [submission checklist](2026-10-10-submission-checklist.md).
 
-## Combined release continuation — October4
+## Release history (October 4 to 5)
 
-The [single combined packet](2026-10-04-combined-release-packet.md) now owns source/artifact/target pins, selected-effect approvals, timestamped technical preflight, phone matrix, private-manifest readiness, Organic consumer requirements and the one bundled input list. Both candidates remain complete at source/checkpoint **e5ee300d6ce65231ec2325fef60be1f1ecbcba05**, local-only. Prior latest gate851/1 skip + Postgres50/50 is prior evidence; no runtime tests/builds ran in this preparation. Current next gate: existing read-only access/genuine URLs and concrete publication/deployment/test/setup scope.
+The [combined release packet](2026-10-04-combined-release-packet.md) held the source, artifact and target pins. Its two effects have since run: source `774b97e` was published to GitHub and the web redeployed from it (October 5), then the API-only rollout moved only machine `6839d31b317318` to image `sha256:798e1888…` with migrations 0013+0014 ([execution record](2026-10-05-api-rollout-plan.md#execution-record-2026-10-05)). The worker never moved. See [live receipts](#live-receipts-october-5-read-only) for the current state; earlier statements in that packet that call the source local-only or unreleased are superseded.
 
-Fresh Oct4 public/API/site reads passed; internal Lab UUID/chat/admin/type/webhook/migration/Fly health remain UNKNOWN. Vercel production target/source is freshly confirmed, and main auto-deploy is enabled: source publication must account for its web deployment. Recommend coupled publication+selected web release and API-only image update with frozen v11 worker retained after preflight. No actual image build, push, deploy or configuration change.
-
-C1–C13 remain complete; C14–C22 unexecuted. Current public epoch2 contribution/count/pending/member fields0 at2026-10-04T08:55:58.466Z is not a final internal audit. Reserve the original attended dates/preconditions, 23:00Z pause, finalC18b after23:45Z and corrections/attestation strictly beforeOct9 00:00Z; only afterclose/gate readiness can publication/actual claim/P14 follow. Hold observation window throughOct10 00:00Z inclusive. Empty/no-payable remains no payment.
+C1–C13 remain complete; C14–C22 unexecuted. Reserve the original attended dates and preconditions, the 23:00Z pause, final C18b after 23:45Z and corrections/attestation strictly before October 9 00:00Z; only after close and gate readiness can publication, the actual claim and P14 follow. The hold observation window runs through October 10 00:00Z inclusive. Empty or no-payable remains no payment.
