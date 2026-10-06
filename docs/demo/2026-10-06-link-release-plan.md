@@ -5,7 +5,7 @@ summary: API-only release of the redesigned wallet-link page and the Telegram "W
 
 # Link release plan: redesigned wallet page and link confirmation on the live Hyphae API
 
-**Status: EXECUTED 2026-10-06T13:32Z to 13:5xZ (see [Execution record](#execution-record-2026-10-06)).** Written 2026-10-06 by Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort high) on the Windows PC from `main`. Nothing in this document changed Fly, the database, Telegram, secrets or Vercel settings. The only effect of pushing it is the existing Vercel web build.
+**Status: EXECUTED 2026-10-06T13:32Z to 13:46Z (see [Execution record](#execution-record-2026-10-06)).** Written 2026-10-06 by Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort high) on the Windows PC from `main`. Nothing in this document changed Fly, the database, Telegram, secrets or Vercel settings. The only effect of pushing it is the existing Vercel web build.
 
 **Why:** the first real tester linked his wallet but believed it failed, because only the wallet page said "Linked" and Telegram said nothing; he also found the unstyled page confusing. This release adds (a) one private Telegram notice to the member after a verified signature, (b) a branded, mobile-first wallet page that shows the signing address and the exact message before the wallet is asked, with separate "wallet did not connect" and "not signed" messages, (c) a hardening so an unreadable server answer ends in a retry instead of a stuck page.
 
@@ -127,6 +127,6 @@ By Claude Sonnet 5.5 on the Windows PC. The push of `main` (`d98a1dc`, includes 
 | 4 Page loads | 13:36 | Browser (Playwright) on `https://hyphae-api.fly.dev/link`, no token: title "Link your wallet · Hyphae", `data-state="ended"`, status "This link expired or was already used…", retry hidden, signing origin `https://hyphae-api.fly.dev`, stylesheet applied, **0 console errors**, no request beyond the page, stylesheet and script; no session created |
 | 4 Telegram | 13:36 | `telegram.mjs` PASS: webhook matches, 0 pending, no last error |
 | 4 Logs | 13:35:32 | API: `api listening on :8080`, only pg's known `sslmode` alias warning |
-| 4 Worker proof | see below | WORKERPROOF |
+| 4 Worker proof | see below | **PASS**: worker completed `reward-recovery` at 13:40:18Z and 13:45:18Z after the update (about every 5 min), all counters 0. The only API error lines in the log window are the proxy errors of the 2026-10-05T14:26Z restart, not of this one |
 
 Rollback was not needed. Not done by this plan: no migration, secret, env, Fly config, Vercel setting, webhook, Telegram message, link, signature, raid, payout or worker change. The attended phone test is Cisco's.

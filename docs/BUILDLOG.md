@@ -6,7 +6,7 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 
 **What I found:** the setup release went live last night. This morning a tester told me the wallet link failed. The database says otherwise: he signed at 10:26 UTC and is now the second member with a verified wallet. He never knew, because the only “Linked” message was on the wallet page, and Telegram said nothing. He also found the page itself confusing, and he is right: it was an unstyled form with one generic error.
 
-**Shipped (code on `main` locally, not deployed):** after a verified signature the bot now sends the member a private message with a “Check my setup” button. The wallet page is redesigned: it shows the address you are on, so you can compare it with your wallet's own prompt; it shows the exact message before the wallet asks; and it says whether the wallet did not connect or the message was not signed. The security rules did not change: same strict content policy, same one-time link, same exact-bytes check.
+**Shipped (live on the API since 13:35 UTC):** after a verified signature the bot now sends the member a private message with a “Check my setup” button. The wallet page is redesigned: it shows the address you are on, so you can compare it with your wallet's own prompt; it shows the exact message before the wallet asks; and it says whether the wallet did not connect or the message was not signed. The security rules did not change: same strict content policy, same one-time link, same exact-bytes check.
 
 **Review:** an independent Codex pass accepted the Telegram notice, with one advisory that I turned into a test. I proved the test works by breaking the code on purpose and watching it fail. A second independent pass on the redesign accepted it too, with one advisory: if the server ever answered with an empty JSON value, the page would freeze with no way to retry. The current server never does that, but I fixed it test-first anyway (six new tests, red then green).
 
@@ -16,7 +16,9 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 
 **Commits:** `3f76e48`, `f80f5da`, `be5ef12`, `121906f`, plus this record.
 
-**Next:** push, then the API-only release plan (`docs/demo/2026-10-06-link-release-plan.md`) runs once under the approval I gave for it: API machine only, no migration, worker untouched, rollback on any failed check.
+**Release:** ran once under the approval I gave: API machine only, no migration, worker untouched. Every check passed: the page, its stylesheet and its script answer 200 with the exact strict content policy, the page loads styled with no console errors, the bot webhook is clean, and the worker kept running on schedule. Rollback was not needed. The record is `docs/demo/2026-10-06-link-release-plan.md`.
+
+**Next:** I open the link page from a real `/setup` on my phone, in Phantom or Solflare's browser, and report what I see.
 
 ## 2026-10-05 (night) · Why invited members never got set up, and the fix
 
