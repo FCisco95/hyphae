@@ -12,7 +12,7 @@ import {
 // Reward evaluation prompts (O4). An epoch pins a version and the hash of its template text, so
 // a deploy that edits a template cannot change how an open epoch is judged: an edit needs a new
 // version and a new activation.
-export const REWARD_PROMPT_VERSION = "reward-eval/1";
+export const REWARD_PROMPT_VERSION = "reward-eval/2";
 
 // O1's public effort criteria, pinned into the reward configuration.
 export const EFFORT_CRITERIA_V1 = [
@@ -91,6 +91,42 @@ const QUALITY_RULES = [
   "Reasoning: 2-5 sentences, second person, name what was good and what was missing.",
 ].join("\n");
 
+// reward-eval/2 (2026-10-06). Version 1 graded a sincere on-theme reply to the post's own open
+// question 58 and called it "a general crypto take". The rubric already says a genuine take on
+// the theme earns most of context_fit; this version tells the model how to apply it. It adds no
+// rule: the guidelines, the flags, the hard zeros, the AI caps and the floor are unchanged.
+const CALIBRATION_V2 = [
+  "Calibration (how to apply the criteria; it adds and removes no rule):",
+  "- This is a community reward round, not a literary review. Ask first: did a real person write a real reaction to this post? If yes, it earns credit; grade how good it is, not whether it is perfect.",
+  "- A reply answers a post when it gives the member's own view on what the post asks or says, even if it never quotes the post or names its details. Answering the post's open question counts as engaging with it, so context_fit is high for it.",
+  "- Speaking about the project, its mechanism, goals or ecosystem in the member's own words is the point of a raid and counts as on-topic, not as promotion. Describing what the project does, what is being tested, or inviting others to try it spreads the raid and is welcome.",
+  "- off_topic and spam are hard zeros, so set them only when clearly true. off_topic: nothing to do with the post or the project it is about (a plug for an unrelated product, token or link counts). spam: a verbatim copy of another reply or of the member's own earlier one. Promoting the project the raid is about is neither.",
+  "- A sincere reaction in the member's own words that relates to the post or the project (an opinion, a joke, a question, some banter) earns at least 62, and 72-90 when it adds a concrete detail, an angle or a comparison. Do not mark a reply down for being brief, informal, playful or only partly specific.",
+  '- The exception is a line that would fit under any post ("lfg", "gm", "nice", "great project"), copy-paste, or text with no real content: that stays below 50. Do not require research or a novel insight.',
+].join("\n");
+
+const QUALITY_RULES_V2 = [
+  "Return a quality score 0-100, per-criterion hits, flags, and a plain-language reasoning a member can read.",
+  "",
+  "Guidelines:",
+  "{{guidelines}}",
+  "",
+  "Criteria:",
+  "{{criteria}}",
+  "",
+  CALIBRATION_V2,
+  "",
+  "Flags (set every one that applies):",
+  "{{flags}}",
+  "",
+  "The score measures quality against the criteria only. Never lower the score because of a flag;",
+  "the flags are enforced by code after you answer, and the member sees both.",
+  "For ai_slop, list each AI-writing pattern you see in aiSlop.patterns and set templateRhythm",
+  "when the structure itself reads templated. Leave both empty when the flag is not set.",
+  "Reasoning: 2-5 sentences, second person, name what was good and what was missing.",
+  "Keep each rubricHits note under 150 characters.",
+].join("\n");
+
 const EFFORT_RULES = [
   "Effort criteria (judge each separately from quality; excellent ordinary work can fail effort):",
   "{{effortCriteria}}",
@@ -109,6 +145,22 @@ const CONTENT =
   '{{task}}<content kind="{{kind}}"{{urlAttr}}>\n{{content}}\n</content>\nCapture limitations: {{limitations}}';
 
 const PROMPTS: Record<string, Record<RewardPurpose, Template>> = {
+  "reward-eval/2": {
+    quality: { system: [HEADER, QUALITY_RULES_V2, FOOTER].join("\n\n"), user: CONTENT },
+    quality_effort: {
+      system: [HEADER, QUALITY_RULES_V2, EFFORT_RULES, FOOTER].join("\n\n"),
+      user: CONTENT,
+    },
+    effort: {
+      system: [
+        HEADER,
+        "Quality was already judged and is final here; judge effort only.",
+        EFFORT_RULES,
+        FOOTER,
+      ].join("\n\n"),
+      user: `${CONTENT}\nPrior quality result: {{priorQuality}}`,
+    },
+  },
   "reward-eval/1": {
     quality: { system: [HEADER, QUALITY_RULES, FOOTER].join("\n\n"), user: CONTENT },
     quality_effort: {

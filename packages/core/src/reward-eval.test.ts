@@ -38,6 +38,47 @@ const effort = {
   explanation: "You ran the flow and posted the result, which others can check.",
 };
 
+// Epoch 2 pinned reward-eval/1 by this hash. Editing that template would change how the open epoch
+// is judged, so a new behavior is a new version.
+const REWARD_EVAL_1_HASH = "7c3b3482377f4dbdce83a315c0b253c7f4868b11202a7b1a3affeff9ac01742a";
+
+describe("prompt versions", () => {
+  it("keeps reward-eval/1 byte-for-byte as epoch 2 pinned it", () => {
+    expect(promptTemplateHash("reward-eval/1")).toBe(REWARD_EVAL_1_HASH);
+  });
+
+  it("pins new configurations to reward-eval/2, a different template", () => {
+    expect(REWARD_PROMPT_VERSION).toBe("reward-eval/2");
+    expect(promptTemplateHash("reward-eval/2")).not.toBe(REWARD_EVAL_1_HASH);
+  });
+
+  it("calibrates reward-eval/2 toward sincere on-theme replies without dropping any rule", () => {
+    const v1 = renderRewardPrompt("reward-eval/1", "quality", vars());
+    const v2 = renderRewardPrompt("reward-eval/2", "quality", vars());
+    expect(v1.system).not.toContain("Calibration");
+    expect(v2.system).toContain("Calibration");
+    expect(v2.system).toContain("Answering the post's open question counts as engaging with it");
+    expect(v2.system).toContain("Speaking about the project");
+    expect(v2.system).toContain("Promoting the project the raid is about is neither");
+    expect(v2.system).toContain("earns at least 62");
+    expect(v2.system).not.toContain("strict quality score");
+    expect(v2.system).toContain(rubric.guidelines);
+    expect(v2.system).toContain("Never lower the score because of a flag");
+    expect(v2.system).toContain("- guideline_breach:");
+    expect(v2.system).toContain("- spam:");
+    expect(v2.system).toContain("- ai_slop:");
+    expect(v2.system).toContain("under 150 characters");
+  });
+
+  it("leaves the effort rules and the effort-only prompt as they were", () => {
+    const only1 = renderRewardPrompt("reward-eval/1", "effort", vars());
+    const only2 = renderRewardPrompt("reward-eval/2", "effort", vars());
+    expect(only2.system.replace("reward-eval/2", "reward-eval/1")).toBe(only1.system);
+    const both = renderRewardPrompt("reward-eval/2", "quality_effort", vars());
+    expect(both.system).toContain("Effort criteria");
+  });
+});
+
 describe("promptTemplateHash", () => {
   it("is a sha256 hex digest for the current version", () => {
     expect(promptTemplateHash(REWARD_PROMPT_VERSION)).toMatch(/^[0-9a-f]{64}$/);

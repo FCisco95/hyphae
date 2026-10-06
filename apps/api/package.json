@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p src/link/page",
     "test": "vitest run --passWithNoTests",
     "eval:scoring": "node --import tsx scripts/eval-scoring.ts",
+    "eval:reward-prompt": "node --import tsx scripts/eval-reward-prompt.ts",
     "test:pg": "bash scripts/test-pg.sh"
   },
   "dependencies": {
