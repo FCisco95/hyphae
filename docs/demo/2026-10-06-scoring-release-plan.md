@@ -5,7 +5,7 @@ summary: Release of the looser scorer (prompt reward-eval/2) for epoch 3. Update
 
 # Scoring release plan: reward-eval/2 from epoch 3
 
-**Status: PREPARED, not run. Needs Cisco's exact yes (wording at the end).** Written 2026-10-06 by Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort high) on the Windows PC from `main`. Nothing in this document changed Fly, the database, Telegram, secrets or Vercel settings.
+**Status: EXECUTED 2026-10-06T20:21Z to 20:33Z (see [Execution record](#execution-record-2026-10-06)).** Authorized by Cisco's exact sentence "yes, run the 2026-10-06 scoring release plan at 6b2a4e3". Written 2026-10-06 by Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort high) on the Windows PC from `main`. Nothing in this document changed Fly, the database, Telegram, secrets or Vercel settings.
 
 **Why:** Cisco's instruction on 2026-10-06: the AI scoring is too hard, "loosen up a lot", members mention the project and that is reach, not spam. Evidence: epoch 2's real reply to the post's own question scored raw 58 (credited 0) as "a general crypto take", and a founder quote that describes the project was zeroed as `off_topic`, although rubric 1.2.0 says a genuine take on the theme earns most of `context_fit`. The scorer was stricter than the published rubric. Evidence and numbers: [calibration report](../rubrics/eval/reward-eval-2-calibration.md); independent review: [Codex review](../reviews/2026-10-06-reward-eval-2.md) (core clean; two script findings fixed).
 
@@ -118,3 +118,19 @@ Once 2026-10-09T00:00Z has passed and the first epoch 3 request has materialized
 ## Approval wording
 
 Cisco answers one sentence: **"yes, run the 2026-10-06 scoring release plan at 6b2a4e3"**. Anything else, including "ok" without naming the plan, is a no. A yes covers E1 to E5 only, once, before Oct 8 12:00Z. It does not cover any migration, secret, Fly config, Telegram message, link, signature, raid, payout or invitation, and it does not change epoch 2.
+
+## Execution record (2026-10-06)
+
+By Claude Sonnet 5.5 on the Windows PC with Cisco's exact yes. `main` was pushed by Cisco (`667b036`, GitHub CI success) before the run.
+
+| Step | Time (UTC) | Result |
+|---|---|---|
+| 0 Guards | 20:21 | `main` = `origin/main`, clean, no locks; `6b2a4e3` an ancestor; runtime-tree diff to `origin/main` empty; tag `scoring-6b2a4e3` was `404`; both rollback digests `200`; API on the link digest, worker on `$FROZEN`; `telegram.mjs` PASS (0 pending, no last error); `proposal-check` showed one activated bootstrap proposal, epochs 1 and 2 on `reward-eval/1` |
+| 1 Worktree | 20:22 | Detached at exactly `6b2a4e34e1bc45822e951cb026e1812b8e1eaf1f`, `pnpm install --frozen-lockfile` 12.9 s |
+| 2 Build | 20:22 | `fly deploy --build-only --push --image-label scoring-6b2a4e3 --depot=false`, 350 MB. **`NEW=sha256:def68189a1e16ffbc062c68ca3ad7e923824dc64a122b5a48f47d09fc433142f`**; registry read by tag and by digest both `200 $NEW`; machines unchanged |
+| 3 API update | 20:23:26 | Tag re-read `200 $NEW` right before; `fly machine update 6839d31b317318 --image registry.fly.io/hyphae-api:scoring-6b2a4e3 --yes`, started 20:23:44Z, digest `$NEW`. `/health` 200; community 200; epoch 2 `open`, `config.prompt_version` **still `reward-eval/1`**, 3 contributions counted; `/link`, `/link/style.css`, `/link/app.js` 200 with the exact CSP; `/docs` 200; `telegram.mjs` PASS; logs `api listening on :8080` (the one proxy "instance refused connection" line is the restart gap before it listened) |
+| 4 Worker update | 20:24:30 | Tag re-read `200 $NEW`; `fly machine update 817400c9901de8 --image registry.fly.io/hyphae-api:scoring-6b2a4e3 --yes`, started 20:24:43Z, digest `$NEW`. Log: `worker: consuming score, reward-evaluation, reward-retrieval, reward-notify, reward-recovery, reward-close, hold-check` at 20:24:47Z. **Worker proof PASS:** `reward-recovery` completed at 20:25:51Z and 20:30:17Z after the update, all counters 0, no `prompt_unavailable`, no error or stack line. |
+| 5 Proposal | 20:31 | `set-rubric` from the exact-source worktree: **proposal `2ce6085a-ecbd-4ddc-a0dc-32966db43278` accepted in E2, earliest activation E3** (`staging rubric 1.2.0` unchanged). `proposal-check`: one new `pending` proposal, `accepted_in_epoch` 2, `earliest_activation_epoch` 3, prompt `reward-eval/2`, rubric `1.2.0`, digest `9f4bfac8182a` (equals the dry run); the bootstrap proposal still `activated`; epochs 1 and 2 still `reward-eval/1` |
+| Final | 20:33 | `/health` 200; epoch 2 open on `reward-eval/1` with 3 contributions counted; Telegram 0 pending, no last error |
+
+Rollback was not needed. Not done: no migration, secret, env, Fly config, Vercel setting, Telegram message, link, signature, raid, payout or invitation. **Still to check (Step 6, read-only):** after 2026-10-09T00:00Z, `GET /v1/communities/<mint>/epochs/3` must show `config.prompt_version` `reward-eval/2`, `config.rubric_version` `1.2.0`, and `proposal-check.mts` must show the proposal `activated` at epoch 3. If epoch 3 materializes under `reward-eval/1`, report; do not hand-edit. The leftover local folder `../hyphae-scoring-6b2a4e3` (only `node_modules`) is untracked and safe to delete.
