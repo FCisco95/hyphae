@@ -1,158 +1,158 @@
 {
- "tasks": {
-  "setup": {
-   "targetUrl": "https://x.com/organic_mycel/status/2107411901315469650",
-   "targetAuthor": "organic_mycel",
-   "targetText": "Hyphae setup test is open 🍄\n\nReply to this post with your own take: \n\nWhat would make a community reward system feel fair to you? An AI scores it against a public rubric and shows its reasoning.\n\nJoin + setup: https://t.co/PK4aCzwpCf\n\nPoints aren't a payment. Epoch closes Oct 9",
-   "brief": ""
+  "tasks": {
+    "setup": {
+      "targetUrl": "https://x.com/organic_mycel/status/2107411901315469650",
+      "targetAuthor": "organic_mycel",
+      "targetText": "Hyphae setup test is open 🍄\n\nReply to this post with your own take: \n\nWhat would make a community reward system feel fair to you? An AI scores it against a public rubric and shows its reasoning.\n\nJoin + setup: https://t.co/PK4aCzwpCf\n\nPoints aren't a payment. Epoch closes Oct 9",
+      "brief": ""
+    },
+    "grind": {
+      "targetUrl": "https://x.com/organic_mycel/status/2107077331328065673",
+      "targetAuthor": "organic_mycel",
+      "targetText": "1 week left. Grind mode.\n\nWe're building Hyphae, a public audit trail for community work. Every contribution is scored, every score has a reason, and every correction is visible.\n\nWe need testers to try to break it. 🍄\n\nThis post is the first test:\n1. Reply to or quote this post.…",
+      "brief": ""
+    }
   },
-  "grind": {
-   "targetUrl": "https://x.com/organic_mycel/status/2107077331328065673",
-   "targetAuthor": "organic_mycel",
-   "targetText": "1 week left. Grind mode.\n\nWe're building Hyphae, a public audit trail for community work. Every contribution is scored, every score has a reason, and every correction is visible.\n\nWe need testers to try to break it. 🍄\n\nThis post is the first test:\n1. Reply to or quote this post.…",
-   "brief": ""
-  }
- },
- "cases": [
-  {
-   "id": "R1-real-reply-dev-joke",
-   "task": "grind",
-   "kind": "reply",
-   "expect": "pass",
-   "text": "Guess i can test this myself as the DEV and i hope i dont score \"BIAS\" 😅\n\nCome on Mycelium, now is the time to shine 🍄"
-  },
-  {
-   "id": "R2-real-quote-own-product",
-   "task": "setup",
-   "kind": "quote",
-   "expect": "pass",
-   "text": "Im looking for testers to test my @colosseum product Hyphae\n\nWe're scoring engagements in exchange for points that get tied to your wallet making it organic wallet.\n\nWe dream of checking for Organic wallet bundles instead of cabal ones 🤷‍♂️"
-  },
-  {
-   "id": "R3-real-reply-transparency",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "pass",
-   "text": "My vision on what this reward system will bring is transparency to the chain on how organic a community really is.\n\nMost projects are just botted accounts controlling the supply."
-  },
-  {
-   "id": "P1-fair-means-see-why",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "pass",
-   "text": "Fair to me means I can see why I got my score and who can change it. A public rubric is a good start."
-  },
-  {
-   "id": "P2-joke-bots",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "pass",
-   "text": "finally a reward system my cousin's 400 bot accounts can't farm lol"
-  },
-  {
-   "id": "P3-project-mention",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "pass",
-   "text": "Been following what Organic is building with Hyphae. Receipts for every score is the part I'd want every community to copy."
-  },
-  {
-   "id": "P4-critique-question",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "pass",
-   "text": "Fair also means consistent: same reply, same score. Do you publish eval runs so we can check the AI isn't moody?"
-  },
-  {
-   "id": "P5-short-opinion",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "pass",
-   "text": "Honestly just seeing the reasoning behind the score makes it feel more fair than most systems."
-  },
-  {
-   "id": "G1-gm",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "zero",
-   "text": "gm"
-  },
-  {
-   "id": "G2-lfg-ser",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "zero",
-   "text": "lfg 🚀🚀 great project ser"
-  },
-  {
-   "id": "G3-generic-hype",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "zero",
-   "text": "This is huge. Bullish on everything they are building. Can't wait!"
-  },
-  {
-   "id": "G4-ai-slop",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "zero",
-   "text": "In today's rapidly evolving landscape, transparency serves as a pivotal cornerstone of any community reward system. Additionally, public rubrics underscore a robust commitment to fairness. Furthermore, AI scoring ensures a seamless and equitable experience for all stakeholders."
-  },
-  {
-   "id": "G5-buy-10x",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "zero",
-   "text": "Buy $MYCEL now before it 10x's, guaranteed gains, easy money"
-  },
-  {
-   "id": "G6-other-coin-promo",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "zero",
-   "text": "Forget this, my token $DOGEX launches tonight on pump, get in early for 100x. t.me/dogexalpha"
-  },
-  {
-   "id": "G7-nice",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "zero",
-   "text": "nice 🔥"
-  },
-  {
-   "id": "G8-offtopic-unrelated",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "zero",
-   "text": "anyone know a good pizza place in lisbon?"
-  },
-  {
-   "id": "A1-project-hype",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "zero",
-   "text": "Hyphae is the best thing happening in crypto right now. The team is cooking and the future is bright. Everyone should be watching this project closely."
-  },
-  {
-   "id": "A2-polished-abstract",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "any",
-   "text": "Transparency in reward systems matters because it builds trust between communities and their members."
-  },
-  {
-   "id": "A4-other-project-plug",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "zero",
-   "text": "Great post. Also check out my project Zenbot at zenbot.xyz, we are building something similar and need testers"
-  },
-  {
-   "id": "A5-price-shill",
-   "task": "setup",
-   "kind": "reply",
-   "expect": "zero",
-   "text": "MYCEL chart looking strong, going to run this week, load up"
-  }
- ]
+  "cases": [
+    {
+      "id": "R1-real-reply-dev-joke",
+      "task": "grind",
+      "kind": "reply",
+      "expect": "pass",
+      "text": "Guess i can test this myself as the DEV and i hope i dont score \"BIAS\" 😅\n\nCome on Mycelium, now is the time to shine 🍄"
+    },
+    {
+      "id": "R2-real-quote-own-product",
+      "task": "setup",
+      "kind": "quote",
+      "expect": "pass",
+      "text": "Im looking for testers to test my @colosseum product Hyphae\n\nWe're scoring engagements in exchange for points that get tied to your wallet making it organic wallet.\n\nWe dream of checking for Organic wallet bundles instead of cabal ones 🤷‍♂️"
+    },
+    {
+      "id": "R3-real-reply-transparency",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "pass",
+      "text": "My vision on what this reward system will bring is transparency to the chain on how organic a community really is.\n\nMost projects are just botted accounts controlling the supply."
+    },
+    {
+      "id": "P1-fair-means-see-why",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "pass",
+      "text": "Fair to me means I can see why I got my score and who can change it. A public rubric is a good start."
+    },
+    {
+      "id": "P2-joke-bots",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "pass",
+      "text": "finally a reward system my cousin's 400 bot accounts can't farm lol"
+    },
+    {
+      "id": "P3-project-mention",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "pass",
+      "text": "Been following what Organic is building with Hyphae. Receipts for every score is the part I'd want every community to copy."
+    },
+    {
+      "id": "P4-critique-question",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "pass",
+      "text": "Fair also means consistent: same reply, same score. Do you publish eval runs so we can check the AI isn't moody?"
+    },
+    {
+      "id": "P5-short-opinion",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "pass",
+      "text": "Honestly just seeing the reasoning behind the score makes it feel more fair than most systems."
+    },
+    {
+      "id": "G1-gm",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "zero",
+      "text": "gm"
+    },
+    {
+      "id": "G2-lfg-ser",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "zero",
+      "text": "lfg 🚀🚀 great project ser"
+    },
+    {
+      "id": "G3-generic-hype",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "zero",
+      "text": "This is huge. Bullish on everything they are building. Can't wait!"
+    },
+    {
+      "id": "G4-ai-slop",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "zero",
+      "text": "In today's rapidly evolving landscape, transparency serves as a pivotal cornerstone of any community reward system. Additionally, public rubrics underscore a robust commitment to fairness. Furthermore, AI scoring ensures a seamless and equitable experience for all stakeholders."
+    },
+    {
+      "id": "G5-buy-10x",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "zero",
+      "text": "Buy $MYCEL now before it 10x's, guaranteed gains, easy money"
+    },
+    {
+      "id": "G6-other-coin-promo",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "zero",
+      "text": "Forget this, my token $DOGEX launches tonight on pump, get in early for 100x. t.me/dogexalpha"
+    },
+    {
+      "id": "G7-nice",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "zero",
+      "text": "nice 🔥"
+    },
+    {
+      "id": "G8-offtopic-unrelated",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "zero",
+      "text": "anyone know a good pizza place in lisbon?"
+    },
+    {
+      "id": "A1-project-hype",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "zero",
+      "text": "Hyphae is the best thing happening in crypto right now. The team is cooking and the future is bright. Everyone should be watching this project closely."
+    },
+    {
+      "id": "A2-polished-abstract",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "any",
+      "text": "Transparency in reward systems matters because it builds trust between communities and their members."
+    },
+    {
+      "id": "A4-other-project-plug",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "zero",
+      "text": "Great post. Also check out my project Zenbot at zenbot.xyz, we are building something similar and need testers"
+    },
+    {
+      "id": "A5-price-shill",
+      "task": "setup",
+      "kind": "reply",
+      "expect": "zero",
+      "text": "MYCEL chart looking strong, going to run this week, load up"
+    }
+  ]
 }

@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { creditedScore, RubricSchema, renderRewardPrompt, ScoreOutputSchema } from "@hyphae/core";
-import { z } from "zod";
 import { scoringModel } from "../src/scoring/provider.js";
+import { Cases, exitCode, judge, parseRuns } from "../src/scoring/reward-cases.js";
 import { callRewardModel } from "../src/scoring/run.js";
 
 // Runs the pinned reward prompt versions over fixed replies and prints what each would credit.
@@ -21,25 +21,6 @@ if (!values.cases || !values.rubric) {
     "usage: eval-reward-prompt --cases <json> --rubric <json> [--versions a,b] [--runs n] [--model id]",
   );
 }
-const Task = z.object({
-  targetUrl: z.string(),
-  targetAuthor: z.string(),
-  targetText: z.string(),
-  brief: z.string(),
-});
-const Cases = z.object({
-  tasks: z.record(z.string(), Task),
-  cases: z.array(
-    z.object({
-      id: z.string(),
-      task: z.string(),
-      kind: z.enum(["reply", "quote", "post", "text"]),
-      text: z.string(),
-      // pass: must be credited (60 or more). zero: must be credited 0. any: shown, not judged.
-      expect: z.enum(["pass", "zero", "any"]),
-    }),
-  ),
-});
 const { tasks, cases } = Cases.parse(JSON.parse(await readFile(values.cases, "utf8")));
 const rubric = RubricSchema.parse(JSON.parse(await readFile(values.rubric, "utf8")));
 const model = scoringModel(
@@ -49,9 +30,10 @@ const model = scoringModel(
     deepseek: process.env.DEEPSEEK_API_KEY,
   },
 );
-const runs = Number(values.runs);
+const runs = parseRuns(values.runs ?? "1");
 
 let misses = 0;
+let errors = 0;
 let costMicroUsd = 0;
 for (const c of cases) {
   const task = tasks[c.task];
@@ -70,15 +52,17 @@ for (const c of cases) {
         costMicroUsd += result.costMicroUsd;
         const out = ScoreOutputSchema.parse(result.output);
         const credited = creditedScore(out);
-        const ok = c.expect === "any" || (c.expect === "pass" ? credited >= 60 : credited === 0);
+        const ok = judge(c.expect, credited);
         if (!ok) misses++;
         console.log(
           `${c.id.padEnd(30)} ${version} raw ${String(out.score).padStart(3)} credited ${String(credited).padStart(3)} ${out.flags.join("+").padEnd(34)} ${ok ? "ok" : "MISS"}`,
         );
       } catch (error) {
+        errors++;
         console.log(`${c.id.padEnd(30)} ${version} ERROR ${(error as Error).message.slice(0, 60)}`);
       }
     }
   }
 }
-console.error(JSON.stringify({ misses, costUsd: costMicroUsd / 1e6 }));
+console.error(JSON.stringify({ misses, errors, costUsd: costMicroUsd / 1e6 }));
+process.exitCode = exitCode({ misses, errors });
