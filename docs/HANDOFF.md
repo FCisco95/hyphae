@@ -77,6 +77,7 @@ Old tag `candidate/raid-alerts-2026-10-04` remains exactly `c58aa27efdb5bc5492c2
 
 ## Known Issues / Watch List
 
+- **Post-hackathon (Cisco, 2026-10-06):** several raids live at once, plus a council approval queue for raid posts proposed from other X accounts. Exact-raid binding already exists (private buttons bind intake to one raid, no latest-task fallback), so the remaining blocker is the one-active-brief guard (`active_exists` in `raid-alerts/alerts.ts`). The approval queue depends on the same verified council/Telegram contract as the steward item below. Not for before the Oct 9 close.
 - Organic task3.6/DEP-09 must supply verified community-role/Telegram binding, grant/revoke authority, authenticated issuer/transport, freshness/revocation and replay-safe audit before steward permissions can be implemented. Current designated-admin fallback is intentional; no invented allowlist or Telegram-admin equivalence.
 - Independent X relation/ownership verification is unavailable from existing oEmbed. Keep unverified status and current human attestation; no payment proof inferred.
 - Production bot release, actual Telegram messages, attended phone, wallet signatures and claim transactions need their separate scope. Spending caps or cancellation effects on credit/allocation require a founder decision; none chosen.
