@@ -9,6 +9,7 @@ import { settlementReader } from "./http/chain-reader.js";
 import { docsRoutes } from "./http/docs.js";
 import { readRoutes } from "./http/routes.js";
 import { startQueue } from "./jobs/queue.js";
+import { telegramLinkedNotifier } from "./link/notify.js";
 import { assertProofConfig, proofConfig } from "./link/proof-config.js";
 import { linkRoutes } from "./link/routes.js";
 import { startRaidNotifier } from "./raid-alerts/runner.js";
@@ -18,14 +19,18 @@ assertProofConfig();
 
 // Scoring/settlement jobs still run in the frozen worker; private raid alerts use the API outbox.
 await startQueue();
-const raidNotifier = startRaidNotifier(db, new Api(env.TELEGRAM_BOT_TOKEN, { timeoutSeconds: 4 }));
+const notifyApi = new Api(env.TELEGRAM_BOT_TOKEN, { timeoutSeconds: 4 });
+const raidNotifier = startRaidNotifier(db, notifyApi);
 stopApiOnSignals(raidNotifier.stop);
 
 const app = new Hono();
 
 app.get("/health", (c) => c.json({ ok: true }));
 app.post("/telegram", webhookCallback(bot, "hono", { secretToken: env.TELEGRAM_WEBHOOK_SECRET }));
-app.route("/link", linkRoutes({ db, tenant: proofConfig() }));
+app.route(
+  "/link",
+  linkRoutes({ db, tenant: proofConfig(), notify: telegramLinkedNotifier(notifyApi) }),
+);
 app.route("/docs", docsRoutes());
 app.route(
   "/v1",

@@ -11,6 +11,7 @@ import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
+import type { LinkedNote } from "./notify.js";
 import { findLinkSession, resolveLinkSession } from "./session.js";
 import { createLinkStore, sqlState } from "./store.js";
 
@@ -47,6 +48,8 @@ export function linkRoutes(deps: {
   db: Db;
   tenant: TenantProofConfig;
   storeFactory?: typeof createLinkStore;
+  // Best effort after a verified link; its failure never changes the link result.
+  notify?: (note: LinkedNote) => Promise<void>;
 }) {
   const { db, tenant } = deps;
   const makeStore = deps.storeFactory ?? createLinkStore;
@@ -132,6 +135,16 @@ export function linkRoutes(deps: {
         ),
       );
     if (!row) throw new Error("link: consumed request missing");
+    void Promise.resolve()
+      .then(() =>
+        deps.notify?.({
+          telegramUserId: ctx.telegramUserId,
+          communityId: ctx.communityId,
+          communityName: found.community.name,
+          wallet: row.wallet,
+        }),
+      )
+      .catch(() => {});
     return c.json({ status: "linked", wallet: row.wallet });
   });
 

@@ -180,3 +180,78 @@ describe("link routes", () => {
     expect(await r.json()).toEqual({ error: "proof_rejected" });
   });
 });
+
+describe("link confirmation message", () => {
+  type Note = {
+    telegramUserId: bigint;
+    communityId: string;
+    communityName: string;
+    wallet: string;
+  };
+  const sign = async (
+    app: ReturnType<typeof linkRoutes>,
+    token: string,
+    w: Awaited<ReturnType<typeof testWallet>>,
+  ) => {
+    const req = await (await post(app, "/request", { token, wallet: w.address })).json();
+    const body = { token, ...req, signature: await w.sign(req.message) };
+    return { body, response: await post(app, "/verify", body) };
+  };
+
+  it("notifies the session's own Telegram user once after a verified link", async () => {
+    const notes: Note[] = [];
+    const app = linkRoutes({ db: t.db, tenant, notify: async (n) => void notes.push(n) });
+    const { community } = await seedCommunity(t.db);
+    const token = await fresh(community.id, 4242n);
+    const w = await testWallet();
+    const { body, response: r } = await sign(app, token, w);
+    expect(r.status).toBe(200);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(notes).toEqual([
+      {
+        telegramUserId: 4242n,
+        communityId: community.id,
+        communityName: community.name,
+        wallet: w.address,
+      },
+    ]);
+    // Reading the status afterwards, or replaying the used token, sends nothing more.
+    await post(app, "/status", { token });
+    expect((await post(app, "/verify", body)).status).toBe(410);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(notes).toHaveLength(1);
+  });
+
+  it("a failing notification never changes the link result", async () => {
+    const app = linkRoutes({
+      db: t.db,
+      tenant,
+      notify: async () => {
+        throw new Error("telegram down");
+      },
+    });
+    const token = await fresh();
+    const w = await testWallet();
+    const { response: r } = await sign(app, token, w);
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ status: "linked", wallet: w.address });
+  });
+
+  it("sends nothing for a refused proof", async () => {
+    const notes: Note[] = [];
+    const app = linkRoutes({ db: t.db, tenant, notify: async (n) => void notes.push(n) });
+    const token = await fresh();
+    const w = await testWallet();
+    const req = await (await post(app, "/request", { token, wallet: w.address })).json();
+    const tampered = `${req.message}\n`;
+    const r = await post(app, "/verify", {
+      token,
+      ...req,
+      message: tampered,
+      signature: await w.sign(tampered),
+    });
+    expect(r.status).toBe(400);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(notes).toEqual([]);
+  });
+});

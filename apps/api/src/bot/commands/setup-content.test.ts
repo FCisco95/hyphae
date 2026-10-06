@@ -115,6 +115,11 @@ describe("wallet-link message", () => {
     expect(html).toContain("15 minutes");
     expect(html).toMatch(/moves no funds/);
   });
+
+  it("names the tested wallets and promises a confirmation in this chat", () => {
+    expect(html).toMatch(/tested with Hyphae/);
+    expect(html).toMatch(/confirm here/);
+  });
 });
 
 describe("hold amount in tokens", () => {

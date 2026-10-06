@@ -115,10 +115,10 @@ export function setupContent(s: SetupState): { text: string; buttons: SetupButto
 export function linkMessage(communityName: string, url: string): string {
   return [
     `Link your wallet to ${escapeHtml(communityName)}.`,
-    "1. Open the Phantom or Solflare app and go to its built-in browser.",
+    "1. Open the Phantom or Solflare app (the wallets tested with Hyphae) and go to its built-in browser.",
     "2. Tap the link below once to copy it, then paste it into that browser. Telegram's own browser cannot sign.",
     `<code>${escapeHtml(url)}</code>`,
     "Your wallet will ask you to sign a readable message. It is free and moves no funds. The link works for 15 minutes, once. Do not forward it.",
-    "After signing, come back to /setup and tap Refresh.",
+    "After you sign, I will confirm here. Then tap Check my setup, or send /setup in the group.",
   ].join("\n\n");
 }
