@@ -3,6 +3,20 @@ export type Post = (
   body: unknown,
 ) => Promise<{ ok: boolean; data: Record<string, unknown> }>;
 
+// A body that is not a JSON object (null, text, a number, an array) is a server we cannot read, the
+// same as no body at all. Callers can then rely on `data` being an object.
+export async function answerOf(r: {
+  ok: boolean;
+  json: () => Promise<unknown>;
+}): Promise<{ ok: boolean; data: Record<string, unknown> }> {
+  const body = await r.json().catch(() => undefined);
+  const isObject = typeof body === "object" && body !== null && !Array.isArray(body);
+  return {
+    ok: r.ok,
+    data: isObject ? (body as Record<string, unknown>) : { error: "link_unavailable" },
+  };
+}
+
 export type Outcome = { linked: string } | { error: string };
 
 // The link may commit even when its answer is lost, whether as link_unavailable or as a dropped

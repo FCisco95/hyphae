@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type Post, verifyAndReconcile } from "./page/flow.js";
+import { answerOf, type Post, verifyAndReconcile } from "./page/flow.js";
 
 const proof = { requestId: "r", nonce: "n", message: "m", signature: "s" };
 
@@ -43,5 +43,33 @@ describe("verifyAndReconcile", () => {
   it("passes a definite refusal through without asking /status", async () => {
     const post = fake({ verify: { ok: false, data: { error: "wallet_taken" } } });
     expect(await verifyAndReconcile(post, "t", proof)).toEqual({ error: "wallet_taken" });
+  });
+});
+
+describe("answerOf", () => {
+  const reply = (ok: boolean, body: () => Promise<unknown>) => ({ ok, json: body });
+
+  it("returns a JSON object body as it is", async () => {
+    expect(await answerOf(reply(true, async () => ({ wallet: "W" })))).toEqual({
+      ok: true,
+      data: { wallet: "W" },
+    });
+  });
+
+  it.each([null, "text", 7, [1]])(
+    "turns a %j body into link_unavailable, never a throw",
+    async (body) => {
+      expect(await answerOf(reply(true, async () => body))).toEqual({
+        ok: true,
+        data: { error: "link_unavailable" },
+      });
+    },
+  );
+
+  it("turns an unreadable body into link_unavailable", async () => {
+    const broken = reply(false, async () => {
+      throw new SyntaxError("Unexpected token");
+    });
+    expect(await answerOf(broken)).toEqual({ ok: false, data: { error: "link_unavailable" } });
   });
 });

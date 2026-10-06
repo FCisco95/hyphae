@@ -1,4 +1,4 @@
-import { type Post, verifyAndReconcile } from "./flow.js";
+import { answerOf, type Post, verifyAndReconcile } from "./flow.js";
 import { copyWalletLink, privateWalletLink } from "./handoff.js";
 import { connect, type MessageWallet, messageWallets, onWalletRegister, sign } from "./wallet.js";
 
@@ -102,7 +102,7 @@ const post: Post = async (path, body) => {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
-  return { ok: r.ok, data: await r.json().catch(() => ({ error: "link_unavailable" })) };
+  return answerOf(r);
 };
 
 async function run(w: MessageWallet) {
