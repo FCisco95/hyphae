@@ -8,15 +8,15 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 
 **Shipped (code on `main` locally, not deployed):** after a verified signature the bot now sends the member a private message with a “Check my setup” button. The wallet page is redesigned: it shows the address you are on, so you can compare it with your wallet's own prompt; it shows the exact message before the wallet asks; and it says whether the wallet did not connect or the message was not signed. The security rules did not change: same strict content policy, same one-time link, same exact-bytes check.
 
-**Review:** an independent Codex pass accepted the Telegram notice, with one advisory that I turned into a test. I proved the test works by breaking the code on purpose and watching it fail. The redesign review is running.
+**Review:** an independent Codex pass accepted the Telegram notice, with one advisory that I turned into a test. I proved the test works by breaking the code on purpose and watching it fail. A second independent pass on the redesign accepted it too, with one advisory: if the server ever answered with an empty JSON value, the page would freeze with no way to retry. The current server never does that, but I fixed it test-first anyway (six new tests, red then green).
 
 **Decision:** a Hyphae-owned domain for this page is the professional answer, but it costs money, needs a secret change, and the signed message is tied to the page's address. So it waits until after the payout window.
 
 **Numbers:** gate green (tests, typecheck, lint 0). Production writes 0, Telegram messages 0, deployments 0 since last night's release.
 
-**Commits:** `3f76e48`, `f80f5da`, `be5ef12`, plus this record.
+**Commits:** `3f76e48`, `f80f5da`, `be5ef12`, `121906f`, plus this record.
 
-**Next:** record the redesign review, push, then a release plan I'll ask you to approve.
+**Next:** push, then the API-only release plan (`docs/demo/2026-10-06-link-release-plan.md`) runs once under the approval I gave for it: API machine only, no migration, worker untouched, rollback on any failed check.
 
 ## 2026-10-05 (night) · Why invited members never got set up, and the fix
 
