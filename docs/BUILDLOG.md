@@ -2,6 +2,22 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-06 (evening) · The scorer was stricter than its own rubric
+
+**What I found:** my own reply to the setup post, a sincere answer to the post's question about what makes a reward system fair, scored 58 and earned nothing. The reason the AI gave was that it was "a general crypto take". But the published rubric says a real take on the post's theme earns most of the credit. And a quote of mine that explained the project was zeroed as off-topic. The scorer was being harder than the rules it publishes.
+
+**Shipped (local, not deployed):** a new scoring prompt, `reward-eval/2`. It tells the scorer how to apply the same rubric: a real reaction in your own words that relates to the post or the project (an opinion, a joke, a question) earns at least 62, more with a detail or an angle, and talking about the project the raid is about is the point of a raid, not spam. The rubric, the hard zeros, the AI caps and the 60 floor did not change.
+
+**Decision and why:** epoch 2 cannot change. Its scoring rules are pinned and hashed, and the system's own cooldown makes epoch 3 (Oct 9, 00:00 UTC) the earliest that new rules can apply. Editing a pinned epoch by hand would void every score already made. So the looser scorer is for epoch 3.
+
+**Numbers:** on 20 fixed replies, 3 runs each, with the real model: my three real contributions went from 3 of 9 credited runs to 8 of 9. gm, lfg, generic hype, AI slop, buy-now, price shilling, other-coin ads and other-project plugs still earn zero in every run. Cost USD 1.52. An independent Codex review found the prompt change clean and two small problems in the eval script, fixed test-first. The case set is small and I tuned on it, so it is a regression guard, not proof.
+
+**Surprise:** scoring runs in the worker, which has been frozen since Oct 2, so the release has to update the worker too. That needs its own approval.
+
+**Commits:** `ba0e12b`, `6b2a4e3`, plus the records.
+
+**Next:** the release plan `docs/demo/2026-10-06-scoring-release-plan.md` waits for my exact yes before Oct 8 12:00 UTC.
+
 ## 2026-10-06 · The first real tester linked, and thought he had failed
 
 **What I found:** the setup release went live last night. This morning a tester told me the wallet link failed. The database says otherwise: he signed at 10:26 UTC and is now the second member with a verified wallet. He never knew, because the only “Linked” message was on the wallet page, and Telegram said nothing. He also found the page itself confusing, and he is right: it was an unstyled form with one generic error.
