@@ -5,7 +5,7 @@ summary: API-only release of the redesigned wallet-link page and the Telegram "W
 
 # Link release plan: redesigned wallet page and link confirmation on the live Hyphae API
 
-**Status: PREPARED, not yet run.** Written 2026-10-06 by Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort high) on the Windows PC from `main`. Nothing in this document changed Fly, the database, Telegram, secrets or Vercel settings. The only effect of pushing it is the existing Vercel web build.
+**Status: EXECUTED 2026-10-06T13:32Z to 13:5xZ (see [Execution record](#execution-record-2026-10-06)).** Written 2026-10-06 by Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort high) on the Windows PC from `main`. Nothing in this document changed Fly, the database, Telegram, secrets or Vercel settings. The only effect of pushing it is the existing Vercel web build.
 
 **Why:** the first real tester linked his wallet but believed it failed, because only the wallet page said "Linked" and Telegram said nothing; he also found the unstyled page confusing. This release adds (a) one private Telegram notice to the member after a verified signature, (b) a branded, mobile-first wallet page that shows the signing address and the exact message before the wallet is asked, with separate "wallet did not connect" and "not signed" messages, (c) a hardening so an unreadable server answer ends in a retry instead of a stuck page.
 
@@ -49,7 +49,7 @@ Variables: `APP=hyphae-api`, `API=6839d31b317318`, `WORKER=817400c9901de8`, `SRC
 3. `bash $REPO/scripts/rollout/registry-digest.sh $TAG` prints `404`. `registry-digest.sh $PREV` and `registry-digest.sh $FROZEN` both print `200`.
 4. `fly machine list --app hyphae-api` and `fly image show --app hyphae-api`: API `started` on `$PREV`, worker `started` on `$FROZEN`.
 5. `date -u` is before Oct 8 12:00Z.
-6. `node --env-file=$REPO/.env $REPO/scripts/rollout/telegram.mjs <chat id> <admin id>` PASS (IDs: private infra note). Record `pending_update_count`.
+6. `node --env-file=$REPO/.env $REPO/scripts/rollout/telegram.mjs <chat id> <admin id>` PASS (chat id and admin id come from the db.mjs precheck `communities` row, not from memory notes: the group was upgraded to a supergroup and its old id now errors; the precheck's own FAIL verdict is expected after the migrations were applied and is ignored, only its read-only `communities` row is used). Record `pending_update_count`.
 
 ### Step 1. Exact-source worktree (local only)
 
@@ -85,7 +85,7 @@ fly image show --app hyphae-api
 ### Step 4. Acceptance checks (any failure goes to Rollback)
 
 - `fly image show`: API digest equals `$NEW` and `started`; worker `$FROZEN`, `started`, last updated `2026-10-02T09:19:01Z`.
-- `GET https://hyphae-api.fly.dev/health` is 200 `{"ok":true}`; `/v1/communities/<mint>` and `/epochs/2` 200 with epoch 2 open and intake open; `/docs` 200; `hyphae-delta.vercel.app` 200.
+- `GET https://hyphae-api.fly.dev/health` is 200 `{"ok":true}`; `/v1/communities/<mint>` and `/v1/communities/<mint>/epochs/2` 200 with epoch 2 open and intake open; `/docs` 200; `hyphae-delta.vercel.app` 200.
 - **Link page (new check).** `/link`, `/link/style.css` and `/link/app.js` each return 200 with the exact header
   `content-security-policy: default-src 'none'; script-src 'self'; connect-src 'self'; img-src data:; style-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
   plus `cache-control: no-store` and `referrer-policy: no-referrer`; `content-type` is `text/html`, `text/css`, `text/javascript`. `/link/style.css` is non-empty and contains `.wallet`. `/link/app.js` is the new build (it contains the text `Check your wallet and sign`). One read-only command does all of it:
@@ -110,3 +110,23 @@ fly image show --app hyphae-api
 ## What this plan does not do
 
 It sends no Telegram message, links no wallet, signs nothing, creates no raid and invites no one. The attended phone test is Cisco's: open the link page from a real `/setup` on the phone, inside Phantom or Solflare's browser, and say what is on screen. Open decisions that are not in this release: a Hyphae-owned domain for the page (the signed message is bound to the page origin; needs a domain purchase, a Fly certificate, DNS and a `LINK_ORIGIN` secret change) and "Open in Phantom/Solflare" deep links (threat model first, because the token would pass through a wallet vendor). Both wait for Cisco's decisions and not inside the Oct 8 22:00Z to Oct 10 00:00Z window.
+
+## Execution record (2026-10-06)
+
+By Claude Sonnet 5.5 on the Windows PC. The push of `main` (`d98a1dc`, includes this plan) was run by Cisco with `!` after the classifier denied the agent's push; the release then ran under the approval above.
+
+| Step | Time (UTC) | Result |
+|---|---|---|
+| Preconditions | 13:32 | Codex ACCEPT on `be5ef12`, advisory fixed (`121906f`), gate green; `origin/main` = `d98a1dc`, `121906f` its ancestor, runtime-tree diff to `origin/main` empty, `packages/db` diff since `774b97e` empty; before Oct 8 12:00Z. GitHub CI on `d98a1dc` **success** (run 37471523516); Vercel deployment for `d98a1dc` **success**, `hyphae-delta.vercel.app` 200 |
+| 0 Guards | 13:32 | Tag `link-121906f` was `404`; `$PREV` and `$FROZEN` both `200`; API `started` on `$PREV`, worker `started` on `$FROZEN`; `telegram.mjs` PASS (bot administrator, creator admin, webhook matches, 0 pending, no last error) |
+| 1 Worktree | 13:33 | Detached at exactly `121906f166ee0151b6a5c631c037b795a72a6b91`, `pnpm install --frozen-lockfile` 14.3 s |
+| 2 Build | 13:34 | `fly deploy --build-only --push --image-label link-121906f --depot=false`, 350 MB. **`NEW=sha256:b1e7091a2bd06448beb76e228ddeee5dd3b77e3c3e776ed25268e3c6c1757129`**; registry read by tag and by digest both `200 $NEW`; machines unchanged |
+| 3 Update (guarded tag form) | 13:35:12 | Tag re-read `200 $NEW` right before. `fly machine update 6839d31b317318 --image registry.fly.io/hyphae-api:link-121906f --yes`: updated successfully, machine `started` 13:35:28Z, digest **`$NEW`**. Worker `817400c9901de8` untouched: `$FROZEN`, last updated `2026-10-02T09:19:01Z` |
+| 4 HTTP | 13:36 | `/health` 200 `{"ok":true}`; `/v1/communities/<mint>` 200 (intake open, epoch 2 open, closes `2026-10-09T00:00Z`); `/v1/communities/<mint>/epochs/2` 200; `/docs` 200; `hyphae-delta.vercel.app` 200 |
+| 4 Link page | 13:36 | `/link` (`text/html`), `/link/style.css` (`text/css`), `/link/app.js` (`text/javascript`) all **200**, each with the **exact** CSP string compared character for character, `cache-control: no-store`, `referrer-policy: no-referrer`. `style.css` has `.wallet` (5 hits), `app.js` has `Check your wallet and sign`, the page has `signing-origin` |
+| 4 Page loads | 13:36 | Browser (Playwright) on `https://hyphae-api.fly.dev/link`, no token: title "Link your wallet · Hyphae", `data-state="ended"`, status "This link expired or was already used…", retry hidden, signing origin `https://hyphae-api.fly.dev`, stylesheet applied, **0 console errors**, no request beyond the page, stylesheet and script; no session created |
+| 4 Telegram | 13:36 | `telegram.mjs` PASS: webhook matches, 0 pending, no last error |
+| 4 Logs | 13:35:32 | API: `api listening on :8080`, only pg's known `sslmode` alias warning |
+| 4 Worker proof | see below | WORKERPROOF |
+
+Rollback was not needed. Not done by this plan: no migration, secret, env, Fly config, Vercel setting, webhook, Telegram message, link, signature, raid, payout or worker change. The attended phone test is Cisco's.
