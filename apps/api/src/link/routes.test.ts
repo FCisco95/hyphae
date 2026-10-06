@@ -1,6 +1,6 @@
 import { linkSessions } from "@hyphae/db";
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createTestDb, seedCommunity } from "../rewards/test-db.js";
 import { linkRoutes } from "./routes.js";
 import { digestToken, openLinkSession } from "./session.js";
@@ -235,6 +235,33 @@ describe("link confirmation message", () => {
     const { response: r } = await sign(app, token, w);
     expect(r.status).toBe(200);
     expect(await r.json()).toEqual({ status: "linked", wallet: w.address });
+  });
+
+  it("a slow Telegram send never delays verify or status", async () => {
+    let release: () => void = () => {};
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let started = false;
+    const app = linkRoutes({
+      db: t.db,
+      tenant,
+      notify: async () => {
+        started = true;
+        await pending;
+      },
+    });
+    const token = await fresh();
+    const w = await testWallet();
+    const { response: r } = await sign(app, token, w);
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ status: "linked", wallet: w.address });
+    expect(await (await post(app, "/status", { token })).json()).toEqual({
+      linked: true,
+      wallet: w.address,
+    });
+    await vi.waitFor(() => expect(started).toBe(true));
+    release();
   });
 
   it("sends nothing for a refused proof", async () => {
