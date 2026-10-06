@@ -2,6 +2,22 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-06 · The first real tester linked, and thought he had failed
+
+**What I found:** the setup release went live last night. This morning a tester told me the wallet link failed. The database says otherwise: he signed at 10:26 UTC and is now the second member with a verified wallet. He never knew, because the only “Linked” message was on the wallet page, and Telegram said nothing. He also found the page itself confusing, and he is right: it was an unstyled form with one generic error.
+
+**Shipped (code on `main` locally, not deployed):** after a verified signature the bot now sends the member a private message with a “Check my setup” button. The wallet page is redesigned: it shows the address you are on, so you can compare it with your wallet's own prompt; it shows the exact message before the wallet asks; and it says whether the wallet did not connect or the message was not signed. The security rules did not change: same strict content policy, same one-time link, same exact-bytes check.
+
+**Review:** an independent Codex pass accepted the Telegram notice, with one advisory that I turned into a test. I proved the test works by breaking the code on purpose and watching it fail. The redesign review is running.
+
+**Decision:** a Hyphae-owned domain for this page is the professional answer, but it costs money, needs a secret change, and the signed message is tied to the page's address. So it waits until after the payout window.
+
+**Numbers:** gate green (tests, typecheck, lint 0). Production writes 0, Telegram messages 0, deployments 0 since last night's release.
+
+**Commits:** `3f76e48`, `f80f5da`, `be5ef12`, plus this record.
+
+**Next:** record the redesign review, push, then a release plan I'll ask you to approve.
+
 ## 2026-10-05 (night) · Why invited members never got set up, and the fix
 
 **What I found:** I invited people on October 5, and the database shows none of them got as far as linking a wallet. The only Telegram account that ever opened a link session is mine. Three likely reasons: Telegram's built-in browser cannot sign a wallet message and the old bot message never said so; setup was five steps with no guide; and the 100,000 MYCEL a member must hold to be paid was never shown to anyone.
