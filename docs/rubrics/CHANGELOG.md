@@ -2,6 +2,12 @@
 
 Every rubric a Hyphae community scores against is public here. A community's `rubric_version` points at one of these files; the epoch commits its hash on-chain.
 
+## Scoring prompt reward-eval/2 — 2026-10-06 (not a rubric version)
+
+- The rubric is unchanged (MYCEL 1.2.0 stays the pinned rubric). Only the instructions that tell the scorer how to apply it changed, after the scorer graded a sincere on-theme reply 58 ("a general crypto take") although 1.2.0 says a genuine take on the theme earns most of `context_fit`.
+- An own-words reaction that relates to the post or the project (opinion, joke, question, banter) earns at least 62, and 72-90 with a concrete detail, an angle or a comparison. Describing or promoting the project the raid is about is on-topic; `off_topic` and `spam` are for unrelated plugs and verbatim copies. Lines that fit under any post, copy-paste and empty text stay below 50.
+- Guidelines, flags, hard zeros (guideline_breach, spam, off_topic), AI caps (79 and 40) and the 60 floor are unchanged and enforced in code. `reward-eval/1` stays byte-for-byte (its template hash is a test); an epoch is judged by the version it pinned, so epoch 2 keeps version 1. A configuration proposed after the deploy pins version 2 and takes effect at the cooldown boundary (epoch 3). Evidence: [eval/reward-eval-2-calibration.md](eval/reward-eval-2-calibration.md).
+
 ## MYCEL 1.3.0 — 2026-09-18 (candidate, not applied)
 
 - Founder ruling: price discussion and speculation are allowed when supported by a concrete basis. A price, market-cap figure, or target is not automatically a guideline breach. The forecast must be framed as uncertain and connected to the supplied evidence; a token hedge such as "could" does not substitute for reasoning.
