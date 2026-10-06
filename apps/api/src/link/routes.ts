@@ -68,6 +68,12 @@ export function linkRoutes(deps: {
     c.header("Content-Security-Policy", CSP);
     return c.html((await asset("index.html")).toString());
   });
+  app.get("/style.css", async (c) => {
+    c.header("Content-Security-Policy", CSP);
+    return c.body((await asset("style.css")).toString(), 200, {
+      "content-type": "text/css; charset=utf-8",
+    });
+  });
   app.get("/app.js", async (c) => {
     c.header("Content-Security-Policy", CSP);
     return c.body((await asset("app.js")).toString(), 200, {

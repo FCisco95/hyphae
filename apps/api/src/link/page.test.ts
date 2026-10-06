@@ -24,4 +24,26 @@ describe("link page", () => {
     expect(html).toContain('id="retry"');
     expect(html).not.toMatch(/<style|style=|onclick=|phantom\.com|solflare\.com/);
   });
+  it("serves one same-origin stylesheet with nothing external or inline", async () => {
+    const app = linkRoutes({ db: {} as never, tenant: testTenant });
+    const page = await (await app.request("/")).text();
+    expect(page).toContain('<link rel="stylesheet" href="/link/style.css">');
+    const r = await app.request("/style.css");
+    expect(r.status).toBe(200);
+    expect(r.headers.get("content-type")).toContain("text/css");
+    expect(r.headers.get("content-security-policy")).toBe(CSP);
+    expect(r.headers.get("cache-control")).toBe("no-store");
+    const css = await r.text();
+    expect(css).not.toMatch(/@import|url\(\s*["']?(?:https?:|\/\/)|expression\(|javascript:/i);
+    expect(css).toMatch(/prefers-color-scheme: dark/);
+    expect(css).toMatch(/prefers-reduced-motion/);
+  });
+
+  it("shows the signing address and a message preview slot, and still has one script", async () => {
+    const app = linkRoutes({ db: {} as never, tenant: testTenant });
+    const html = await (await app.request("/")).text();
+    expect(html).toContain('id="signing-origin"');
+    expect(html).toContain('id="message-preview"');
+    expect(html).toMatch(/<div id="app"[^>]*data-state=/);
+  });
 });

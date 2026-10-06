@@ -12,6 +12,9 @@ const copyStatus = document.getElementById("copy-status") as HTMLElement;
 const manual = document.getElementById("manual-copy") as HTMLElement;
 const field = document.getElementById("private-link") as HTMLTextAreaElement;
 const retry = document.getElementById("retry") as HTMLButtonElement;
+const app = document.getElementById("app") as HTMLElement;
+const preview = document.getElementById("preview") as HTMLElement;
+const previewText = document.getElementById("message-preview") as HTMLElement;
 const origin = document.getElementById("signing-origin") as HTMLElement;
 origin.textContent = location.origin;
 const say = (text: string) => {
@@ -19,13 +22,24 @@ const say = (text: string) => {
 };
 let phase: "ready" | "busy" | "failed" | "finished" = "ready";
 
+// The stylesheet reads these two attributes; nothing else about the page's behavior depends on them.
+type View = "ready" | "empty" | "busy" | "failed" | "done" | "ended";
+const show = (state: View, step: 1 | 2 | 3 | 4) => {
+  app.dataset.state = state;
+  app.dataset.step = String(step);
+};
+
 const TEXT: Record<string, string> = {
   proof_rejected:
-    "The connection or signature was refused, or the message was rejected. Choose Try wallet selection again for a deliberate retry, or get a fresh /link in your group.",
+    "The wallet's answer was refused or could not be sent. Nothing was linked. Choose Try again, or send /setup in your group for a fresh link.",
+  wallet_connect:
+    "Your wallet did not connect. Open this page inside the Phantom or Solflare app's browser, unlock the wallet, then choose Try again.",
+  sign_refused:
+    "The message was not signed, so nothing was linked and nothing moved. Choose Try again when you are ready to sign.",
   wallet_taken:
     "That wallet is already linked to another member. Ask your community owner; never use someone else's link.",
   link_expired:
-    "This link expired or was already used. Get a fresh /link in your registered group; do not copy the stripped address bar.",
+    "This link expired or was already used. Send /setup in your registered group for a fresh link. Do not copy the shortened address bar.",
   link_unavailable:
     "The link's result cannot be confirmed. Check your own /me first: it may have completed. If not linked, return to your group for a fresh /link.",
 };
@@ -38,14 +52,21 @@ function stopCopy() {
   copyStatus.textContent = "This private link is no longer available to copy.";
 }
 
+// A refused or failed attempt can be retried on purpose; every other outcome ends this link.
+const RETRYABLE = new Set(["proof_rejected", "wallet_connect", "sign_refused"]);
+
 function failed(code: unknown) {
   const error = typeof code === "string" && Object.hasOwn(TEXT, code) ? code : "link_unavailable";
-  phase = error === "proof_rejected" ? "failed" : "finished";
+  phase = RETRYABLE.has(error) ? "failed" : "finished";
   list.replaceChildren();
+  preview.hidden = true;
   say(TEXT[error] as string);
   retry.hidden = phase !== "failed";
-  if (phase === "finished") stopCopy();
-  else {
+  if (phase === "finished") {
+    stopCopy();
+    show("ended", 1);
+  } else {
+    show("failed", 1);
     copy.disabled = !privateLink;
     retry.focus();
   }
@@ -91,29 +112,46 @@ async function run(w: MessageWallet) {
   field.value = "";
   manual.hidden = true;
   list.replaceChildren();
-  let proof: { requestId: string; nonce: string; message: string; signature: string };
+  show("busy", 2);
+  say("Approve the connection in your wallet…");
+  let account: Awaited<ReturnType<typeof connect>>;
   try {
-    const account = await connect(w);
-    say("Preparing message…");
-    const req = await post("request", { token, wallet: account.address });
-    if (!req.ok) return failed(req.data.error);
-    const { requestId, nonce, message } = req.data as {
-      requestId: string;
-      nonce: string;
-      message: string;
-    };
-    say(
-      "Check your wallet and sign the free readable message. Cancel any transfer, approval or seed-phrase request.",
-    );
-    proof = { requestId, nonce, message, signature: await sign(w, account, message) };
+    account = await connect(w);
   } catch {
-    // Nothing was submitted yet: a refused connection or signature, or an unreachable server.
+    return failed("wallet_connect");
+  }
+  say("Preparing message…");
+  let req: Awaited<ReturnType<Post>>;
+  try {
+    req = await post("request", { token, wallet: account.address });
+  } catch {
+    // Nothing was submitted: the server was unreachable.
     return failed("proof_rejected");
   }
-  const outcome = await verifyAndReconcile(post, token, proof);
+  if (!req.ok) return failed(req.data.error);
+  const { requestId, nonce, message } = req.data as {
+    requestId: string;
+    nonce: string;
+    message: string;
+  };
+  previewText.textContent = message;
+  preview.hidden = false;
+  show("busy", 3);
+  say(
+    "Check your wallet and sign the free readable message. Cancel any transfer, approval or seed-phrase request.",
+  );
+  let signature: string;
+  try {
+    signature = await sign(w, account, message);
+  } catch {
+    return failed("sign_refused");
+  }
+  const outcome = await verifyAndReconcile(post, token, { requestId, nonce, message, signature });
   if ("linked" in outcome) {
     phase = "finished";
     stopCopy();
+    preview.hidden = true;
+    show("done", 4);
     return say(
       `Linked ${outcome.linked.slice(0, 4)}…${outcome.linked.slice(-4)}. Return to your registered group and check your own /me shows the same wallet.`,
     );
@@ -125,6 +163,7 @@ function render() {
   if (phase !== "ready") return;
   const wallets = messageWallets();
   list.replaceChildren();
+  show(wallets.length === 0 ? "empty" : "ready", 1);
   say(
     wallets.length === 0
       ? "No Solana wallet found in this browser. On a phone, copy your private link into your wallet app's browser. On desktop, use a browser with a compatible wallet extension."
@@ -132,12 +171,19 @@ function render() {
   );
   for (const w of wallets) {
     const button = document.createElement("button");
+    button.className = "wallet";
     const img = document.createElement("img");
     img.src = w.icon;
     img.alt = "";
-    img.width = 44;
-    img.height = 44;
-    button.append(img, ` ${w.name}`);
+    img.width = 40;
+    img.height = 40;
+    const name = document.createElement("span");
+    name.className = "wallet-name";
+    name.textContent = w.name;
+    const note = document.createElement("span");
+    note.className = "wallet-note";
+    note.textContent = "Detected";
+    button.append(img, name, note);
     button.onclick = () => void run(w);
     list.append(button);
   }

@@ -46,6 +46,8 @@ class Element {
   readOnly = false;
   src = "";
   alt = "";
+  className = "";
+  dataset: Record<string, string> = {};
   width = 0;
   height = 0;
   onclick: (() => void) | null = null;
@@ -84,6 +86,9 @@ function page(token = TOKEN) {
       "private-link",
       "retry",
       "signing-origin",
+      "app",
+      "preview",
+      "message-preview",
     ].map((id) => [id, new Element()]),
   );
   const node = (id: string) => {
@@ -92,6 +97,7 @@ function page(token = TOKEN) {
     return value;
   };
   node("manual-copy").hidden = true;
+  node("preview").hidden = true;
   node("retry").hidden = true;
   node("private-link").readOnly = true;
   const location = { origin: ORIGIN, pathname: "/link", hash: `#${token}` };
@@ -337,5 +343,67 @@ describe("actual page client handoff and retry", () => {
       h.fetch.mock.calls.every(([url, init]) => !url.includes(TOKEN) && init.method === "POST"),
     ).toBe(true);
     expect(h.storage.setItem).not.toHaveBeenCalled();
+  });
+});
+
+describe("page states, preview and specific failures", () => {
+  const WALLET = [{ name: "Fixture wallet", icon: "data:image/png;base64," }];
+
+  it("marks the app ready with wallets and empty without, at step 1", async () => {
+    const h = page();
+    await import("./page/client.js");
+    expect(h.node("app").dataset).toMatchObject({ state: "empty", step: "1" });
+    browser.wallets = WALLET;
+    browser.register?.();
+    expect(h.node("app").dataset).toMatchObject({ state: "ready", step: "1" });
+  });
+
+  it("shows the exact message to sign before the wallet is asked, then marks the link done", async () => {
+    const h = page();
+    browser.wallets = WALLET;
+    let seen = "";
+    browser.sign.mockImplementation(async () => {
+      seen = h.node("message-preview").textContent;
+      expect(h.node("preview").hidden).toBe(false);
+      expect(h.node("app").dataset).toMatchObject({ state: "busy", step: "3" });
+      return "signature";
+    });
+    await import("./page/client.js");
+    h.node("wallets").children[0]?.onclick?.();
+    await vi.waitFor(() => expect(h.node("app").dataset.state).toBe("done"));
+    expect(seen).toBe("UNCHANGED readable message");
+    expect(h.node("app").dataset.step).toBe("4");
+    expect(h.node("preview").hidden).toBe(true);
+    expect(h.node("status").textContent).toContain("Linked");
+  });
+
+  it("says the wallet did not connect, and allows a deliberate retry", async () => {
+    const h = page();
+    browser.wallets = WALLET;
+    browser.connect.mockRejectedValueOnce(new Error("no provider"));
+    await import("./page/client.js");
+    h.node("wallets").children[0]?.onclick?.();
+    await vi.waitFor(() => expect(h.node("retry").hidden).toBe(false));
+    expect(h.node("status").textContent).toMatch(/did not connect/i);
+    expect(h.node("app").dataset.state).toBe("failed");
+    expect(h.fetch).not.toHaveBeenCalled();
+  });
+
+  it("says the message was not signed, and nothing was linked", async () => {
+    const h = page();
+    browser.wallets = WALLET;
+    browser.sign.mockRejectedValueOnce(new Error("rejected"));
+    await import("./page/client.js");
+    h.node("wallets").children[0]?.onclick?.();
+    await vi.waitFor(() => expect(h.node("retry").hidden).toBe(false));
+    expect(h.node("status").textContent).toMatch(/not signed.*nothing was linked/is);
+    expect(h.node("preview").hidden).toBe(true);
+    expect(h.fetch.mock.calls.map(([url]) => url)).toEqual(["/link/request"]);
+  });
+
+  it("ends the page for an expired link", async () => {
+    const h = page("wrong");
+    await import("./page/client.js");
+    expect(h.node("app").dataset.state).toBe("ended");
   });
 });

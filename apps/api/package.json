@@ -7,7 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "dev:worker": "tsx watch src/worker.ts",
     "build": "tsup && pnpm build:page",
-    "build:page": "tsup --config tsup.page.config.ts && node -e \"require('node:fs').copyFileSync('src/link/page/index.html', 'dist/public/index.html')\"",
+    "build:page": "tsup --config tsup.page.config.ts && node -e \"for (const f of ['index.html', 'style.css']) require('node:fs').copyFileSync('src/link/page/' + f, 'dist/public/' + f)\"",
     "start": "node dist/server.js",
     "start:worker": "node dist/worker.js",
     "typecheck": "tsc --noEmit && tsc --noEmit -p src/link/page",
