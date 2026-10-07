@@ -1,12 +1,13 @@
 // Read-only fingerprint of an epoch's scoring history, for proving a release left it untouched.
 // Prints, per table, the row count and the SHA-256 of every row's full text in id order: the
-// epoch's intakes, the decisions on them, and the dispatches behind those decisions.
+// epoch's intakes, the decisions on them, and every dispatch (model call) on those contributions.
 //
 //   node --env-file=<repo>/.env <repo>/scripts/rollout/decisions-digest.mjs <mint> <epoch> [<before-iso>]
 //
 // With <before-iso>, only rows accepted (intakes, decisions) or dispatched before that instant are
 // fingerprinted, so a later run can show that everything from before a time is unchanged while new
-// rows were added. Run it from packages/db (pg resolves through drizzle-orm, as in db.mjs).
+// rows were added. A dispatch still in flight at the first run may legitimately complete later.
+// Run it from packages/db (pg resolves through drizzle-orm, as in db.mjs).
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { join } from "node:path";
@@ -40,10 +41,10 @@ try {
       where i.epoch_id = $1 and i.accepted_at < $2::timestamptz order by i.id`,
     reward_decisions: `select d.*::text as row from reward_decisions d
       where d.epoch_id = $1 and d.accepted_at < $2::timestamptz order by d.id`,
+    // Every model call on the epoch's contributions, decided or not: an unresolved one counts too.
     reward_dispatches: `select x.*::text as row from reward_dispatches x
-      where x.id in (select d.dispatch_id from reward_decisions d
-                      where d.epoch_id = $1 and d.accepted_at < $2::timestamptz)
-      order by x.id`,
+      join reward_intakes i on i.contribution_id = x.contribution_id
+      where i.epoch_id = $1 and x.dispatched_at < $2::timestamptz order by x.id`,
   };
   const out = { mint, epoch: Number(epochArg), before: before ?? null, tables: {} };
   for (const [name, text] of Object.entries(tables)) {
