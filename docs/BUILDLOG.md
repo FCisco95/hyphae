@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-07 (late night) · Raids now run from buttons
+
+**Shipped:** `/raid <post link>` with no hours now asks how long (6, 12, 24 or 48h) with buttons, instead of running the 48h default. `/raids` lists the open raids with a Close button for each. Explicit `/raid <link> <hours> [brief]`, `/close_raid` and `/cancel_raid` work as before.
+**Decision + why:** the admin was typing commands to run a pilot, and a long default window held the next raid back. Buttons make the short path the easy one. Every tap re-checks that the tapper is the community admin; a closed raid keeps its work and credit.
+**Numbers:** 878 API tests, 123 web tests, 73 real-Postgres tests, lint and typecheck green. Codex (other model family, xhigh, read-only) rejected the first version for one real bug: a very long post id built buttons over Telegram's 64-byte limit. Fixed test-first, re-reviewed: ACCEPT, no findings.
+**Commits:** 135e900, ed32b4f. Image `buttons-ed32b4f` = `sha256:fa0b2c955b16e7096c629aebeb6c65ca46337ba3365d75e254c59c655529a5ed`, API and worker, live. No migration.
+**Next:** the Sonnet 5.5 scorer switch is parked (it scored two legitimate pilot cases 0 in the eval); Jev scoring continues in its own sessions.
+
 ## 2026-10-07 (night) · One raid at a time was holding the community back
 
 **What I found:** I opened a new post while a long raid was still live, and the bot refused: "An active brief already exists." Waiting up to 48 hours for a raid to run out is unfair to people who want to engage with the new post.
