@@ -2,6 +2,7 @@ import { communities, type Db, rewardConfigs, tasks } from "@hyphae/db";
 import { and, desc, eq, gt } from "drizzle-orm";
 import type { CommandContext, Context } from "grammy";
 import { rulesTestFor } from "../../payout/rules-test.js";
+import { MAX_OPEN_RAIDS } from "../../raid-alerts/alerts.js";
 import { latestEpoch, RewardConfigPayload } from "../../rewards/config.js";
 import {
   briefContent,
@@ -90,15 +91,16 @@ export async function onboardingHelp(db: Db, ctx: CommandContext<Context>, webOr
     const resolved = await context(db, ctx, webOrigin);
     registered = !!resolved;
     if (resolved && arg === "brief") {
-      const task = await db.query.tasks.findFirst({
+      const open = await db.query.tasks.findMany({
         where: and(
           eq(tasks.communityId, resolved.id),
           eq(tasks.status, "open"),
           gt(tasks.closesAt, new Date()),
         ),
         orderBy: [desc(tasks.opensAt)],
+        limit: MAX_OPEN_RAIDS,
       });
-      text = briefContent(resolved.display, task ?? null);
+      text = briefContent(resolved.display, open);
     } else text = helpContent(resolved?.display);
   } catch {
     return ctx.reply(UNAVAILABLE, options(ctx, false));

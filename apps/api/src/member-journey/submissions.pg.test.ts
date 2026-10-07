@@ -17,6 +17,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   claimRaidAlert,
   deliverRaidAlert,
+  MAX_OPEN_RAIDS,
   openRaid,
   setRaidSubscription,
 } from "../raid-alerts/alerts.js";
@@ -149,7 +150,7 @@ describe("private journey on two real PostgreSQL pools", () => {
       await a.select().from(contributions).where(eq(contributions.communityId, community.id)),
     ).toHaveLength(1);
   });
-  it("racing distinct create events cannot open two active briefs", async () => {
+  it("racing distinct create events cannot exceed the open raid limit", async () => {
     const { community } = await seedJourneyCommunity();
     const input = {
       communityId: community.id,
@@ -160,17 +161,19 @@ describe("private journey on two real PostgreSQL pools", () => {
       hours: 1,
       brief: "Explain",
     };
-    const results = await Promise.all([
-      openRaid(a, input),
-      openRaid(b, { ...input, messageId: 2 }),
-    ]);
-    expect(results.map((r) => r.status).sort()).toEqual(["active_exists", "created"]);
+    const results = await Promise.all(
+      Array.from({ length: MAX_OPEN_RAIDS + 2 }, (_, i) =>
+        openRaid(i % 2 ? b : a, { ...input, messageId: i + 1 }),
+      ),
+    );
+    expect(results.filter((r) => r.status === "created")).toHaveLength(MAX_OPEN_RAIDS);
+    expect(results.filter((r) => r.status === "limit_reached")).toHaveLength(2);
     expect(
       await a
         .select()
         .from(raidLifecycleEvents)
         .where(eq(raidLifecycleEvents.communityId, community.id)),
-    ).toHaveLength(1);
+    ).toHaveLength(MAX_OPEN_RAIDS);
   });
   it("close wins over an evidence fetch still in progress", async () => {
     const { submit, input, task } = await setup();

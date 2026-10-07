@@ -153,8 +153,9 @@ export function CommunityView({
             <li>
               <h3>Submit your own work</h3>
               <p>
-                Use <code>/help brief</code> in the group to confirm the active brief, then{" "}
-                <code>/submit</code>. URL work uses the latest active task; keep one active brief.
+                Use <code>/help brief</code> in the group to see the open raids. For a reply or
+                quote, use that raid&apos;s own Submit button; <code>/submit</code> is for separate
+                text work.
               </p>
               <p className="small muted">
                 Use <code>/me</code> for your own wallet and progress. Open-epoch points are

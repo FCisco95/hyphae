@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { communities, contributions, raidLifecycleEvents, scoringRuns, tasks } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { openRaid } from "../raid-alerts/alerts.js";
+import { MAX_OPEN_RAIDS, openRaid } from "../raid-alerts/alerts.js";
 import { at, createTestDb, seedCommunity, seedTask } from "../rewards/test-db.js";
 import { type RaidTransition, raidState, transitionRaid } from "./lifecycle.js";
 
@@ -104,27 +104,29 @@ describe("authorized raid terminal actions", () => {
     }
     expect(await t.db.select().from(tasks).where(eq(tasks.id, b.task.id))).toEqual([b.task]);
   });
-  it("keeps one active brief until an authorized terminal action closes a historical open task", async () => {
+  it("keeps the open raid limit until an authorized terminal action closes one", async () => {
     for (const action of ["closed", "cancelled"] as const) {
       const { input, task } = await fixture();
       await t.db.update(tasks).set({ kind: "open" }).where(eq(tasks.id, task.id));
-      const next = {
+      const next = (messageId: number) => ({
         communityId: input.communityId,
         chatId: input.chatId,
         actorId: input.actorId,
-        messageId: 100,
+        messageId,
         hours: 1,
         brief: "Next target",
         post: { id: "222", handle: "owner", text: "Target", url: "https://x.com/owner/status/222" },
-      };
-      expect(await openRaid(t.db, next, at(NOW))).toMatchObject({
-        status: "active_exists",
-        task: { id: task.id, kind: "open" },
+      });
+      for (let i = 1; i < MAX_OPEN_RAIDS; i++)
+        expect(await openRaid(t.db, next(100 + i), at(NOW))).toMatchObject({ status: "created" });
+      expect(await openRaid(t.db, next(100), at(NOW))).toMatchObject({
+        status: "limit_reached",
+        open: expect.arrayContaining([expect.objectContaining({ id: task.id, kind: "open" })]),
       });
       expect(await transitionRaid(t.db, { ...input, action, actorId: 42n }, at(NOW))).toEqual({
         status: "unauthorized",
       });
-      expect(await openRaid(t.db, next, at(NOW))).toMatchObject({ status: "active_exists" });
+      expect(await openRaid(t.db, next(100), at(NOW))).toMatchObject({ status: "limit_reached" });
       expect(await transitionRaid(t.db, { ...input, action }, at(NOW))).toMatchObject({
         status: "changed",
         state: action,
@@ -133,7 +135,7 @@ describe("authorized raid terminal actions", () => {
       expect(await transitionRaid(t.db, { ...input, action }, at(NOW))).toMatchObject({
         status: "existing",
       });
-      expect(await openRaid(t.db, next, at(NOW))).toMatchObject({
+      expect(await openRaid(t.db, next(100), at(NOW))).toMatchObject({
         status: "created",
         task: { kind: "raid" },
       });

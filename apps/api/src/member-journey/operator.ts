@@ -14,7 +14,7 @@ import {
   tasks,
 } from "@hyphae/db";
 import { and, count, desc, eq, sql } from "drizzle-orm";
-import { COMMUNITY_ID } from "../raid-alerts/alerts.js";
+import { COMMUNITY_ID, MAX_OPEN_RAIDS } from "../raid-alerts/alerts.js";
 import type { RaidState } from "./lifecycle.js";
 
 export type OperatorSummary = {
@@ -288,8 +288,8 @@ export function operatorMessage(s: OperatorSummary): string {
     `Community: ${s.communityId}`,
     `Observed ${s.observedAt.toISOString()} · read only`,
     `Raids: active ${countState(s.raids, "active")}, expired ${countState(s.raids, "expired")}, closed ${countState(s.raids, "closed")}, cancelled ${countState(s.raids, "cancelled")}, upcoming ${countState(s.raids, "upcoming")}.`,
-    countState(s.raids, "active") > 1
-      ? "Attention: more than one active brief; inspect before opening another."
+    countState(s.raids, "active") > MAX_OPEN_RAIDS
+      ? `Attention: more than ${MAX_OPEN_RAIDS} active raids; inspect before opening another.`
       : "",
     ...s.activeRaids.map(
       (r) =>

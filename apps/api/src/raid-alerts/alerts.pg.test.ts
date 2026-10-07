@@ -129,7 +129,7 @@ describe("raid alerts on two real Postgres pools", () => {
     );
     expect(send).not.toHaveBeenCalled();
   });
-  it("rejecting a second active raid does not wait on a subscriber's in-flight send", async () => {
+  it("opening a second raid does not wait on a subscriber's in-flight send", async () => {
     const { input } = await setup();
     await openRaid(a, input);
     const job = required(await claimRaidAlert(a));
@@ -154,11 +154,13 @@ describe("raid alerts on two real Postgres pools", () => {
         await tx.execute(sql`set local lock_timeout = '500ms'`);
         return openRaid(tx, { ...input, messageId: 2 });
       });
-      expect(second.status).toBe("active_exists");
+      expect(second.status).toBe("created");
     } finally {
       release();
       await sending;
     }
+    const next = required(await claimRaidAlert(a));
+    await deliverRaidAlert(a, next.id, { membership: async () => true, send: async () => {} });
     expect(await claimRaidAlert(a)).toBeUndefined();
   });
   it("a stale claim whose dispatch never started can safely recover once", async () => {

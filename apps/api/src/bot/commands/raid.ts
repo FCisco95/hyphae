@@ -3,7 +3,7 @@ import { communities } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import type { CommandContext, Context } from "grammy";
 import { db } from "../../db.js";
-import { alertLink, openRaid } from "../../raid-alerts/alerts.js";
+import { alertLink, MAX_OPEN_RAIDS, openRaid } from "../../raid-alerts/alerts.js";
 import { fetchPost } from "../../x/oembed.js";
 import { raidKeyboard } from "../raid-keyboard.js";
 import { reply } from "../reply.js";
@@ -37,10 +37,10 @@ export async function raid(ctx: CommandContext<Context>) {
   if (opened.status === "unauthorized") return reply(ctx, "Admins only in the registered group.");
   if (opened.status === "existing")
     return reply(ctx, "That raid was already opened. No extra alerts were queued.");
-  if (opened.status === "active_exists")
+  if (opened.status === "limit_reached")
     return reply(
       ctx,
-      `An active brief already exists: ${opened.task.id}. Close it before opening another.`,
+      `${MAX_OPEN_RAIDS} raids are already open (${opened.open.map((t) => t.id).join(", ")}). Close one before opening another.`,
     );
   const fullHours = rubric.timing.fullUntil / 60;
   return ctx.reply(

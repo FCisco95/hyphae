@@ -199,7 +199,7 @@ describe("actual bot onboarding wiring", () => {
     expect(texts()[0]).not.toMatch(/you passed|your score is/i);
   });
 
-  it("uses only the newest open unexpired task in that chat, and shows an empty state", async () => {
+  it("lists every open unexpired task in that chat, newest first, and shows an empty state", async () => {
     const { community } = await seedCommunity(t.db);
     const { community: other } = await seedCommunity(t.db);
     const now = Date.now();
@@ -221,8 +221,10 @@ describe("actual bot onboarding wiring", () => {
     }
     const before = await inventory();
     await bot.handleUpdate(command("/help brief", Number(community.telegramChatId)));
-    expect(texts()[0]).toContain("Current brief");
-    expect(texts()[0]).not.toMatch(/Older brief|Expired brief|Closed brief|Other brief/);
+    const shown = texts()[0] ?? "";
+    expect(shown.indexOf("Current brief")).toBeGreaterThan(-1);
+    expect(shown.indexOf("Older brief")).toBeGreaterThan(shown.indexOf("Current brief"));
+    expect(shown).not.toMatch(/Expired brief|Closed brief|Other brief/);
     expect(await inventory()).toEqual(before);
     out.length = 0;
     const { community: empty } = await seedCommunity(t.db);

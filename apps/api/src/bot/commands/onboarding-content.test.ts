@@ -94,30 +94,39 @@ describe("participant guidance", () => {
   });
 
   it("shows only the supplied active brief, UTC deadline and audit destination", () => {
-    const text = briefContent(community, {
-      brief: "Explain the actual update",
-      targetUrl: "https://x.com/owner/status/123",
-      opensAt: new Date("2026-10-03T10:00:00Z"),
-      closesAt: new Date("2026-10-04T10:00:00Z"),
-    });
+    const text = briefContent(community, [
+      {
+        brief: "Explain the actual update",
+        targetUrl: "https://x.com/owner/status/123",
+        opensAt: new Date("2026-10-03T10:00:00Z"),
+        closesAt: new Date("2026-10-04T10:00:00Z"),
+      },
+      {
+        brief: "Second raid brief",
+        targetUrl: "https://x.com/owner/status/456",
+        opensAt: new Date("2026-10-03T12:00:00Z"),
+        closesAt: new Date("2026-10-05T12:00:00Z"),
+      },
+    ]);
     expect(text).toContain("Explain the actual update");
     expect(text).toContain("https://x.com/owner/status/123");
     expect(text).toContain("Task opens 2026-10-03 10:00 UTC");
     expect(text).toContain("2026-10-04 10:00 UTC");
-    expect(text).toContain("One active brief");
-    expect(briefContent(community, null)).toContain("No active brief");
+    expect(text).toContain("Second raid brief");
+    expect(text).toContain("https://x.com/owner/status/456");
+    expect(text).toContain("Several raids can be open at once");
+    expect(briefContent(community, [])).toContain("No active brief");
   });
 
   it("truncates names and briefs without splitting an emoji surrogate pair", () => {
-    const text = briefContent(
-      { ...community, name: `${"x".repeat(119)}😀tail` },
+    const text = briefContent({ ...community, name: `${"x".repeat(119)}😀tail` }, [
       {
         brief: `${"x".repeat(999)}😀tail`,
         targetUrl: null,
         opensAt: new Date(),
         closesAt: new Date(),
       },
-    );
+    ]);
     expect(text).toContain(`${"x".repeat(119)}😀`);
     expect(text).toContain(`${"x".repeat(999)}😀`);
     expect(text).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
@@ -126,12 +135,12 @@ describe("participant guidance", () => {
   it("bounds untrusted plain text and refuses unsafe configured audit/target URLs", () => {
     const text = briefContent(
       { ...community, name: "<b>Other</b>", webOrigin: "https://user:pw@evil.test" },
-      {
+      Array.from({ length: 3 }, () => ({
         brief: "x".repeat(6000),
         targetUrl: "javascript:alert(1)",
         opensAt: new Date(),
         closesAt: new Date(),
-      },
+      })),
     );
     expect(text).toContain("<b>Other</b>");
     expect(text.length).toBeLessThan(4096);

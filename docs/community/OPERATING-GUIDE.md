@@ -68,7 +68,7 @@ Real empty-state screenshots: [desktop](2026-10-02-epoch-2-desktop.png) and [mob
 
 Members use their own accounts and words. One reply and one quote per member per task is a technical ceiling, not a participation quota. Do not submit someone else's work, duplicate artifacts, copied scripts or fake examples into live intake. Handle binding alone is not proof of authorship; the owner still needs the final author/duplicate audit and attestation.
 
-The current submission code associates linked work with the **most recently opened active task**. Keep one active task per community during this pilot and confirm its target before submitting. Do not open overlapping tasks to support a daily posting schedule. Better explicit task selection is a future improvement.
+Up to **three raids can be open at once** in a community. Replies and quotes attach to the exact raid whose private Submit button the member taps; a pasted link never selects a raid. The one-reply, one-quote ceiling applies to each raid separately. `/help brief` lists every open raid. Close a raid with `/close_raid` to free a slot.
 
 ## Divide responsibilities
 

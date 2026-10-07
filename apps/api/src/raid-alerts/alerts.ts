@@ -58,6 +58,10 @@ export async function setRaidSubscription(
   });
 }
 
+// Each raid carries its own Submit buttons and its own reply/quote cap, so raids do not
+// interfere; the ceiling only stops one admin flooding the chat.
+export const MAX_OPEN_RAIDS = 3;
+
 export interface OpenRaid {
   communityId: string;
   chatId: bigint;
@@ -69,7 +73,7 @@ export interface OpenRaid {
 }
 type RaidResult =
   | { status: "unauthorized" }
-  | { status: "active_exists"; task: typeof tasks.$inferSelect }
+  | { status: "limit_reached"; open: (typeof tasks.$inferSelect)[] }
   | { status: "created" | "existing"; task: typeof tasks.$inferSelect };
 export async function openRaid(
   db: Db,
@@ -105,14 +109,15 @@ export async function openRaid(
       );
     if (old[0]) return { status: "existing", task: old[0].task };
     const now = await clock(tx, input.communityId);
-    const active = await tx.query.tasks.findFirst({
+    const active = await tx.query.tasks.findMany({
       where: and(
         eq(tasks.communityId, community.id),
         eq(tasks.status, "open"),
         gt(tasks.closesAt, now),
       ),
+      limit: MAX_OPEN_RAIDS,
     });
-    if (active) return { status: "active_exists", task: active };
+    if (active.length >= MAX_OPEN_RAIDS) return { status: "limit_reached", open: active };
     const [task] = await tx
       .insert(tasks)
       .values({

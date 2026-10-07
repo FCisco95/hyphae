@@ -86,12 +86,16 @@ export function helpContent(c?: OnboardingCommunity): string {
   ].join("\n\n");
 }
 
-export function briefContent(
-  c: OnboardingCommunity,
-  task: { brief: string; targetUrl: string | null; opensAt: Date; closesAt: Date } | null,
-): string {
+interface BriefTask {
+  brief: string;
+  targetUrl: string | null;
+  opensAt: Date;
+  closesAt: Date;
+}
+
+function briefEntry(task: BriefTask): string {
   let target = "";
-  if (task?.targetUrl) {
+  if (task.targetUrl) {
     try {
       const url = new URL(task.targetUrl);
       if (
@@ -106,12 +110,16 @@ export function briefContent(
       /* Untrusted task values remain text, never arbitrary action URLs. */
     }
   }
+  return `${limited(task.brief, 1000) || "Ask the owner for this task's brief."}\n${target}\nTask opens ${utc(task.opensAt)}; closes ${utc(task.closesAt)}.`;
+}
+
+export function briefContent(c: OnboardingCommunity, tasks: BriefTask[]): string {
   return [
     heading(c),
-    task
-      ? `Current brief\n${limited(task.brief, 1000) || "Ask the owner for this task's brief."}\n${target}\nTask opens ${utc(task.opensAt)}; closes ${utc(task.closesAt)}.`
+    tasks.length
+      ? tasks.map((t, i) => `Current brief ${i + 1}\n${briefEntry(t)}`).join("\n\n")
       : "No active brief. Ask the owner before submitting linked work.",
-    "Use the exact raid’s private Submit my reply or Submit my quote button. Links never select a raid automatically. One active brief is allowed. A task window does not extend the epoch’s intake deadline.",
+    "Use the exact raid’s private Submit my reply or Submit my quote button. Links never select a raid automatically. Several raids can be open at once. A task window does not extend the epoch’s intake deadline.",
     audit(c),
   ].join("\n\n");
 }
