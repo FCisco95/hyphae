@@ -611,11 +611,15 @@ export async function recordNotSentProven(
           eq(rewardDispatches.id, input.dispatchId),
           eq(rewardDispatches.communityId, input.communityId),
           eq(rewardDispatches.state, "pending_reconciliation"),
+          // A provider response on the row proves the request was sent, so it can never be freed.
+          isNull(rewardDispatches.output),
         ),
       )
       .returning();
     if (!dispatch) {
-      throw new Error(`reward: dispatch ${input.dispatchId} is not pending reconciliation`);
+      throw new Error(
+        `reward: dispatch ${input.dispatchId} is not pending reconciliation, or a response is on record (it was sent)`,
+      );
     }
     if (dispatch.nominationId && dispatch.slotId) {
       await tx

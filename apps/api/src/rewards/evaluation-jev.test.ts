@@ -4,7 +4,12 @@ import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type JevScorerDef, type JevTransport, jevTemplateHash } from "../scoring/scorers.js";
 import { buildRewardConfigPayload } from "./config.js";
-import { type EvaluationDeps, runEvaluation } from "./evaluation.js";
+import {
+  type EvaluationDeps,
+  markReconciliation,
+  recordNotSentProven,
+  runEvaluation,
+} from "./evaluation.js";
 import { createTestDb, later, rubric, seedRewardLane } from "./test-db.js";
 
 const MIN = 60_000;
@@ -266,6 +271,65 @@ describe("a Jev-pinned epoch", () => {
     expect(d?.error).toContain("no outcome recorded within");
     expect(d?.error).toContain("explains");
     expect(await decisionsOf(intake.contributionId)).toHaveLength(0);
+  });
+
+  it("refuses to prove a dispatch was never sent once a response is on record", async () => {
+    const l = await lane();
+    const intake = await l.admitOne();
+    const { def } = fakeDef(() => {
+      throw new Error("jev: no yes/no answer for explains");
+    });
+    const paid = { model: MODEL, answers: {}, usage: { input_tokens: 2000, output_tokens: 0 } };
+    await runEvaluation(
+      t.db,
+      { communityId: l.community.id, target: { contributionId: intake.contributionId } },
+      deps(def, async () => ({ response: paid, latencyMs: 40, mode: "live" })),
+    );
+    const [d] = await dispatchesOf(intake.contributionId);
+    await expect(
+      recordNotSentProven(t.db, {
+        communityId: l.community.id,
+        dispatchId: d?.id as string,
+        reason: "operator: provider dashboard shows no request",
+      }),
+    ).rejects.toThrow(/a response is on record/);
+    expect((await dispatchesOf(intake.contributionId))[0]).toMatchObject({
+      state: "pending_reconciliation",
+      output: { jev: { response: paid } },
+    });
+  });
+
+  it("drops a late response once the dispatch was proven never sent", async () => {
+    const l = await lane();
+    const intake = await l.admitOne();
+    const { def } = fakeDef(() => composed(72));
+    await runEvaluation(
+      t.db,
+      { communityId: l.community.id, target: { contributionId: intake.contributionId } },
+      deps(def, async () => {
+        throw new Error("Request timed out after 30000 ms");
+      }),
+    );
+    const [d] = await dispatchesOf(intake.contributionId);
+    const dispatchId = d?.id as string;
+    await recordNotSentProven(t.db, {
+      communityId: l.community.id,
+      dispatchId,
+      reason: "operator: provider dashboard shows no request",
+    });
+    await markReconciliation(t.db, {
+      communityId: l.community.id,
+      dispatchId,
+      error: "jev: no yes/no answer for explains",
+      output: { jev: { response: {} } },
+      latencyMs: 40,
+      costMicroUsd: 84,
+    });
+    expect((await dispatchesOf(intake.contributionId))[0]).toMatchObject({
+      state: "not_sent_proven",
+      output: null,
+      costMicroUsd: null,
+    });
   });
 
   it("parks a call that got no response with nothing to keep", async () => {
