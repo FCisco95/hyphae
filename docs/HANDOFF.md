@@ -25,7 +25,7 @@ Get the first real members scored in epoch 3 and keep the Oct 8 to 9 payout sitt
 
 ## Needs Cisco, in order
 
-1. **Release timing for earn-first (decision, yours):** the afternoon commits need migration `0015` on production, then the API, then the worker, each by its own yes. Pushing `main` redeploys the website, whose new text says members can reply before linking, so the push goes with the release, not before it. The agent prepares the release plan and a 0015 version of `scripts/rollout/db.mjs` (rehearsed on a throwaway Postgres) once Cisco picks the timing.
+1. **Earn-first release (yours: one exact yes):** Cisco chose "before the hold". The plan is ready and rehearsed: [earn-first release plan](demo/2026-10-07-earn-first-release-plan.md). It covers migration `0015` through the rehearsed `db.mjs`, then the API, then the worker, from `94ce60e`; production precheck PASS. Authorization sentence: "yes, run the 2026-10-07 earn-first release plan at 94ce60e". It must run before 2026-10-08T12:00Z.
 2. **Push (yours, with the release):** `! git push origin main`. Local `main` is ahead of `origin/main` (`0d14bd0`) by the afternoon commits under Recent Changes. Private vulnerability reporting is enabled (verified 10:54Z).
 3. **Phone test (one action, yours):** on the phone, send `/setup` in the registered group, open the private link page inside Phantom or Solflare's browser, sign, and tell the agent what is on the screen and whether "Wallet linked" arrives in Telegram. This gates recruitment.
 4. **Decisions for the roadmap:** real members after Oct 9 00:00Z (roadmap item 1) and the Hyphae-owned domain for the link page (item 2a: buy a domain, approve the `LINK_ORIGIN` secret change and Fly certificate; by Oct 8 12:00Z or after Oct 10).
