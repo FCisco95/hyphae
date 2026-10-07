@@ -1,0 +1,110 @@
+import { promptTemplateHash } from "@hyphae/core";
+import { type Db, rewardConfigAmendments, rewardConfigs } from "@hyphae/db";
+import { and, eq, lte } from "drizzle-orm";
+import {
+  type Epoch,
+  ensureEpochAt,
+  findOrInsertConfig,
+  RewardConfigPayload,
+  type RewardDeps,
+  withCommunityLock,
+} from "./config.js";
+
+export type Amendment = typeof rewardConfigAmendments.$inferSelect;
+
+export interface AmendInput {
+  communityId: string;
+  epochIndex: number;
+  promptVersion: string;
+  effectiveAt: Date;
+  actor: string;
+  reason: string;
+}
+
+// Pilot amendment: from effectiveAt on, contributions admitted in the open epoch are judged by
+// another registered prompt; nothing else in the configuration may differ. Recording holds the
+// community lock and requires a future effectiveAt, so no contribution admitted before the record
+// can fall under it, and no earlier intake, dispatch or decision is touched.
+export async function amendEpochPrompt(
+  db: Db,
+  input: AmendInput,
+  deps: RewardDeps = {},
+): Promise<Amendment> {
+  return withCommunityLock(db, input.communityId, deps, async (tx, _community, now) => {
+    const actor = input.actor.trim();
+    const reason = input.reason.trim();
+    if (!actor) throw new Error("reward: an amendment needs an actor");
+    if (!reason) throw new Error("reward: an amendment needs a public reason");
+
+    const epoch = await ensureEpochAt(tx, input.communityId, now, now);
+    if (!epoch?.rewardConfigId || epoch.index !== input.epochIndex) {
+      throw new Error(`reward: epoch ${input.epochIndex} is not the epoch open now`);
+    }
+    const effective = input.effectiveAt.getTime();
+    if (effective % 1000 !== 0) throw new Error("reward: effectiveAt must be a whole second");
+    if (effective <= now.getTime()) {
+      throw new Error(
+        "reward: effectiveAt must be in the future; amendments are never retroactive",
+      );
+    }
+    if (effective >= epoch.closesAt.getTime()) {
+      throw new Error("reward: effectiveAt must be before the epoch's close");
+    }
+    const [existing] = await tx
+      .select({ id: rewardConfigAmendments.id })
+      .from(rewardConfigAmendments)
+      .where(eq(rewardConfigAmendments.epochId, epoch.id));
+    if (existing) throw new Error(`reward: epoch ${epoch.index} is already amended`);
+
+    const [from] = await tx
+      .select({ payload: rewardConfigs.payload })
+      .from(rewardConfigs)
+      .where(eq(rewardConfigs.id, epoch.rewardConfigId));
+    if (!from) throw new Error(`reward: config ${epoch.rewardConfigId} missing`);
+    const fromPayload = RewardConfigPayload.parse(from.payload);
+    const hash = promptTemplateHash(input.promptVersion);
+    if (!hash) throw new Error(`reward: prompt ${input.promptVersion} is not registered`);
+    if (input.promptVersion === fromPayload.scoring.promptVersion) {
+      throw new Error(`reward: ${input.promptVersion} is already the epoch's prompt`);
+    }
+    const to = await findOrInsertConfig(tx, input.communityId, {
+      ...fromPayload,
+      scoring: { promptVersion: input.promptVersion, promptTemplateHash: hash },
+    });
+
+    const [row] = await tx
+      .insert(rewardConfigAmendments)
+      .values({
+        communityId: input.communityId,
+        epochId: epoch.id,
+        fromConfigId: epoch.rewardConfigId,
+        toConfigId: to.id,
+        fromPromptVersion: fromPayload.scoring.promptVersion,
+        fromPromptTemplateHash: fromPayload.scoring.promptTemplateHash,
+        toPromptVersion: input.promptVersion,
+        toPromptTemplateHash: hash,
+        effectiveAt: input.effectiveAt,
+        actor,
+        reason,
+        recordedAt: now,
+      })
+      .returning();
+    if (!row) throw new Error("reward: amendment insert returned nothing");
+    return row;
+  });
+}
+
+// The configuration a contribution admitted into `epoch` at `now` pins. Callers hold the lock.
+export async function admissionConfigId(tx: Db, epoch: Epoch, now: Date): Promise<string> {
+  if (!epoch.rewardConfigId) throw new Error("reward: materialized epoch has no pinned config");
+  const [amendment] = await tx
+    .select({ toConfigId: rewardConfigAmendments.toConfigId })
+    .from(rewardConfigAmendments)
+    .where(
+      and(
+        eq(rewardConfigAmendments.epochId, epoch.id),
+        lte(rewardConfigAmendments.effectiveAt, now),
+      ),
+    );
+  return amendment?.toConfigId ?? epoch.rewardConfigId;
+}

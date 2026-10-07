@@ -2,6 +2,7 @@ import { sha256Hex } from "@hyphae/core";
 import { contributions, type Db, members, rewardIntakes, tasks } from "@hyphae/db";
 import { and, eq, isNull } from "drizzle-orm";
 import { captureLimitations, type XPost } from "../x/oembed.js";
+import { admissionConfigId } from "./amendment.js";
 import { ensureEpochAt, latestEpoch, type RewardDeps, withCommunityLock } from "./config.js";
 
 export type RewardIntake = typeof rewardIntakes.$inferSelect;
@@ -169,7 +170,7 @@ export async function admitContribution(
         communityId: input.communityId,
         memberId: input.memberId,
         epochId: epoch.id,
-        configId: epoch.rewardConfigId,
+        configId: await admissionConfigId(tx, epoch, now),
         contributionId: contribution.id,
         taskId,
         artifactKey: input.artifactKey,

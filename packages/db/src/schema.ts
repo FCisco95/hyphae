@@ -485,6 +485,44 @@ export const rewardConfigProposals = pgTable(
   ],
 );
 
+// Pilot amendment of an open epoch's scoring prompt. Insert-only, at most one per epoch, recorded
+// before it takes effect: contributions admitted at or after effective_at pin to_config_id.
+export const rewardConfigAmendments = pgTable(
+  "reward_config_amendments",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    epochId: uuid("epoch_id")
+      .notNull()
+      .references(() => epochs.id),
+    fromConfigId: uuid("from_config_id")
+      .notNull()
+      .references(() => rewardConfigs.id),
+    toConfigId: uuid("to_config_id")
+      .notNull()
+      .references(() => rewardConfigs.id),
+    fromPromptVersion: text("from_prompt_version").notNull(),
+    fromPromptTemplateHash: text("from_prompt_template_hash").notNull(),
+    toPromptVersion: text("to_prompt_version").notNull(),
+    toPromptTemplateHash: text("to_prompt_template_hash").notNull(),
+    effectiveAt: timestamp("effective_at", { withTimezone: true }).notNull(),
+    actor: text("actor").notNull(),
+    reason: text("reason").notNull(),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("reward_config_amendments_epoch").on(t.epochId),
+    check("reward_config_amendments_future", sql`${t.effectiveAt} > ${t.recordedAt}`),
+    check("reward_config_amendments_changes", sql`${t.fromConfigId} <> ${t.toConfigId}`),
+    check(
+      "reward_config_amendments_hash_format",
+      sql`${t.fromPromptTemplateHash} ~ '^[0-9a-f]{64}$' and ${t.toPromptTemplateHash} ~ '^[0-9a-f]{64}$'`,
+    ),
+  ],
+);
+
 // Immutable reward intake (O2/O3): one row per admitted contribution. Insert-only. A re-entry
 // (O3) is a new row in a later epoch for the same artifact, pointing at the original intake.
 export const rewardIntakes = pgTable(

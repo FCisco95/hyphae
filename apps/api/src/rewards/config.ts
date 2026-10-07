@@ -260,7 +260,7 @@ async function lastActivation(tx: Db, communityId: string): Promise<number> {
   return row.index;
 }
 
-async function findOrInsertConfig(
+export async function findOrInsertConfig(
   tx: Db,
   communityId: string,
   payload: RewardConfigPayload,

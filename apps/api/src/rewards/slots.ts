@@ -11,6 +11,7 @@ import {
   rewardSlots,
 } from "@hyphae/db";
 import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
+import { admissionConfigId } from "./amendment.js";
 import {
   type Community,
   ensureEpochAt,
@@ -367,7 +368,7 @@ async function reenter(
       communityId: input.communityId,
       memberId: input.memberId,
       epochId: current.id,
-      configId: current.rewardConfigId,
+      configId: await admissionConfigId(tx, current, now),
       contributionId: contribution.id,
       taskId: intake.taskId,
       artifactKey: intake.artifactKey,
