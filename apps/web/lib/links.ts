@@ -1,6 +1,7 @@
-// Where the site points outside itself. The application repo is private; the program, its
-// verifiable build and the rubrics are public in hyphae-program.
+// Where the site points outside itself. The program, its verifiable build and the rubrics are
+// public in hyphae-program; the application, its reviews and SECURITY.md in the public hyphae repo.
 export const GITHUB = "https://github.com/FCisco95/hyphae-program";
+export const APP_REPO = "https://github.com/FCisco95/hyphae";
 export const API_DOCS = "https://hyphae-api.fly.dev/docs";
 export const README_STATUS = `${GITHUB}#status`;
 export const VERIFY_BUILD = `${GITHUB}#verify-the-build`;

@@ -1130,3 +1130,53 @@ td:first-child {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* The security and trust page: one readable column of claims, each followed by its evidence. */
+.trust-page {
+  max-width: 72ch;
+  padding-bottom: 48px;
+}
+
+.trust-lead {
+  font-size: var(--step-1);
+  color: var(--ink-2);
+}
+
+.trust-toc ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--step--1);
+}
+
+.trust-section-lead {
+  color: var(--ink-2);
+}
+
+.claims {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.claims li {
+  padding: 14px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.claims p {
+  overflow-wrap: anywhere;
+}
+
+.claim-evidence {
+  margin: 0;
+  color: var(--ink-3);
+}
+
+.trust-more {
+  margin-top: 40px;
+  color: var(--ink-2);
+}

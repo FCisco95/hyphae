@@ -15,6 +15,7 @@ import {
   VERIFY_BUILD,
 } from "../lib/links.js";
 import { settlementOf } from "../lib/settlement.js";
+import { VERIFIED_HASH } from "../lib/trust.js";
 import { MarkShapes } from "./brand.js";
 import { ButtonLink, EvidenceLink, Section, Stat, Stats } from "./ui.js";
 import { unavailableSentence } from "./views.js";
@@ -349,9 +350,7 @@ export function Proof({ live }: { live: ProofState }) {
   );
 }
 
-// `solana-verify get-program-hash` of the mainnet and devnet programs, reproduced by two clean
-// builds (docs/handoffs/2026-09-28-verifiable-build-and-deploy-rehearsal.md).
-export const VERIFIED_HASH = "7e902d1b5f8d8c49dfd199ec2e7bf44139b56524d98408f1556e14f4e9ab43ac";
+export { VERIFIED_HASH };
 
 export function Trust() {
   return (
@@ -402,6 +401,10 @@ export function Trust() {
           </p>
         </article>
       </div>
+      <p className="trust-more">
+        <a href="/security">Security and trust, in full</a>: what the admin can and cannot do, the
+        keys, the reviews, privacy, and how to report a problem.
+      </p>
     </Section>
   );
 }

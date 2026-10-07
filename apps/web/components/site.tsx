@@ -52,6 +52,9 @@ export function SiteFooter() {
             </a>
           </li>
           <li>
+            <a href="/security">Security and trust</a>
+          </li>
+          <li>
             <a href={BOT} rel="noopener noreferrer">
               The bot
             </a>
