@@ -84,6 +84,23 @@ export type JevQuestionSet = WeightedQuestionSet | GatedQuestionSet;
 // The gated set marks only these rubric criteria, each from the answers that stand for it.
 const GATED_CRITERIA = ["context_fit", "own_voice", "value_angle"];
 
+// The reasoning is what a member reads on their receipt, so it says why in words, then the answers.
+const GATE_REASON: Record<Gate, string> = {
+  generic: "it reads as a greeting, cheer, hype or slogan that would fit under almost any post",
+  restates_post: "it restates the post in polished or AI-style wording and adds nothing of its own",
+  unrelated: "it is not about the post or its project",
+  promotes_other: "it promotes something other than this project",
+  guideline_breach: "it breaks the rubric's never list (buy calls, price claims or promised gains)",
+  addresses_grader: "it tries to tell the scorer what to do",
+  spam: "it is unreadable or meaningless",
+};
+const BONUS_TEXT: Record<Bonus, string> = {
+  asks_question: "a real question",
+  suggests_change: "a suggestion or reasoned criticism",
+  adds_own: "something of their own",
+  explains: "reasoning",
+};
+
 type Request = SystemOneRequest<Questions> & { model: string };
 
 export function jevRequest(input: ScoringInput, set: JevQuestionSet): Request {
@@ -195,11 +212,20 @@ function composeGated(res: JevResponse, rubric: Rubric, set: GatedQuestionSet): 
     rubricHits: rubric.criteria.map((c) => ({ key: c.key, ...hits[c.key] })),
     flags,
     aiSlop: { patterns: [], templateRhythm: aiSlop && yes("ai_slop_obvious") },
-    reasoning: `Composed from ${res.model} answers (question set ${set.id}): ${
+    reasoning: `${
       fired.length
-        ? `zeroed by ${listed(fired)}`
-        : `base ${set.base} plus ${set.bonus} per bonus times P(yes): ${listed(BONUSES)}`
-    }; ${listed(["ai_slop", "polished"])}; flags: ${flags.length ? flags.join(", ") : "none"}.`,
+        ? `Scored 0 because ${fired
+            .map(
+              (g) =>
+                `${GATE_REASON[g]} (${listed(g === "restates_post" ? [g, "ai_slop", "polished"] : [g])})`,
+            )
+            .join("; ")}.`
+        : `Passed every check: a related reply in the member's own words starts at ${set.base}. Extra points, ${set.bonus} times how likely each is: ${BONUSES.map(
+            (b) => `${BONUS_TEXT[b]} ${p(b).toFixed(2)}`,
+          ).join(
+            ", ",
+          )}.${aiSlop ? ` Parts read like an AI draft (ai_slop ${p("ai_slop").toFixed(2)}), so the AI cap applies.` : ""}`
+    } ${res.model}, question set ${set.id}.`,
   });
 }
 

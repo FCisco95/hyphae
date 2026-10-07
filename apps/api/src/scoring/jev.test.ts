@@ -286,7 +286,8 @@ describe("composeJev with gates and bonuses", () => {
     expect(fired.score).toBe(0);
     expect(fired.flags).toEqual(flags);
     expect(creditedScore(fired)).toBe(0);
-    expect(fired.reasoning).toContain(gate);
+    expect(fired.reasoning).toContain(`(${gate} 0.50`);
+    expect(fired.reasoning).toMatch(/^Scored 0 because /);
     const below = composeGated({ [gate]: 0.49, asks_question: 1 });
     expect(below.score).toBe(75);
     expect(below.flags).toEqual([]);
@@ -341,7 +342,19 @@ describe("composeJev with gates and bonuses", () => {
     const output = composeGated({ asks_question: 0.9 });
     expect(ScoreOutputSchema.parse(output)).toEqual(output);
     expect(output.reasoning).toMatch(/test-gated/);
-    expect(output.reasoning).toMatch(/base 65/);
+    expect(output.reasoning).toMatch(/starts at 65/);
+  });
+
+  it("explains the score in words a member can read, with the answers behind it", () => {
+    const generic = composeGated({ generic: 0.98 }).reasoning;
+    expect(generic).toContain("would fit under almost any post (generic 0.98)");
+    const passed = composeGated({ asks_question: 0.97, adds_own: 0.71 }).reasoning;
+    expect(passed).toMatch(/^Passed every check/);
+    expect(passed).toContain("a real question 0.97");
+    expect(passed).toContain("something of their own 0.71");
+    expect(passed).toContain(`${JEV_MODEL}, question set test-gated`);
+    expect(composeGated({ ai_slop: 0.8 }).reasoning).toContain("the AI cap applies");
+    expect(composeGated({}).reasoning).not.toContain("AI cap");
   });
 
   it("refuses a response missing an answer", () => {

@@ -22,6 +22,8 @@ The same state as v3 (see [jev-questions.md](jev-questions.md#state)): `communit
 4. `ai_slop` at 0.5 or more sets the `ai_slop` flag even when no gate fires. With `ai_slop_obvious` also at 0.5 or more, the strong AI cap applies.
 5. Then the production credit rule in `packages/core` (`creditedScore`), unchanged: `guideline_breach`, `spam` or `off_topic` credit 0; `ai_slop` caps at 79, or at 40 when obvious; a result below 60 credits 0. Timing decay applies after, as it does today.
 6. The rubric's three criteria are marked from the answers that stand for them: `context_fit` is met when neither `unrelated` nor `generic` fires; `own_voice` when `ai_slop` is not set; `value_angle` when any bonus is at 0.5 or more. Each note lists the P values used.
+7. The reasoning a member reads says why in words, then the answers behind it. A zero: "Scored 0 because it tries to tell the scorer what to do (addresses_grader 0.96). jev-1.13.0, question set v4-2026-10-07." A pass: "Passed every check: a related reply in the member's own words starts at 65. Extra points, 10 times how likely each is: a real question 0.81, a suggestion or reasoned criticism 0.93, something of their own 0.79, reasoning 0.60. jev-1.13.0, question set v4-2026-10-07." Every answer is also kept with the dispatch as evidence.
+8. In production the set is registered as scorer `reward-jev/1` (`apps/api/src/scoring/jev-registry.ts`). An epoch pins it like a prompt version, by a template hash over the model and every question and weight. The composition rules above are version "2" of the code in `jev.ts`; changing them means a new question set id and a new scorer version.
 
 ## Gates
 
