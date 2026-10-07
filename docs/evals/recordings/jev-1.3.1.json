@@ -1,0 +1,1142 @@
+{
+  "model": "jev-1.13.0",
+  "questionSet": "v1-2026-09-30",
+  "responses": {
+    "79c5fa23b9afef2d8e8e8bc07752fdc2b5054f28aa2c17ababdc55944cc727dd": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.97
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.86
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.89
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.09
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.01
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "quality": {
+            "type": "score",
+            "score": 3.31,
+            "confidence": 0.74,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0.6900000000000001,
+              "4": 0.31
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4631,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 375
+    },
+    "f634d53db2c1cee93b877513d9ee43eacdd95c5011dd01bdde732e41fc32ae20": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.96
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.85
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.94
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "quality": {
+            "type": "score",
+            "score": 3.34,
+            "confidence": 0.71,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0.65,
+              "4": 0.35
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4631,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 274
+    },
+    "940e60989873935fefbf391fcf23a1b14722d687da4ff8448b46ae167b7c737f": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.6
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.12
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.97
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.13
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.34
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.1
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.13
+          },
+          "quality": {
+            "type": "score",
+            "score": 0.04,
+            "confidence": 0.97,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0.96,
+              "1": 0.04,
+              "2": 0,
+              "3": 0,
+              "4": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4592,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 267
+    },
+    "f4741d82fe0bd3fa5405bc672b0d95772f43ea4df15484b8f413899ec17f34d5": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.94
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.86
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.77
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.1
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.16
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "quality": {
+            "type": "score",
+            "score": 3,
+            "confidence": 0.95,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0.03,
+              "3": 0.94,
+              "4": 0.03
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4630,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 278
+    },
+    "13e1be59b91d7b688f5615129ab893eb27bfa15c37b4b176b48c923360269cff": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.08
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.92
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.62
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.93
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.11
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "quality": {
+            "type": "score",
+            "score": 0.1,
+            "confidence": 0.91,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0.9,
+              "1": 0.1,
+              "2": 0,
+              "3": 0,
+              "4": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4606,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 337
+    },
+    "bf7488cce6d4d141b8e73a003181152d0272da740908df21650a196abbceeab5": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.96
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.84
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.9
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.1
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.08
+          },
+          "quality": {
+            "type": "score",
+            "score": 3.48,
+            "confidence": 0.59,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0,
+              "3": 0.52,
+              "4": 0.48
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4622,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 263
+    },
+    "a6f9a4fab35b50b47456e4d92407e23289a54fe278172dbea212dea1a838dd3f": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.11
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.8
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.28
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.89
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.09
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.95
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "quality": {
+            "type": "score",
+            "score": 0.31,
+            "confidence": 0.74,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0.71,
+              "1": 0.29,
+              "2": 0,
+              "3": 0,
+              "4": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4601,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 248
+    },
+    "959023043a59aa6e6bf2b2ec036f3efc0fdaa7e6aca59b661aaf954e49671f63": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.73
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.75
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.11
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.82
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.99
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "quality": {
+            "type": "score",
+            "score": 1.06,
+            "confidence": 0.55,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0.24,
+              "1": 0.5700000000000001,
+              "2": 0.09,
+              "3": 0.1,
+              "4": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4606,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 249
+    },
+    "aa8967cdb4e1f420a0043cf6bb74e6af246b4d97991b4136b7a6885aa4b75d9f": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.91
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.76
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.79
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.08
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.16
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.11
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.23
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.11
+          },
+          "quality": {
+            "type": "score",
+            "score": 3.05,
+            "confidence": 0.8,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0.01,
+              "2": 0.07,
+              "3": 0.77,
+              "4": 0.15
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4634,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 284
+    },
+    "f7e5df2f26e2e4bcea7d76e781924b30053172dd765172984b6084c4071e15e6": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.91
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.91
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.97
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "quality": {
+            "type": "score",
+            "score": 0.02,
+            "confidence": 0.98,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0.99,
+              "1": 0,
+              "2": 0.01,
+              "3": 0,
+              "4": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4605,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 252
+    },
+    "c915f312e6992c60ec53786200edc34cb7cf94f6b8c9386257d65dd5b5e0d986": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.87
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.87
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.11
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.6
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.69
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.1
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.12
+          },
+          "quality": {
+            "type": "score",
+            "score": 0.31,
+            "confidence": 0.74,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0.7,
+              "1": 0.3,
+              "2": 0,
+              "3": 0,
+              "4": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4595,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 265
+    },
+    "ca58c6be79373cacf722fc1c747b4ab4ccd5c80f8efd1fe58add8780f2932d32": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.95
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.64
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.49
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.05
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.13
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.17
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.07
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.18
+          },
+          "quality": {
+            "type": "score",
+            "score": 2.61,
+            "confidence": 0.67,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0.01,
+              "2": 0.37,
+              "3": 0.62,
+              "4": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4624,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 236
+    },
+    "4413747d25a380cd5a5df6d3c0deb78bbfd59ea64d8461a36141935580bfc594": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.14
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.13
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.96
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.97
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.08
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.97
+          },
+          "quality": {
+            "type": "score",
+            "score": 0.54,
+            "confidence": 0.62,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0.46,
+              "1": 0.54,
+              "2": 0,
+              "3": 0,
+              "4": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4621,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 245
+    },
+    "1151358e83439405f5e891fc6155fb07e5f62ec18a3fde6af540e4765c7f05a6": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.96
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.71
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.54
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.15
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.11
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.11
+          },
+          "quality": {
+            "type": "score",
+            "score": 2.73,
+            "confidence": 0.74,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0.01,
+              "2": 0.26,
+              "3": 0.71,
+              "4": 0.02
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4609,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 294
+    },
+    "d841a51c8819bc69d231e3ddc442d39a948aecc8b9a77e1140d393e1f41082d6": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.89
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.76
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.75
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.08
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.1
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.09
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.34
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.02
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.08
+          },
+          "quality": {
+            "type": "score",
+            "score": 2.73,
+            "confidence": 0.74,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0.04,
+              "2": 0.21,
+              "3": 0.73,
+              "4": 0.02
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4598,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 252
+    },
+    "5ea517ad51c56676d9c8a2c516309c7b886781adfe567cb793fe0e796beeb470": {
+      "response": {
+        "model": "jev-1.13.0",
+        "answers": {
+          "context_fit": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "own_voice": {
+            "type": "noul",
+            "noul": 0.32
+          },
+          "value_angle": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "off_topic": {
+            "type": "noul",
+            "noul": 0.78
+          },
+          "low_effort": {
+            "type": "noul",
+            "noul": 0.85
+          },
+          "ai_slop": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "link_mismatch": {
+            "type": "noul",
+            "noul": 0.17
+          },
+          "spam": {
+            "type": "noul",
+            "noul": 0.96
+          },
+          "guideline_breach": {
+            "type": "noul",
+            "noul": 0.06
+          },
+          "ai_slop_obvious": {
+            "type": "noul",
+            "noul": 0.04
+          },
+          "quality": {
+            "type": "score",
+            "score": 0,
+            "confidence": 1,
+            "legend": {
+              "0": "Earns nothing. A greeting or cheer such as 'gm' or 'lfg', emoji only, a one-line statement that says nothing about the post, a question the post already answers, meaningless characters such as a bare code, or reusable hype that would fit under any post.",
+              "1": "Readable and roughly about the post's subject or the project, but thin. It restates the post, gives a vague reaction, or is padded with stock wording, with no concrete detail from the post and nothing of the author's own.",
+              "2": "Passable. It reacts to the post's actual point in natural words, but it mostly confirms or rephrases what the post already said. It adds little the post did not have.",
+              "3": "Good. It picks out something concrete from the post and adds a modest angle of the author's own, such as an opinion with a reason, a relevant question the post does not answer, a comparison or a light joke, in a natural voice.",
+              "4": "Excellent for a reply. It is specific to the post, sounds like a real person, and adds a substantial angle the post did not have: a well-aimed question the post leaves open, reasoned criticism, a clear explanation of how something works, or reasoning that links facts from the post to a conclusion and states what is uncertain."
+            },
+            "probabilities": {
+              "0": 1,
+              "1": 0,
+              "2": 0,
+              "3": 0,
+              "4": 0
+            }
+          }
+        },
+        "usage": {
+          "input_tokens": 4588,
+          "output_tokens": 198
+        }
+      },
+      "latencyMs": 286
+    }
+  }
+}

@@ -1,0 +1,106 @@
+# Jev vs Sonnet, first live run (2026-09-30)
+
+16 synthetic cases (`docs/rubrics/eval/mycel-synthetic.json`), both rubrics, both scorers. No real member text was sent to any provider. **This is 16 cases: it supports no claim that either scorer is better, only where each one disagrees with the founder.**
+
+## Provenance
+
+| | Jev | Sonnet |
+|---|---|---|
+| Model | `jev-1.13.0`, question set `v1-2026-09-30` (written out in `docs/evals/jev-questions.md` at `4fe3815`; the branch now carries v3, see the addenda) | `anthropic:claude-sonnet-5` (the harness default), production scoring prompt |
+| Rubrics | 1.2.0 (`docs/rubrics/mycel-1.2.0.json`), 1.3.1 (`feat/rules-v2` `158452f`, sha256 `56e5fad1…`) | same |
+| Mode | live, `current-call` metrics; every answer recorded in `docs/evals/recordings/jev-<version>.json` and replays to the same 4/16 and 5/16 with no key | live |
+| Code | `feat/jev-eval` `f7a3919` (Jev runs, Sonnet 1.2.0) and `58fa5d4` (Sonnet 1.3.1) | |
+| Credit rule | production `creditedScore` plus the eval-only `low_effort` zero (Cisco's ruling 1), the same for both scorers | |
+| Raw results | `docs/evals/recordings/{jev,sonnet}-{1.2.0,1.3.1}.jsonl` | |
+
+Sonnet's first 1.3.1 attempt crashed on case 12: its reply broke the production output schema (an `aiSlop.patterns` string over 60 characters), so the harness aborted with 5 cases unscored. That is a finding about Sonnet as the production scorer, and it is why `58fa5d4` makes a throwing case fail alone. The rerun completed 16 of 16 with no error; the two runs are not the same output. The crashed attempt's partial output is not kept. Its 12 calls are not in the cost table (about $0.19 at the rerun's average per call).
+
+## Totals
+
+| Run | Passed | Mean error, raw | Mean error, credited | Median latency | Max latency | Cost |
+|---|---|---|---|---|---|---|
+| Jev 1.2.0 | 4/16 | 17.3 | 8.4 | 248 ms | 344 ms | $0.0028 (66.0k input tokens) |
+| Jev 1.3.1 | 5/16 | 17.6 | 3.2 | 266 ms | 375 ms | $0.0031 (73.8k input tokens) |
+| Sonnet 1.2.0 | 3/16 | 18.7 | 11.8 | 6.6 s | 9.1 s | $0.215 |
+| Sonnet 1.3.1 | 2/16 | 18.7 | 12.2 | 5.7 s | 9.7 s | $0.249 |
+
+Error is the distance in points from the founder's target, 0 inside it. A pass needs both scores inside the founder's ±5 range and every required flag with no forbidden one. Sonnet's records carry cost and latency but no token counts.
+
+## Rubric 1.3.1, per case (raw/credited; founder target in brackets)
+
+| # | Case | Founder | Jev | Sonnet |
+|---|---|---|---|---|
+| 1 | receipt-specific-praise | 70/70, ai_slop | 87/87, no flags ✗ | 78/78, no flags ✗ |
+| 2 | receipt-specific-criticism | 90/90 | 88/88 ✓ | 82/82 ✗ |
+| 3 | popularity-no-quality-bonus | 35/0, low_effort | 11/0 ✗ (raw) | 4/0 ✗ (raw) |
+| 4 | holder-with-product-reason | 75/75 | 80/80 ✓ | 68/68 ✗ |
+| 5 | holder-only | 0/0, low_effort | 17/0 ✗ (raw) | 10/0 ✗ (raw) |
+| 6 | grounded-uncertain-price | 85/85 | 89/89 ✓ | 72/72 ✗ |
+| 7 | unsupported-price-with-hedge | 50/0, guideline_breach | 19/0 ✗ (raw) | 0/0 ✗ (raw) |
+| 8 | buy-guaranteed-gains | 0/0, guideline_breach | 38/0 ✗ (raw) | 0/0 ✓ |
+| 9 | honest-reward-disclosure | 90/90 | 79/79 ✗ | 84/84 ✗ |
+| 10 | question-already-answered | 10/0, low_effort | 30/0 ✗ (raw) | 22/0 ✗ (raw) |
+| 11 | project-name-wrong-topic | 50/0, off_topic | 17/0 ✗ (raw) | 10/0 ✗ (raw) |
+| 12 | polished-strong-original-control | 75-80 | 67/67 ✗ | 58/0 ✗ |
+| 13 | multiple-ai-writing-signals | 70/0, ai_slop, low_effort | 10/0 ✗ (raw) | 18/0 ✗ (raw) |
+| 14 | single-ai-word-false-positive-control | 75/75 | 71/71 ✓ | 33/0 ✗ |
+| 15 | image-context-limitation | 75/75 | 74/74 ✓ | 72/72 ✓ |
+| 16 | code-only-spam | 0/0, spam | 6/0 ✗ (raw) | 0/0 ✗ (missing spam) |
+
+## Findings
+
+1. **Ruling 5 did not work.** Case 1's first sentence is built backwards, and Jev did not flag it: `ai_slop` P(yes) 0.09, `own_voice` 0.86, quality 3.31 of 4. Sonnet missed it too. An instruction alone does not teach Jev this pattern. It is a syntactic shape, so a deterministic check is the natural next experiment, with Jev left for judgment.
+2. **Ruling 4 exposes a raw-score problem on flagged cases.** On the eight flagged cases (3, 5, 7, 8, 10, 11, 13, 16) Jev's credited score is right (0), but its raw lands outside the founder's ±5 range by 1 to 55 points, in both directions: too low on 3, 7, 11 and 13 (the criteria questions punish the same faults the flag already does), too high on 5, 8, 10 and 16 (the founder gives 0 or 10; Jev gives partial credit to a reply it has just flagged). Under "check both" all eight fail on raw. Sonnet misses raw on the same cases except 8 and 16. This is the defect Ruling 4 says to fix, and it is a question-design change, not a threshold change.
+3. **Ruling 3 (no cap) did not bite.** Case 2 composed to 88 and case 9 to 79; neither reached 100. Case 9 is the real miss: 11 points under the founder's 90 for an honest reward disclosure.
+4. **Rubric sensitivity.** Under 1.2.0 Jev flags case 6 as a `guideline_breach` (credited 0), as that rubric's text says a price forecast is; under 1.3.1 it does not (credited 89). The fixture's targets are written for 1.3.1. Sonnet flagged neither.
+5. **Flag disagreements, 1.3.1.** Jev raised `spam` on case 16 (required); Sonnet did not. Jev raised `link_mismatch` on case 11; Sonnet did not, and no case requires it either way. All other flags agree, including four `low_effort` calls on cases 7, 8, 11 and 16 that the fixture does not require.
+6. **False positives on the controls.** Jev raised no `ai_slop` on cases 12 or 14 in either rubric. Sonnet flagged both under 1.2.0 (credited 0) and, under 1.3.1, credited both as 0 with no flag (58 and 33 fall under the 60 floor).
+7. **Speed and cost.** Jev answered in about a quarter of a second per case against about six seconds for Sonnet, at roughly 1/80th of the recorded cost.
+
+## Not established
+
+- Whether Jev generalises: the questions were written and amended while reading these 16 cases' notes, Sonnet's prompt was not.
+- Any 1.2.0 vs 1.3.1 effect beyond case 6; the differences elsewhere are single-run noise until repeated.
+- Run-to-run variance: Sonnet's two 1.3.1 attempts differ (the first crashed). Jev was run once per rubric.
+
+## Recommended next steps
+
+1. Fix the double count: rewrite the three criteria questions to judge the writing as a person would before any flag, so raw stays near the founder's raw on flagged cases. Then replay is impossible (the questions change), so it needs one live run at about $0.003.
+2. Add a deterministic backwards-sentence check for Ruling 5, and measure it on new cases, not these 16.
+3. Ask Cisco for 30 or more real, labelled AI-sounding and natural replies (a private fixture) before tuning anything else against these 16.
+
+## Addendum: two labeling sessions and question set v2
+
+After this run Cisco labeled 48 replies as human (H), AI (A) or unsure (?). I wrote all 48, so none is a member's text, and the labels are one person's: an observation, not a measurement. The answer keys stayed hidden until he had answered, and session 2 was kept as a holdout.
+
+- **Session 1 (24 replies), v1 wording.** Jev's `ai_slop` reached 0.5 on the three replies Cisco called AI. It also flagged two he called human (one of which he later said he could not explain). His calls matched what I meant on 15 of 24. He called none of my twelve human-written replies AI. He did not treat my AI-vocabulary or "not just X, but Y" replies as AI (human or unsure), so his tell is structure, not vocabulary.
+- **Cisco amended ruling 5:** "Sometimes people do sentences like this." The backwards shape alone is not enough; it reads as AI when polished and abstract or stacked, and human when unforced or ended by a tossed-off reaction.
+- **Session 2 (24 replies, including repeats of two session-1 replies), v1 vs the amended wording.** Both caught the two replies he called AI (and the one he called AI-or-unsure). The amended wording cleared one flag on a reply with the shape that Cisco could not call (0.69 to 0.19), lowered another such reply that was already under the threshold (0.44 to 0.16), and kept the AI calls flagged, though one fell from 0.80 to 0.58. Both still flag the repeat of the reply he could not explain (0.55 and 0.62). His repeats stayed close (HH then H; H? then ?).
+- **A second construct shows up.** Cisco marked replies "?" for overshilling or repeating the post. That is low-value hype, which the rubric already covers with `low_effort` and `value_angle`, not AI authorship. Jev's `low_effort` also flagged several replies he called human (including a terse restatement of the post at 0.82); under ruling 1 that is a hard zero, so it matters.
+- **Result:** the branch now carries question set v2 (the amended wording). Fixture case 1 is still missed. With 2 or 3 replies changing side, treat this as a direction, not a proof. Next: a third, larger holdout before any further wording change, and a labeled set with more than one labeler.
+
+## Second addendum: Cisco's own replies and a project brief (scratch experiment, not committed)
+
+Cisco supplied screenshots of 11 of his own replies (12 scored items), known human. With question set v2 and no project context, Jev's `ai_slop` never passed 0.17 on any of them, but `low_effort` or `off_topic` (both hard zeros) fired on seven, including jokes, a short opinion and a link to his own Hyphae article. He ruled that jokes and short opinions are not low effort, that the scorer needs a maintained project brief, and that replying with the project's own material is good engagement (rulings 6 to 8 in `docs/evals/jev-questions.md`).
+
+The experiment added a draft project brief (written from his public statements, not yet approved by him) to the state and amended the `low_effort`, `off_topic`, `link_mismatch` and `value_angle` wording:
+
+- False `link_mismatch` flags on his substantive replies disappeared and their raw scores rose a few points; one `off_topic` flag cleared.
+- Pure banter was unchanged: the flags still fired on three or four replies, and raw scores of 17 to 34 would credit 0 under the 60 floor with no flag at all.
+- The link-to-article reply scored 60 to 65 once the quoted article's text was in the input and 11 when it was not. Intake, not the brief, is the main fix.
+- Fixture: 4 of 16 against 5 of 16 before; the only change is one control's raw moving 71 to 68. The required low-effort, spam and breach cases stayed caught.
+- Jev reads text only, so replies whose punchline is an image are undervalued.
+
+Nothing here changes the committed question set. The open design question is what a short organic reaction should earn, since the quality scale and the 60 floor, not the flags, decide that.
+
+## Third addendum: ruling 9 in the questions (v3), and why prompting is not enough
+
+Cisco ruled that a short organic reaction (a joke that lands, a short personal opinion that responds to the post) earns the low end of the same scale, about 60 to 70 raw (ruling 9, `docs/evals/jev-questions.md`). Question set v3 writes that into the `low_effort`, `context_fit` and `value_angle` questions and the quality ladder's "passable" level.
+
+Measured on Cisco's 12 real replies, the 16 fixture cases and the 48 labeled replies:
+
+- **The effect is small.** His five banter replies moved up 1 to 5 raw points (18 to 42 before, 19 to 47 after) and kept their `low_effort` or `off_topic` flags on four of them; one `low_effort` flag cleared, but its raw (47) is still under the 60 floor. None reached the 60 to 70 that ruling 9 intends.
+- **Worked examples did not change that.** A scratch run with seven example replies in the state (judged organic or low effort; written by me, none from the fixture or his replies) raised those raws another 3 to 10 points and left the flags on the same replies. The fixture stayed at 4 of 16 and the required low-effort, spam and breach cases stayed caught.
+- **Two small declines, cause uncertain; no claim of success.** The fixture went from 5 to 4 passes (one case, holder-with-product-reason, moved from 80 to 81, one point past its accepted range), and one of his substantive replies fell from 60 to 59 and so under the floor. Identical runs of the same question set differed by a point or two, so these may be noise, but this data cannot show it. The required low-effort, spam and breach cases stayed caught.
+- **Reading:** Jev follows its own reading of a question more than instructions or examples, and its linear composition (half the quality level, half the weighted criteria) puts any reply it rates as thin around 30 to 50. Delivering ruling 9 takes a calibration learned from Cisco's own grades (a few hundred graded replies, including jokes and short opinions), or a different mapping from Jev's answers to raw, not more wording.
+

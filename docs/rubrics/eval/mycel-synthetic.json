@@ -1,0 +1,386 @@
+[
+  {
+    "id": "synthetic-receipt-specific-praise",
+    "task": {
+      "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000001",
+      "targetText": "Every scored contribution now has a public receipt with the rubric version, model, reasoning, prompt hash, and evidence hash. Admin corrections are appended instead of replacing the original score.",
+      "targetAuthor": "hyphaeprotocol",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "The append-only correction is the bit I care about. Anyone can compare the model's first call with the admin override instead of trusting a cleaned-up final number."
+    },
+    "expected": {
+      "target": {
+        "raw": [70, 70],
+        "credited": [70, 70]
+      },
+      "reason": "The answer is specific, but its sentence structure feels typically AI-written, especially the setup before 'is the bit I care about'. A direct first-person reaction would sound more natural.",
+      "raw": [65, 75],
+      "credited": [65, 75],
+      "requiredFlags": ["ai_slop"],
+      "forbiddenFlags": ["off_topic", "low_effort", "guideline_breach"]
+    }
+  },
+  {
+    "id": "synthetic-receipt-specific-criticism",
+    "task": {
+      "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000001",
+      "targetText": "Every scored contribution now has a public receipt with the rubric version, model, reasoning, prompt hash, and evidence hash. Admin corrections are appended instead of replacing the original score.",
+      "targetAuthor": "hyphaeprotocol",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "Receipts show how a score was produced, but they don't explain why a submission was rejected before scoring. Can the public page include those rejection reasons too?"
+    },
+    "expected": {
+      "target": {
+        "raw": [90, 90],
+        "credited": [90, 90]
+      },
+      "reason": "The question shows genuine interest, feels highly organic, and sounds like a real community member trying to improve the product. It is almost perfect for a reply, while 100 is reserved for extra-mile work.",
+      "raw": [85, 95],
+      "credited": [85, 95],
+      "requiredFlags": [],
+      "forbiddenFlags": ["off_topic", "low_effort", "ai_slop", "guideline_breach"]
+    }
+  },
+  {
+    "id": "synthetic-popularity-no-quality-bonus",
+    "task": {
+      "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000002",
+      "targetText": "The first public score receipts are live on the contribution page.",
+      "targetAuthor": "hyphaeprotocol",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "Amazing project! 5,000 views already. LFG 🚀"
+    },
+    "expected": {
+      "target": {
+        "raw": [35, 35],
+        "credited": [0, 0]
+      },
+      "reason": "Blind shilling that feels almost like an AI comment. It reacts to the views rather than the post itself and is extremely low effort.",
+      "raw": [30, 40],
+      "credited": [0, 0],
+      "requiredFlags": ["low_effort"],
+      "forbiddenFlags": ["guideline_breach"]
+    }
+  },
+  {
+    "id": "synthetic-holder-with-product-reason",
+    "task": {
+      "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000003",
+      "targetText": "Hyphae commits each epoch's complete score set to Solana as a Merkle root. Contributors receive non-transferable points first, then treasury rewards settle from the epoch allocation.",
+      "targetAuthor": "hyphaeprotocol",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "I hold MYCEL, and the delayed settlement makes sense to me because the epoch can be audited as one complete set before the treasury splits."
+    },
+    "expected": {
+      "target": {
+        "raw": [75, 75],
+        "credited": [75, 75]
+      },
+      "reason": "It follows the rules, stays on topic, and feels natural. It does not add much beyond the post, but it is a good contribution and the holder disclosure is allowed.",
+      "raw": [70, 80],
+      "credited": [70, 80],
+      "requiredFlags": [],
+      "forbiddenFlags": ["off_topic", "low_effort", "guideline_breach"]
+    }
+  },
+  {
+    "id": "synthetic-holder-only",
+    "task": {
+      "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000003",
+      "targetText": "Hyphae commits each epoch's complete score set to Solana as a Merkle root. Contributors receive non-transferable points first, then treasury rewards settle from the epoch allocation.",
+      "targetAuthor": "hyphaeprotocol",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "I hold MYCEL."
+    },
+    "expected": {
+      "target": {
+        "raw": [0, 0],
+        "credited": [0, 0]
+      },
+      "reason": "It adds nothing, and the target is not about holders. The statement is permitted but should not receive a reward.",
+      "raw": [0, 5],
+      "credited": [0, 0],
+      "requiredFlags": ["low_effort"],
+      "forbiddenFlags": ["guideline_breach"]
+    }
+  },
+  {
+    "id": "synthetic-grounded-uncertain-price",
+    "task": {
+      "targetUrl": "https://x.com/mycel/status/1000000000000000004",
+      "targetText": "This epoch generated 12 SOL in protocol fees, up from 6 SOL last epoch. The eligible contribution pool grew 20%, while MYCEL supply stayed unchanged.",
+      "targetAuthor": "mycel",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "If fee growth holds while supply stays flat, a higher MYCEL valuation could make sense. Two epochs still isn't enough to call it a trend though."
+    },
+    "expected": {
+      "target": {
+        "raw": [85, 85],
+        "credited": [85, 85]
+      },
+      "reason": "Natural, organic engagement with thought and reasoning. It feels like the perspective of a holder while remaining uncertain and grounded.",
+      "raw": [80, 90],
+      "credited": [80, 90],
+      "requiredFlags": [],
+      "forbiddenFlags": ["off_topic", "low_effort", "guideline_breach"]
+    }
+  },
+  {
+    "id": "synthetic-unsupported-price-with-hedge",
+    "task": {
+      "targetUrl": "https://x.com/mycel/status/1000000000000000004",
+      "targetText": "This epoch generated 12 SOL in protocol fees, up from 6 SOL last epoch. The eligible contribution pool grew 20%, while MYCEL supply stayed unchanged.",
+      "targetAuthor": "mycel",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "MYCEL to $1 easy, NFA."
+    },
+    "expected": {
+      "target": {
+        "raw": [50, 50],
+        "credited": [0, 0]
+      },
+      "reason": "Low effort. The NFA disclaimer makes it somewhat better than the same unsupported target stated without any caution, but it still lacks reasoning.",
+      "raw": [45, 55],
+      "credited": [0, 0],
+      "requiredFlags": ["guideline_breach"],
+      "forbiddenFlags": []
+    }
+  },
+  {
+    "id": "synthetic-buy-guaranteed-gains",
+    "task": {
+      "targetUrl": "https://x.com/mycel/status/1000000000000000004",
+      "targetText": "This epoch generated 12 SOL in protocol fees, up from 6 SOL last epoch. The eligible contribution pool grew 20%, while MYCEL supply stayed unchanged.",
+      "targetAuthor": "mycel",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "Fees doubled, so buy MYCEL now. Guaranteed 10x."
+    },
+    "expected": {
+      "target": {
+        "raw": [0, 0],
+        "credited": [0, 0]
+      },
+      "reason": "Against the rules and must be flagged. Both the direct buy instruction and the guaranteed 10x claim are prohibited.",
+      "raw": [0, 5],
+      "credited": [0, 0],
+      "requiredFlags": ["guideline_breach"],
+      "forbiddenFlags": []
+    }
+  },
+  {
+    "id": "synthetic-honest-reward-disclosure",
+    "task": {
+      "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000001",
+      "targetText": "Every scored contribution now has a public receipt with the rubric version, model, reasoning, prompt hash, and evidence hash. Admin corrections are appended instead of replacing the original score.",
+      "targetAuthor": "hyphaeprotocol",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "Disclosure: I can earn Hyphae points for this reply. The evidence hash still matters because changing the model output would change the receipt, so edits can't be hidden."
+    },
+    "expected": {
+      "target": {
+        "raw": [90, 90],
+        "credited": [90, 90]
+      },
+      "reason": "It explains how the mechanism works and is clearly written by someone who knows the project. The disclosure should not reduce writing quality, regardless of whether it is ideal for X distribution.",
+      "raw": [85, 95],
+      "credited": [85, 95],
+      "requiredFlags": [],
+      "forbiddenFlags": ["off_topic", "low_effort", "ai_slop", "guideline_breach"]
+    }
+  },
+  {
+    "id": "synthetic-question-already-answered",
+    "task": {
+      "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000005",
+      "targetText": "Epoch claims open Friday at 16:00 UTC and close Sunday at 16:00 UTC. Use /claim in the bot during that window.",
+      "targetAuthor": "hyphaeprotocol",
+      "brief": "Ask a useful question or add an observation."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "When do claims close?"
+    },
+    "expected": {
+      "target": {
+        "raw": [10, 10],
+        "credited": [0, 0]
+      },
+      "reason": "It is not against the rules, but it adds nothing because the answer is right there in the target.",
+      "raw": [5, 15],
+      "credited": [0, 0],
+      "requiredFlags": ["low_effort"],
+      "forbiddenFlags": ["off_topic", "guideline_breach"]
+    }
+  },
+  {
+    "id": "synthetic-project-name-wrong-topic",
+    "task": {
+      "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000006",
+      "targetText": "The public score page now shows the original model grade beside every admin correction.",
+      "targetAuthor": "hyphaeprotocol",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "I am really excited to see what AI trading agents will look like on MYCEL."
+    },
+    "expected": {
+      "target": {
+        "raw": [50, 50],
+        "credited": [0, 0]
+      },
+      "reason": "It is unclear how the reply relates to the target. The sentence can receive some raw writing credit, but it misses the announcement's subject.",
+      "raw": [45, 55],
+      "credited": [0, 0],
+      "requiredFlags": ["off_topic"],
+      "forbiddenFlags": ["guideline_breach"]
+    }
+  },
+  {
+    "id": "synthetic-polished-strong-original-control",
+    "task": {
+      "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000007",
+      "targetText": "A Hyphae receipt keeps the model output, rubric version, and any later admin correction in one public audit trail.",
+      "targetAuthor": "hyphaeprotocol",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "A score receipt is more than a number. Not just model output, but a trail anyone can inspect. Hyphae is showing that contribution rewards don't need a black box."
+    },
+    "expected": {
+      "target": {
+        "raw": [75, 80],
+        "credited": [75, 80]
+      },
+      "reason": "It confirms the post in a different way and resembles what a normal community comment would look like. It is okay, but it does not add enough for an exceptional score.",
+      "raw": [75, 80],
+      "credited": [75, 80],
+      "requiredFlags": [],
+      "forbiddenFlags": ["off_topic", "low_effort", "ai_slop", "guideline_breach"]
+    }
+  },
+  {
+    "id": "synthetic-multiple-ai-writing-signals",
+    "task": {
+      "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000007",
+      "targetText": "A Hyphae receipt keeps the model output, rubric version, and any later admin correction in one public audit trail.",
+      "targetAuthor": "hyphaeprotocol",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "This groundbreaking initiative serves as a testament to Hyphae's pivotal role in the evolving Web3 landscape, highlighting its commitment to transparency, innovation, and community empowerment."
+    },
+    "expected": {
+      "target": {
+        "raw": [70, 70],
+        "credited": [0, 0]
+      },
+      "reason": "It feels AI-based, is too over-complimentary, and does not look organic, even though the prose is coherent.",
+      "raw": [65, 75],
+      "credited": [0, 0],
+      "requiredFlags": ["ai_slop", "low_effort"],
+      "forbiddenFlags": ["guideline_breach"]
+    }
+  },
+  {
+    "id": "synthetic-single-ai-word-false-positive-control",
+    "task": {
+      "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000007",
+      "targetText": "A Hyphae receipt keeps the model output, rubric version, and any later admin correction in one public audit trail.",
+      "targetAuthor": "hyphaeprotocol",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "This transparency is crucial for contributors because they can match each score to the receipt and see every later correction."
+    },
+    "expected": {
+      "target": {
+        "raw": [75, 75],
+        "credited": [75, 75]
+      },
+      "reason": "It sounds organic and says what would reasonably be expected in response to the post.",
+      "raw": [70, 80],
+      "credited": [70, 80],
+      "requiredFlags": [],
+      "forbiddenFlags": ["off_topic", "low_effort", "ai_slop", "guideline_breach"]
+    }
+  },
+  {
+    "id": "synthetic-image-context-limitation",
+    "task": {
+      "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000008",
+      "targetText": "A new way to inspect every score. pic.x.com/hyphae-demo",
+      "targetAuthor": "hyphaeprotocol",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "Putting the model score and admin correction side by side makes the audit trail much easier to follow."
+    },
+    "expected": {
+      "target": {
+        "raw": [75, 75],
+        "credited": [75, 75]
+      },
+      "reason": "This would be an acceptable reply if the image shows the side-by-side layout. Images need to be included in scoring because they often communicate a large part of the post.",
+      "raw": [70, 80],
+      "credited": [70, 80],
+      "requiredFlags": [],
+      "forbiddenFlags": ["off_topic", "guideline_breach"]
+    }
+  },
+  {
+    "id": "synthetic-code-only-spam",
+    "task": {
+      "targetUrl": "https://x.com/hyphaeprotocol/status/1000000000000000009",
+      "targetText": "The next epoch starts Monday. Read the published rubric before submitting a contribution.",
+      "targetAuthor": "hyphaeprotocol",
+      "brief": "React in your own words."
+    },
+    "contribution": {
+      "kind": "reply",
+      "text": "7F3K-91QZ"
+    },
+    "expected": {
+      "target": {
+        "raw": [0, 0],
+        "credited": [0, 0]
+      },
+      "reason": "The code is not interpretable in context and appears to be spam.",
+      "raw": [0, 5],
+      "credited": [0, 0],
+      "requiredFlags": ["spam"],
+      "forbiddenFlags": ["guideline_breach"]
+    }
+  }
+]
