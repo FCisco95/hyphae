@@ -1,11 +1,11 @@
 ---
 date: 2026-10-07
-summary: Draft release plan for making Jev the live epoch 2 reward scorer by a second recorded amendment. Applies migration 0017 through the rehearsed db.mjs, moves the API and the worker to one image, sets the TypeSafe key and JEV_SCORING=on, then records one amendment so epoch 2 contributions admitted from the announced UTC time score with reward-jev/1. Not executed; the question set, the Codex review and Cisco's exact yes are missing.
+summary: PARTLY EXECUTED 2026-10-07 21:04Z to 21:40Z (E0 to E5 done: image jev-e5f864b on API and worker, migration 0017 applied, JEV_SCORING=on). E6 (Cisco's announcement with T2) and E7 (record the amendment before T2) pending. Release plan for making Jev the live epoch 2 reward scorer by a second recorded amendment. Applies migration 0017 through the rehearsed db.mjs, moves the API and the worker to one image, sets the TypeSafe key and JEV_SCORING=on, then records one amendment so epoch 2 contributions admitted from the announced UTC time score with reward-jev/1. Not executed; the question set, the Codex review and Cisco's exact yes are missing.
 ---
 
-# Jev live scorer release plan (source `<SHA>`)
+# Jev live scorer release plan (source `e5f864b`)
 
-**Status: DRAFT, not executed. Nothing in this plan has run.** Written 2026-10-07 by Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort high), Session B; merged and updated the same night by Claude Opus 5.5 (Session A) on branch `jev-live` = `ed32b4f` + the session prompts + B's commits + `feat/jev-eval` + A's commits and review fixes, then merged with `origin/main` (`fb89ba4`, docs) and `feat/haiku-55` (`d19889a`: `328fb45`, the source of the live image `haiku55-328fb45`, plus its records). So the Jev image keeps Claude Haiku 5.5 as the Anthropic model: it scores effort nominations on `reward-eval/2`, every contribution admitted before T2, and everything if `JEV_SCORING` is off. Preparing it changed nothing live. Format follows the [pilot amendment plan](2026-10-07-pilot-amendment-release-plan.md). What the code does: [plumbing map](../handoffs/2026-10-07-jev-plumbing-map.md). Cisco's ruling (2026-10-07): Jev replaces the Anthropic scorer in epoch 2.
+**Status: PARTLY EXECUTED. E0 to E5 done (21:04Z to 21:40Z on 2026-10-07); E6 and E7 pending. See [Record](#record).** Written 2026-10-07 by Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort high), Session B; merged and updated the same night by Claude Opus 5.5 (Session A) on branch `jev-live` = `ed32b4f` + the session prompts + B's commits + `feat/jev-eval` + A's commits and review fixes, then merged with `origin/main` (`fb89ba4`, docs) and `feat/haiku-55` (`d19889a`: `328fb45`, the source of the live image `haiku55-328fb45`, plus its records). So the Jev image keeps Claude Haiku 5.5 as the Anthropic model: it scores effort nominations on `reward-eval/2`, every contribution admitted before T2, and everything if `JEV_SCORING` is off. Preparing it changed nothing live. Format follows the [pilot amendment plan](2026-10-07-pilot-amendment-release-plan.md). What the code does: [plumbing map](../handoffs/2026-10-07-jev-plumbing-map.md). Cisco's ruling (2026-10-07): Jev replaces the Anthropic scorer in epoch 2.
 
 **Authorization will be Cisco's exact sentence:** **"yes, run the Jev live scorer release"** (proposed; he may change it). Nothing below runs without it.
 
@@ -148,6 +148,20 @@ Checks: the plan names `reward-eval/2` → `reward-jev/1` with the template hash
 - `decisions-digest.mjs <mint> 2 <T2>` equals the baseline at every later run.
 - The audit manifest for epoch 2 (built later, at close) lists both amendments; `buildPublication` dry run against the production copy is the Oct 8 to 9 sitting's job, but a read-only check now is cheap: `GET /epochs/2` parses with `ReadApiV1.epoch`.
 - The epoch page shows two amendments.
+
+## Record
+
+- **Authorization:** Cisco's exact sentence "yes, run the Jev live scorer release", 2026-10-07 about 21:03Z.
+- **Step 0.0:** `git cherry -v jev-live main` printed only `-` (`3adcf63`, the session prompts, = `a366d60`); the main checkout `git reset --keep jev-live`: `main` = `e5f864b`, ahead 48, behind 0.
+- **E0:** Cisco pushed `fb89ba4..e5f864b` (about 21:10Z). GitHub CI run 37687473202 on `e5f864b`: success (21:16Z).
+- **Step 0 guards (21:05Z to 21:13Z):** `jev-e5f864b` read 404; `haiku55-328fb45` 200 `sha256:4218b2a9…`; both machines on it; `telegram.mjs` PASS; `/epochs/2` one amendment (`reward-eval/1` → `reward-eval/2`, 18:00Z); `jev-ping.ts` from the `e5f864b` code: `jev-1.13.0`, 524 ms. Baseline fingerprint, cutoff C = 2026-10-07T20:55:00Z: intakes 5 `abb8e77f…`, decisions 5 `6ed1a09e…`, dispatches 5 `aafe8160…` (the same as the Haiku release's). Gate: the final gate on `1185ad1` with the records (see the review record).
+- **E1:** image `jev-e5f864b` = `sha256:b3f5617d804a377e8eaae1c6c67641ffe85390e47d88c162f0723206994236c4`, built at 21:17Z in the detached worktree `C:/hy-jev-e5f864b` (kept for E7).
+- **E2:** migration 0017 at 21:17:57Z: precheck PASS (journal 17, old index), `APPLIED: journal 17 -> 18 rows, ending 0017_reward_amendment_chain`, postcheck PASS (index `reward_config_amendments_epoch_from(epoch_id,from_config_id)`, 1 row, every count delta 0, liveness true).
+- **E3:** API `6839d31b317318` updated 21:18:43Z: `/health`, community, `/epochs/2` (one amendment), contributions list, a contribution, `/link` all 200; `telegram.mjs` PASS; `api listening on :8080` 21:18:47Z, no new error.
+- **E4:** worker `817400c9901de8` updated 21:19:31Z: `reward-recovery` at 21:20:19Z and 21:25:02Z, all counters 0, no error; fingerprint at cutoff C identical to the baseline.
+- **E5:** Cisco ran `scratchpad/run/set-jev-secrets.mjs` (reads the key from his shell's environment, `fly secrets import` through stdin; the key was never on a command line or in the chat) at about 21:36Z: `TYPESAFE_API_KEY` and `JEV_SCORING=on` deployed, both machines restarted on `jev-e5f864b`, `/health` 200, worker booted 21:37:11Z with no `scoring:` error, `reward-recovery` at 21:40:13Z all counters 0.
+- **Live now:** both machines `jev-e5f864b`, Neon journal 18 (`0017`), Jev enabled but used by no epoch: epoch 2 still scores with `reward-eval/2` on Claude Haiku 5.5 until an amendment to `reward-jev/1` takes effect.
+- **Pending:** E6 (Cisco posts the announcement with T2; suggested 22:15 UTC or later, at least 20 minutes after the post), E7 (fingerprint again at cutoff C, then `amend-epoch.ts --plan` and the record from `C:/hy-jev-e5f864b/apps/api`, before T2; the plan must show `reward-eval/2` → `reward-jev/1` with template hash `c6fe2dd7811d2468039acf1db8f288a97807ae243354ddb6ab634d8ec3aef267`), the public CHANGELOG entry with T2, and Step 7 acceptance. Rollback before E7: both machines back to `haiku55-328fb45` (`sha256:4218b2a9…`); the migration stays.
 
 ## Announcement (approved by Cisco, 2026-10-07; he publishes, the agent never posts)
 

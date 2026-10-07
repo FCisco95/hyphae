@@ -20,7 +20,9 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 
 **Commits (branch `jev-live`, local):** `99bc61a`, `f2caae3`, `ceb768a`, `07db478`, `9326fd7` (the production path and migration 0017), `17546e4`, `df199bb` (v4 and its calibration), `2473c62`, `03d618d` (the registry entry and receipt wording), `3942112` (security page), `9f1da15`, `f581a27`, `fe48d72`, `1185ad1` (review fixes), `00ce8f4` (Haiku merge), plus the records.
 
-**Next:** my exact yes, then the push, migration 0017, the new image, the key, the announcement, and the amendment, one step at a time, before Oct 8 12:00 UTC.
+**Release, from my yes at about 21:03 UTC:** pushed `e5f864b` (CI green), built image `jev-e5f864b`, applied migration `0017` (nothing else changed), moved the API and the worker to the new image with every check passing and epoch 2's existing rows unchanged, then set the TypeSafe key and switched Jev on at 21:36 UTC. Jev is on but no epoch uses it yet: epoch 2 keeps scoring with Haiku 5.5 until I announce the switch time and the amendment is recorded.
+
+**Next:** I post the announcement with the switch time; then the amendment is recorded before that time, the changelog gets the exact time, and the first Jev-scored reply is checked.
 
 ## 2026-10-07 (late night) · Raids now run from buttons
 

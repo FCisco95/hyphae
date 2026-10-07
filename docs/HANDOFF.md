@@ -1,48 +1,61 @@
 ---
 date: 2026-10-07
-summary: Hyphae on 2026-10-07 night (Windows, Claude Opus 5.5, Session A merge). Live image haiku55-328fb45 (Claude Haiku 5.5 on reward-eval/2) on API and worker since ~20:01Z. The Jev live scorer release is assembled on local branch jev-live (question set v4 as reward-jev/1, Session B's production path, migration 0017, review fixes, merged with feat/haiku-55 and origin/main); gate green, Codex ACCEPT on 1185ad1 after five medium findings fixed, nothing pushed or deployed. Cisco accepted v4's three known misses and approved the public texts. Next: Cisco's exact yes, then main to jev-live, his push, and the release plan steps before 2026-10-08T12:00Z.
+summary: Hyphae on 2026-10-07 night (Windows, Claude Opus 5.5, Session A). The Jev live scorer release ran E0 to E5 from 21:04Z to 21:40Z - image jev-e5f864b on API and worker, migration 0017 applied (journal 18), JEV_SCORING=on with the TypeSafe key. Jev is enabled but no epoch uses it yet - epoch 2 still scores reward-eval/2 on Claude Haiku 5.5. Next - Cisco posts the announcement with T2, then the agent records the amendment to reward-jev/1 before T2 (E7) and runs live acceptance.
 ---
 
 # Hyphae handoff
 
 ## Metadata
 
-Last Updated: 2026-10-07T20:54Z (Windows)
-Project: Hyphae (Colosseum entry, Organic/MYCEL). Scope: live testing in epoch 2, the Jev live scorer release, the Oct 8 to 9 first-payout sitting.
-Updated By: Claude Opus 5.5 (`claude-opus-5-5`), Session A (questions, merge, review fixes)
-Snapshot: [docs/handoffs/2026-10-07-jev-live-merged.md](handoffs/2026-10-07-jev-live-merged.md). Earlier: [raid buttons live](handoffs/2026-10-07-raid-buttons-live.md), [Jev plumbing](handoffs/2026-10-07-jev-plumbing.md), [pilot amendment live](handoffs/2026-10-07-pilot-amendment-live.md). Where they differ, this file wins.
+Last Updated: 2026-10-07T21:45Z (Windows)
+Project: Hyphae (Colosseum entry, Organic/MYCEL). Scope: the Jev live scorer release (paused between E5 and E6), epoch 2, the Oct 8 to 9 first-payout sitting.
+Updated By: Claude Opus 5.5 (`claude-opus-5-5`), Session A (questions, merge, review fixes, release E0 to E5)
+Snapshot: [docs/handoffs/2026-10-07-jev-release-paused-at-e6.md](handoffs/2026-10-07-jev-release-paused-at-e6.md). Earlier tonight: [jev-live merged](handoffs/2026-10-07-jev-live-merged.md), [raid buttons live](handoffs/2026-10-07-raid-buttons-live.md), [Jev plumbing](handoffs/2026-10-07-jev-plumbing.md). Where they differ, this file wins.
 
 ## TL;DR
 
-- **Live now:** API `6839d31b317318` and worker `817400c9901de8` on `haiku55-328fb45` = `sha256:4218b2a901b93db1bf1cad550c4fd219a817552e92e45fc70c669c6f9e097d12` since ~20:01Z (source `feat/haiku-55` = `ed32b4f` + `328fb45`; Claude Haiku 5.5 scores `reward-eval/2`; Codex ACCEPT). `328fb45` is not on `origin/main` yet. Neon journal at `0016`.
-- **Jev release, ready to review, not released:** local branch `jev-live` (worktree `hyphae-jev-reward`). It holds question set v4 registered as `reward-jev/1`, Session B's production path (request committed before the call, no retries, 30 s timeout, reconciliation), migration `0017` (amendments chain), the member-readable receipt, the security page naming TypeSafe, five review fixes (Codex ACCEPT on `1185ad1`), and merges of `origin/main` and `feat/haiku-55` (Haiku 5.5 stays the Anthropic model: effort, contributions admitted before T2, and the fallback with Jev off). Plan: [jev-live release plan](demo/2026-10-07-jev-live-release-plan.md). Review: [record](reviews/2026-10-07-jev-live.md).
-- **Calibration:** 28 reward cases 84 of 84 right; 64-reply holdout labeled blind by Cisco, three known misses he accepted ([report](evals/jev-v4-calibration-2026-10-07.md)). About USD 0.0002 per reply.
-- **Epoch 2:** amendment `a75dbfeb` (`reward-eval/2` from 18:00Z) in force. Jev would come in as a second recorded amendment at a time T2 Cisco announces.
-- **Cisco's rulings tonight:** Jev is the target quality scorer; Haiku 5.5 is the live floor, the effort model and the fallback. v4 released with its three known misses. Instructions to the scorer earn 0 (new, announced). The reason, the announcement and the site line are approved (in the plan).
+- **Live now:** API `6839d31b317318` and worker `817400c9901de8` on `jev-e5f864b` = `sha256:b3f5617d804a377e8eaae1c6c67641ffe85390e47d88c162f0723206994236c4` (source `e5f864b` = `origin/main`). Neon journal **18** (`0017_reward_amendment_chain` applied 21:17:57Z). Fly secrets `TYPESAFE_API_KEY` and `JEV_SCORING=on` deployed 21:36Z; worker booted clean, `reward-recovery` all zeros at 21:40Z.
+- **Jev is on but unused.** Epoch 2 still has one amendment (`reward-eval/2` from 18:00Z) and scores with Claude Haiku 5.5. Nothing changes for members until the second amendment, to `reward-jev/1`, is recorded and its time T2 passes.
+- **Paused at E6:** Cisco posts the approved announcement with T2 (suggested 22:15 UTC or later; at least 20 minutes after his post). Then the agent does E7 before T2: fingerprint, `amend-epoch.ts --plan`, the record, checks. Exact steps and every check: [release plan](demo/2026-10-07-jev-live-release-plan.md), sections "Record", "Step 6" and "Step 7".
+- **If Cisco never posts:** nothing is wrong. Jev stays inert; Haiku 5.5 keeps scoring. To undo the release before E7: both machines back to `haiku55-328fb45` (`sha256:4218b2a9…`), optionally `fly secrets unset JEV_SCORING`; the migration stays (the old image runs on it). No deploy after 2026-10-08T12:00Z; no push or deploy 2026-10-08T22:00Z to 2026-10-10T00:00Z.
+- **Reviewed and accepted:** Codex ACCEPT on `1185ad1` after five medium findings ([review record](reviews/2026-10-07-jev-live.md)); calibration with Cisco's accepted misses ([report](evals/jev-v4-calibration-2026-10-07.md)).
 
 ## Current Objective
 
-Jev scores epoch 2 quality live before 2026-10-08T12:00Z, announced and recorded, with Haiku 5.5 as the floor; then the Oct 8 to 9 payout sitting.
+Jev scores epoch 2 quality from an announced T2, recorded publicly, with Haiku 5.5 as the effort model and fallback; then the Oct 8 to 9 payout sitting.
 
 ## Needs Cisco, in order
 
-1. **The exact yes:** "yes, run the Jev live scorer release" (the plan's proposed sentence). Without it by about 2026-10-08T08:00Z, epoch 2 stays on Haiku 5.5 and Jev waits; no deploy after 12:00Z.
-2. **Push:** `! git push origin main` after the agent puts `main` on `jev-live` (plan Step 0.0; the site redeploys with the security page update).
-3. **One `fly secrets` line** (plan Step 4, E5): `TYPESAFE_API_KEY` and `JEV_SCORING=on`, only after the image and migration checks pass.
-4. **Post the announcement** with T2 and give the agent the post URL and T2; then the agent records the amendment.
-5. **Oct 8 sitting** (C14 to C22) with the Ledger and the pot. See [the packet](demo/2026-10-08-first-payout-readiness.md).
+1. **Post the announcement** (Hyphae Lab and X) with T2; the approved text is in the release plan's "Announcement" section. Then send the agent the X post URL and T2.
+2. **Push the release records:** `! git -C <hyphae repo> push origin main` (docs only; the site redeploys).
+3. **Oct 8 sitting** (C14 to C22) with the Ledger and the pot. See [the packet](demo/2026-10-08-first-payout-readiness.md).
+
+## Next agent steps (after Cisco's T2)
+
+1. Fingerprint at cutoff C = 2026-10-07T20:55:00Z must still equal the baseline (5/5/5, `abb8e77f`, `6ed1a09e`, `aafe8160`): `scripts/rollout/decisions-digest.mjs` from `packages/db` with the repo `.env`.
+2. From the exact-source worktree `C:/hy-jev-e5f864b/apps/api` (detached at `e5f864b`, installed): `amend-epoch.ts <mint> --epoch 2 --prompt reward-jev/1 --effective-at <T2> --actor "Cisco (founder)" --reason "<approved reason>" --plan`, check it names `reward-eval/2` → `reward-jev/1` with template hash `c6fe2dd7811d2468039acf1db8f288a97807ae243354ddb6ab634d8ec3aef267`, then the same without `--plan`, before T2.
+3. Checks after the record: `/epochs/2` shows two amendments in order; fingerprint at cutoff T2 equals the baseline for rows before T2.
+4. CHANGELOG entry with the exact T2 (`docs/rubrics/CHANGELOG.md`); release record and build log; Cisco pushes.
+5. Step 7 acceptance after T2: the first reply admitted after T2 shows `prompt_version` `reward-jev/1`, `model.model` `typesafe:jev-1.13.0`, cost about 200 µUSD, explanation starting "Scored 0 because" or "Passed every check".
+
+## Suggested skills
+
+- `superpowers:verification-before-completion` before claiming E7 or Step 7 done.
+- `superpowers:systematic-debugging` if the worker logs a `scoring:` error, a dispatch parks in reconciliation, or `amend-epoch.ts` refuses.
+- `handoff-memory:handoff-memory` at the start of the next session (the SessionStart hook loads this file).
+- `typesafe:typesafe-ai` only if Jev answers look wrong in production.
 
 ## Current State
 
 | Area | State |
 |---|---|
-| API and worker | Both `started` on `sha256:4218b2a901b93db1bf1cad550c4fd219a817552e92e45fc70c669c6f9e097d12` (tag `haiku55-328fb45`, since ~20:01Z). Chain: earn-94ce60e, amend-b265204, raids-777a5b8, buttons-ed32b4f (`sha256:fa0b2c95…`), haiku55-328fb45. No migration since 0016. |
-| Jev release | Branch `jev-live`, local only, see TL;DR. Final gate on `1185ad1`: tests (API 1037), typecheck, lint, drizzle check all 0; `test:pg` 74 of 74 (five raid-alert and private-journey tests fail only under heavy machine load; recorded in the review). Live check through the production client: 0 errors, slowest call 607 ms. |
-| Database | Neon journal 17 rows, ending `0016_reward_config_amendments`. `members` has 0015's nullable wallet shape. One row in `reward_config_amendments`. |
+| API and worker | Both `started` on `sha256:b3f5617d804a377e8eaae1c6c67641ffe85390e47d88c162f0723206994236c4` (tag `jev-e5f864b`, API since 21:18:43Z, worker since 21:19:31Z, restarted 21:36Z for the secrets). Chain: earn-94ce60e, amend-b265204, raids-777a5b8, buttons-ed32b4f, haiku55-328fb45 (`sha256:4218b2a9…`, the rollback target before E7), jev-e5f864b. |
+| Database | Neon journal 18: `0017_reward_amendment_chain` (unique index `reward_config_amendments_epoch_from`), one amendment row. Never roll it back. |
+| Jev | `JEV_SCORING=on`, key set, registry `reward-jev/1` (template hash `c6fe2dd7…`). No epoch pins it yet. |
 | Epoch 2 | Open until 2026-10-09T00:00Z, base config `df5be064…` (rubric 1.2.0, `reward-eval/1`), amended to config `d265af98…` (`reward-eval/2`, digest `9f4bfac8182a`, the same config the pending epoch 3 proposal pins) from 18:00Z. 4 contributions, 4 decisions as of 17:29Z. History from before the release byte-identical (`scripts/rollout/decisions-digest.mjs` with cutoff 15:22Z: intakes 3 `79ed17cc`, decisions 3 `5897c505`, dispatches 3 `6af848b1`). |
 | Epoch 3 | Not created. Materializes after Oct 9 00:00Z and must activate the pending `reward-eval/2` proposal `2ce6085a…`. |
-| Scoring model | `anthropic:claude-sonnet-5`, the code default in `apps/api/src/env.ts` (no `SCORING_MODEL` set on Fly). No effort or thinking setting is sent, so the API defaults apply. The model is **not pinned** in the epoch config; each decision records it. `apps/api/src/scoring/provider.ts` prices Sonnet 5 at $3/$15 per million tokens; Anthropic's current list (claude-api skill, cached 2026-09-25) is $2/$10 for both Sonnet 5 and Sonnet 5.5, so recorded costs read about 1.5x high. |
-| Security page | States the pilot amendment power, "Used once, on 2026-10-07", with evidence (`apps/web/lib/trust.ts`, `docs/SECURITY.md`; `trust.test.ts` holds them identical). Live after the push. |
+| Scoring model | Anthropic default `anthropic:claude-haiku-5-5` (code default in `apps/api/src/env.ts`, no `SCORING_MODEL` on Fly) for `reward-eval/2` quality and every effort judgment; Jev `reward-jev/1` for quality only once an epoch pins it. |
+| Security page | Pushed 21:10Z (the Vercel redeploy was not checked): names TypeSafe beside Anthropic as receiving contributions (only for an epoch that pins Jev), describes the amendment chain, "First used on 2026-10-07", and lists the v4 calibration (`apps/web/lib/trust.ts`, `docs/SECURITY.md`). |
 | Records | [CHANGELOG](rubrics/CHANGELOG.md) entry, [design and rulings](handoffs/2026-10-07-epoch2-pilot-amendment.md), [Codex review](reviews/2026-10-07-pilot-amendment.md) (ACCEPT), [release B plan and record](demo/2026-10-07-pilot-amendment-release-plan.md), [release A record](demo/2026-10-07-earn-first-release-plan.md), [BUILDLOG](BUILDLOG.md). |
 
 ## Recent Changes
