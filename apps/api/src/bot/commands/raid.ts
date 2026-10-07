@@ -1,14 +1,53 @@
 import { RubricSchema } from "@hyphae/core";
-import { communities } from "@hyphae/db";
+import { communities, type tasks } from "@hyphae/db";
 import { eq } from "drizzle-orm";
-import type { CommandContext, Context } from "grammy";
+import { type CommandContext, type Context, InlineKeyboard } from "grammy";
 import { db } from "../../db.js";
 import { alertLink, MAX_OPEN_RAIDS, openRaid } from "../../raid-alerts/alerts.js";
-import { fetchPost } from "../../x/oembed.js";
+import { fetchPost, parsePostUrl, type XPost } from "../../x/oembed.js";
 import { raidKeyboard } from "../raid-keyboard.js";
 import { reply } from "../reply.js";
 import { clipMessageText } from "../text.js";
 import { parseRaidArgs } from "./args.js";
+
+export const RAID_HOUR_CHOICES = [6, 12, 24, 48] as const;
+
+// callback_data is capped at 64 bytes, so the picker carries the post's handle and id, not its URL.
+export const hoursKeyboard = (handle: string, id: string) =>
+  RAID_HOUR_CHOICES.reduce(
+    (kb, h) => kb.text(`${h}h`, `rn:${h}:${handle}:${id}`),
+    new InlineKeyboard(),
+  );
+
+export async function announceRaid(
+  ctx: Context,
+  community: typeof communities.$inferSelect,
+  post: XPost,
+  task: typeof tasks.$inferSelect,
+  hours: number,
+) {
+  const rubric = RubricSchema.parse(community.rubric);
+  return ctx.reply(
+    [
+      `Raid open for ${hours}h — @${post.handle}:`,
+      `"${clipMessageText(post.text, 200)}"`,
+      post.url,
+      task.brief ? `Brief: ${task.brief}` : "",
+      `Raid ID: ${task.id}`,
+      `Tap Reply on X or Quote on X, post it, then tap Submit below and paste your post's link. One of each per member. Full credit for the first ${rubric.timing.fullUntil / 60}h, decaying to zero at ${hours}h.`,
+      `Optional private alerts for future raids: ${alertLink(ctx.me.username, community.id)}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    {
+      reply_markup: raidKeyboard(ctx.me.username, task.id, post.url),
+      link_preview_options: { is_disabled: true },
+    },
+  );
+}
+
+export const LIMIT_REACHED = (open: { id: string }[]) =>
+  `${MAX_OPEN_RAIDS} raids are already open (${open.map((t) => t.id).join(", ")}). Close one before opening another. /raids lists them with a Close button.`;
 
 export async function raid(ctx: CommandContext<Context>) {
   const from = ctx.from;
@@ -21,7 +60,19 @@ export async function raid(ctx: CommandContext<Context>) {
   const rubric = RubricSchema.parse(community.rubric);
   const args = parseRaidArgs(ctx.match, rubric.timing.zeroAt);
   if (!args)
-    return reply(ctx, `Usage: /raid <post url> [hours=${rubric.timing.zeroAt / 60}] [brief…]`);
+    return reply(
+      ctx,
+      `Usage: /raid <post url> [hours=${rubric.timing.zeroAt / 60}] [brief…]. Send just the link to pick the length with buttons.`,
+    );
+
+  // A bare link asks for the length instead of silently running the default.
+  const bare = ctx.match.trim().split(/\s+/).length === 1;
+  const parsed = parsePostUrl(args.url);
+  if (bare && parsed)
+    return ctx.reply("How long should this raid run?", {
+      reply_markup: hoursKeyboard(parsed.handle, parsed.id),
+      reply_parameters: { message_id: ctx.msg.message_id },
+    });
 
   const post = await fetchPost(args.url);
   if (!post) return reply(ctx, "Could not read that post. Is it public?");
@@ -37,27 +88,6 @@ export async function raid(ctx: CommandContext<Context>) {
   if (opened.status === "unauthorized") return reply(ctx, "Admins only in the registered group.");
   if (opened.status === "existing")
     return reply(ctx, "That raid was already opened. No extra alerts were queued.");
-  if (opened.status === "limit_reached")
-    return reply(
-      ctx,
-      `${MAX_OPEN_RAIDS} raids are already open (${opened.open.map((t) => t.id).join(", ")}). Close one before opening another.`,
-    );
-  const fullHours = rubric.timing.fullUntil / 60;
-  return ctx.reply(
-    [
-      `Raid open for ${args.hours}h — @${post.handle}:`,
-      `"${clipMessageText(post.text, 200)}"`,
-      post.url,
-      args.brief ? `Brief: ${args.brief}` : "",
-      `Raid ID: ${opened.task.id}`,
-      `Tap Reply on X or Quote on X, post it, then tap Submit below and paste your post's link. One of each per member. Full credit for the first ${fullHours}h, decaying to zero at ${args.hours}h.`,
-      `Optional private alerts for future raids: ${alertLink(ctx.me.username, community.id)}`,
-    ]
-      .filter(Boolean)
-      .join("\n"),
-    {
-      reply_markup: raidKeyboard(ctx.me.username, opened.task.id, post.url),
-      link_preview_options: { is_disabled: true },
-    },
-  );
+  if (opened.status === "limit_reached") return reply(ctx, LIMIT_REACHED(opened.open));
+  return announceRaid(ctx, community, post, opened.task, args.hours);
 }

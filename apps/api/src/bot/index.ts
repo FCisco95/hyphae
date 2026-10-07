@@ -22,6 +22,7 @@ import {
 } from "./commands/private-submit.js";
 import { raid } from "./commands/raid.js";
 import { cancelRaid, closeRaid } from "./commands/raid-lifecycle.js";
+import { closeRaidButton, pickRaidHours, raidsMenu } from "./commands/raid-menu.js";
 import { issueCommand, receiptCommand, refreshReceipt } from "./commands/receipts.js";
 import { rulesStart, rulesTest } from "./commands/rules.js";
 import { setupInGroup, setupLink, setupRefresh, setupStart } from "./commands/setup.js";
@@ -69,6 +70,9 @@ commands.callbackQuery(/^receipt_/, (ctx) => refreshReceipt(db, ctx, env.PUBLIC_
 commands.callbackQuery(/^raid_(reply|quote)_/, (ctx) => submissionButton(db, ctx));
 commands.command("effort", effort);
 commands.command("raid", raid);
+commands.command("raids", raidsMenu);
+commands.callbackQuery(/^rn:/, pickRaidHours);
+commands.callbackQuery(/^cr:/, closeRaidButton);
 commands.command("close_raid", closeRaid);
 commands.command("cancel_raid", cancelRaid);
 commands.command("ops", (ctx) => operator(db, ctx));
