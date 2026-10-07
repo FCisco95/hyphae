@@ -2,10 +2,10 @@ import { RubricSchema } from "@hyphae/core";
 import { communities } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import type { CommandContext, Context } from "grammy";
-import { InlineKeyboard } from "grammy";
 import { db } from "../../db.js";
 import { alertLink, openRaid } from "../../raid-alerts/alerts.js";
 import { fetchPost } from "../../x/oembed.js";
+import { raidKeyboard } from "../raid-keyboard.js";
 import { reply } from "../reply.js";
 import { clipMessageText } from "../text.js";
 import { parseRaidArgs } from "./args.js";
@@ -50,22 +50,13 @@ export async function raid(ctx: CommandContext<Context>) {
       post.url,
       args.brief ? `Brief: ${args.brief}` : "",
       `Raid ID: ${opened.task.id}`,
-      `Reply or quote on X, then open a private submission below. One of each per member. Full credit for the first ${fullHours}h, decaying to zero at ${args.hours}h.`,
+      `Tap Reply on X or Quote on X, post it, then tap Submit below and paste your post's link. One of each per member. Full credit for the first ${fullHours}h, decaying to zero at ${args.hours}h.`,
       `Optional private alerts for future raids: ${alertLink(ctx.me.username, community.id)}`,
     ]
       .filter(Boolean)
       .join("\n"),
     {
-      reply_markup: new InlineKeyboard()
-        .url(
-          "Submit my reply privately",
-          `https://t.me/${ctx.me.username}?start=reply_${opened.task.id}`,
-        )
-        .row()
-        .url(
-          "Submit my quote privately",
-          `https://t.me/${ctx.me.username}?start=quote_${opened.task.id}`,
-        ),
+      reply_markup: raidKeyboard(ctx.me.username, opened.task.id, post.url),
       link_preview_options: { is_disabled: true },
     },
   );

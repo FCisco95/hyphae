@@ -2,6 +2,7 @@ import { setTimeout } from "node:timers/promises";
 import type { Db } from "@hyphae/db";
 import { type Api, InlineKeyboard } from "grammy";
 import { isMemberStatus } from "../bot/membership.js";
+import { engageLinks } from "../x/intents.js";
 import { claimRaidAlert, deliverRaidAlert } from "./alerts.js";
 
 // One message per second per API process. Outbox claims serialize concurrent processes;
@@ -28,8 +29,8 @@ export function startRaidNotifier(db: Db, api: Api) {
                 text,
                 {
                   link_preview_options: { is_disabled: true },
-                  reply_markup: new InlineKeyboard()
-                    .url("Engage on X", target)
+                  reply_markup: engageLinks(target)
+                    .reduce((kb, link) => kb.url(link.label, link.url), new InlineKeyboard())
                     .row()
                     .text("Submit my reply", `raid_reply_${taskId}`)
                     .text("Submit my quote", `raid_quote_${taskId}`)

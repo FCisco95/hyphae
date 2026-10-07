@@ -339,7 +339,7 @@ export async function deliverRaidAlert(db: Db, id: string, deps: AlertSender) {
         ? `Brief: ${clipMessageText(task.brief, 1000)}`
         : "Reply or quote with your own view.",
       `Closes ${task.closesAt.toISOString()} (UTC).`,
-      "Engage on X, then tap Submit my reply or Submit my quote below. Your private submission is bound to this exact raid; /submit never chooses a raid for you.",
+      "Tap Reply on X or Quote on X and post it, then tap Submit my reply or Submit my quote below. Your private submission is bound to this exact raid; /submit never chooses a raid for you.",
       "A raid window does not extend the reward epoch’s intake deadline. Check /help brief in the group.",
       "Points do not promise payment. You can stop this community's alerts below.",
     ].join("\n\n");

@@ -54,7 +54,13 @@ describe("API notifier runner with intercepted Telegram transport", () => {
     const task = (await t.db.select().from(tasks))[0];
     expect(message?.reply_markup).toEqual({
       inline_keyboard: [
-        [{ text: "Engage on X", url: "https://x.com/owner/status/1" }],
+        [
+          { text: "Reply on X", url: "https://x.com/intent/tweet?in_reply_to=1" },
+          {
+            text: "Quote on X",
+            url: "https://x.com/intent/tweet?url=https%3A%2F%2Fx.com%2Fowner%2Fstatus%2F1",
+          },
+        ],
         [
           { text: "Submit my reply", callback_data: `raid_reply_${task?.id}` },
           { text: "Submit my quote", callback_data: `raid_quote_${task?.id}` },
