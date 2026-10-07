@@ -3,6 +3,7 @@
 // Built through the reward functions production uses, with a fake model, like the audit demo.
 // The publish tests and the devnet run use it; it reproduces the seeded_ready_epoch vector.
 import { randomBytes, randomUUID } from "node:crypto";
+import { promptTemplateHash } from "@hyphae/core";
 import {
   communities,
   type Db,
@@ -13,6 +14,7 @@ import {
 } from "@hyphae/db";
 import { getAddressDecoder } from "@solana/kit";
 import { fakeModel, seedSignedLink } from "../http/demo-seed.js";
+import { amendEpochPrompt } from "../rewards/amendment.js";
 import { closeEpoch } from "../rewards/close.js";
 import {
   bootstrapRewardEpochs,
@@ -57,6 +59,9 @@ export async function seedReadyEpoch(
     chainAddress?: string | null;
     // false creates pre-B6 rows for migration/refusal tests.
     storeCommitments?: boolean;
+    // Pins reward-eval/1 and amends the epoch to reward-eval/2 from minute 25, so the floor and
+    // unsigned contributions are judged under the amendment.
+    amended?: boolean;
   },
 ): Promise<ReadySeed> {
   const t0 = new Date(Math.floor((opts.now.getTime() - 8 * DAY) / 1000) * 1000);
@@ -131,7 +136,15 @@ export async function seedReadyEpoch(
     db,
     {
       communityId,
-      payload: buildRewardConfigPayload(rubric),
+      payload: opts.amended
+        ? {
+            ...buildRewardConfigPayload(rubric),
+            scoring: {
+              promptVersion: "reward-eval/1",
+              promptTemplateHash: promptTemplateHash("reward-eval/1") as string,
+            },
+          }
+        : buildRewardConfigPayload(rubric),
       opensAt: t0,
       proposedBy: "script:ready-seed",
     },
@@ -190,6 +203,20 @@ export async function seedReadyEpoch(
   if (nominated.status !== "nominated") throw new Error(`ready: nominate ${nominated.status}`);
   await evaluate({ nominationId: nominated.nomination.id }, 11 * MIN, 85);
   await evaluate({ contributionId: await admit("ordinary", 20 * MIN) }, 21 * MIN, 85);
+  if (opts.amended) {
+    await amendEpochPrompt(
+      db,
+      {
+        communityId,
+        epochIndex: 1,
+        promptVersion: "reward-eval/2",
+        effectiveAt: new Date(t0.getTime() + 25 * MIN),
+        actor: "script:ready-seed",
+        reason: "Pilot testing phase: scoring is less strict.",
+      },
+      { clock: at(22 * MIN) },
+    );
+  }
   await evaluate({ contributionId: await admit("floor", 30 * MIN) }, 31 * MIN, 70);
   await evaluate({ contributionId: await admit("unsigned", 40 * MIN) }, 41 * MIN, 60);
 

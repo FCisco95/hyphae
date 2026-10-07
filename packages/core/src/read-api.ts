@@ -45,6 +45,11 @@ function readApiSchemas(strict: boolean) {
   const decimal = z.string().regex(/^(0|[1-9]\d*)(\.\d*[1-9])?$/);
   const uuid = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
   const hex64 = z.string().regex(/^[0-9a-f]{64}$/);
+  const promptPin = obj({
+    config_id: uuid,
+    prompt_version: z.string().min(1),
+    prompt_template_hash: hex64,
+  });
   const count = z.number().int().nonnegative();
   const quality = z.number().int().min(0).max(100);
   const bps = z.number().int().nonnegative();
@@ -290,7 +295,21 @@ function readApiSchemas(strict: boolean) {
       payment: unavailable,
       // Required of this api; optional for a consumer reading an older one.
       settlement: settlement.optional(),
-    }).refine((e) => !strict || e.settlement !== undefined),
+      // Pilot amendments of this epoch's scoring prompt: contributions admitted from effective_at
+      // on pin `to`. Required of this api; optional for a consumer reading an older one.
+      amendments: z
+        .array(
+          obj({
+            effective_at: iso,
+            recorded_at: iso,
+            actor: z.string().min(1),
+            reason: z.string().min(1),
+            from: promptPin,
+            to: promptPin,
+          }),
+        )
+        .optional(),
+    }).refine((e) => !strict || (e.settlement !== undefined && e.amendments !== undefined)),
     contributions: obj({
       community: obj({ mint: z.string().min(1) }),
       epoch: obj({ index: count, closed: z.boolean(), final: z.boolean() }),
@@ -337,9 +356,14 @@ function readApiSchemas(strict: boolean) {
       reentered_as: uuid.nullable(),
       nomination: obj({ kind: z.enum(["new_work", "upgrade"]), state: z.string() }).nullable(),
       revisions: z.array(revision),
+      // The epoch amendment this contribution was admitted under, if any. Required of this api.
+      amendment: obj({ effective_at: iso, prompt_version: z.string().min(1) })
+        .nullable()
+        .optional(),
     })
       .refine(walletRule)
-      .refine(rowRule),
+      .refine(rowRule)
+      .refine((c) => !strict || c.amendment !== undefined),
     // One wallet's leaf in a published epoch, with what the claim page needs to build the claim.
     claim: obj({
       ...leafShape,

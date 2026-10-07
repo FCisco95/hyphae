@@ -158,6 +158,51 @@ describe("tagged hashes (B2)", () => {
   });
 });
 
+const auditFixture = (): EpochAuditManifest => ({
+  network: member.network,
+  program_id: member.program_id,
+  community_id: member.community_id,
+  mint: member.mint,
+  epoch,
+  config_hash: H(1),
+  snapshot: { closed_at: TS, cutoff_assumption: "closes_at is exclusive" },
+  entries: member.entries.map((e) => ({ ...e, member_id: ID(3) })),
+  members: [
+    {
+      member_id: ID(3),
+      manifest_hash: H(11),
+      wallet: WALLET,
+      point_units: "8500000000",
+      whole_points: "85",
+      amount_lamports: "10",
+    },
+    {
+      member_id: ID(8),
+      manifest_hash: H(12),
+      wallet: null,
+      point_units: "0",
+      whole_points: "0",
+      amount_lamports: "0",
+    },
+  ],
+  settlement: {
+    gross_lamports: "100",
+    fee_bps: "300",
+    fee_lamports: "3",
+    fee_recipient: WALLET,
+    net_lamports: "97",
+    cap_bps: "2500",
+    cap_lamports: "24",
+    payable_members: "1",
+    allocated_lamports: "10",
+    cap_remainder_lamports: "0",
+    dust_lamports: "87",
+    rules_test_id: "mycel-rules-1",
+    hold: { mint: member.mint, threshold_raw: "100000000000" },
+  },
+  root: H(13),
+});
+
 describe("payload validation", () => {
   it("hashes evidence independently of key order", () => {
     const reordered = Object.fromEntries(Object.entries(evidence).reverse()) as EvidencePayload;
@@ -258,50 +303,7 @@ describe("payload validation", () => {
   });
 
   it("requires audit members sorted by member id", () => {
-    const audit: EpochAuditManifest = {
-      network: member.network,
-      program_id: member.program_id,
-      community_id: member.community_id,
-      mint: member.mint,
-      epoch,
-      config_hash: H(1),
-      snapshot: { closed_at: TS, cutoff_assumption: "closes_at is exclusive" },
-      entries: member.entries.map((e) => ({ ...e, member_id: ID(3) })),
-      members: [
-        {
-          member_id: ID(3),
-          manifest_hash: H(11),
-          wallet: WALLET,
-          point_units: "8500000000",
-          whole_points: "85",
-          amount_lamports: "10",
-        },
-        {
-          member_id: ID(8),
-          manifest_hash: H(12),
-          wallet: null,
-          point_units: "0",
-          whole_points: "0",
-          amount_lamports: "0",
-        },
-      ],
-      settlement: {
-        gross_lamports: "100",
-        fee_bps: "300",
-        fee_lamports: "3",
-        fee_recipient: WALLET,
-        net_lamports: "97",
-        cap_bps: "2500",
-        cap_lamports: "24",
-        payable_members: "1",
-        allocated_lamports: "10",
-        cap_remainder_lamports: "0",
-        dust_lamports: "87",
-        rules_test_id: "mycel-rules-1",
-        hold: { mint: member.mint, threshold_raw: "100000000000" },
-      },
-      root: H(13),
-    };
+    const audit = auditFixture();
     expect(epochAuditHash(audit)).toMatch(/^[0-9a-f]{64}$/);
     expect(() =>
       epochAuditHash({ ...audit, settlement: { ...audit.settlement, dust_lamports: "86" } }),
@@ -318,5 +320,49 @@ describe("payload validation", () => {
     expect(() => epochAuditHash({ ...audit, members: [...audit.members].reverse() })).toThrow(
       /sorted/,
     );
+  });
+});
+
+describe("pilot amendments in the epoch audit manifest", () => {
+  const amendment = {
+    effective_at: "2026-10-07T18:00:00.000000Z",
+    recorded_at: "2026-10-07T16:30:00.000000Z",
+    actor: "Cisco (founder)",
+    reason: "Pilot testing phase: scoring is less strict while members learn the rules.",
+    from: { config_hash: H(1), prompt_version: "reward-eval/1", prompt_template_hash: H(21) },
+    to: { config_hash: H(22), prompt_version: "reward-eval/2", prompt_template_hash: H(23) },
+  };
+
+  it("keeps the bytes of a manifest without an amendment and commits one when present", () => {
+    const plain = auditFixture();
+    expect(c14n(plain)).not.toContain("amendments");
+    const amended = epochAuditHash({ ...plain, amendments: [amendment] });
+    expect(amended).not.toBe(epochAuditHash(plain));
+    expect(epochAuditHash({ ...plain, amendments: [{ ...amendment, reason: "other" }] })).not.toBe(
+      amended,
+    );
+  });
+
+  it("refuses an empty list, a retroactive entry, or one that does not start from the epoch's config", () => {
+    const plain = auditFixture();
+    expect(() => epochAuditHash({ ...plain, amendments: [] })).toThrow();
+    expect(() =>
+      epochAuditHash({
+        ...plain,
+        amendments: [{ ...amendment, effective_at: amendment.recorded_at }],
+      }),
+    ).toThrow(/after/);
+    expect(() =>
+      epochAuditHash({
+        ...plain,
+        amendments: [{ ...amendment, from: { ...amendment.from, config_hash: H(9) } }],
+      }),
+    ).toThrow(/config/);
+    expect(() =>
+      epochAuditHash({
+        ...plain,
+        amendments: [{ ...amendment, to: { ...amendment.to, config_hash: H(1) } }],
+      }),
+    ).toThrow(/config/);
   });
 });

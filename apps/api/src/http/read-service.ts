@@ -49,6 +49,7 @@ import {
 } from "drizzle-orm";
 import { loadIntent } from "../payout/intent.js";
 import { isoUs, readOnly } from "../pg.js";
+import { amendmentsOf } from "../rewards/amendment.js";
 import { RewardConfigPayload } from "../rewards/config.js";
 import { correctionRecord, effortCriteriaRecord } from "../rewards/decisions.js";
 import { selectEffective } from "../rewards/effective.js";
@@ -532,6 +533,24 @@ export async function readEpoch(
         slot_limit: payload.effort.slotLimit,
         payload: config.payload as Record<string, unknown>,
       },
+      amendments: (await amendmentsOf(tx, epoch.row.id)).map(
+        ({ row: a, effectiveAtUs, recordedAtUs }) => ({
+          effective_at: effectiveAtUs,
+          recorded_at: recordedAtUs,
+          actor: a.actor,
+          reason: a.reason,
+          from: {
+            config_id: a.fromConfigId,
+            prompt_version: a.fromPromptVersion,
+            prompt_template_hash: a.fromPromptTemplateHash,
+          },
+          to: {
+            config_id: a.toConfigId,
+            prompt_version: a.toPromptVersion,
+            prompt_template_hash: a.toPromptTemplateHash,
+          },
+        }),
+      ),
       counts: {
         contributions: entries.length,
         members: new Set(entries.map((e) => e.memberId)).size,
@@ -762,6 +781,7 @@ export async function readContribution(
       .select({
         id: rewardIntakes.id,
         epochId: rewardIntakes.epochId,
+        configId: rewardIntakes.configId,
         communityId: rewardIntakes.communityId,
         memberId: rewardIntakes.memberId,
         capture: rewardIntakes.capture,
@@ -891,6 +911,9 @@ export async function readContribution(
       capturedAt: string;
       limitations: string[];
     };
+    const admittedUnder = (await amendmentsOf(tx, intake.epochId)).find(
+      (a) => a.row.toConfigId === intake.configId,
+    );
 
     return {
       ...row,
@@ -907,6 +930,12 @@ export async function readContribution(
       reentered_as: await linkedContribution(eq(rewardIntakes.reentryOf, intake.id)),
       nomination: nomination ?? null,
       revisions,
+      amendment: admittedUnder
+        ? {
+            effective_at: admittedUnder.effectiveAtUs,
+            prompt_version: admittedUnder.row.toPromptVersion,
+          }
+        : null,
     };
   });
 }

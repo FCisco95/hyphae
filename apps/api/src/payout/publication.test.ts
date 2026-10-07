@@ -8,12 +8,15 @@ import {
   HYPHAE_PROGRAM_ID,
   leafHash,
   memberEpochHash,
+  promptTemplateHash,
   RubricSchema,
   verifyProof,
 } from "@hyphae/core";
 import {
   communities,
   holdChecks,
+  rewardConfigAmendments,
+  rewardConfigs,
   rewardDecisions,
   rewardIntakes,
   rulesTestPasses,
@@ -164,6 +167,51 @@ describe("publication of a ready epoch", () => {
       observed_at: expect.stringMatching(/\.\d{6}Z$/),
     });
     expect(effort?.settlement.rules_test.passed_at).toMatch(/\.\d{6}Z$/);
+  });
+
+  it("commits the epoch's pilot amendment in the audit manifest, and only when there is one", async () => {
+    const plain = await ready();
+    expect(plain.publication.audit).not.toHaveProperty("amendments");
+
+    const seed = await seedReadyEpoch(t.db, { now: NOW, amended: true });
+    const publication = await buildPublication(
+      t.db,
+      { communityId: seed.communityId, epochId: seed.epochId },
+      { grossLamports: GROSS, ...SETTINGS },
+    );
+    if (publication.status !== "ready") throw new Error(`not ready: ${publication.blockers}`);
+    const [row] = await t.db
+      .select()
+      .from(rewardConfigAmendments)
+      .where(eq(rewardConfigAmendments.epochId, seed.epochId));
+    const [to] = await t.db
+      .select()
+      .from(rewardConfigs)
+      .where(eq(rewardConfigs.id, row?.toConfigId as string));
+    const us = (d: Date | undefined) => d?.toISOString().replace("Z", "000Z");
+    expect(publication.audit.amendments).toEqual([
+      {
+        effective_at: us(row?.effectiveAt),
+        recorded_at: us(row?.recordedAt),
+        actor: "script:ready-seed",
+        reason: "Pilot testing phase: scoring is less strict.",
+        from: {
+          config_hash: publication.audit.config_hash,
+          prompt_version: "reward-eval/1",
+          prompt_template_hash: promptTemplateHash("reward-eval/1"),
+        },
+        to: {
+          config_hash: configHash(to?.payload),
+          prompt_version: "reward-eval/2",
+          prompt_template_hash: promptTemplateHash("reward-eval/2"),
+        },
+      },
+    ]);
+    expect(epochAuditHash(publication.audit)).toBe(publication.auditHash);
+    // The prompt changed which text judged two contributions, not the payout math.
+    expect(publication.allocation.allocatedLamports).toBe(
+      plain.publication.allocation.allocatedLamports,
+    );
   });
 
   it("gives no leaf and no lamports to a signed member who is not payable", async () => {

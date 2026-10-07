@@ -2,6 +2,7 @@ import {
   type Allocation,
   allocate,
   buildTree,
+  configHash,
   type EpochAuditManifest,
   epochAuditHash,
   getProof,
@@ -9,10 +10,12 @@ import {
   type MemberEpochManifest,
   memberEpochHash,
 } from "@hyphae/core";
-import type { Db } from "@hyphae/db";
+import { type Db, rewardConfigs } from "@hyphae/db";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { getAddressEncoder } from "@solana/kit";
+import { inArray } from "drizzle-orm";
 import { readOnly } from "../pg.js";
+import { amendmentsOf } from "../rewards/amendment.js";
 import { storedEpochCommitments } from "./commitment-store.js";
 import { type Blocker, type MemberVerdict, payoutGateIn } from "./gate.js";
 import type { RulesTest } from "./rules-test.js";
@@ -186,6 +189,36 @@ export async function buildPublication(
     const epochIndex = BigInt(gate.epochIndex);
     const { leaves, root } = leavesOf(members, epochIndex);
 
+    const amended = await amendmentsOf(tx, ref.epochId);
+    const configIds = amended.flatMap(({ row }) => [row.fromConfigId, row.toConfigId]);
+    const hashOf = new Map(
+      (configIds.length
+        ? await tx
+            .select({ id: rewardConfigs.id, payload: rewardConfigs.payload })
+            .from(rewardConfigs)
+            .where(inArray(rewardConfigs.id, configIds))
+        : []
+      ).map((c) => [c.id, configHash(c.payload)]),
+    );
+    const pin = (configId: string, version: string, templateHash: string) => ({
+      config_hash: hashOf.get(configId) as string,
+      prompt_version: version,
+      prompt_template_hash: templateHash,
+    });
+    // Present only when the epoch was amended, so an unamended manifest keeps its bytes.
+    const amendments = amended.length
+      ? {
+          amendments: amended.map(({ row, effectiveAtUs, recordedAtUs }) => ({
+            effective_at: effectiveAtUs,
+            recorded_at: recordedAtUs,
+            actor: row.actor,
+            reason: row.reason,
+            from: pin(row.fromConfigId, row.fromPromptVersion, row.fromPromptTemplateHash),
+            to: pin(row.toConfigId, row.toPromptVersion, row.toPromptTemplateHash),
+          })),
+        }
+      : {};
+
     const audit: EpochAuditManifest = {
       ...base,
       snapshot: { closed_at: snapshot.closedAt, cutoff_assumption: snapshot.cutoffAssumption },
@@ -214,6 +247,7 @@ export async function buildPublication(
         hold: { mint: gate.hold.mint, threshold_raw: gate.hold.thresholdRaw.toString() },
       },
       root,
+      ...amendments,
     };
 
     return {

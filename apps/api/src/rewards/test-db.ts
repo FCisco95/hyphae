@@ -95,6 +95,7 @@ export async function seedRewardLane(db: Db, payload = buildRewardConfigPayload(
   const admitOne = async (
     capture: Capture = { source: "x_oembed", capturedAt: T0.toISOString(), limitations: [] },
     memberId = member.id,
+    clock: Clock = later(60_000),
   ) => {
     artifactSeq += 1;
     const result = await admitContribution(
@@ -113,7 +114,7 @@ export async function seedRewardLane(db: Db, payload = buildRewardConfigPayload(
         idempotencyKey: `tg:-1:${artifactSeq}`,
         capture,
       },
-      { clock: later(60_000) },
+      { clock },
     );
     if (result.status !== "admitted") throw new Error(`admit: ${result.status}`);
     return result.intake;

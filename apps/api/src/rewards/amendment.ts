@@ -1,6 +1,7 @@
 import { promptTemplateHash } from "@hyphae/core";
 import { type Db, rewardConfigAmendments, rewardConfigs } from "@hyphae/db";
-import { and, eq, lte } from "drizzle-orm";
+import { and, asc, eq, lte } from "drizzle-orm";
+import { isoUs } from "../pg.js";
 import {
   type Epoch,
   ensureEpochAt,
@@ -108,3 +109,21 @@ export async function admissionConfigId(tx: Db, epoch: Epoch, now: Date): Promis
     );
   return amendment?.toConfigId ?? epoch.rewardConfigId;
 }
+
+export interface AmendmentRecord {
+  row: Amendment;
+  // A3 microsecond times, as the read API and the audit manifest commit them.
+  effectiveAtUs: string;
+  recordedAtUs: string;
+}
+
+export const amendmentsOf = (tx: Db, epochId: string): Promise<AmendmentRecord[]> =>
+  tx
+    .select({
+      row: rewardConfigAmendments,
+      effectiveAtUs: isoUs(rewardConfigAmendments.effectiveAt),
+      recordedAtUs: isoUs(rewardConfigAmendments.recordedAt),
+    })
+    .from(rewardConfigAmendments)
+    .where(eq(rewardConfigAmendments.epochId, epochId))
+    .orderBy(asc(rewardConfigAmendments.effectiveAt));

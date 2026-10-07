@@ -408,6 +408,31 @@ function Pager({
   );
 }
 
+// A pilot amendment changes only which prompt scores contributions admitted from its time on.
+function AmendmentPanel({ epoch }: { epoch: LooseEpochV1 }) {
+  if (!epoch.amendments?.length) return null;
+  return (
+    <Panel title="Pilot amendment">
+      {epoch.amendments.map((a) => (
+        <div key={a.effective_at}>
+          <p>
+            From {utc(a.effective_at)}, contributions admitted in this epoch are scored with{" "}
+            {a.to.prompt_version} instead of {a.from.prompt_version}.
+          </p>
+          <blockquote>{a.reason}</blockquote>
+          <p className="muted">
+            Recorded by {a.actor} on {utc(a.recorded_at)}, before it took effect.
+          </p>
+        </div>
+      ))}
+      <p className="muted">
+        Contributions admitted earlier keep the prompt and scores they had. The rubric, flags, hard
+        zeros, AI caps, the 60-point floor and the payout rules did not change.
+      </p>
+    </Panel>
+  );
+}
+
 export function EpochView({ epoch, list }: { epoch: LooseEpochV1; list: ContributionsV1 }) {
   const base = `/c/${epoch.community.mint}/e/${epoch.index}`;
   const c = epoch.counts;
@@ -450,6 +475,7 @@ export function EpochView({ epoch, list }: { epoch: LooseEpochV1; list: Contribu
           Leaderboard
         </ButtonLink>
       </div>
+      <AmendmentPanel epoch={epoch} />
       <SettlementPanel epoch={epoch} />
       <h2>Contributions</h2>
       {list.contributions.length === 0 ? (
@@ -654,6 +680,12 @@ export function ContributionView({ c }: { c: ContributionV1 }) {
         </p>
       </header>
       <p className="banner">{STATE[c.state]}</p>
+      {c.amendment && (
+        <p className="muted">
+          Scored under this epoch's pilot amendment: {c.amendment.prompt_version}, in effect from{" "}
+          {utc(c.amendment.effective_at)}.
+        </p>
+      )}
       <Panel title="The work">
         <blockquote>{c.text}</blockquote>
         <p className="muted">

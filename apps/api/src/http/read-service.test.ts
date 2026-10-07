@@ -1,13 +1,15 @@
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
-import { ReadApiV1 } from "@hyphae/core";
+import { promptTemplateHash, ReadApiV1 } from "@hyphae/core";
 import { epochs, members, schema } from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { amendEpochPrompt } from "../rewards/amendment.js";
+import { buildRewardConfigPayload } from "../rewards/config.js";
 import { beginDispatch, completeDispatch, runEvaluation } from "../rewards/evaluation.js";
-import { createTestDb, seedRewardLane, T0 } from "../rewards/test-db.js";
+import { createTestDb, later, rubric, seedRewardLane, T0 } from "../rewards/test-db.js";
 import { type AuditDemo, seedAuditDemo } from "./demo-seed.js";
 import {
   readCommunity,
@@ -299,6 +301,71 @@ describe("readLeaderboard ties", () => {
     const next = await readLeaderboard(t.db, lane.community.mint, 1, { offset: 1, limit: 1 }, at);
     expect([first?.entries[0]?.rank, next?.entries[0]?.rank]).toEqual([1, 1]);
     expect(next?.entries[0]?.pending).toBe(1);
+  });
+});
+
+describe("a pilot amendment", () => {
+  const HOUR = 3_600_000;
+  const pin = (version: string) => ({
+    prompt_version: version,
+    prompt_template_hash: promptTemplateHash(version),
+  });
+
+  it("is listed on its epoch, and a contribution admitted under it says so", async () => {
+    const lane = await seedRewardLane(t.db, {
+      ...buildRewardConfigPayload(rubric),
+      scoring: {
+        promptVersion: "reward-eval/1",
+        promptTemplateHash: promptTemplateHash("reward-eval/1") as string,
+      },
+    });
+    const earlier = await lane.admitOne();
+    const amendment = await amendEpochPrompt(
+      t.db,
+      {
+        communityId: lane.community.id,
+        epochIndex: 1,
+        promptVersion: "reward-eval/2",
+        effectiveAt: new Date(T0.getTime() + 2 * HOUR),
+        actor: "Cisco (founder)",
+        reason: "Pilot testing phase: scoring is less strict.",
+      },
+      { clock: later(30 * 60_000) },
+    );
+    const amended = await lane.admitOne(undefined, undefined, later(2 * HOUR + 60_000));
+    const now = new Date(T0.getTime() + 3 * HOUR);
+
+    const e = strict(ReadApiV1.epoch, await readEpoch(t.db, lane.community.mint, 1, now));
+    expect(e.config.prompt_version).toBe("reward-eval/1");
+    expect(e.amendments).toEqual([
+      {
+        effective_at: "2026-10-01T02:00:00.000000Z",
+        recorded_at: "2026-10-01T00:30:00.000000Z",
+        actor: "Cisco (founder)",
+        reason: "Pilot testing phase: scoring is less strict.",
+        from: { config_id: amendment.fromConfigId, ...pin("reward-eval/1") },
+        to: { config_id: amendment.toConfigId, ...pin("reward-eval/2") },
+      },
+    ]);
+
+    const before = strict(
+      ReadApiV1.contribution,
+      await readContribution(t.db, earlier.contributionId, now),
+    );
+    expect(before.amendment).toBeNull();
+    const under = strict(
+      ReadApiV1.contribution,
+      await readContribution(t.db, amended.contributionId, now),
+    );
+    expect(under.amendment).toEqual({
+      effective_at: "2026-10-01T02:00:00.000000Z",
+      prompt_version: "reward-eval/2",
+    });
+  });
+
+  it("an epoch without one lists none", async () => {
+    const e = strict(ReadApiV1.epoch, await readEpoch(t.db, demo.mint, 1, NOW));
+    expect(e.amendments).toEqual([]);
   });
 });
 

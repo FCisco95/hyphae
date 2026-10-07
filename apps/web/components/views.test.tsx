@@ -28,6 +28,7 @@ describe("fixtures", () => {
       f.settledEpoch,
       f.retainedEpoch,
       f.chainDownEpoch,
+      f.amendedEpoch,
     ]) {
       ReadApiV1.epoch.parse(e);
     }
@@ -35,6 +36,7 @@ describe("fixtures", () => {
     ReadApiV1.leaderboard.parse(f.leaderboard);
     ReadApiV1.contribution.parse(f.offTopic);
     ReadApiV1.contribution.parse(f.pendingAtClose);
+    ReadApiV1.contribution.parse(f.amendedContribution);
     ReadApiV1.claim.parse(f.claim);
     ReadApiV1Loose.epoch.parse(f.firstV1Epoch);
   });
@@ -84,6 +86,41 @@ describe("EpochView", () => {
   it("renders a verified wallet shortened and never an unverified address", () => {
     const html = renderToStaticMarkup(<EpochView epoch={f.finalEpoch} list={f.contributions} />);
     expect(html).toContain("MAoR…VhAB");
+  });
+});
+
+describe("a pilot amendment", () => {
+  it("the epoch says when it took effect, which prompts, why, and what did not change", () => {
+    const t = text(<EpochView epoch={f.amendedEpoch} list={f.contributions} />);
+    expect(t).toContain("Pilot amendment");
+    expect(t).toContain(
+      "From 2026-10-07 18:00 UTC, contributions admitted in this epoch are scored with reward-eval/2 instead of reward-eval/1.",
+    );
+    expect(t).toContain(
+      "Pilot testing phase: scoring is less strict while members learn the rules.",
+    );
+    expect(t).toContain(
+      "Recorded by Cisco (founder) on 2026-10-07 16:30 UTC, before it took effect.",
+    );
+    expect(t).toContain(
+      "Contributions admitted earlier keep the prompt and scores they had. The rubric, flags, hard zeros, AI caps, the 60-point floor and the payout rules did not change.",
+    );
+  });
+
+  it("an epoch without one shows nothing about it", () => {
+    expect(text(<EpochView epoch={f.openEpoch} list={f.contributions} />)).not.toContain(
+      "Pilot amendment",
+    );
+    expect(text(<EpochView epoch={f.firstV1Epoch} list={f.contributions} />)).not.toContain(
+      "Pilot amendment",
+    );
+  });
+
+  it("a contribution admitted under it says so", () => {
+    expect(text(<ContributionView c={f.amendedContribution} />)).toContain(
+      "Scored under this epoch's pilot amendment: reward-eval/2, in effect from 2026-10-07 18:00 UTC.",
+    );
+    expect(text(<ContributionView c={f.pendingAtClose} />)).not.toContain("pilot amendment");
   });
 });
 

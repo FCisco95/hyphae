@@ -65,6 +65,7 @@ const baseEpoch: EpochV1 = {
     allocation: { status: "unavailable", reason: "no_settlement" },
     payment: { status: "unavailable", reason: "no_settlement" },
   },
+  amendments: [],
 };
 export const finalEpoch = baseEpoch;
 export const openEpoch: EpochV1 = {
@@ -78,6 +79,28 @@ export const openEpoch: EpochV1 = {
   snapshot: { status: "not_frozen" },
 };
 export const closingEpoch: EpochV1 = { ...openEpoch, status: "closing", closed: true };
+export const AMENDED_AT = "2026-10-07T18:00:00.000000Z";
+export const amendedEpoch: EpochV1 = {
+  ...openEpoch,
+  amendments: [
+    {
+      effective_at: AMENDED_AT,
+      recorded_at: "2026-10-07T16:30:00.000000Z",
+      actor: "Cisco (founder)",
+      reason: "Pilot testing phase: scoring is less strict while members learn the rules.",
+      from: {
+        config_id: id(90),
+        prompt_version: "reward-eval/1",
+        prompt_template_hash: "a".repeat(64),
+      },
+      to: {
+        config_id: id(91),
+        prompt_version: "reward-eval/2",
+        prompt_template_hash: "b".repeat(64),
+      },
+    },
+  ],
+};
 
 export const PROGRAM = "EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E";
 export const PUBLISH_TX = `5${"P".repeat(86)}`;
@@ -156,7 +179,7 @@ const unavailableEpoch = (reason: string): EpochV1 => ({
 export const retainedEpoch = unavailableEpoch("before_first_paid_epoch");
 export const chainDownEpoch = { ...unavailableEpoch("chain_unavailable"), index: 2 };
 // An epoch from an api that predates the settlement field: only the first v1 sections.
-const { settlement: _, ...firstV1 } = baseEpoch;
+const { settlement: _, amendments: _amendments, ...firstV1 } = baseEpoch;
 export const firstV1Epoch: LooseEpochV1 = firstV1;
 
 const epochRef = { index: 1, closes_at: ts(2), closed: true, final: true };
@@ -302,6 +325,7 @@ export const offTopic: ContributionV1 = {
   reentry_of: null,
   reentered_as: null,
   nomination: null,
+  amendment: null,
   revisions: [
     revision({}),
     revision({
@@ -336,7 +360,12 @@ export const pendingAtClose: ContributionV1 = {
   reentry_of: null,
   reentered_as: null,
   nomination: null,
+  amendment: null,
   revisions: [],
+};
+export const amendedContribution: ContributionV1 = {
+  ...pendingAtClose,
+  amendment: { effective_at: AMENDED_AT, prompt_version: "reward-eval/2" },
 };
 
 export const claim: ClaimV1 = {

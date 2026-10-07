@@ -266,6 +266,22 @@ export const MemberEpochManifest = z
   });
 export type MemberEpochManifest = z.infer<typeof MemberEpochManifest>;
 
+const promptPin = z.strictObject({
+  config_hash: hash,
+  prompt_version: z.string().min(1),
+  prompt_template_hash: hash,
+});
+// A pilot amendment of the epoch's scoring prompt. The list is present only when the epoch has
+// one, so a manifest without an amendment keeps the bytes and hash it always had.
+const amendment = z.strictObject({
+  effective_at: timestamp,
+  recorded_at: timestamp,
+  actor: z.string().min(1),
+  reason: z.string().min(1),
+  from: promptPin,
+  to: promptPin,
+});
+
 export const EpochAuditManifest = z
   .strictObject({
     network,
@@ -303,9 +319,19 @@ export const EpochAuditManifest = z
       hold: z.strictObject({ mint: base58, threshold_raw: dec }),
     }),
     root: hash,
+    amendments: z.array(amendment).min(1).optional(),
   })
   .superRefine((a, ctx) => {
     const fail = (message: string) => ctx.addIssue({ code: "custom", message });
+    for (const x of a.amendments ?? []) {
+      if (x.effective_at <= x.recorded_at) fail("an amendment takes effect after it is recorded");
+      if (x.from.config_hash !== a.config_hash || x.to.config_hash === a.config_hash) {
+        fail("an amendment starts from the epoch's config and changes it");
+      }
+    }
+    if (a.amendments && !ascending(a.amendments, (x) => x.effective_at)) {
+      fail("amendments must be sorted by effective time");
+    }
     if (!ascending(a.entries, (e) => e.contribution_id))
       fail("entries must be sorted by contribution id");
     if (!a.entries.every(entryIsSelectedOrReason)) {
