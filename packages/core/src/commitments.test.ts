@@ -365,4 +365,46 @@ describe("pilot amendments in the epoch audit manifest", () => {
       }),
     ).toThrow(/config/);
   });
+
+  describe("a chain of amendments", () => {
+    const second = {
+      ...amendment,
+      effective_at: "2026-10-07T20:00:00.000000Z",
+      recorded_at: "2026-10-07T18:30:00.000000Z",
+      from: { ...amendment.to },
+      to: { config_hash: H(31), prompt_version: "reward-jev/1", prompt_template_hash: H(32) },
+    };
+
+    it("commits two amendments, each starting from the config in force", () => {
+      const plain = auditFixture();
+      const one = epochAuditHash({ ...plain, amendments: [amendment] });
+      const two = epochAuditHash({ ...plain, amendments: [amendment, second] });
+      expect(two).not.toBe(one);
+    });
+
+    it("refuses a second amendment that does not start from the first one's result", () => {
+      const plain = auditFixture();
+      expect(() =>
+        epochAuditHash({
+          ...plain,
+          amendments: [amendment, { ...second, from: { ...second.from, config_hash: H(1) } }],
+        }),
+      ).toThrow(/chain/);
+    });
+
+    it("refuses a second amendment that returns to the epoch's config", () => {
+      const plain = auditFixture();
+      expect(() =>
+        epochAuditHash({
+          ...plain,
+          amendments: [amendment, { ...second, to: { ...second.to, config_hash: H(1) } }],
+        }),
+      ).toThrow(/config/);
+    });
+
+    it("refuses amendments out of order", () => {
+      const plain = auditFixture();
+      expect(() => epochAuditHash({ ...plain, amendments: [second, amendment] })).toThrow(/sorted/);
+    });
+  });
 });

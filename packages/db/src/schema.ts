@@ -485,8 +485,9 @@ export const rewardConfigProposals = pgTable(
   ],
 );
 
-// Pilot amendment of an open epoch's scoring prompt. Insert-only, at most one per epoch, recorded
-// before it takes effect: contributions admitted at or after effective_at pin to_config_id.
+// Pilot amendment of an open epoch's scoring prompt. Insert-only, recorded before it takes effect:
+// contributions admitted at or after effective_at pin to_config_id. Amendments of one epoch form a
+// chain: each starts from the config in force, and a config is amended away from only once.
 export const rewardConfigAmendments = pgTable(
   "reward_config_amendments",
   {
@@ -513,7 +514,7 @@ export const rewardConfigAmendments = pgTable(
     recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull(),
   },
   (t) => [
-    uniqueIndex("reward_config_amendments_epoch").on(t.epochId),
+    uniqueIndex("reward_config_amendments_epoch_from").on(t.epochId, t.fromConfigId),
     check("reward_config_amendments_future", sql`${t.effectiveAt} > ${t.recordedAt}`),
     check("reward_config_amendments_changes", sql`${t.fromConfigId} <> ${t.toConfigId}`),
     check(

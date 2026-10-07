@@ -271,8 +271,8 @@ const promptPin = z.strictObject({
   prompt_version: z.string().min(1),
   prompt_template_hash: hash,
 });
-// A pilot amendment of the epoch's scoring prompt. The list is present only when the epoch has
-// one, so a manifest without an amendment keeps the bytes and hash it always had.
+// A pilot amendment of the epoch's scoring prompt or scorer. The list is present only when the
+// epoch has one, so a manifest without an amendment keeps the bytes and hash it always had.
 const amendment = z.strictObject({
   effective_at: timestamp,
   recorded_at: timestamp,
@@ -323,11 +323,18 @@ export const EpochAuditManifest = z
   })
   .superRefine((a, ctx) => {
     const fail = (message: string) => ctx.addIssue({ code: "custom", message });
+    // Amendments chain: the first starts from the epoch's config, each later one from the result
+    // of the one before, and none returns to the epoch's config.
+    let inForce = a.config_hash;
     for (const x of a.amendments ?? []) {
       if (x.effective_at <= x.recorded_at) fail("an amendment takes effect after it is recorded");
-      if (x.from.config_hash !== a.config_hash || x.to.config_hash === a.config_hash) {
-        fail("an amendment starts from the epoch's config and changes it");
+      if (x.from.config_hash !== inForce) {
+        fail("an amendment starts from the config in force: amendments form a chain");
       }
+      if (x.to.config_hash === a.config_hash || x.to.config_hash === x.from.config_hash) {
+        fail("an amendment changes the config and never returns to the epoch's config");
+      }
+      inForce = x.to.config_hash;
     }
     if (a.amendments && !ascending(a.amendments, (x) => x.effective_at)) {
       fail("amendments must be sorted by effective time");

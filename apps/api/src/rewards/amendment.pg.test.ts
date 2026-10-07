@@ -6,6 +6,7 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readContribution, readEpoch } from "../http/read-service.js";
 import { epochCommitments } from "../payout/commitments.js";
+import { type JevScorerDef, jevTemplateHash } from "../scoring/scorers.js";
 import { amendEpochPrompt } from "./amendment.js";
 import { bootstrapRewardEpochs, buildRewardConfigPayload } from "./config.js";
 import { admitContribution } from "./intake.js";
@@ -144,5 +145,59 @@ describe("a pilot amendment on postgres-js", () => {
         { clock: later(2 * HOUR) },
       ),
     ).rejects.toThrow(/future/);
+  });
+});
+
+describe("a second amendment on postgres-js", () => {
+  const registry = new Map([
+    [
+      "reward-jev/1",
+      {
+        version: "reward-jev/1",
+        effortVersion: "reward-eval/2",
+        templateHash: jevTemplateHash("jev-1.13.0", { id: "pg" }),
+        model: "typesafe:jev-1.13.0",
+      } as JevScorerDef,
+    ],
+  ]);
+
+  it("chains from the config in force, pins by the latest effective time, and reads back both", async () => {
+    const s = await seed();
+    const amend = (promptVersion: string, effectiveHours: number, clockMs: number) =>
+      amendEpochPrompt(
+        db,
+        {
+          communityId: s.community.id,
+          epochIndex: 1,
+          promptVersion,
+          registry,
+          effectiveAt: new Date(T0.getTime() + effectiveHours * HOUR),
+          actor: "Cisco (founder)",
+          reason: "Pilot testing phase.",
+        },
+        { clock: later(clockMs) },
+      );
+    const first = await amend("reward-eval/2", 2, HOUR);
+    await expect(amend("reward-jev/1", 4, HOUR + 30_000)).rejects.toThrow(/not yet in effect/);
+    const second = await amend("reward-jev/1", 4, 2 * HOUR + 10 * 60_000);
+    expect(second.fromConfigId).toBe(first.toConfigId);
+
+    const between = await s.admitAt(3 * HOUR);
+    const after = await s.admitAt(4 * HOUR);
+    expect(between.configId).toBe(first.toConfigId);
+    expect(after.configId).toBe(second.toConfigId);
+
+    const now = new Date(T0.getTime() + 5 * HOUR);
+    const e = ReadApiV1.epoch.parse(await readEpoch(db, s.community.mint, 1, now));
+    expect(e.amendments?.map((a) => a.to.prompt_version)).toEqual([
+      "reward-eval/2",
+      "reward-jev/1",
+    ]);
+    const c = ReadApiV1.contribution.parse(await readContribution(db, after.contributionId, now));
+    expect(c.amendment).toEqual({
+      effective_at: "2026-10-01T04:00:00.000000Z",
+      prompt_version: "reward-jev/1",
+    });
+    await expect(amend("reward-eval/2", 6, 4 * HOUR + 10 * 60_000)).rejects.toThrow(/already/);
   });
 });

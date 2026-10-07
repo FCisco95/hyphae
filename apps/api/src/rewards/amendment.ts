@@ -1,7 +1,7 @@
-import { promptTemplateHash } from "@hyphae/core";
 import { type Db, rewardConfigAmendments, rewardConfigs } from "@hyphae/db";
-import { and, asc, eq, lte } from "drizzle-orm";
+import { and, asc, desc, eq, lte } from "drizzle-orm";
 import { isoUs } from "../pg.js";
+import { type JevRegistry, pinHash } from "../scoring/scorers.js";
 import {
   type Epoch,
   ensureEpochAt,
@@ -17,15 +17,19 @@ export interface AmendInput {
   communityId: string;
   epochIndex: number;
   promptVersion: string;
+  // Jev scorers this build knows; without it only Anthropic prompt versions can be pinned.
+  registry?: JevRegistry;
   effectiveAt: Date;
   actor: string;
   reason: string;
 }
 
 // Pilot amendment: from effectiveAt on, contributions admitted in the open epoch are judged by
-// another registered prompt; nothing else in the configuration may differ. Recording holds the
-// community lock and requires a future effectiveAt, so no contribution admitted before the record
-// can fall under it, and no earlier intake, dispatch or decision is touched.
+// another registered prompt or scorer; nothing else in the configuration may differ. Recording
+// holds the community lock and requires a future effectiveAt, so no contribution admitted before
+// the record can fall under it, and no earlier intake, dispatch or decision is touched. An epoch
+// may be amended again once the previous amendment is in effect; each starts from the config in
+// force, so the amendments of an epoch form a chain.
 export async function amendEpochPrompt(
   db: Db,
   input: AmendInput,
@@ -52,19 +56,26 @@ export async function amendEpochPrompt(
     if (effective >= epoch.closesAt.getTime()) {
       throw new Error("reward: effectiveAt must be before the epoch's close");
     }
-    const [existing] = await tx
-      .select({ id: rewardConfigAmendments.id })
+    const chain = await tx
+      .select()
       .from(rewardConfigAmendments)
-      .where(eq(rewardConfigAmendments.epochId, epoch.id));
-    if (existing) throw new Error(`reward: epoch ${epoch.index} is already amended`);
+      .where(eq(rewardConfigAmendments.epochId, epoch.id))
+      .orderBy(asc(rewardConfigAmendments.effectiveAt));
+    const latest = chain.at(-1);
+    if (latest && latest.effectiveAt.getTime() > now.getTime()) {
+      throw new Error(
+        `reward: the previous amendment of epoch ${epoch.index} is not yet in effect`,
+      );
+    }
+    const fromConfigId = latest?.toConfigId ?? epoch.rewardConfigId;
 
     const [from] = await tx
       .select({ payload: rewardConfigs.payload })
       .from(rewardConfigs)
-      .where(eq(rewardConfigs.id, epoch.rewardConfigId));
-    if (!from) throw new Error(`reward: config ${epoch.rewardConfigId} missing`);
+      .where(eq(rewardConfigs.id, fromConfigId));
+    if (!from) throw new Error(`reward: config ${fromConfigId} missing`);
     const fromPayload = RewardConfigPayload.parse(from.payload);
-    const hash = promptTemplateHash(input.promptVersion);
+    const hash = pinHash(input.promptVersion, input.registry);
     if (!hash) throw new Error(`reward: prompt ${input.promptVersion} is not registered`);
     if (input.promptVersion === fromPayload.scoring.promptVersion) {
       throw new Error(`reward: ${input.promptVersion} is already the epoch's prompt`);
@@ -73,13 +84,16 @@ export async function amendEpochPrompt(
       ...fromPayload,
       scoring: { promptVersion: input.promptVersion, promptTemplateHash: hash },
     });
+    if (to.id === epoch.rewardConfigId || chain.some((x) => x.toConfigId === to.id)) {
+      throw new Error(`reward: ${input.promptVersion} is already used by epoch ${epoch.index}`);
+    }
 
     const [row] = await tx
       .insert(rewardConfigAmendments)
       .values({
         communityId: input.communityId,
         epochId: epoch.id,
-        fromConfigId: epoch.rewardConfigId,
+        fromConfigId,
         toConfigId: to.id,
         fromPromptVersion: fromPayload.scoring.promptVersion,
         fromPromptTemplateHash: fromPayload.scoring.promptTemplateHash,
@@ -107,7 +121,9 @@ export async function admissionConfigId(tx: Db, epoch: Epoch, now: Date): Promis
         eq(rewardConfigAmendments.epochId, epoch.id),
         lte(rewardConfigAmendments.effectiveAt, now),
       ),
-    );
+    )
+    .orderBy(desc(rewardConfigAmendments.effectiveAt))
+    .limit(1);
   return amendment?.toConfigId ?? epoch.rewardConfigId;
 }
 

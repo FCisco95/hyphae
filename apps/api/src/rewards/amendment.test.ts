@@ -10,6 +10,7 @@ import {
 import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { epochCommitments } from "../payout/commitments.js";
+import { type JevScorerDef, jevTemplateHash } from "../scoring/scorers.js";
 import { type AmendInput, admissionConfigId, amendEpochPrompt } from "./amendment.js";
 import { closeEpoch } from "./close.js";
 import {
@@ -38,6 +39,20 @@ const basePayload = (): RewardConfigPayload => ({
   ...buildRewardConfigPayload(rubric),
   scoring: strictPin(),
 });
+
+// A registered Jev scorer, so a second amendment can pin it.
+const JEV_HASH = jevTemplateHash("jev-1.13.0", { id: "test-set" });
+const registry = new Map<string, JevScorerDef>([
+  [
+    "reward-jev/1",
+    {
+      version: "reward-jev/1",
+      effortVersion: "reward-eval/2",
+      templateHash: JEV_HASH,
+      model: "typesafe:jev-1.13.0",
+    } as JevScorerDef,
+  ],
+]);
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -212,12 +227,15 @@ describe("amendEpochPrompt: refusals", () => {
     await expect(l.amend({ reason: "" }, 30 * MIN)).rejects.toThrow(/reason/);
   });
 
-  it("refuses a second amendment of the same epoch", async () => {
+  it("refuses a second amendment while the first has not taken effect", async () => {
     const l = await lane();
     await l.amend({}, 30 * MIN);
-    await expect(l.amend({ effectiveAt: at(3 * 3_600_000) }, 40 * MIN)).rejects.toThrow(
-      /already amended/,
-    );
+    await expect(
+      l.amend(
+        { promptVersion: "reward-jev/1", registry, effectiveAt: at(3 * 3_600_000) },
+        40 * MIN,
+      ),
+    ).rejects.toThrow(/not yet in effect/);
     expect(await amendmentsOf(l.community.id)).toHaveLength(1);
   });
 
@@ -431,3 +449,113 @@ const nominateAt = (
     },
     { clock: later(clockMs) },
   );
+
+describe("a second amendment, to a Jev scorer", () => {
+  const SECOND_MS = 4 * 3_600_000;
+  // The first amendment is in effect from 2 h; the second is recorded at 2 h 10 min.
+  const second = (l: Awaited<ReturnType<typeof lane>>, over: Partial<AmendInput> = {}) =>
+    l.amend(
+      { promptVersion: "reward-jev/1", registry, effectiveAt: at(SECOND_MS), ...over },
+      EFFECTIVE_MS + 10 * MIN,
+    );
+
+  it("chains from the config in force: from is the first amendment's to", async () => {
+    const l = await lane();
+    const first = await l.amend({}, 30 * MIN);
+    const row = await second(l);
+
+    expect(row).toMatchObject({
+      fromConfigId: first.toConfigId,
+      fromPromptVersion: "reward-eval/2",
+      fromPromptTemplateHash: promptTemplateHash("reward-eval/2"),
+      toPromptVersion: "reward-jev/1",
+      toPromptTemplateHash: JEV_HASH,
+    });
+    expect(row.effectiveAt).toEqual(at(SECOND_MS));
+    const [to] = await t.db
+      .select({ payload: rewardConfigs.payload })
+      .from(rewardConfigs)
+      .where(eq(rewardConfigs.id, row.toConfigId));
+    if (!to) throw new Error("no amended config");
+    const { scoring, ...rest } = to.payload as RewardConfigPayload;
+    const { scoring: _base, ...baseRest } = basePayload();
+    expect(rest).toEqual(baseRest);
+    expect(scoring).toEqual({ promptVersion: "reward-jev/1", promptTemplateHash: JEV_HASH });
+  });
+
+  it("pins each admission to the latest amendment in effect at that time", async () => {
+    const l = await lane();
+    const first = await l.amend({}, 30 * MIN);
+    const row = await second(l);
+    const beforeFirst = await l.admitAt(EFFECTIVE_MS - 1);
+    const betweenOne = await l.admitAt(EFFECTIVE_MS + MIN);
+    const betweenTwo = await l.admitAt(SECOND_MS - 1);
+    const atSecond = await l.admitAt(SECOND_MS);
+
+    expect(beforeFirst.configId).toBe(l.baseConfig.id);
+    expect(betweenOne.configId).toBe(first.toConfigId);
+    expect(betweenTwo.configId).toBe(first.toConfigId);
+    expect(atSecond.configId).toBe(row.toConfigId);
+  });
+
+  it("refuses the prompt already in force, an unregistered Jev version, and a version with no registry", async () => {
+    const l = await lane();
+    await l.amend({}, 30 * MIN);
+    await expect(second(l, { promptVersion: "reward-eval/2" })).rejects.toThrow(/already/);
+    await expect(second(l, { promptVersion: "reward-jev/9" })).rejects.toThrow(/not registered/);
+    await expect(
+      l.amend(
+        { promptVersion: "reward-jev/1", effectiveAt: at(SECOND_MS) },
+        EFFECTIVE_MS + 10 * MIN,
+      ),
+    ).rejects.toThrow(/not registered/);
+    expect(await amendmentsOf(l.community.id)).toHaveLength(1);
+  });
+
+  it("refuses to return to a config the epoch has already used", async () => {
+    const l = await lane();
+    await l.amend({}, 30 * MIN);
+    await expect(second(l, { promptVersion: "reward-eval/1" })).rejects.toThrow(/already/);
+    expect(await amendmentsOf(l.community.id)).toHaveLength(1);
+  });
+
+  it("is a chain the database enforces: a config can be amended away from only once", async () => {
+    const l = await lane();
+    const first = await l.amend({}, 30 * MIN);
+    await second(l);
+    const { id: _id, ...values } = first;
+    await expect(
+      t.db.insert(rewardConfigAmendments).values({ ...values, effectiveAt: at(5 * 3_600_000) }),
+    ).rejects.toThrow();
+  });
+
+  it("leaves every earlier intake, dispatch and decision unchanged", async () => {
+    const l = await lane();
+    const early = await l.admitAt(10 * MIN);
+    await l.score(early.contributionId, 12 * MIN);
+    await l.amend({}, 30 * MIN);
+    const mid = await l.admitAt(EFFECTIVE_MS + MIN);
+    await l.score(mid.contributionId, EFFECTIVE_MS + 2 * MIN);
+    const snapshot = async () =>
+      JSON.stringify(
+        [
+          await t.db
+            .select()
+            .from(rewardIntakes)
+            .where(eq(rewardIntakes.communityId, l.community.id)),
+          await t.db
+            .select()
+            .from(rewardDispatches)
+            .where(eq(rewardDispatches.communityId, l.community.id)),
+          await t.db
+            .select()
+            .from(rewardDecisions)
+            .where(eq(rewardDecisions.communityId, l.community.id)),
+        ],
+        (_k, v) => (typeof v === "bigint" ? v.toString() : v),
+      );
+    const before = await snapshot();
+    await second(l);
+    expect(await snapshot()).toBe(before);
+  });
+});

@@ -26,7 +26,7 @@ import { getAddressEncoder } from "@solana/kit";
 import { and, asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { seedAuditDemo } from "../http/demo-seed.js";
-import { RewardConfigPayload } from "../rewards/config.js";
+import { findOrInsertConfig, RewardConfigPayload } from "../rewards/config.js";
 import { createTestDb } from "../rewards/test-db.js";
 import { epochCommitments } from "./commitments.js";
 import { buildPublication } from "./publication.js";
@@ -212,6 +212,50 @@ describe("publication of a ready epoch", () => {
     expect(publication.allocation.allocatedLamports).toBe(
       plain.publication.allocation.allocatedLamports,
     );
+  });
+
+  it("commits a chain of two amendments, the second starting from the first's result", async () => {
+    const seed = await seedReadyEpoch(t.db, { now: NOW, amended: true });
+    const [first] = await t.db
+      .select()
+      .from(rewardConfigAmendments)
+      .where(eq(rewardConfigAmendments.epochId, seed.epochId));
+    if (!first) throw new Error("no first amendment");
+    const [firstTo] = await t.db
+      .select()
+      .from(rewardConfigs)
+      .where(eq(rewardConfigs.id, first.toConfigId));
+    const jevPin = { promptVersion: "reward-jev/1", promptTemplateHash: "d".repeat(64) };
+    const secondTo = await findOrInsertConfig(t.db, seed.communityId, {
+      ...RewardConfigPayload.parse(firstTo?.payload),
+      scoring: jevPin,
+    });
+    await t.db.insert(rewardConfigAmendments).values({
+      communityId: seed.communityId,
+      epochId: seed.epochId,
+      fromConfigId: first.toConfigId,
+      toConfigId: secondTo.id,
+      fromPromptVersion: first.toPromptVersion,
+      fromPromptTemplateHash: first.toPromptTemplateHash,
+      toPromptVersion: jevPin.promptVersion,
+      toPromptTemplateHash: jevPin.promptTemplateHash,
+      effectiveAt: new Date(first.effectiveAt.getTime() + 3_600_000),
+      actor: "script:ready-seed",
+      reason: "Jev scores quality from here on.",
+      recordedAt: new Date(first.effectiveAt.getTime() + 60_000),
+    });
+
+    const publication = await buildPublication(
+      t.db,
+      { communityId: seed.communityId, epochId: seed.epochId },
+      { grossLamports: GROSS, ...SETTINGS },
+    );
+    if (publication.status !== "ready") throw new Error(`not ready: ${publication.blockers}`);
+    const chain = publication.audit.amendments ?? [];
+    expect(chain.map((x) => x.to.prompt_version)).toEqual(["reward-eval/2", "reward-jev/1"]);
+    expect(chain[1]?.from).toEqual(chain[0]?.to);
+    expect(chain[0]?.from.config_hash).toBe(publication.audit.config_hash);
+    expect(epochAuditHash(publication.audit)).toBe(publication.auditHash);
   });
 
   it("gives no leaf and no lamports to a signed member who is not payable", async () => {
