@@ -273,8 +273,7 @@ function checkState(s, live, journalExpected, phase) {
   const problems = [];
   const fail = (msg) => problems.push(msg);
   const newCount = Object.keys(NEW_MIGRATIONS).length;
-  const appliedCount =
-    phase === "pre" ? journalExpected.length - newCount : journalExpected.length;
+  const appliedCount = phase === "pre" ? journalExpected.length - newCount : journalExpected.length;
 
   if (s.read_only !== "on") fail(`transaction_read_only is ${s.read_only}`);
   if (s.lock_timeout !== "3s") fail(`lock_timeout is ${s.lock_timeout}, not 3s`);
@@ -452,8 +451,7 @@ async function runMigrate(baselinePath) {
     journal: await readJournal(c),
     state: await readState(c),
   })).catch(() => null);
-  const unchanged =
-    after && journalMatches(after.journal, before) && untouched(after.state.shape);
+  const unchanged = after && journalMatches(after.journal, before) && untouched(after.state.shape);
   const done =
     after && journalMatches(after.journal, journalExpected) && applied(after.state.shape);
 
