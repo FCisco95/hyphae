@@ -55,7 +55,7 @@ The image is built from `06ed390`, which is the live source `777a5b8` (tag `raid
 3. `registry-digest.sh haiku55-06ed390` prints `404`; `registry-digest.sh raids-777a5b8` prints `200 sha256:5185a5ec…`.
 4. `fly image show --app hyphae-api`: both machines `started` on `sha256:5185a5ec…`.
 5. `date -u` is before Oct 8 12:00Z. A Codex review of `git diff 777a5b8..06ed390` and this plan says ACCEPT.
-6. Baseline fingerprint with one fixed cutoff `C` = a time at least 10 minutes before Step 1 starts (so every dispatch before it has resolved): `node --env-file=$REPO/.env $REPO/scripts/rollout/decisions-digest.mjs HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg 2 C > $RUN/epoch2-before.json` (from `packages/db`). Every later check uses the same `C`; rows after `C` may legitimately be new.
+6. Baseline fingerprint with one fixed cutoff `C` = a time at least 10 minutes before Step 1 starts (so every dispatch before it has resolved): `node --env-file=$REPO/.env $REPO/scripts/rollout/decisions-digest.mjs HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg 2 C > $RUN/epoch2-before.json` (from `packages/db`). Every later check uses the same `C`; rows after `C` may legitimately be new. The digest hashes whole decision rows, which include the notification time that recovery can set for up to 24 hours, so a changed digest is a reason to look, not to roll back: re-run it, list the changed rows, and treat the release as failed only if a score, credit, model, prompt or output field of a row at or before `C` differs.
 7. `node --env-file=$REPO/.env scripts/rollout/telegram.mjs -1003934645546 784434992` PASS.
 
 ### Step 1. Image (E1)
@@ -83,7 +83,7 @@ Checks: API on `<NEW>`; `/health` 200; community 200; `/epochs/2` 200 with `conf
 fly machine update 817400c9901de8 --app hyphae-api --image registry.fly.io/hyphae-api:haiku55-06ed390 --yes
 ```
 
-Checks: worker on `<NEW>` and `started`; `reward-recovery` completes at least twice, all counters 0, no `prompt_unavailable`, no stack trace; `decisions-digest.mjs ... 2 C` (the same `C`) equals the Step 0 baseline. Any failure: roll back the worker first.
+Checks: worker on `<NEW>` and `started`; `reward-recovery` completes at least twice, all counters 0, no `prompt_unavailable`, no stack trace; `decisions-digest.mjs ... 2 C` (the same `C`) equals the Step 0 baseline, or any difference is shown to be a notification time only (see Step 0.6). Any failure: roll back the worker first.
 
 ### Step 4. Live acceptance
 
