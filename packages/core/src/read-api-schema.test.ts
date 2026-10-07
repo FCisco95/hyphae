@@ -72,6 +72,7 @@ const contribution = {
   reentered_as: null,
   nomination: null,
   revisions: [revision],
+  amendment: null,
 };
 
 const epoch = {
@@ -108,6 +109,7 @@ const epoch = {
     allocation: { status: "unavailable", reason: "no_settlement" },
     payment: { status: "unavailable", reason: "no_settlement" },
   },
+  amendments: [],
 };
 
 const community = {
@@ -417,6 +419,52 @@ describe("P14 settlement sections", () => {
     const { settlement: _, ...before } = settled;
     expect(ok(ReadApiV1Loose.epoch, before)).toBe(true);
     expect(ok(ReadApiV1.epoch, before)).toBe(false);
+  });
+});
+
+describe("pilot amendments", () => {
+  const amendment = {
+    effective_at: ts,
+    recorded_at: ts,
+    actor: "Cisco (founder)",
+    reason: "Pilot testing phase.",
+    from: {
+      config_id: uuid(3),
+      prompt_version: "reward-eval/1",
+      prompt_template_hash: "a".repeat(64),
+    },
+    to: {
+      config_id: uuid(4),
+      prompt_version: "reward-eval/2",
+      prompt_template_hash: "b".repeat(64),
+    },
+  };
+
+  it("are required of this api on the epoch, and optional for a consumer of an older one", () => {
+    expect(ok(ReadApiV1.epoch, { ...epoch, amendments: [amendment] })).toBe(true);
+    const { amendments: _, ...before } = epoch;
+    expect(ok(ReadApiV1.epoch, before)).toBe(false);
+    expect(ok(ReadApiV1Loose.epoch, before)).toBe(true);
+    expect(
+      ok(ReadApiV1.epoch, {
+        ...epoch,
+        amendments: [{ ...amendment, effective_at: "2026-10-07T18:00:00Z" }],
+      }),
+    ).toBe(false);
+    expect(
+      ok(ReadApiV1.epoch, {
+        ...epoch,
+        amendments: [{ ...amendment, to: { ...amendment.to, prompt_template_hash: "x" } }],
+      }),
+    ).toBe(false);
+  });
+
+  it("name the one a contribution was admitted under, or null", () => {
+    const under = { effective_at: ts, prompt_version: "reward-eval/2" };
+    expect(ok(ReadApiV1.contribution, { ...contribution, amendment: under })).toBe(true);
+    const { amendment: _, ...before } = contribution;
+    expect(ok(ReadApiV1.contribution, before)).toBe(false);
+    expect(ok(ReadApiV1Loose.contribution, before)).toBe(true);
   });
 });
 
