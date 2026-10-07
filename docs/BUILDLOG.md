@@ -10,13 +10,15 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 
 **How I checked it:** the agent wrote 64 new replies under four posts, in five languages, and I labeled them blind before seeing any score. Where my labels broke my own rules, I ruled first: instructions to the scorer earn zero, because a line that works on every post is an exploit; price and buy talk stays zero under the pinned rubric; empty slogans and restatements of the post are zero; airdrop asks are zero. The agent tuned on half the replies and reported on the other half.
 
-**Numbers:** the 28 reward cases are 84 of 84 right in three runs; my own replies and the sincere ones pass at 74 to 95, every zero case is 0. On the 64 replies: two jokes built on a cheer ("gm (sorry, couldn't resist)") are zeroed, and one reply I labeled zero passes. No reply flipped between runs. About USD 0.0002 per scored reply, against about USD 0.0088 for the large model. Tests 971 API passing, typecheck and lint clean.
+**Numbers:** the 28 reward cases are 84 of 84 right in three runs, and again through the production client: 0 errors, slowest call 0.6 seconds; my own replies and the sincere ones pass at 74 to 95, every zero case is 0. On the 64 replies: two jokes built on a cheer ("gm (sorry, couldn't resist)") are zeroed, and one reply I labeled zero passes. No reply flipped between runs. About USD 0.0002 per scored reply, against about USD 0.0088 for the large model. On the merged branch: tests 1015 API, 123 web, 119 core, 26 SDK; 74 of 74 on real Postgres; typecheck, lint and the schema check clean.
 
-**Decision and why:** keep the false zeros on cheer-jokes for now. A false zero costs one reply's points and a public admin correction can restore it; paying the bad tail costs everyone.
+**The production path (built in parallel):** an epoch can pin a Jev scorer exactly like a prompt version. The exact request and its hash are committed before the call; one call, no retries, a 30 second timeout; a failed or malformed call goes to reconciliation, never to a retry. The credit rules are unchanged. Effort nominations stay on the Anthropic prompt. Migration `0017` lets an epoch's amendments chain, so epoch 2 can move to Jev, with one emergency way back to `reward-eval/2` and never back to the original. It is off by default, and the v4 set is registered as scorer `reward-jev/1`. A member's receipt now says why in plain words: "Scored 0 because it tries to tell the scorer what to do", with the answers behind it.
 
-**Commits:** `84303ab` (v4 and its composition), `4da98e1` (calibration report, holdout and every answer).
+**Decisions and why:** I accepted v4 with its three known misses: the false zeros on cheer-jokes cost one reply's points each, and a public admin correction can restore them, while paying the bad tail costs everyone. Jev starts in epoch 2 by a second recorded amendment, not in epoch 3. And the announcement says the one new zero plainly: a reply that tries to instruct the scorer scores 0, which the rubric does not list. The security page now names TypeSafe as a service that reads contributions.
 
-**Next:** wire v4 into the production scoring path built in parallel, an independent review, then I decide how Jev is introduced: a recorded amendment in epoch 2, or epoch 3.
+**Commits (branch `jev-live`, local):** `99bc61a`, `f2caae3`, `ceb768a`, `07db478`, `9326fd7` (the production path and migration 0017), `17546e4`, `df199bb` (v4 and its calibration), `2473c62`, `03d618d` (the registry entry and receipt wording), `3942112` (security page), plus the records.
+
+**Next:** the independent Codex review must accept it before anything is pushed. Then my exact yes, the push, migration 0017, the new image, the key, the announcement, and the amendment, one step at a time, before Oct 8 12:00 UTC.
 
 ## 2026-10-07 (night) · One raid at a time was holding the community back
 

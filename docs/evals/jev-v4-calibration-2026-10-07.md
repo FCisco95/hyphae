@@ -48,6 +48,8 @@ Attempt 3 was prompted by a report-half reply (3), so that reply is not a clean 
 3. **`addresses_grader` sets no flag.** None of the six production flags means "spoke to the scorer", so an injection is zeroed through the raw score and the reasoning names the gate, while `creditReason` shows "below the 60 floor". The production path should show the reasoning; a later rubric version can add a flag.
 4. **Not measured yet:** posts on other subjects, a second labeler, and real traffic. Jev reads text only: it cannot see images, links or a quoted post other than the raid post, so a quote with no raid post is judged against the community only.
 
+**Cisco's decision (2026-10-07, about 20:50Z):** release Jev with these known misses, as recommended.
+
 ## Files
 
 - Questions and composition: [jev-questions-v4.md](jev-questions-v4.md), code `apps/api/src/scoring/jev-questions.ts` and `jev.ts`.
