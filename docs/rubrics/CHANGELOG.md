@@ -2,6 +2,12 @@
 
 Every rubric a Hyphae community scores against is public here. A community's `rubric_version` points at one of these files; the epoch commits its hash on-chain.
 
+## Scorer model: Claude Haiku 5.5 from 2026-10-07 20:01 UTC (not a rubric or prompt change)
+
+- Contributions scored from 20:01 UTC (including any admitted earlier that were still waiting to be scored) are scored by `claude-haiku-5-5` instead of `claude-sonnet-5`, with the same prompt (`reward-eval/2` for epoch 2 after the 18:00 amendment), rubric MYCEL 1.2.0 and credit rules. Decisions already made keep the model they ran on; each decision records its model on its audit page.
+- Evidence: 28 fixed replies, 3 runs each. Haiku 5.5 missed 3 of 78 judged calls (one case, the founder's own pitch quote, which quotes a post the scorer cannot see); Sonnet 5 missed 0 of 78; Sonnet 5.5 at medium effort missed 6 and Haiku 4.5 missed 6. A polished abstract reply and a spam, price, other-project or prompt-injection reply credit 0 on Haiku 5.5. The cost was USD 0.048 for the 84 calls, about 1/15 of Sonnet 5. The case set is small and its wording was tuned on these cases: it is a regression guard, not proof of calibration. Evidence: [release](../demo/2026-10-07-haiku55-release-plan.md).
+- Jev (typesafe System One) is the next scorer under evaluation; it is not live.
+
 ## Pilot amendment: epoch 2 scores with reward-eval/2 from 2026-10-07 18:00 UTC
 
 - Reason (Cisco, founder): "We are in the pilot testing phase; I'm making scoring less strict so people get valid scores while they are still learning the algorithm and what is expected."

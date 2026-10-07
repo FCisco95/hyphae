@@ -5,7 +5,7 @@ summary: Release that moves the reward scorer from Claude Sonnet 5 to Claude Hai
 
 # Haiku 5.5 scorer release plan (source `328fb45`)
 
-**Status: PREPARED, NOT RUN. Codex review (`gpt-6-astra`, xhigh, read-only): NEEDS-FIXES (live image was `buttons-ed32b4f`, not `amend-b265204`; fingerprint cutoff; public wording; rollback bound; judged denominators), fixed, fix check NEEDS-FIXES (late notification time can change the digest), fixed, ACCEPT on `24e38ee`.** Written 2026-10-07 by Claude Sonnet 5.5 (`claude-sonnet-5-5`) on the Windows PC from the live source `ed32b4f` plus one commit. Preparing it changed nothing live. Authorization is Cisco's exact sentence: **"yes, run the Haiku 5.5 scorer release"**. Cisco's ruling (2026-10-07): use Haiku 5.5 now; Jev (typesafe System One) is the next scorer and is built in parallel, so this release is the safe step, not the end state.
+**Status: EXECUTED 2026-10-07T19:57Z to 20:12Z (E1 to E3 done, Step 4 acceptance pending the next scored contribution). Prepared as: Codex review (`gpt-6-astra`, xhigh, read-only): NEEDS-FIXES (live image was `buttons-ed32b4f`, not `amend-b265204`; fingerprint cutoff; public wording; rollback bound; judged denominators), fixed, fix check NEEDS-FIXES (late notification time can change the digest), fixed, ACCEPT on `24e38ee`.** Written 2026-10-07 by Claude Sonnet 5.5 (`claude-sonnet-5-5`) on the Windows PC from the live source `ed32b4f` plus one commit. Preparing it changed nothing live. Authorization is Cisco's exact sentence: **"yes, run the Haiku 5.5 scorer release"**. Cisco's ruling (2026-10-07): use Haiku 5.5 now; Jev (typesafe System One) is the next scorer and is built in parallel, so this release is the safe step, not the end state.
 
 ## What goes live
 
@@ -108,4 +108,11 @@ Short post for Cisco:
 
 ## Record
 
-(filled during the release)
+- Authorization: Cisco's exact sentence "yes, run the Haiku 5.5 scorer release", 2026-10-07.
+- Step 0 stopped once: the raid session had shipped `buttons-ed32b4f` (`sha256:fa0b2c95…`) at 19:52Z, so the source moved from `777a5b8` to `ed32b4f` (commit `328fb45` is the same five-file change rebased), the plan was re-pointed and Codex re-checked it: ACCEPT. Gate on `328fb45`: `pnpm test`, `pnpm typecheck`, `pnpm lint` all exit 0.
+- Baseline fingerprint, cutoff C = 2026-10-07T19:42:00Z: intakes 5 `abb8e77f…`, decisions 5 `6ed1a09e…`, dispatches 5 `aafe8160…`. Taken again at 20:11Z after both machines changed: identical.
+- E1: image `haiku55-328fb45` = `sha256:4218b2a901b93db1bf1cad550c4fd219a817552e92e45fc70c669c6f9e097d12` (tag read `404` first; built in detached worktree at `328fb45`).
+- E2: API `6839d31b317318` updated 20:00:12Z; `/health` 200, community 200, `/epochs/2` 200 (base config `reward-eval/1`, one amendment to `reward-eval/2` at 18:00Z), `telegram.mjs` PASS, `api listening`, no stack trace.
+- E3: worker `817400c9901de8` updated 20:00:58Z; `reward-recovery` completed at 20:05:18Z and 20:10:02Z with all counters 0, no `prompt_unavailable`, no stack trace. Both machines on `haiku55-328fb45`.
+- Public: CHANGELOG entry "Scorer model: Claude Haiku 5.5 from 2026-10-07 20:01 UTC" (docs, on the release branch until merged).
+- **Still open (Step 4):** the next scored epoch 2 contribution must show `model.model` `anthropic:claude-haiku-5-5` and `prompt_version` `reward-eval/2`. Rollback target if needed before 2026-10-08T12:00Z: `buttons-ed32b4f`.
