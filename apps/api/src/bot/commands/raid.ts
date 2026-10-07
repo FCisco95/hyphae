@@ -11,6 +11,8 @@ import { clipMessageText } from "../text.js";
 import { parseRaidArgs } from "./args.js";
 
 export const RAID_HOUR_CHOICES = [6, 12, 24, 48] as const;
+// An X post id is at most 19 digits; the bound keeps `rn:<h>:<handle>:<id>` under 64 bytes.
+export const MAX_STATUS_ID_DIGITS = 19;
 
 // callback_data is capped at 64 bytes, so the picker carries the post's handle and id, not its URL.
 export const hoursKeyboard = (handle: string, id: string) =>
@@ -68,6 +70,8 @@ export async function raid(ctx: CommandContext<Context>) {
   // A bare link asks for the length instead of silently running the default.
   const bare = ctx.match.trim().split(/\s+/).length === 1;
   const parsed = parsePostUrl(args.url);
+  if (bare && parsed && parsed.id.length > MAX_STATUS_ID_DIGITS)
+    return reply(ctx, "That does not look like a valid post link.");
   if (bare && parsed)
     return ctx.reply("How long should this raid run?", {
       reply_markup: hoursKeyboard(parsed.handle, parsed.id),

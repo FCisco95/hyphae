@@ -6,9 +6,9 @@ import { transitionRaid } from "../../member-journey/lifecycle.js";
 import { MAX_OPEN_RAIDS, openRaid } from "../../raid-alerts/alerts.js";
 import { fetchPost } from "../../x/oembed.js";
 import { reply } from "../reply.js";
-import { announceRaid, LIMIT_REACHED, RAID_HOUR_CHOICES } from "./raid.js";
+import { announceRaid, LIMIT_REACHED, MAX_STATUS_ID_DIGITS, RAID_HOUR_CHOICES } from "./raid.js";
 
-const PICK = /^rn:(\d{1,3}):([A-Za-z0-9_]{1,15}):(\d{1,20})$/;
+const PICK = new RegExp(`^rn:(\\d{1,3}):([A-Za-z0-9_]{1,15}):(\\d{1,${MAX_STATUS_ID_DIGITS}})$`);
 const CLOSE = /^cr:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
 const utc = (d: Date) => `${d.toISOString().slice(0, 16).replace("T", " ")} UTC`;
 

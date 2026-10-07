@@ -68,7 +68,7 @@ Real empty-state screenshots: [desktop](2026-10-02-epoch-2-desktop.png) and [mob
 
 Members use their own accounts and words. One reply and one quote per member per task is a technical ceiling, not a participation quota. Do not submit someone else's work, duplicate artifacts, copied scripts or fake examples into live intake. Handle binding alone is not proof of authorship; the owner still needs the final author/duplicate audit and attestation.
 
-Up to **three raids can be open at once** in a community. Replies and quotes attach to the exact raid whose private Submit button the member taps; a pasted link never selects a raid. The one-reply, one-quote ceiling applies to each raid separately. `/help brief` lists every open raid. Close a raid with `/close_raid` to free a slot.
+Up to **three raids can be open at once** in a community. Replies and quotes attach to the exact raid whose private Submit button the member taps; a pasted link never selects a raid. The one-reply, one-quote ceiling applies to each raid separately. `/help brief` lists every open raid. Admins can send `/raid <post link>` with no hours to pick the length (6, 12, 24 or 48h) with buttons, and `/raids` to list the open raids with a Close button each. `/raid <link> <hours> [brief]`, `/close_raid` and `/cancel_raid` still work.
 
 ## Divide responsibilities
 

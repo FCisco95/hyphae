@@ -94,6 +94,15 @@ describe("raid buttons", () => {
     expect(await tasksOf(community.id)).toHaveLength(0);
   });
 
+  it("refuses a post id too long to fit a button instead of sending dead buttons", async () => {
+    const { community } = await seedCommunity(t.db);
+    const link = `https://x.com/abcdefghijklmno/status/${"9".repeat(43)}`;
+    await bot.handleUpdate(command(`/raid ${link}`, Number(community.telegramChatId)));
+    expect(sent().at(-1)).toContain("valid post link");
+    expect(calls.some((c) => c.payload.reply_markup)).toBe(false);
+    expect(await tasksOf(community.id)).toHaveLength(0);
+  });
+
   it("opens the raid for the tapped hours and removes the picker", async () => {
     const { community } = await seedCommunity(t.db);
     const chatId = Number(community.telegramChatId);
