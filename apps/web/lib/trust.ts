@@ -126,8 +126,16 @@ export const TRUST_SECTIONS: TrustSection[] = [
         ],
       },
       {
-        text: "An epoch is judged by the rubric and scoring prompt it pinned. A change is a proposal that takes effect no earlier than the next epoch, and at least two epochs after the last change. Each epoch's configuration is public in the read API; pending proposals are not public yet.",
+        text: "An epoch is judged by the rubric and scoring prompt it pinned. A configuration change is a proposal that takes effect no earlier than the next epoch, and at least two epochs after the last change. Each epoch's configuration is public in the read API; pending proposals are not public yet.",
         evidence: [file("apps/api/src/rewards/config.ts"), READ_SERVICE],
+      },
+      {
+        text: "During the pilot, the founder can amend an open epoch's scoring prompt with a public, announced, non-retroactive record. The record is made before it takes effect and says who, why and from when. It applies only to contributions admitted from that time, and the rubric, credit rules and payout rules cannot change that way. The epoch page and the read API show it, and the epoch's audit record commits it. Not used yet.",
+        evidence: [
+          file("apps/api/src/rewards/amendment.ts"),
+          file("packages/core/src/commitments.ts"),
+          READ_SERVICE,
+        ],
       },
       {
         text: "Only the community's designated admin opens, closes or cancels a raid, and closing or cancelling needs a stated reason, which is stored. Whether reward intake is open or paused is public in the read API.",
