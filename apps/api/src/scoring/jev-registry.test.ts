@@ -33,19 +33,20 @@ const answers = (p: Record<string, number>) =>
     ].map((id) => [id, { type: "noul", noul: p[id] ?? 0 }]),
   );
 
-describe("the Jev registry", () => {
-  const def = JEV_REGISTRY.get("reward-jev/1");
+const def = JEV_REGISTRY.get("reward-jev/1");
+if (!def) throw new Error("reward-jev/1 is not registered");
 
+describe("the Jev registry", () => {
   it("registers question set v4 as reward-jev/1, and nothing else", () => {
     expect([...JEV_REGISTRY.keys()]).toEqual(["reward-jev/1"]);
-    expect(def?.model).toBe(`typesafe:${JEV_MODEL}`);
-    expect(def?.effortVersion).toBe("reward-eval/2");
+    expect(def.model).toBe(`typesafe:${JEV_MODEL}`);
+    expect(def.effortVersion).toBe("reward-eval/2");
   });
 
   // The pin. A change to any question, weight or the model must change this on purpose.
   it("pins the model and every v4 question and weight", () => {
-    expect(def?.templateHash).toBe(jevTemplateHash(JEV_MODEL, QUESTIONS_V4));
-    expect(def?.templateHash).toBe(
+    expect(def.templateHash).toBe(jevTemplateHash(JEV_MODEL, QUESTIONS_V4));
+    expect(def.templateHash).toBe(
       "c6fe2dd7811d2468039acf1db8f288a97807ae243354ddb6ab634d8ec3aef267",
     );
   });
@@ -55,14 +56,14 @@ describe("the Jev registry", () => {
   });
 
   it("commits the exact request before the call", () => {
-    const { body, hash } = def?.request(input) ?? { body: null, hash: "" };
+    const { body, hash } = def.request(input);
     expect(hash).toBe(requestHash(body as Parameters<typeof requestHash>[0]));
     expect(Object.keys((body as { questions: object }).questions)).toHaveLength(14);
   });
 
   it("composes one call into a score with its evidence", async () => {
     let sent: unknown;
-    const score = await def?.run(input, async (request) => {
+    const score = await def.run(input, async (request) => {
       sent = request;
       return {
         response: {
@@ -74,19 +75,19 @@ describe("the Jev registry", () => {
         mode: "live",
       };
     });
-    expect(score?.output.score).toBe(80);
-    expect(score?.requestHash).toBe(def?.request(input).hash);
-    expect(sent).toEqual(def?.request(input).body);
-    expect(score?.costMicroUsd).toBe(210);
-    expect(score?.latencyMs).toBe(40);
-    expect(score?.evidence).toMatchObject({
+    expect(score.output.score).toBe(80);
+    expect(score.requestHash).toBe(def.request(input).hash);
+    expect(sent).toEqual(def.request(input).body);
+    expect(score.costMicroUsd).toBe(210);
+    expect(score.latencyMs).toBe(40);
+    expect(score.evidence).toMatchObject({
       questionSet: "v4-2026-10-07",
       model: JEV_MODEL,
       rubricVersion: "1.2.0",
       composition: { version: "2", base: 65, bonus: 10 },
       usage: { input_tokens: 5000, output_tokens: 30 },
     });
-    expect((score?.evidence.answers as Record<string, unknown>).asks_question).toEqual({
+    expect((score.evidence.answers as Record<string, unknown>).asks_question).toEqual({
       type: "noul",
       noul: 0.9,
     });
@@ -96,7 +97,7 @@ describe("the Jev registry", () => {
     const partial = answers({});
     delete partial.explains;
     await expect(
-      def?.run(input, async () => ({
+      def.run(input, async () => ({
         response: {
           model: JEV_MODEL,
           answers: partial,
