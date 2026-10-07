@@ -7,7 +7,8 @@ export interface SetupState {
   mint: string;
   botUsername: string;
   joined: boolean;
-  // unverified: a pasted address, which scores but can never be paid (D1).
+  // none: no wallet yet, which still earns points (earn first, 2026-10-07). unverified: a pasted
+  // address, which scores but can never be paid (D1).
   wallet: "none" | "unverified" | "verified";
   rules: "passed" | "todo" | "unavailable";
   alerts: boolean;
@@ -55,7 +56,7 @@ export function setupContent(s: SetupState): { text: string; buttons: SetupButto
   const mark = (i: number) => (done[i] ? "✅" : i === next ? "➡️" : "⬜");
   const lines = [
     `${mark(0)} 1. ${s.joined ? `Joined ${s.name}` : `Join ${s.name}, then tap Refresh`}`,
-    `${mark(1)} 2. ${s.wallet === "verified" ? "Wallet verified" : "Link your wallet (one free signature, moves no funds)"}`,
+    `${mark(1)} 2. ${s.wallet === "verified" ? "Wallet verified" : "Link your wallet to be paid (one free signature, moves no funds). You can reply to raids before this."}`,
     `${mark(2)} 3. ${
       s.rules === "passed"
         ? "Rules test passed"

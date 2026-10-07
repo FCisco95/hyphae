@@ -133,6 +133,9 @@ describe("private member receipts", () => {
       "The existing scorer may post this result publicly in the group, replying to the raid message.",
     );
     expect(text).not.toContain("Paid");
+    expect(receiptText({ ...row, walletMethod: null })).toContain(
+      "No wallet linked yet: link one by signing before the epoch closes to be paid.",
+    );
   });
 
   it("fails closed on cross-community receipt links even for a Telegram user in both communities", async () => {
@@ -401,7 +404,7 @@ describe("private member receipts", () => {
     await t.db.insert(leaves).values({
       epochId: l.intake.epochId,
       memberId: l.member.id,
-      wallet: l.member.wallet,
+      wallet: l.member.wallet as string,
       score: 85n,
       amountLamports: 10n,
       evidenceHash: "b".repeat(64),

@@ -15,6 +15,7 @@ import { type Clock, dbClock, withCommunityLock } from "../rewards/config.js";
 import { artifactKeyFor, capturedEvidence } from "../rewards/intake.js";
 import { routeSubmission } from "../rewards/submission.js";
 import { parsePostUrl, type XPost } from "../x/oembed.js";
+import { ensureMember } from "./ensure-member.js";
 
 export interface SubmissionDeps {
   membership(chatId: bigint, userId: bigint): Promise<boolean>;
@@ -28,7 +29,7 @@ export const REFUSALS = {
   unavailable: "That submission is unavailable in your private chat.",
   prompt_limited:
     "Too many submission prompts in the last hour. Reuse an existing prompt or try again later.",
-  link_required: "Link your wallet first: send /link in this community's registered group.",
+  link_required: "That submission is unavailable. Tap the raid's Submit button again.",
   not_member: "You must currently belong to this raid's registered group.",
   membership_unavailable: "Membership could not be checked. Nothing new was accepted; try again.",
   outside_window:
@@ -90,16 +91,25 @@ async function memberContext(db: Db, communityId: string, userId: bigint) {
   return { community, member };
 }
 
+// The caller must be in the community's group now. A group member without a member row gets one
+// with no wallet, so they can earn before linking (ruled 2026-10-07).
 async function currentMember(db: Db, communityId: string, userId: bigint, deps: SubmissionDeps) {
-  const found = await memberContext(db, communityId, userId);
-  if (typeof found === "string") return found;
+  const community = await db.query.communities.findFirst({
+    where: eq(communities.id, communityId),
+  });
+  if (!community || !Number.isSafeInteger(Number(community.telegramChatId)))
+    return "unavailable" as const;
   try {
-    if (!(await deps.membership(found.community.telegramChatId, userId)))
-      return "not_member" as const;
+    if (!(await deps.membership(community.telegramChatId, userId))) return "not_member" as const;
   } catch {
     return "membership_unavailable" as const;
   }
-  return found;
+  const member = await ensureMember(db, {
+    communityId,
+    telegramUserId: userId,
+    telegramUsername: null,
+  });
+  return { community, member };
 }
 
 async function promptLimited(db: Db, communityId: string, userId: bigint, now: Date) {

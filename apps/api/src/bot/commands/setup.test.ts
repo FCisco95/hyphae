@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import type { Bot } from "grammy";
 import type { InlineKeyboardMarkup, Update, UserFromGetMe } from "grammy/types";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { ensureMember } from "../../member-journey/ensure-member.js";
 import { recordPass } from "../../payout/rules-test.js";
 import { createTestDb, seedCommunity, seedRewardLane } from "../../rewards/test-db.js";
 
@@ -165,6 +166,25 @@ describe("private setup checklist", () => {
       { text: "Refresh", callback_data: `setup_${community.id}` },
     ]);
     expect(await inventory()).toEqual(before);
+  });
+
+  it("tells a member who replied before linking that the wallet is what gets them paid", async () => {
+    const { community } = await seedRewardLane(t.db);
+    await openEpochNow(community.id);
+    await ensureMember(t.db, {
+      communityId: community.id,
+      telegramUserId: 43n,
+      telegramUsername: null,
+    });
+    await bot.handleUpdate(command(`/start setup_${community.id}`, 43, "private"));
+    const text = String(sent()[0]?.payload.text);
+    expect(text).toContain(
+      "➡️ 2. Link your wallet to be paid (one free signature, moves no funds). You can reply to raids before this.",
+    );
+    expect(keyboard(sent()[0])[0]).toEqual({
+      text: "Link my wallet",
+      callback_data: `setup_link_${community.id}`,
+    });
   });
 
   it("tells someone who has not joined to join first, with no wallet button", async () => {

@@ -1,9 +1,10 @@
-import { communities, contributions, members } from "@hyphae/db";
+import { communities, contributions, type members } from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
 import type { CommandContext, Context } from "grammy";
 import { db } from "../../db.js";
 import { boss, QUEUES } from "../../jobs/queue.js";
 import { sendEvaluation } from "../../jobs/reward-jobs.js";
+import { ensureMember } from "../../member-journey/ensure-member.js";
 import {
   type AdmitInput,
   type AdmitResult,
@@ -27,13 +28,14 @@ export async function communityAndMember(
     where: eq(communities.telegramChatId, BigInt(ctx.chat.id)),
   });
   if (!community) return "This chat is not a registered Hyphae community.";
-  const member = await db.query.members.findFirst({
-    where: and(
-      eq(members.communityId, community.id),
-      eq(members.telegramUserId, BigInt(ctx.from?.id ?? 0)),
-    ),
+  if (!ctx.from || ctx.from.is_bot) return "Send this from your own Telegram account.";
+  // The sender is writing in the group, so they belong to it; a first submission creates their
+  // member row without a wallet (earn first, ruled 2026-10-07).
+  const member = await ensureMember(db, {
+    communityId: community.id,
+    telegramUserId: BigInt(ctx.from.id),
+    telegramUsername: ctx.from.username ?? null,
   });
-  if (!member) return "Link a wallet first: send /link.";
   return { community, member };
 }
 

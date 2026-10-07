@@ -19,7 +19,7 @@ export interface OnboardingCommunity {
 }
 
 const GENERIC =
-  "Hyphae scores real work for token communities. Begin in your registered community group: /link, /rules, then /me. Adding the bot does not register a group. Ask the community owner for its verified invite.";
+  "Hyphae scores real work for token communities. Begin in your registered community group: reply to a raid to earn points, /link a wallet to be paid, take /rules, and check /me. Adding the bot does not register a group. Ask the community owner for its verified invite.";
 const OWN_LINK =
   "On a phone, open your ORIGINAL private bot URL (including its fragment) in a compatible wallet browser. Never forward it or send it to support. Use your own link from the official bot; cancel any transfer, approval or seed-phrase request. After signing, check your own /me.";
 const utc = (date: Date) => `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;

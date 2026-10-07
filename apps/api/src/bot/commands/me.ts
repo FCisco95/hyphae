@@ -18,7 +18,11 @@ export async function me(ctx: CommandContext<Context>) {
   const member = await db.query.members.findFirst({
     where: and(eq(members.communityId, community.id), eq(members.telegramUserId, BigInt(from.id))),
   });
-  if (!member) return reply(ctx, "Not linked yet. Send /link.");
+  if (!member)
+    return reply(
+      ctx,
+      "Nothing yet. Reply to a raid to start earning points, and send /link to be paid.",
+    );
 
   return reply(
     ctx,

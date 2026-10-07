@@ -40,19 +40,38 @@ export async function applyVerifiedWallet(
     );
   if (holder) return "wallet_taken"; // D2: no takeover
 
-  const [existing] = await tx
-    .select({ id: members.id })
-    .from(members)
-    .where(
-      and(
-        eq(members.communityId, input.communityId),
-        eq(members.telegramUserId, input.telegramUserId),
-      ),
-    )
-    .for("update");
+  const callerRow = () =>
+    tx
+      .select({ id: members.id })
+      .from(members)
+      .where(
+        and(
+          eq(members.communityId, input.communityId),
+          eq(members.telegramUserId, input.telegramUserId),
+        ),
+      )
+      .for("update");
+  let [existing] = await callerRow();
 
   const now = sql`clock_timestamp()`;
-  let memberId: string;
+  let memberId: string | undefined;
+  if (!existing) {
+    // A first submission can create the caller's row (without a wallet) after the read above; the
+    // conflict is then theirs to keep, and the row is linked below instead of reported as taken.
+    const [created] = await tx
+      .insert(members)
+      .values({
+        communityId: input.communityId,
+        telegramUserId: input.telegramUserId,
+        telegramUsername: input.telegramUsername,
+        wallet: input.wallet,
+        linkMethod: "signature",
+      })
+      .onConflictDoNothing({ target: [members.communityId, members.telegramUserId] })
+      .returning({ id: members.id });
+    if (created) memberId = created.id;
+    else [existing] = await callerRow();
+  }
   if (existing) {
     memberId = existing.id;
     await tx
@@ -68,20 +87,8 @@ export async function applyVerifiedWallet(
       .update(memberWalletLinks)
       .set({ validTo: now })
       .where(and(eq(memberWalletLinks.memberId, existing.id), isNull(memberWalletLinks.validTo)));
-  } else {
-    const [created] = await tx
-      .insert(members)
-      .values({
-        communityId: input.communityId,
-        telegramUserId: input.telegramUserId,
-        telegramUsername: input.telegramUsername,
-        wallet: input.wallet,
-        linkMethod: "signature",
-      })
-      .returning({ id: members.id });
-    if (!created) throw new Error("link: member insert returned nothing");
-    memberId = created.id;
   }
+  if (!memberId) throw new Error("link: no member row to link");
   // Read after the close above, so the new interval starts at or after the old one ends.
   await tx.insert(memberWalletLinks).values({
     communityId: input.communityId,

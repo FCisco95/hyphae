@@ -34,10 +34,16 @@ interface Out {
   keyboard: InlineKeyboardMarkup["inline_keyboard"] | undefined;
 }
 
-function harness() {
+// Telegram's group membership: by default only MEMBER is in any group.
+function harness(inGroup: (chatId: number, userId: number) => boolean = (_c, u) => u === MEMBER) {
   const out: Out[] = [];
   const bot = new Bot("1:t", { botInfo });
   bot.api.config.use(async (_prev, method, payload) => {
+    if (method === "getChatMember") {
+      const q = payload as { chat_id: number; user_id: number };
+      const status = inGroup(Number(q.chat_id), Number(q.user_id)) ? "member" : "left";
+      return { ok: true, result: { status, user: { id: q.user_id } } } as never;
+    }
     const p = payload as { text?: string; reply_markup?: InlineKeyboardMarkup };
     out.push({ method, text: p.text ?? "", keyboard: p.reply_markup?.inline_keyboard });
     const message = { message_id: 10, date: 0, chat: { id: MEMBER, type: "private" }, text: "" };
@@ -165,13 +171,13 @@ ${CUSTODY_POLICY}`,
 });
 
 describe("the private test", () => {
-  it("needs a linked member and a test for the current rules", async () => {
+  it("needs a member of the group and a test for the current rules", async () => {
     const lane = await seedRewardLane(t.db);
     const h = harness();
     await h.bot.handleUpdate(
       command(`/start ${rulesStartPayload(lane.community.id)}`, privateChat, STRANGER),
     );
-    expect(last(h.out)?.text).toBe(`Link a wallet first: send /link in ${lane.community.name}.`);
+    expect(last(h.out)?.text).toBe(`Join ${lane.community.name} first, then send /rules there.`);
 
     const bare = await seedCommunity(t.db); // no reward epoch, so no pinned rules
     await h.bot.handleUpdate(
@@ -237,7 +243,7 @@ describe("button data is not trusted", () => {
     await h.bot.handleUpdate(
       tap(rulesData("mycel-rules-1", lane.community.id, allRight()), STRANGER),
     );
-    expect(last(h.out)?.text).toBe(`Link a wallet first: send /link in ${lane.community.name}.`);
+    expect(last(h.out)?.text).toBe(`Join ${lane.community.name} first, then send /rules there.`);
     const [row] = await t.db
       .select()
       .from(members)
@@ -245,13 +251,31 @@ describe("button data is not trusted", () => {
     expect(row).toBeUndefined();
   });
 
+  it("a group member with no wallet can pass, and the pass is kept for when they link", async () => {
+    const lane = await seedRewardLane(t.db);
+    const NEWCOMER = 4242;
+    const h = harness((_c, u) => u === NEWCOMER);
+    await h.bot.handleUpdate(
+      command(`/start ${rulesStartPayload(lane.community.id)}`, privateChat, NEWCOMER),
+    );
+    await h.bot.handleUpdate(
+      tap(rulesData("mycel-rules-1", lane.community.id, allRight()), NEWCOMER),
+    );
+    const newcomer = await t.db.query.members.findFirst({
+      where: eq(members.telegramUserId, BigInt(NEWCOMER)),
+    });
+    expect(newcomer).toMatchObject({ communityId: lane.community.id, wallet: null });
+    expect(await passesOf(newcomer?.id ?? "")).toHaveLength(1);
+  });
+
   it("a member of one community cannot pass for another", async () => {
     const other = await seedRewardLane(t.db);
     await t.db.update(members).set({ telegramUserId: 777n }).where(eq(members.id, other.member.id));
-    const h = harness();
+    // MEMBER is in their own group, not in this one.
+    const h = harness((chatId) => BigInt(chatId) !== other.community.telegramChatId);
     await h.bot.handleUpdate(tap(rulesData("mycel-rules-1", other.community.id, allRight())));
     expect(await passesOf(other.member.id)).toEqual([]);
-    expect(last(h.out)?.text).toBe(`Link a wallet first: send /link in ${other.community.name}.`);
+    expect(last(h.out)?.text).toBe(`Join ${other.community.name} first, then send /rules there.`);
   });
 
   it("stale or malformed data records nothing", async () => {

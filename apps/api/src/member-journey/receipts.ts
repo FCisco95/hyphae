@@ -237,7 +237,7 @@ export function receiptText(row: MemberReceipt, webBase = ""): string {
     "Target relation: unverified. The captured post does not prove its reply/quote target.",
     "X account ownership: unverified. A submitted handle or model opinion is not ownership proof.",
     "The approved human authorship attestation for the current payout still applies.",
-    `Eligibility: separate wallet, rules, holder, authorship/duplicate and safety checks apply. ${row.walletMethod === "signature" ? "Your current wallet link is verified; eligibility at close is separate." : "Your current wallet link needs signature verification."}`,
+    `Eligibility: separate wallet, rules, holder, authorship/duplicate and safety checks apply. ${row.walletMethod === "signature" ? "Your current wallet link is verified; eligibility at close is separate." : row.walletMethod === null ? "No wallet linked yet: link one by signing before the epoch closes to be paid." : "Your current wallet link needs signature verification."}`,
     row.allocation
       ? `Recorded allocation for your whole epoch: ${row.allocation.amountLamports} lamports; not a payment confirmation.`
       : "Allocation: no member allocation is recorded for this submission's epoch.",

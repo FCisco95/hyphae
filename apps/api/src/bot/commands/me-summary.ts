@@ -4,11 +4,16 @@ import { and, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { dbClock, type RewardDeps } from "../../rewards/config.js";
 import { effectiveResults } from "../../rewards/effective.js";
 
-// Only a signed wallet is payable (D1); a pasted one keeps scoring but is marked.
+// Only a signed wallet is payable (D1); a pasted one keeps scoring but is marked, and a member
+// without a wallet earns points that pay only once a wallet is signed before the close.
 export function walletLines(member: {
-  wallet: string;
-  linkMethod: "paste" | "signature";
+  wallet: string | null;
+  linkMethod: "paste" | "signature" | null;
 }): string[] {
+  if (member.wallet === null)
+    return [
+      "No wallet yet. Your replies still earn points; to be paid, link a wallet by signing before the epoch closes: send /link.",
+    ];
   const short = `Wallet ${member.wallet.slice(0, 4)}…${member.wallet.slice(-4)}`;
   return member.linkMethod === "signature"
     ? [`${short} (verified)`]

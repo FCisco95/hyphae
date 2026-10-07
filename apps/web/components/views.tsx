@@ -119,10 +119,11 @@ export function CommunityView({
               </p>
             </li>
             <li>
-              <h3>Link your own wallet</h3>
+              <h3>Link your own wallet to be paid</h3>
               <p>
                 Send <code>/link</code> in that group and follow its private bot link. The website
-                cannot start this session for you.
+                cannot start this session for you. You can reply to raids and earn points before you
+                link; only a wallet signed before the epoch closes is paid.
               </p>
               <p className="small muted">
                 On a phone, use your wallet app's browser with the ORIGINAL bot URL, including its

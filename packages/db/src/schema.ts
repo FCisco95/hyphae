@@ -57,15 +57,22 @@ export const members = pgTable(
       .references(() => communities.id),
     telegramUserId: bigint("telegram_user_id", { mode: "bigint" }).notNull(),
     telegramUsername: text("telegram_username"),
-    wallet: text("wallet").notNull(),
+    // Null until the member links a wallet: a member may earn first (ruled 2026-10-07). Payment
+    // reads the signed link valid at the close from member_wallet_links, never this column.
+    wallet: text("wallet"),
     // X accounts this member has submitted from; bound on first sight, max 3 (see bindHandle).
     xHandles: jsonb("x_handles").$type<string[]>().notNull().default([]),
-    linkMethod: linkMethod("link_method").notNull(),
-    linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
+    linkMethod: linkMethod("link_method"),
+    linkedAt: timestamp("linked_at", { withTimezone: true }).defaultNow(),
   },
   (t) => [
     uniqueIndex("members_community_tg").on(t.communityId, t.telegramUserId),
+    // Nulls are distinct here, so any number of members can be without a wallet.
     uniqueIndex("members_community_wallet").on(t.communityId, t.wallet),
+    check(
+      "members_wallet_link_together",
+      sql`(${t.wallet} is null) = (${t.linkMethod} is null) and (${t.wallet} is null) = (${t.linkedAt} is null)`,
+    ),
   ],
 );
 

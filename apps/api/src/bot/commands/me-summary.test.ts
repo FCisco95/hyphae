@@ -194,6 +194,12 @@ describe("walletLines", () => {
     ]);
   });
 
+  it("tells a member without a wallet that points count and a signed wallet is needed to be paid", () => {
+    expect(walletLines({ wallet: null, linkMethod: null })).toEqual([
+      "No wallet yet. Your replies still earn points; to be paid, link a wallet by signing before the epoch closes: send /link.",
+    ]);
+  });
+
   it("shows a signed wallet as verified", () => {
     expect(walletLines({ wallet, linkMethod: "signature" })).toEqual([
       "Wallet AbCd…WxYz (verified)",

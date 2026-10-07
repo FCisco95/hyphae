@@ -6,7 +6,7 @@ import {
   rewardIntakes,
   tasks,
 } from "@hyphae/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import {
   at,
@@ -186,11 +186,35 @@ describe("explicit private raid submissions", () => {
       ),
     ).toEqual({ error: "kind_taken" });
   });
-  it("preserves handle cap as an unverified claim and requires linked membership", async () => {
-    const { d, member, task, input } = await setup();
-    expect(await beginSubmission(t.db, task.id, 99n, "reply", d)).toEqual({
-      error: "link_required",
+  it("lets a group member with no wallet submit: earn first, link before the close to be paid", async () => {
+    const { d, task } = await setup();
+    const begun = await beginSubmission(t.db, task.id, 99n, "reply", d);
+    if (!("session" in begun)) throw new Error(`prompt: ${JSON.stringify(begun)}`);
+    const newcomer = await t.db.query.members.findFirst({
+      where: and(eq(members.communityId, task.communityId), eq(members.telegramUserId, 99n)),
     });
+    expect(newcomer).toMatchObject({ wallet: null, linkMethod: null, linkedAt: null });
+    d.fetchPost.mockResolvedValue({ ...post, id: "991", url: "https://x.com/member/status/991" });
+    expect(
+      await acceptSubmission(
+        t.db,
+        { sessionId: begun.session.id, userId: 99n, url: "https://x.com/member/status/991" },
+        d,
+      ),
+    ).toHaveProperty("receipt");
+  });
+  it("creates no member for someone outside the group", async () => {
+    const { d, task } = await setup();
+    d.membership.mockResolvedValueOnce(false);
+    expect(await beginSubmission(t.db, task.id, 98n, "reply", d)).toEqual({ error: "not_member" });
+    expect(
+      await t.db.query.members.findFirst({
+        where: and(eq(members.communityId, task.communityId), eq(members.telegramUserId, 98n)),
+      }),
+    ).toBeUndefined();
+  });
+  it("preserves handle cap as an unverified claim", async () => {
+    const { d, member, input } = await setup();
     await t.db
       .update(members)
       .set({ xHandles: ["one", "two", "three"] })

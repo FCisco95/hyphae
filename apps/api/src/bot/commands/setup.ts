@@ -100,7 +100,12 @@ async function loadState(
     mint: community.mint,
     botUsername: ctx.me.username,
     joined: isMemberStatus(chat),
-    wallet: !member ? "none" : member.linkMethod === "signature" ? "verified" : "unverified",
+    wallet:
+      member?.linkMethod === "signature"
+        ? "verified"
+        : member?.linkMethod === "paste"
+          ? "unverified"
+          : "none",
     rules,
     alerts: subscription?.enabled === true,
     replied: (intakes?.n ?? 0) > 0,

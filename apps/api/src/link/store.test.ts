@@ -7,6 +7,7 @@ import {
 } from "@organichub/verify";
 import { and, eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { ensureMember } from "../member-journey/ensure-member.js";
 import { createTestDb, seedCommunity } from "../rewards/test-db.js";
 import { openLinkSession, resolveLinkSession } from "./session.js";
 import { createLinkStore, type LinkContext } from "./store.js";
@@ -234,14 +235,45 @@ describe("tenant-bound store through the SDK", () => {
     expect(old?.validTo?.getTime()).toBeLessThanOrEqual(current?.validFrom.getTime() ?? 0);
   });
 
+  it("a member who earned before linking links a wallet and keeps the same member", async () => {
+    const { community } = await seedCommunity(t.db);
+    const earner = await ensureMember(t.db, {
+      communityId: community.id,
+      telegramUserId: 777n,
+      telegramUsername: null,
+    });
+    const { ctx, identity } = await sessionFor(community.id, 777n);
+    const w = await testWallet();
+    const { store } = createLinkStore(t.db, ctx);
+    const req = await createVerificationRequest(store, identity, w.address, tenant);
+    await consumeWalletProof(
+      store,
+      identity,
+      { ...req, signature: await w.sign(req.message) },
+      tenant,
+    );
+
+    const [row] = await t.db.select().from(members).where(eq(members.id, earner.id));
+    expect(row?.wallet).toBe(w.address);
+    expect(row?.linkMethod).toBe("signature");
+    expect(row?.linkedAt).toBeInstanceOf(Date);
+    const links = await t.db
+      .select()
+      .from(memberWalletLinks)
+      .where(eq(memberWalletLinks.memberId, earner.id));
+    expect(links.map((r) => [r.wallet, r.method, r.validTo])).toEqual([
+      [w.address, "signature", null],
+    ]);
+  });
+
   it("verifying a pasted member closes the pasted row", async () => {
     const { community, member } = await seedCommunity(t.db);
     await t.db.insert(memberWalletLinks).values({
       communityId: community.id,
       memberId: member.id,
-      wallet: member.wallet,
+      wallet: member.wallet as string,
       method: "paste",
-      validFrom: member.linkedAt,
+      validFrom: member.linkedAt as Date,
     });
     const { ctx, identity } = await sessionFor(community.id, member.telegramUserId);
     const w = await testWallet();

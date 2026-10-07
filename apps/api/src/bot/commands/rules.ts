@@ -2,8 +2,10 @@ import { CUSTODY_POLICY } from "@hyphae/core";
 import { communities, type Db, members, rewardConfigs } from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
 import { type CommandContext, Composer, type Context, InlineKeyboard } from "grammy";
+import { ensureMember } from "../../member-journey/ensure-member.js";
 import { grade, type RulesTest, recordPass, rulesTestFor } from "../../payout/rules-test.js";
 import { latestEpoch, RewardConfigPayload } from "../../rewards/config.js";
+import { isMemberStatus } from "../membership.js";
 import { reply } from "../reply.js";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -74,6 +76,30 @@ const memberOf = (db: Db, communityId: string, telegramUserId: number) =>
     ),
   });
 
+type Community = typeof communities.$inferSelect;
+const notInGroup = (community: Community) =>
+  `Join ${community.name} first, then send /rules there.`;
+
+// The caller's member row. Someone in the group without one gets it, with no wallet, so they can
+// take the test before linking (earn first, ruled 2026-10-07); anyone else gets nothing.
+async function groupMember(db: Db, ctx: Context, community: Community) {
+  const from = ctx.from;
+  if (!from) return undefined;
+  const existing = await memberOf(db, community.id, from.id);
+  if (existing) return existing;
+  try {
+    const status = await ctx.api.getChatMember(Number(community.telegramChatId), from.id);
+    if (!isMemberStatus(status)) return undefined;
+  } catch {
+    return undefined;
+  }
+  return ensureMember(db, {
+    communityId: community.id,
+    telegramUserId: BigInt(from.id),
+    telegramUsername: from.username ?? null,
+  });
+}
+
 // The test for the rules pinned by the community's latest epoch: the one members are earning in
 // now, or the next one once it is materialized.
 async function currentTest(db: Db, communityId: string): Promise<RulesTest | undefined> {
@@ -98,8 +124,8 @@ export async function rulesStart(db: Db, ctx: CommandContext<Context>): Promise<
     await ctx.reply("That community is not registered with Hyphae.");
     return true;
   }
-  if (!(await memberOf(db, community.id, ctx.from.id))) {
-    await ctx.reply(`Link a wallet first: send /link in ${community.name}.`);
+  if (!(await groupMember(db, ctx, community))) {
+    await ctx.reply(notInGroup(community));
     return true;
   }
   const test = await currentTest(db, community.id);
@@ -156,9 +182,8 @@ ${CUSTODY_POLICY}`,
       const next = question(test, community.id, data.answers);
       return ctx.editMessageText(next.text, { reply_markup: next.keyboard });
     }
-    const member = await memberOf(db, community.id, ctx.from.id);
-    if (!member)
-      return ctx.editMessageText(`Link a wallet first: send /link in ${community.name}.`);
+    const member = await groupMember(db, ctx, community);
+    if (!member) return ctx.editMessageText(notInGroup(community));
     const done = result(test, community.id, data.answers);
     if (done.passed) {
       await recordPass(db, { communityId: community.id, memberId: member.id, testId: test.id });
