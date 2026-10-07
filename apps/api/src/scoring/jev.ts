@@ -25,7 +25,9 @@ const PRICE_IN = 0.042;
 type Flag = z.infer<typeof ScoreFlag>;
 
 // The questions Jev answers about one contribution, and how code turns them into a score.
-export interface JevQuestionSet {
+// Weighted (v3): a quality level blended with the rubric's criteria, flags read on their own.
+export interface WeightedQuestionSet {
+  kind: "weighted";
   id: string;
   source: string; // the document the questions are written in
   criteria: Record<string, NoulQuestion>; // one per rubric criterion key
@@ -36,10 +38,58 @@ export interface JevQuestionSet {
   threshold: number; // P(yes) at or above it counts as yes
 }
 
+// Gated (v4): any gate zeroes; otherwise a fixed base plus probability-weighted bonuses.
+export const GATES = [
+  "generic",
+  "restates_post",
+  "unrelated",
+  "promotes_other",
+  "guideline_breach",
+  "addresses_grader",
+  "spam",
+] as const;
+export const BONUSES = ["asks_question", "suggests_change", "adds_own", "explains"] as const;
+type Gate = (typeof GATES)[number];
+type Bonus = (typeof BONUSES)[number];
+
+// addresses_grader has no flag: none of the six means "spoke to the grader", so it zeroes the
+// raw score and the reasoning names it. restates_post zeroes only together with ai_slop or
+// polished (restating the post in AI or polished wording); ai_slop adds its own flag.
+const GATE_FLAGS: Record<Gate, Flag[]> = {
+  generic: ["low_effort"],
+  restates_post: ["low_effort"],
+  unrelated: ["off_topic"],
+  promotes_other: ["off_topic"],
+  guideline_breach: ["guideline_breach"],
+  addresses_grader: [],
+  spam: ["spam"],
+};
+
+export interface GatedQuestionSet {
+  kind: "gated";
+  id: string;
+  source: string;
+  gates: Record<Gate, NoulQuestion>;
+  aiSlop: NoulQuestion;
+  aiSlopObvious: NoulQuestion;
+  polished: NoulQuestion; // read only with restates_post
+  bonuses: Record<Bonus, NoulQuestion>;
+  base: number; // raw score of a reply that passes every gate
+  bonus: number; // points per bonus, times its P(yes)
+  threshold: number;
+}
+
+export type JevQuestionSet = WeightedQuestionSet | GatedQuestionSet;
+
+// The gated set marks only these rubric criteria, each from the answers that stand for it.
+const GATED_CRITERIA = ["context_fit", "own_voice", "value_angle"];
+
 type Request = SystemOneRequest<Questions> & { model: string };
 
 export function jevRequest(input: ScoringInput, set: JevQuestionSet): Request {
-  const missing = input.rubric.criteria.filter((c) => !set.criteria[c.key]);
+  const missing = input.rubric.criteria.filter((c) =>
+    set.kind === "weighted" ? !set.criteria[c.key] : !GATED_CRITERIA.includes(c.key),
+  );
   if (missing.length) {
     throw new Error(`jev: no question for criterion ${missing.map((c) => c.key).join(", ")}`);
   }
@@ -66,12 +116,21 @@ export function jevRequest(input: ScoringInput, set: JevQuestionSet): Request {
   return {
     model: JEV_MODEL,
     state,
-    questions: {
-      ...set.criteria,
-      ...set.flags,
-      ai_slop_obvious: set.aiSlopObvious,
-      quality: set.quality,
-    },
+    questions:
+      set.kind === "weighted"
+        ? {
+            ...set.criteria,
+            ...set.flags,
+            ai_slop_obvious: set.aiSlopObvious,
+            quality: set.quality,
+          }
+        : {
+            ...set.gates,
+            ai_slop: set.aiSlop,
+            ai_slop_obvious: set.aiSlopObvious,
+            polished: set.polished,
+            ...set.bonuses,
+          },
   };
 }
 
@@ -97,12 +156,55 @@ export const JevResponseSchema = z.object({
 });
 export type JevResponse = z.infer<typeof JevResponseSchema>;
 
-export function composeJev(res: JevResponse, rubric: Rubric, set: JevQuestionSet): ScoreOutput {
-  const p = (id: string): number => {
+const noulOf =
+  (res: JevResponse) =>
+  (id: string): number => {
     const a = res.answers[id];
     if (a?.type !== "noul") throw new Error(`jev: no yes/no answer for ${id}`);
     return a.noul;
   };
+
+export function composeJev(res: JevResponse, rubric: Rubric, set: JevQuestionSet): ScoreOutput {
+  return set.kind === "weighted"
+    ? composeWeighted(res, rubric, set)
+    : composeGated(res, rubric, set);
+}
+
+function composeGated(res: JevResponse, rubric: Rubric, set: GatedQuestionSet): ScoreOutput {
+  const p = noulOf(res);
+  const yes = (id: string) => p(id) >= set.threshold;
+  const listed = (ids: readonly string[]) =>
+    ids.map((id) => `${id} ${p(id).toFixed(2)}`).join(", ");
+  const aiSlop = yes("ai_slop");
+  const restatedPolished = aiSlop || yes("polished");
+  const fired = GATES.filter((g) => yes(g) && (g !== "restates_post" || restatedPolished));
+  const raised = new Set<Flag>(fired.flatMap((g) => GATE_FLAGS[g]));
+  if (aiSlop) raised.add("ai_slop");
+  const flags = ScoreFlag.options.filter((f) => raised.has(f));
+  const bonuses = BONUSES.reduce((sum, b) => sum + p(b), 0);
+  const hits: Record<string, { met: boolean; note: string }> = {
+    context_fit: {
+      met: !yes("unrelated") && !yes("generic"),
+      note: `Jev P(yes) ${listed(["unrelated", "generic"])}`,
+    },
+    own_voice: { met: !aiSlop, note: `Jev P(yes) ${listed(["ai_slop"])}` },
+    value_angle: { met: BONUSES.some(yes), note: `Jev P(yes) ${listed(BONUSES)}` },
+  };
+  return ScoreOutputSchema.parse({
+    score: fired.length ? 0 : Math.min(100, Math.round(set.base + set.bonus * bonuses)),
+    rubricHits: rubric.criteria.map((c) => ({ key: c.key, ...hits[c.key] })),
+    flags,
+    aiSlop: { patterns: [], templateRhythm: aiSlop && yes("ai_slop_obvious") },
+    reasoning: `Composed from ${res.model} answers (question set ${set.id}): ${
+      fired.length
+        ? `zeroed by ${listed(fired)}`
+        : `base ${set.base} plus ${set.bonus} per bonus times P(yes): ${listed(BONUSES)}`
+    }; ${listed(["ai_slop", "polished"])}; flags: ${flags.length ? flags.join(", ") : "none"}.`,
+  });
+}
+
+function composeWeighted(res: JevResponse, rubric: Rubric, set: WeightedQuestionSet): ScoreOutput {
+  const p = noulOf(res);
   const yes = (id: string) => p(id) >= set.threshold;
   const quality = res.answers.quality;
   const top = set.quality.criteria.length - 1;
@@ -136,13 +238,40 @@ export type JevBackend = (request: Request) => Promise<{
   mode: "live" | "replay";
 }>;
 
-interface JevComposition {
-  version: "1";
-  weights: JevQuestionSet["weights"];
-  criterionWeights: Record<string, number>;
-  threshold: number;
-  qualityMax: number;
-}
+type JevComposition =
+  | {
+      version: "1";
+      weights: WeightedQuestionSet["weights"];
+      criterionWeights: Record<string, number>;
+      threshold: number;
+      qualityMax: number;
+    }
+  | {
+      version: "2";
+      base: number;
+      bonus: number;
+      threshold: number;
+      gates: Gate[];
+      bonuses: Bonus[];
+    };
+
+const compositionOf = (set: JevQuestionSet, rubric: Rubric): JevComposition =>
+  set.kind === "weighted"
+    ? {
+        version: "1",
+        weights: { ...set.weights },
+        criterionWeights: Object.fromEntries(rubric.criteria.map((c) => [c.key, c.weight])),
+        threshold: set.threshold,
+        qualityMax: set.quality.criteria.length - 1,
+      }
+    : {
+        version: "2",
+        base: set.base,
+        bonus: set.bonus,
+        threshold: set.threshold,
+        gates: [...GATES],
+        bonuses: [...BONUSES],
+      };
 
 export interface JevRun {
   model: string;
@@ -171,13 +300,7 @@ export async function runJev(
   const res = JevResponseSchema.parse(response);
   if (res.model !== JEV_MODEL)
     throw new Error(`jev: answered by ${res.model}, pinned ${JEV_MODEL}`);
-  const composition: JevComposition = {
-    version: "1",
-    weights: { ...set.weights },
-    criterionWeights: Object.fromEntries(input.rubric.criteria.map((c) => [c.key, c.weight])),
-    threshold: set.threshold,
-    qualityMax: set.quality.criteria.length - 1,
-  };
+  const composition = compositionOf(set, input.rubric);
   return {
     model: res.model,
     questionSet: set.id,

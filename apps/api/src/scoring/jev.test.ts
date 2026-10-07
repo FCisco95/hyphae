@@ -30,6 +30,7 @@ const rubric: Rubric = RubricSchema.parse(
 
 const yesNo = (id: string) => noul(`Is ${id} true of \`contribution.text\`?`);
 const set: JevQuestionSet = {
+  kind: "weighted",
   id: "test-set",
   source: "jev.test.ts",
   criteria: { context_fit: yesNo("fit"), own_voice: yesNo("voice"), value_angle: yesNo("angle") },
@@ -194,10 +195,187 @@ describe("composeJev", () => {
   });
 });
 
+const gated: JevQuestionSet = {
+  kind: "gated",
+  id: "test-gated",
+  source: "jev.test.ts",
+  gates: {
+    generic: yesNo("generic"),
+    restates_post: yesNo("a restatement"),
+    unrelated: yesNo("unrelated"),
+    promotes_other: yesNo("a plug"),
+    guideline_breach: yesNo("a breach"),
+    addresses_grader: yesNo("aimed at the grader"),
+    spam: yesNo("spam"),
+  },
+  aiSlop: yesNo("an AI draft"),
+  aiSlopObvious: yesNo("an obvious AI draft"),
+  polished: yesNo("polished wording"),
+  bonuses: {
+    asks_question: yesNo("a question"),
+    suggests_change: yesNo("a suggestion"),
+    adds_own: yesNo("own material"),
+    explains: yesNo("an explanation"),
+  },
+  base: 65,
+  bonus: 10,
+  threshold: 0.5,
+};
+const gatedIds = [
+  "generic",
+  "restates_post",
+  "unrelated",
+  "promotes_other",
+  "guideline_breach",
+  "addresses_grader",
+  "spam",
+  "ai_slop",
+  "ai_slop_obvious",
+  "polished",
+  "asks_question",
+  "suggests_change",
+  "adds_own",
+  "explains",
+];
+
+function gatedResponse(p: Answers = {}) {
+  const answers = Object.fromEntries(
+    gatedIds.map((id) => [id, { type: "noul", noul: p[id] ?? 0 }]),
+  );
+  return { model: JEV_MODEL, answers, usage: { input_tokens: 1000, output_tokens: 40 } };
+}
+const composeGated = (p: Answers) =>
+  composeJev(JevResponseSchema.parse(gatedResponse(p)), rubric, gated);
+
+describe("jevRequest with a gated set", () => {
+  it("asks every gate, both AI-writing questions, the polish question and every bonus", () => {
+    const request = jevRequest(input, gated);
+    expect(Object.keys(request.questions).sort()).toEqual([...gatedIds].sort());
+  });
+
+  it("refuses a rubric criterion it has no answer to mark", () => {
+    const extra = { key: "originality", weight: 0, label: "Original", description: "New." };
+    const other = { ...rubric, criteria: [...rubric.criteria, extra] };
+    expect(() => jevRequest({ ...input, rubric: other }, gated)).toThrow(/originality/);
+  });
+});
+
+describe("composeJev with gates and bonuses", () => {
+  it("gives a reply that passes every gate the base score", () => {
+    const output = composeGated({});
+    expect(output.score).toBe(65);
+    expect(output.flags).toEqual([]);
+  });
+
+  it("adds each bonus weighted by its probability, up to 100", () => {
+    // 65 + 10 × (1 + 0.5 + 0.25) = 82.5
+    expect(composeGated({ asks_question: 1, suggests_change: 0.5, adds_own: 0.25 }).score).toBe(83);
+    const all = { asks_question: 1, suggests_change: 1, adds_own: 1, explains: 1 };
+    expect(composeGated(all).score).toBe(100);
+  });
+
+  it.each([
+    ["generic", ["low_effort"]],
+    ["unrelated", ["off_topic"]],
+    ["promotes_other", ["off_topic"]],
+    ["guideline_breach", ["guideline_breach"]],
+    ["spam", ["spam"]],
+    ["addresses_grader", []],
+  ])("zeroes on %s at the threshold and sets %j", (gate, flags) => {
+    const fired = composeGated({ [gate]: 0.5, asks_question: 1 });
+    expect(fired.score).toBe(0);
+    expect(fired.flags).toEqual(flags);
+    expect(creditedScore(fired)).toBe(0);
+    expect(fired.reasoning).toContain(gate);
+    const below = composeGated({ [gate]: 0.49, asks_question: 1 });
+    expect(below.score).toBe(75);
+    expect(below.flags).toEqual([]);
+  });
+
+  it("zeroes a restatement only when it also reads as an AI draft or as polished", () => {
+    expect(composeGated({ restates_post: 0.9, ai_slop: 0.3, polished: 0.3 }).score).toBe(65);
+    const both = composeGated({ restates_post: 0.9, ai_slop: 0.6 });
+    expect(both.score).toBe(0);
+    expect(both.flags).toEqual(["low_effort", "ai_slop"]);
+    expect(both.reasoning).toContain("restates_post");
+    const polished = composeGated({ restates_post: 0.9, polished: 0.5 });
+    expect(polished.score).toBe(0);
+    expect(polished.flags).toEqual(["low_effort"]);
+    expect(polished.reasoning).toContain("polished 0.50");
+    expect(composeGated({ polished: 0.9 }).score).toBe(65);
+  });
+
+  it("flags an AI draft without zeroing it, and takes the strong cap only when obvious", () => {
+    const all = { asks_question: 1, suggests_change: 1, adds_own: 1, explains: 1 };
+    const mild = composeGated({ ...all, ai_slop: 0.8 });
+    expect(mild.score).toBe(100);
+    expect(mild.flags).toEqual(["ai_slop"]);
+    expect(mild.aiSlop).toEqual({ patterns: [], templateRhythm: false });
+    expect(creditedScore(mild)).toBe(79);
+    const strong = composeGated({ ...all, ai_slop: 0.8, ai_slop_obvious: 0.5 });
+    expect(strong.aiSlop.templateRhythm).toBe(true);
+    expect(creditedScore(strong)).toBe(0);
+    expect(composeGated({ ai_slop_obvious: 0.9 }).aiSlop.templateRhythm).toBe(false);
+  });
+
+  it("marks the rubric's criteria from the answers it used and notes them", () => {
+    const hits = composeGated({
+      generic: 0.2,
+      unrelated: 0.1,
+      ai_slop: 0.7,
+      explains: 0.6,
+    }).rubricHits;
+    expect(hits.map(({ key, met }) => [key, met])).toEqual([
+      ["context_fit", true],
+      ["own_voice", false],
+      ["value_angle", true],
+    ]);
+    expect(hits[0]?.note).toContain("unrelated 0.10");
+    expect(hits[1]?.note).toContain("ai_slop 0.70");
+    expect(hits[2]?.note).toContain("explains 0.60");
+    expect(composeGated({ generic: 0.8 }).rubricHits[0]?.met).toBe(false);
+    expect(composeGated({ explains: 0.4 }).rubricHits[2]?.met).toBe(false);
+  });
+
+  it("returns a valid scorer output that names the set and the base", () => {
+    const output = composeGated({ asks_question: 0.9 });
+    expect(ScoreOutputSchema.parse(output)).toEqual(output);
+    expect(output.reasoning).toMatch(/test-gated/);
+    expect(output.reasoning).toMatch(/base 65/);
+  });
+
+  it("refuses a response missing an answer", () => {
+    const r = gatedResponse();
+    delete (r.answers as Record<string, unknown>).adds_own;
+    expect(() => composeJev(JevResponseSchema.parse(r), rubric, gated)).toThrow(/adds_own/);
+  });
+});
+
 describe("runJev", () => {
   const backend =
     (body: unknown, latencyMs = 12): JevBackend =>
     async () => ({ response: body, latencyMs, mode: "live" });
+
+  it("records a gated composition, and a changed base changes only the configuration", async () => {
+    const run = await runJev(input, gated, backend(gatedResponse({ explains: 1 })));
+    expect(run.composition).toEqual({
+      version: "2",
+      base: 65,
+      bonus: 10,
+      threshold: 0.5,
+      gates: gatedIds.slice(0, 7),
+      bonuses: gatedIds.slice(10),
+    });
+    expect(run.output.score).toBe(75);
+    const higher = await runJev(
+      input,
+      { ...gated, base: 70 },
+      backend(gatedResponse({ explains: 1 })),
+    );
+    expect(higher.output.score).toBe(80);
+    expect(higher.requestHash).toBe(run.requestHash);
+    expect(higher.configurationHash).not.toBe(run.configurationHash);
+  });
 
   it("records the pinned model, the request hash, usage and cost", async () => {
     const run = await runJev(input, set, backend(response(allCriteria(1), 4)));
@@ -245,10 +423,8 @@ describe("runJev", () => {
     expect(changed.output.score).toBe(38);
     expect(changed.requestHash).toBe(first.requestHash);
     expect(changed.configurationHash).not.toBe(first.configurationHash);
-    expect(changed.composition.criterionWeights).toEqual({
-      context_fit: 0,
-      own_voice: 0,
-      value_angle: 1,
+    expect(changed.composition).toMatchObject({
+      criterionWeights: { context_fit: 0, own_voice: 0, value_angle: 1 },
     });
     const recomposed = await runJev(
       input,

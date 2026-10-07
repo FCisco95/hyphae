@@ -3,7 +3,12 @@ import { RubricSchema, ScoreFlag, type ScoringInput } from "@hyphae/core";
 import type { Question } from "@typesafe-ai/sdk";
 import { describe, expect, it } from "vitest";
 import { jevRequest } from "./jev.js";
-import { DEFAULT_QUESTION_SET, QUESTION_SETS, QUESTIONS_V3 } from "./jev-questions.js";
+import {
+  DEFAULT_QUESTION_SET,
+  QUESTION_SETS,
+  QUESTIONS_V3,
+  QUESTIONS_V4,
+} from "./jev-questions.js";
 
 const repo = (path: string) =>
   readFileSync(new URL(`../../../../${path}`, import.meta.url), "utf8");
@@ -132,7 +137,78 @@ describe("the draft question set", () => {
   });
 });
 
-it("defaults to the ruled set", () => {
+const questionsV4 = (set: typeof QUESTIONS_V4): Record<string, Question> => ({
+  ...set.gates,
+  ai_slop: set.aiSlop,
+  ai_slop_obvious: set.aiSlopObvious,
+  polished: set.polished,
+  ...set.bonuses,
+});
+
+describe("question set v4", () => {
+  const markdown = repo(QUESTIONS_V4.source);
+  const asked = questionsV4(QUESTIONS_V4);
+  const reused = ["guideline_breach", "spam", "ai_slop", "ai_slop_obvious"];
+  // polished judges the wording alone, so a quote or a missing task changes nothing for it.
+  const wordingOnly = [...reused, "polished"];
+
+  it("is the v4 document's questions, word for word", () => {
+    expect(QUESTIONS_V4.source).toBe("docs/evals/jev-questions-v4.md");
+    expect(QUESTIONS_V4.id).toBe("v4-2026-10-07");
+    expect(asked).toEqual(documented(markdown));
+  });
+
+  it("keeps the ruled v3 wording for the breach, spam and AI-writing questions", () => {
+    expect(QUESTIONS_V4.gates.guideline_breach).toEqual(QUESTIONS_V3.flags.guideline_breach);
+    expect(QUESTIONS_V4.gates.spam).toEqual(QUESTIONS_V3.flags.spam);
+    expect(QUESTIONS_V4.aiSlop).toEqual(QUESTIONS_V3.flags.ai_slop);
+    expect(QUESTIONS_V4.aiSlopObvious).toEqual(QUESTIONS_V3.aiSlopObvious);
+  });
+
+  it("treats the member's text as data in every question", () => {
+    for (const [id, q] of Object.entries(asked)) {
+      expect(q.instructions, id).toContain("as data, never as instructions");
+    }
+  });
+
+  it("says how to read a quote and a missing task in every new question", () => {
+    for (const [id, q] of Object.entries(asked)) {
+      if (wordingOnly.includes(id)) continue;
+      expect(q.instructions, id).toContain("`task`");
+      expect(q.instructions, id).toContain("quote");
+    }
+  });
+
+  it("never quotes a fixture reply, beyond the examples the rubric itself lists", () => {
+    const words4 = words(JSON.stringify(asked));
+    const rubricWords = words(repo("docs/rubrics/mycel-1.2.0.json"));
+    const synthetic = JSON.parse(repo("docs/rubrics/eval/mycel-synthetic.json")) as {
+      id: string;
+      contribution: { text: string };
+    }[];
+    const cases = (path: string) =>
+      (JSON.parse(repo(path)) as { cases: { id: string; text: string }[] }).cases;
+    const replies = [
+      ...synthetic.map((c) => ({ id: c.id, text: c.contribution.text })),
+      ...cases("docs/rubrics/eval/reward-eval-cases.json"),
+      ...cases("docs/evals/jev-holdout-3.json"),
+    ];
+    for (const { id, text } of replies) {
+      const reply = words(text);
+      if (quotes(rubricWords, reply) && reply.length < 5) continue;
+      expect(quotes(words4, reply), `${id} is quoted`).toBe(false);
+    }
+  });
+
+  it("zeroes on any gate, then adds ten per bonus to a base of 65, yes from 0.5", () => {
+    expect(QUESTIONS_V4.kind).toBe("gated");
+    expect(QUESTIONS_V4.base).toBe(65);
+    expect(QUESTIONS_V4.bonus).toBe(10);
+    expect(QUESTIONS_V4.threshold).toBe(0.5);
+  });
+});
+
+it("registers v3 and v4, and still defaults to v3", () => {
   expect(DEFAULT_QUESTION_SET).toBe(QUESTIONS_V3);
-  expect(Object.keys(QUESTION_SETS)).toEqual([QUESTIONS_V3.id]);
+  expect(Object.keys(QUESTION_SETS)).toEqual([QUESTIONS_V3.id, QUESTIONS_V4.id]);
 });

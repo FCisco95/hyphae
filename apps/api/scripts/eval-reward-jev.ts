@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import { creditedScore, RubricSchema } from "@hyphae/core";
 import { TypeSafeClient } from "@typesafe-ai/sdk";
@@ -7,18 +7,19 @@ import { QUESTION_SETS } from "../src/scoring/jev-questions.js";
 import { Cases, exitCode, judge, parseRuns } from "../src/scoring/reward-cases.js";
 
 // The reward cases through Jev: the question set's answers, composed in code, then the same
-// credit rules the production scorer uses. Writes nothing; one live Jev call per case and run.
+// credit rules the production scorer uses. One live Jev call per case and run; writes only --out.
 const { values } = parseArgs({
   options: {
     cases: { type: "string" },
     rubric: { type: "string" },
     questions: { type: "string", default: "v3-2026-09-30" },
     runs: { type: "string", default: "1" },
+    out: { type: "string" },
   },
 });
 if (!values.cases || !values.rubric) {
   throw new Error(
-    "usage: eval-reward-jev --cases <json> --rubric <json> [--questions id] [--runs n]",
+    "usage: eval-reward-jev --cases <json> --rubric <json> [--questions id] [--runs n] [--out json]",
   );
 }
 const apiKey = process.env.TYPESAFE_API_KEY;
@@ -33,6 +34,7 @@ const runs = parseRuns(values.runs ?? "1");
 let misses = 0;
 let errors = 0;
 let costMicroUsd = 0;
+const rows: Record<string, unknown>[] = [];
 for (const c of cases) {
   const task = tasks[c.task];
   if (!task) throw new Error(`case ${c.id}: unknown task ${c.task}`);
@@ -47,14 +49,42 @@ for (const c of cases) {
       const credited = creditedScore(r.output);
       const ok = judge(c.expect, credited);
       if (!ok) misses++;
+      const answers = Object.fromEntries(
+        Object.entries(r.answers).map(([id, a]) => [id, a.type === "noul" ? a.noul : a.score]),
+      );
+      const yes = Object.entries(r.answers)
+        .filter(([, a]) => a.type === "noul" && a.noul >= set.threshold)
+        .map(([id]) => id);
+      rows.push({
+        case: c.id,
+        run,
+        kind: c.kind,
+        expect: c.expect,
+        raw: r.output.score,
+        credited,
+        flags: r.output.flags,
+        ok,
+        answers,
+      });
       console.log(
-        `${c.id.padEnd(30)} raw ${String(r.output.score).padStart(3)} credited ${String(credited).padStart(3)} ${r.output.flags.join("+").padEnd(34)} ${ok ? "ok" : "MISS"}`,
+        `${c.id.padEnd(30)} raw ${String(r.output.score).padStart(3)} credited ${String(credited).padStart(3)} ${r.output.flags.join("+").padEnd(30)} yes: ${yes.join(",").padEnd(40)} ${ok ? "ok" : "MISS"}`,
       );
     } catch (error) {
       errors++;
-      console.log(`${c.id.padEnd(30)} ERROR ${(error as Error).message.split("\n")[0]}`);
+      const message = (error as Error).message.split("\n")[0];
+      rows.push({ case: c.id, run, kind: c.kind, expect: c.expect, error: message });
+      console.log(`${c.id.padEnd(30)} ERROR ${message}`);
     }
   }
 }
-console.log(JSON.stringify({ misses, errors, costUsd: costMicroUsd / 1e6 }));
+const summary = {
+  questionSet: set.id,
+  rubricVersion: rubric.version,
+  runs,
+  misses,
+  errors,
+  costUsd: costMicroUsd / 1e6,
+};
+console.log(JSON.stringify(summary));
+if (values.out) await writeFile(values.out, `${JSON.stringify({ ...summary, rows }, null, 2)}\n`);
 process.exit(exitCode({ misses, errors }));
