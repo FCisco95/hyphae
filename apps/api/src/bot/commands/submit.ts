@@ -1,5 +1,5 @@
 import { communities, contributions, type members } from "@hyphae/db";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { CommandContext, Context } from "grammy";
 import { db } from "../../db.js";
 import { boss, QUEUES } from "../../jobs/queue.js";
@@ -12,6 +12,7 @@ import {
   capturedEvidence,
 } from "../../rewards/intake.js";
 import { routeSubmission } from "../../rewards/submission.js";
+import { isMemberStatus } from "../membership.js";
 import { reply } from "../reply.js";
 import { parseSubmitArgs, type SubmitArgs } from "./args.js";
 
@@ -29,8 +30,15 @@ export async function communityAndMember(
   });
   if (!community) return "This chat is not a registered Hyphae community.";
   if (!ctx.from || ctx.from.is_bot) return "Send this from your own Telegram account.";
-  // The sender is writing in the group, so they belong to it; a first submission creates their
-  // member row without a wallet (earn first, ruled 2026-10-07).
+  // Writing in a group does not prove belonging to it (a discussion group can let anyone comment),
+  // so Telegram is asked every time; a first submission then creates the member row without a
+  // wallet (earn first, ruled 2026-10-07).
+  try {
+    if (!isMemberStatus(await ctx.api.getChatMember(ctx.chat.id, ctx.from.id)))
+      return "You must currently belong to this community's group.";
+  } catch {
+    return "Membership could not be checked. Nothing was accepted; try again.";
+  }
   const member = await ensureMember(db, {
     communityId: community.id,
     telegramUserId: BigInt(ctx.from.id),

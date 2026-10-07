@@ -1,6 +1,6 @@
 import { CUSTODY_POLICY } from "@hyphae/core";
-import { communities, type Db, members, rewardConfigs } from "@hyphae/db";
-import { and, eq } from "drizzle-orm";
+import { communities, type Db, rewardConfigs } from "@hyphae/db";
+import { eq } from "drizzle-orm";
 import { type CommandContext, Composer, type Context, InlineKeyboard } from "grammy";
 import { ensureMember } from "../../member-journey/ensure-member.js";
 import { grade, type RulesTest, recordPass, rulesTestFor } from "../../payout/rules-test.js";
@@ -68,25 +68,16 @@ function result(test: RulesTest, communityId: string, answers: readonly number[]
   return { passed, text: [head, "", ...review].join("\n\n"), keyboard };
 }
 
-const memberOf = (db: Db, communityId: string, telegramUserId: number) =>
-  db.query.members.findFirst({
-    where: and(
-      eq(members.communityId, communityId),
-      eq(members.telegramUserId, BigInt(telegramUserId)),
-    ),
-  });
-
 type Community = typeof communities.$inferSelect;
 const notInGroup = (community: Community) =>
   `Join ${community.name} first, then send /rules there.`;
 
-// The caller's member row. Someone in the group without one gets it, with no wallet, so they can
-// take the test before linking (earn first, ruled 2026-10-07); anyone else gets nothing.
+// The caller's member row, only while they are in the group, checked with Telegram each time. A
+// group member without a row gets one with no wallet, so they can take the test before linking
+// (earn first, ruled 2026-10-07); anyone else gets nothing.
 async function groupMember(db: Db, ctx: Context, community: Community) {
   const from = ctx.from;
   if (!from) return undefined;
-  const existing = await memberOf(db, community.id, from.id);
-  if (existing) return existing;
   try {
     const status = await ctx.api.getChatMember(Number(community.telegramChatId), from.id);
     if (!isMemberStatus(status)) return undefined;

@@ -1,4 +1,4 @@
-import { contributions, rewardIntakes, rewardNominations } from "@hyphae/db";
+import { contributions, members, rewardIntakes, rewardNominations } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { Bot } from "grammy";
 import type { Update, UserFromGetMe } from "grammy/types";
@@ -13,6 +13,8 @@ const state = vi.hoisted(() => ({
   evaluation: vi.fn(),
   retrieval: vi.fn(),
   fetch: vi.fn(),
+  // Telegram's answer to getChatMember for the sender.
+  status: "member" as string | Error,
 }));
 vi.mock("../../db.js", () => ({
   get db() {
@@ -66,6 +68,10 @@ beforeAll(async () => {
   });
   bot.command("effort", effort);
   bot.api.config.use(async (_previous, method, payload) => {
+    if (method === "getChatMember") {
+      if (state.status instanceof Error) throw state.status;
+      return { ok: true, result: { status: state.status, user: { id: 42 } } } as never;
+    }
     if (method !== "sendMessage") throw new Error(`Unexpected Telegram request ${method}`);
     sent.push(String((payload as { text: string }).text));
     return { ok: true, result: true } as never;
@@ -76,12 +82,45 @@ afterAll(async () => {
 });
 beforeEach(() => {
   sent.length = 0;
+  state.status = "member";
   state.evaluation.mockReset().mockResolvedValue("job");
   state.retrieval.mockReset().mockResolvedValue("job");
   state.fetch.mockReset().mockImplementation(() => {
     throw new Error("Unexpected provider call");
   });
 });
+describe("who may use group commands", () => {
+  it("refuses a sender who is not in the group and creates no member", async () => {
+    const { community, chatId } = await lane();
+    await t.db.delete(members).where(eq(members.communityId, community.id));
+    state.status = "left";
+    await bot.handleUpdate(command("/effort my own separate write-up of the raid", chatId));
+    expect(sent.at(-1)).toBe("You must currently belong to this community's group.");
+    expect(await t.db.select().from(members).where(eq(members.communityId, community.id))).toEqual(
+      [],
+    );
+  });
+
+  it("fails closed when membership cannot be checked", async () => {
+    const { community, chatId } = await lane();
+    await t.db.delete(members).where(eq(members.communityId, community.id));
+    state.status = new Error("telegram down");
+    await bot.handleUpdate(command("/effort my own separate write-up of the raid", chatId));
+    expect(sent.at(-1)).toBe("Membership could not be checked. Nothing was accepted; try again.");
+    expect(await t.db.select().from(members).where(eq(members.communityId, community.id))).toEqual(
+      [],
+    );
+  });
+
+  it("gives a group member without a wallet a member row (earn first)", async () => {
+    const { community, chatId } = await lane();
+    await t.db.delete(members).where(eq(members.communityId, community.id));
+    await bot.handleUpdate(command("/effort my own separate write-up of the raid", chatId));
+    const [row] = await t.db.select().from(members).where(eq(members.communityId, community.id));
+    expect(row).toMatchObject({ telegramUserId: 42n, wallet: null });
+  });
+});
+
 describe("explicit effort nomination command", () => {
   it("explains existing-URL nomination, exact-raid submission and separate text work", async () => {
     const { chatId } = await lane();

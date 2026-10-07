@@ -268,6 +268,26 @@ describe("button data is not trusted", () => {
     expect(await passesOf(newcomer?.id ?? "")).toHaveLength(1);
   });
 
+  it("someone who left the group after starting cannot record a pass", async () => {
+    const lane = await seedRewardLane(t.db);
+    const LEAVER = 4343;
+    let inGroup = true;
+    const h = harness((_c, u) => u === LEAVER && inGroup);
+    await h.bot.handleUpdate(
+      command(`/start ${rulesStartPayload(lane.community.id)}`, privateChat, LEAVER),
+    );
+    const leaver = await t.db.query.members.findFirst({
+      where: eq(members.telegramUserId, BigInt(LEAVER)),
+    });
+    expect(leaver).toBeDefined();
+    inGroup = false;
+    await h.bot.handleUpdate(
+      tap(rulesData("mycel-rules-1", lane.community.id, allRight()), LEAVER),
+    );
+    expect(last(h.out)?.text).toBe(`Join ${lane.community.name} first, then send /rules there.`);
+    expect(await passesOf(leaver?.id ?? "")).toEqual([]);
+  });
+
   it("a member of one community cannot pass for another", async () => {
     const other = await seedRewardLane(t.db);
     await t.db.update(members).set({ telegramUserId: 777n }).where(eq(members.id, other.member.id));
