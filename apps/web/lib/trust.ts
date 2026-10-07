@@ -130,11 +130,12 @@ export const TRUST_SECTIONS: TrustSection[] = [
         evidence: [file("apps/api/src/rewards/config.ts"), READ_SERVICE],
       },
       {
-        text: "During the pilot, the founder can amend an open epoch's scoring prompt with a public, announced, non-retroactive record. The record is made before it takes effect and says who, why and from when. It applies only to contributions admitted from that time, and the rubric, credit rules and payout rules cannot change that way. The epoch page and the read API show it, and the epoch's audit record commits it. Not used yet.",
+        text: "During the pilot, the founder can amend an open epoch's scoring prompt with a public, announced, non-retroactive record. The record is made before it takes effect and says who, why and from when. It applies only to contributions admitted from that time, and the rubric, credit rules and payout rules cannot change that way. The epoch page and the read API show it, and the epoch's audit record commits it. Used once, on 2026-10-07: epoch 2 scores with reward-eval/2 from 18:00 UTC.",
         evidence: [
           file("apps/api/src/rewards/amendment.ts"),
           file("packages/core/src/commitments.ts"),
           READ_SERVICE,
+          file("docs/rubrics/CHANGELOG.md", "rubric changelog"),
         ],
       },
       {

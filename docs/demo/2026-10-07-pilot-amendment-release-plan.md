@@ -1,11 +1,11 @@
 ---
 date: 2026-10-07
-summary: Release of the epoch 2 pilot amendment. Applies migration 0016 (one new empty table) through the rehearsed db.mjs, moves the API and the worker to one image built from b265204, then, after Cisco publishes the announcement, records one amendment so epoch 2 contributions admitted from the announced UTC time score with reward-eval/2. Earlier decisions untouched; rubric, floor, hard zeros, AI caps and payout math unchanged. Prepared and rehearsed; needs Cisco's exact yes.
+summary: Release of the epoch 2 pilot amendment. Applies migration 0016 (one new empty table) through the rehearsed db.mjs, moves the API and the worker to one image built from b265204, then, after Cisco publishes the announcement, records one amendment so epoch 2 contributions admitted from the announced UTC time score with reward-eval/2. Earlier decisions untouched; rubric, floor, hard zeros, AI caps and payout math unchanged. Executed 2026-10-07: image amend-b265204 (sha256:161252f9…), amendment recorded 17:12:35Z, effective 18:00Z.
 ---
 
 # Epoch 2 pilot amendment release plan (source `b265204`)
 
-**Status: PREPARED, not authorized, not executed.** Written 2026-10-07 by Claude Opus 5.5 (`claude-opus-5-5`, effort xhigh) on the Windows PC; preparing it changed nothing live. Authorization is Cisco's exact sentence: **"yes, run the epoch 2 pilot amendment release"**. Design and rulings: [design](../handoffs/2026-10-07-epoch2-pilot-amendment.md).
+**Status: EXECUTED 2026-10-07 (E0 to E6 done, every check PASS; Step 8 acceptance pending a submission after 18:00 UTC). Record at the end.** Written 2026-10-07 by Claude Opus 5.5 (`claude-opus-5-5`, effort xhigh) on the Windows PC; preparing it changed nothing live. Authorization is Cisco's exact sentence: **"yes, run the epoch 2 pilot amendment release"**. Design and rulings: [design](../handoffs/2026-10-07-epoch2-pilot-amendment.md).
 
 **What goes live:**
 
@@ -165,6 +165,23 @@ At or after **T**, Cisco sends `/raid <announcement post URL>` in the Hyphae Lab
 >
 > How to take part: at {T} I open a raid on my X post about this change. Reply to that post with what you honestly think of the change, then tap Submit on the raid message here and paste your reply link. Replies submitted within 6 hours of the raid opening get full timing credit.
 
-## Execution record
+## Execution record (2026-10-07)
 
-Not executed.
+By Claude Opus 5.5 (`claude-opus-5-5`, effort xhigh) on the Windows PC, on Cisco's exact yes ("yes, run the epoch 2 pilot amendment release"). Cisco pushed `main` (`30cf429..72f0d3d`) with `!`.
+
+| Step | Time (UTC) | Result |
+|---|---|---|
+| 0 Guards | 16:36 to 16:40 | `b265204` an ancestor of `origin/main` = `72f0d3d`, runtime-tree diff empty, `main` = `origin/main`; tag `amend-b265204` `404`; `earn-94ce60e` `200 sha256:2ff89500…`; both machines `started` on it; `telegram.mjs` PASS; `proposal-check`: bootstrap `activated`, one `pending` `reward-eval/2` (E3), epochs 1 and 2 on `reward-eval/1`; epoch 2 fingerprint equal to the baseline (intakes 3 `79ed17cc`, decisions 3 `5897c505`, dispatches 3 `6af848b1`); GitHub CI on `72f0d3d` success |
+| 1 Worktree and image | 16:37 to 16:40 | Detached at exactly `b265204a323440d560fad8454bda1f34a54977fc`, clean, install 15 s. The first `--build-only` failed at Fly's remote builder (`unable to upgrade to h2c, received 500`), nothing pushed (tag still `404`); the retry pushed. **`NEW=sha256:161252f99dcc4b790e4742f99c9c3f0b4ad43bc6200157d756e33b6e9dfd947a`**, by tag and by digest `200`; machines unchanged |
+| 2 Precheck | 16:40:21 | PASS: 0015 shape, no amendments table, journal 16 |
+| 2 Migrate | 16:45:26 | After a newer `reward-recovery` (16:45:06Z): `APPLIED: journal 16 -> 17 rows, ending 0016_reward_config_amendments`, exit 0; SQL SHA-256 `34a7f77d…` equals the plan |
+| 2 Postcheck | 16:45 | PASS: the table with its three checks and unique index, 0 rows, every counted table delta 0, liveness true |
+| 3 API | 16:45:46 | Tag re-read `200 NEW`; API started 16:46:05Z on `NEW`, worker still `2ff89500…`. `/health` 200; community 200; `/epochs/2` open, `reward-eval/1`, `amendments: []`, 3 counted; a contribution read `amendment: null`; `/link`, `/docs` 200; `telegram.mjs` PASS; `api listening on :8080` at 16:46:08Z (the two proxy "refused connection" lines at 16:46:04Z are the restart gap) |
+| 4 Worker | 16:46:31 | Worker started 16:46:48Z on `NEW`; `worker: consuming …` 16:46:46Z. **Worker proof PASS:** `reward-recovery` at 16:50:13Z and 16:55:39Z, every counter 0, no failed or retrying jobs, no stack line |
+| 6 Plan in production | 16:47, 17:12:22 | `amend-epoch --plan` with T = 18:00Z: `reward-eval/1` → `reward-eval/2`, to-config digest `9f4bfac8182a` (the pending epoch 3 proposal's config); nothing recorded, `amendments: []` |
+| 5 Announcement | 17:06:00 | Cisco posted on X ([post](https://x.com/organic_mycel/status/2107880131390013632)): "From 18:00 UTC today, honest epoch 2 replies in your own words can earn valid scores …". He opened the raid on it at 17:07:53Z, before T, and closed the earlier raid `46284eb4…` |
+| 6 Record | 17:12:35 | **Amendment `a75dbfeb-1484-46df-aaae-9cd8d43a7827`**: epoch 2, `reward-eval/1` (`7c3b3482…`) → `reward-eval/2` (`aa244562…`), effective **2026-10-07T18:00:00Z**, actor `Cisco (founder)`, the reason above; to-config `d265af98-202c-4425-9d7b-dfdd5d5715fa`. Public read-back of `/epochs/2` shows exactly this amendment with `recorded_at` 17:12:35.849Z |
+| Untouched history | 17:29 | `decisions-digest.mjs <mint> 2 2026-10-07T15:22:00Z` equals the baseline exactly (intakes 3 `79ed17cc`, decisions 3 `5897c505`, dispatches 3 `6af848b1`). Without a cutoff: 4/4/4, the fourth row being Cisco's 17:10 reply below |
+| Before T | 17:10:10 | Cisco's own raid reply was admitted at 17:10, before T, and judged by `reward-eval/1`: raw 58, credited 0 (`low_effort`). It stays as judged. A side eval of the same text: `reward-eval/1` 58/58/58, `reward-eval/2` 75/66/75 (USD 0.18) |
+
+Not done by this plan: no proposal, secret, env, Fly config, Vercel setting, agent Telegram message, payout or invitation. Rollback to `earn-94ce60e` is no longer allowed: the amendment is recorded, so fix forward. **Still open (Step 8):** a raid reply submitted after 18:00 UTC must show `amendment` on its contribution page and a `reward-eval/2` revision once scored, and `decisions-digest.mjs <mint> 2 2026-10-07T18:00:00Z`, taken after 18:00, must give the same result at every later run (nothing from before T changes). Leftover worktrees `../hyphae-earn-94ce60e` and `../hyphae-amend-b265204` can be removed with `git worktree remove`.

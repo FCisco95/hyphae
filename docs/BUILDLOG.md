@@ -2,6 +2,26 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-07 (evening) · Scoring was too strict, so I changed it in public
+
+**What I found:** testers were writing honest replies and scoring under the 60 floor. Mine did too: "Best call. I guess Hyphae is a continuous improvement algorithm…" scored 58, so 0, under epoch 2's strict prompt. I need valid scores during live testing, and nobody keeps engaging for zero.
+
+**Shipped and live:**
+- **Earn first, one-tap X buttons, and the vault panel** (from this afternoon) are live: migration `0015`, then the API and the worker on image `earn-94ce60e`.
+- **A pilot amendment, done in public.** From 18:00 UTC today, epoch 2 contributions are scored with the less strict prompt `reward-eval/2`. I announced it on X at 17:06, it was recorded at 17:12, and the epoch page shows who, why and from when. It is not retroactive: everything submitted before 18:00 keeps its score, my 58 included. The rubric, hard zeros, AI caps, the 60 floor and the payout rules did not change. The epoch's audit record commits the amendment, and that record's hash goes on chain at the payout.
+
+**Decisions and why:**
+- **Amend in public, not quietly.** Changing an open epoch's judge is exactly what a scoring system must not do in secret, so the change is a recorded, announced, non-retroactive amendment. The security page says the power exists and that it was used once.
+- **Testers who qualify get paid in epoch 2.** "Payment from epoch 3" would have needed a new payout rule mid-epoch, the one thing the announcement promises not to change. So anyone who signs a wallet, passes the rules test and holds 100,000 MYCEL at the close can be paid from the approved pot.
+
+**Numbers:** the same reply of mine, run 3 times each: old prompt 58, 58, 58 (all 0); new prompt 75, 66, 75 (all pass), for USD 0.18. Tests: 870 API, 123 web, 114 core, 26 SDK, plus 73 on real Postgres. The migration and the amendment were rehearsed on a throwaway database: 11 of 11 cases as expected. Every epoch 2 row from before the release is byte-identical afterwards.
+
+**Review:** an independent Codex pass found four issues: stale test fixtures, an outdated security sentence, an effective time shown without seconds, and "scored" wording on unscored work. Its fix check found one more, in the tool that proves old rows did not change. All were fixed; final verdict ACCEPT.
+
+**Commits:** `365e442`, `e73b824`, `e44fe2c`, `d48b810`, `76cf244`, `2828d81`, `7a0626e`, `b944143`, `b265204`, `c1aec51`, plus the records.
+
+**Next:** check the first reply after 18:00 is scored by the new prompt. Then measure Claude Sonnet 5.5 at medium effort as the scoring model, and switch to it, in public, before the Oct 8 deploy cutoff.
+
 ## 2026-10-07 (afternoon) · Nobody was engaging, so I removed the walls
 
 **What I found:** to send their first reply, a member had to join the group, then sign a wallet, before the bot would accept anything at all. Then reply on X, then paste the link back. And nobody could tell an evaluator which wallet to fund for a community, because the vault address only appeared after the first payout.
