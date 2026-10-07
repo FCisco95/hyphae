@@ -67,8 +67,15 @@ export const TRUST_SECTIONS: TrustSection[] = [
         evidence: [program("src/instructions/publish_epoch.rs"), PROGRAM_REVIEW],
       },
       {
-        text: "That key lives on a Ledger hardware wallet, and a community's vault is funded one epoch at a time, just before it pays, so one epoch's pot is what is exposed.",
+        text: "That key lives on a Ledger hardware wallet, and a community's vault is funded one epoch at a time, just before it pays, to limit what is exposed. Unclaimed SOL from earlier epochs stays in the vault, and the same Ledger can upgrade or close the program, so its control reaches everything still in the vault.",
         evidence: [CUSTODY, WALLETS],
+      },
+      {
+        text: "Hyphae does not verify that an X account belongs to the member who submits it, or that a post really replies to or quotes the raid's post; both are recorded as unverified. A score is not proof of authorship.",
+        evidence: [
+          file("apps/api/src/bot/commands/handles.ts", "X handles"),
+          file("packages/db/src/schema.ts", "submission record"),
+        ],
       },
       {
         text: "The rest can be checked: the program on chain is byte for byte its public source, every score shows its reasoning, and every correction stays visible.",
@@ -159,7 +166,7 @@ export const TRUST_SECTIONS: TrustSection[] = [
         evidence: [address(ADMIN_LEDGER, "Ledger on Solana Explorer"), MAINNET_RECEIPT],
       },
       {
-        text: `Hyphae Lab's fee goes to the MYCEL Treasury, Squads vault ${FEE_VAULT}, which needs 2 of 3 signers to move funds. It is fixed when the community is created on mainnet, planned for the first payout on 2026-10-08, and cannot change afterwards.`,
+        text: `Hyphae Lab's fee goes to the MYCEL Treasury, Squads vault ${FEE_VAULT}, which needs 2 of 3 signers to move funds. It is fixed when the community is created on mainnet, planned for 2026-10-08, and cannot change afterwards.`,
         evidence: [
           address(FEE_VAULT, "vault on Solana Explorer"),
           file("docs/handoffs/2026-09-27-keys-and-fee-rulings.md", "fee ruling"),
@@ -273,16 +280,17 @@ export const TRUST_SECTIONS: TrustSection[] = [
         evidence: [READ_SERVICE],
       },
       {
-        text: "These services receive some of it: Anthropic (the AI model reads your contribution and the post it answers), Telegram (the bot), X (public post data through X's embed service), Neon (the database), Fly.io (the API and worker), Vercel (this site, which sees visitors' IP addresses) and a Solana RPC provider (wallet balance checks).",
+        text: "These services receive some of it: Anthropic (the AI model reads your contribution and the post it answers), Telegram (the bot), X (public post data through X's embed service), Neon (the database), Fly.io (the API and worker), Vercel (this site, which sees visitors' IP addresses and passes them to the API on Fly.io for rate limiting) and a Solana RPC provider (wallet balance checks).",
         evidence: [
           file("apps/api/src/env.ts", "service settings"),
           file("apps/api/src/x/oembed.ts", "X embed reader"),
           file("apps/web/lib/api.ts", "site's API client"),
+          file("apps/api/src/http/rate-limit.ts", "rate limit"),
         ],
       },
       {
-        text: "We keep this data while the community runs. On request, we delete your Telegram ID, username and X handles and unlink your wallet within 30 days. We cannot delete what is on Solana, or the text and scores in public receipts, because they are the audit trail.",
-        evidence: [BUILDLOG],
+        text: "We keep this data while the community runs. On request, within 30 days, we delete your Telegram ID, username and X handles and end your wallet link. We cannot delete what is on Solana or the public receipts, because they are the audit trail: a receipt keeps the contribution's text and link (an X link names the account that posted it), its scores, and the wallet that was verified when its epoch closed.",
+        evidence: [BUILDLOG, READ_SERVICE],
       },
       {
         text: "To ask, use the private report link above or ask your community's admin in Telegram. Deletion is done by hand today; there is no button for it yet.",
