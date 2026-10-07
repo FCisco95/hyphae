@@ -6,7 +6,7 @@ const Env = z.object({
   TELEGRAM_WEBHOOK_SECRET: z.string().min(16),
   ANTHROPIC_API_KEY: z.string().optional(),
   DEEPSEEK_API_KEY: z.string().optional(),
-  SCORING_MODEL: z.string().default("anthropic:claude-sonnet-5"),
+  SCORING_MODEL: z.string().default("anthropic:claude-haiku-5-5"),
   PUBLIC_WEB_URL: z.url().default("https://hyphae.fun"),
   PORT: z.coerce.number().default(8080),
   // Origin of the wallet-signing page and proof endpoints; it is part of every signed message.

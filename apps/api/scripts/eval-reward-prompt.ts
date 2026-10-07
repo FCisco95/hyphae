@@ -24,7 +24,7 @@ if (!values.cases || !values.rubric) {
 const { tasks, cases } = Cases.parse(JSON.parse(await readFile(values.cases, "utf8")));
 const rubric = RubricSchema.parse(JSON.parse(await readFile(values.rubric, "utf8")));
 const model = scoringModel(
-  values.model ?? process.env.SCORING_MODEL ?? "anthropic:claude-sonnet-5",
+  values.model ?? process.env.SCORING_MODEL ?? "anthropic:claude-haiku-5-5",
   {
     anthropic: process.env.ANTHROPIC_API_KEY,
     deepseek: process.env.DEEPSEEK_API_KEY,

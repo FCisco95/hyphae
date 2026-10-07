@@ -18,7 +18,7 @@ if (!values.cases || !values.rubric) {
 }
 const cases = EvalCasesSchema.parse(JSON.parse(await readFile(values.cases, "utf8")));
 const rubric = RubricSchema.parse(JSON.parse(await readFile(values.rubric, "utf8")));
-const modelId = values.model ?? process.env.SCORING_MODEL ?? "anthropic:claude-sonnet-5";
+const modelId = values.model ?? process.env.SCORING_MODEL ?? "anthropic:claude-haiku-5-5";
 
 if (values["dry-run"]) {
   console.log(
