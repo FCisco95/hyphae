@@ -5,7 +5,7 @@ summary: Draft release plan for making Jev the live epoch 2 reward scorer by a s
 
 # Jev live scorer release plan (source `<SHA>`)
 
-**Status: DRAFT, not executed. Nothing in this plan has run.** Written 2026-10-07 by Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort high), Session B; merged and updated the same night by Claude Opus 5.5 (Session A) on branch `jev-live` = `origin/main` (`ed32b4f`, the live image's source) + the session prompts + B's commits + `feat/jev-eval` + A's commits. Preparing it changed nothing live. Format follows the [pilot amendment plan](2026-10-07-pilot-amendment-release-plan.md). What the code does: [plumbing map](../handoffs/2026-10-07-jev-plumbing-map.md). Cisco's ruling (2026-10-07): Jev replaces the Anthropic scorer in epoch 2.
+**Status: DRAFT, not executed. Nothing in this plan has run.** Written 2026-10-07 by Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort high), Session B; merged and updated the same night by Claude Opus 5.5 (Session A) on branch `jev-live` = `ed32b4f` + the session prompts + B's commits + `feat/jev-eval` + A's commits and review fixes, then merged with `origin/main` (`fb89ba4`, docs) and `feat/haiku-55` (`d19889a`: `328fb45`, the source of the live image `haiku55-328fb45`, plus its records). So the Jev image keeps Claude Haiku 5.5 as the Anthropic model: it scores effort nominations on `reward-eval/2`, every contribution admitted before T2, and everything if `JEV_SCORING` is off. Preparing it changed nothing live. Format follows the [pilot amendment plan](2026-10-07-pilot-amendment-release-plan.md). What the code does: [plumbing map](../handoffs/2026-10-07-jev-plumbing-map.md). Cisco's ruling (2026-10-07): Jev replaces the Anthropic scorer in epoch 2.
 
 **Authorization will be Cisco's exact sentence:** **"yes, run the Jev live scorer release"** (proposed; he may change it). Nothing below runs without it.
 
@@ -14,7 +14,7 @@ summary: Draft release plan for making Jev the live epoch 2 reward scorer by a s
 | # | Blocker | Owner |
 |---|---|---|
 | 1 | Question set `v4` wired into `scoring/jev-registry.ts`, its holdout report done, R1-R3 and P1-P5 passing 3 of 3, every labeled zero staying zero | **Done, with exceptions for Cisco to accept:** registered as `reward-jev/1` (`2473c62`); [calibration](../evals/jev-v4-calibration-2026-10-07.md): 84 of 84 on the reward cases, R1-R3 and P1-P5 pass 3 of 3 (74 to 95). On the 64-reply holdout one labeled zero passes (reply 26, 74) and two labeled passes are zeroed (jokes built on a cheer). Rerun live through the production client and registry: same results, 0 errors, slowest call 607 ms. **Cisco accepted these three misses and chose to release (2026-10-07, about 20:50Z).** |
-| 2 | Codex review (read-only, xhigh) of `git diff ed32b4f..HEAD` on `jev-live` (ed32b4f is the pushed main and the live image's source): ACCEPT. Money-bearing scoring: no push before it | Agent runs it, fixes test-first |
+| 2 | Codex review (read-only, xhigh) of `git diff ed32b4f..HEAD` on `jev-live`, then of the merged head with `feat/haiku-55` (the live image's source): ACCEPT. Money-bearing scoring: no push before it | Agent runs it, fixes test-first |
 | 3 | The exact public sentence for what Jev is and why (the pages say "prompt" today) | **Done:** Cisco approved the reason, the announcement and the line (below); the security page names TypeSafe and the amendment chain |
 | 4 | `TYPESAFE_API_KEY` added as a Fly secret by Cisco (Step 4). The agent never sets it | Cisco |
 
@@ -30,7 +30,7 @@ If 1 or 2 is not done by about **2026-10-08T08:00Z**, stop: epoch 2 stays on `re
 | `6ad67b4` | Merge of `feat/jev-eval`: the Jev engine (`jev.ts`) and the eval harness |
 | `17546e4`, `2473c62`, `03d618d` | Question set v4 and its composition; its registry entry `reward-jev/1`; the member-readable explanation; `@typesafe-ai/sdk` under `dependencies` only |
 
-Everything else in the image is already live (`buttons-ed32b4f`).
+Everything else in the image is already live (`haiku55-328fb45`, since about 20:01Z on 2026-10-07).
 
 **What it does not change:** rubric 1.2.0, flags, hard zeros, AI caps, the 60 floor, timing, effort policy and its Anthropic model, points, the payout gate, allocation and its caps, the program, the held refs `158452fe`, `707d7daf`, `2fd2470a`, tag `c58aa27`. Every epoch 2 intake, dispatch and decision admitted before the effective time stays byte-for-byte.
 
@@ -56,9 +56,9 @@ Everything else in the image is already live (`buttons-ed32b4f`).
 
 | Until | Action |
 |---|---|
-| Before E7 (no amendment recorded) | API and worker back to `buttons-ed32b4f` = `sha256:fa0b2c955b16e7096c629aebeb6c65ca46337ba3365d75e254c59c655529a5ed` (live since about 19:52Z on 2026-10-07); `fly secrets unset JEV_SCORING` is optional (the old image ignores it). The migration is never rolled back: the old image runs on it. |
+| Before E7 (no amendment recorded) | API and worker back to `haiku55-328fb45` = `sha256:4218b2a901b93db1bf1cad550c4fd219a817552e92e45fc70c669c6f9e097d12` (live since about 20:01Z on 2026-10-07); `fly secrets unset JEV_SCORING` is optional (the old image ignores it). The migration is never rolled back: the old image runs on it. |
 | After E7, before T2 | Cannot unrecord. Turn nothing off; either the Jev path is verified, or record the emergency way back (below) with a later T. |
-| After T2, Jev misbehaves | **Emergency exit:** record a third amendment `reward-eval/2` with a new future effective time (the one allowed way back; the epoch's own `reward-eval/1` never). Contributions admitted under Jev stay pinned to Jev and must keep `JEV_SCORING=on` to be scored. Do **not** roll the worker back to `buttons-ed32b4f`: it cannot score a Jev pin. |
+| After T2, Jev misbehaves | **Emergency exit:** record a third amendment `reward-eval/2` with a new future effective time (the one allowed way back; the epoch's own `reward-eval/1` never). Contributions admitted under Jev stay pinned to Jev and must keep `JEV_SCORING=on` to be scored. Do **not** roll the worker back to `haiku55-328fb45`: it cannot score a Jev pin. |
 
 **The reason recorded (approved by Cisco, 2026-10-07):** "Jev scores the way this rubric asks: on our published tests it zeroes greetings, hype, shills and attempts to instruct the scorer, and passes honest replies, at a fraction of the cost. New in this change: a reply that tries to instruct the scorer scores 0. The tests and their known misses are public."
 
@@ -68,8 +68,8 @@ It must say the new zero: question set v4 zeroes a reply that tries to instruct 
 
 1. Cisco's push done (E0). `git fetch origin`; the source `<SHA>` is an ancestor of `origin/main`; runtime-tree diff empty; `git status -sb` clean and not ahead. GitHub CI on the pushed head: success.
 2. Gate on `<SHA>`, native: `pnpm test`, `pnpm typecheck`, `pnpm lint` (exit codes), `pnpm --filter @hyphae/db exec drizzle-kit check`, `pnpm --filter @hyphae/api test:pg` (Docker). Known intermittents: the member-journey and raid-alert Postgres tests, and `src/link/page-handoff.test.ts` under load; a failure outside that list stops the release.
-3. `registry-digest.sh jev-<sha7>` prints `404`; `registry-digest.sh buttons-ed32b4f` prints `200 sha256:fa0b2c95…`.
-4. `fly image show --app hyphae-api`: both machines `started` on `sha256:fa0b2c95…`.
+3. `registry-digest.sh jev-<sha7>` prints `404`; `registry-digest.sh haiku55-328fb45` prints `200 sha256:4218b2a9…`.
+4. `fly image show --app hyphae-api`: both machines `started` on `sha256:4218b2a9…` (`haiku55-328fb45`). Any other digest means the live image moved again: stop and re-read the handoff before going on.
 5. `date -u` is before 2026-10-08T12:00Z.
 6. `node --env-file=.env scripts/rollout/telegram.mjs -1003934645546 784434992` PASS.
 7. Live reads: `/v1/communities/<mint>/epochs/2` shows exactly one amendment (`a75dbfeb…`, `reward-eval/2`, effective 2026-10-07T18:00:00Z).
@@ -143,7 +143,7 @@ Checks: the plan names `reward-eval/2` → `reward-jev/1` with the template hash
 ## Step 7. Live acceptance
 
 - A reply admitted after **T2**: `GET /v1/contributions/<id>` shows `amendment: { effective_at: T2, prompt_version: "reward-jev/1" }`; once scored, its revision's `model.model` is `typesafe:jev-1.13.0`, `prompt_version` `reward-jev/1`, `cost_micro_usd` about 200 (the calibration runs averaged 205), and its `explanation` starts "Scored 0 because" or "Passed every check".
-- A reply admitted before **T2** and scored after it still reads `reward-eval/2` and Sonnet.
+- A reply admitted before **T2** and scored after it still reads `reward-eval/2` and Claude Haiku 5.5 (`anthropic:claude-haiku-5-5`).
 - `decisions-digest.mjs <mint> 2 <T2>` equals the baseline at every later run.
 - The audit manifest for epoch 2 (built later, at close) lists both amendments; `buildPublication` dry run against the production copy is the Oct 8 to 9 sitting's job, but a read-only check now is cheap: `GET /epochs/2` parses with `ReadApiV1.epoch`.
 - The epoch page shows two amendments.
