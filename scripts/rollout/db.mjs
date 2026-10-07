@@ -1,5 +1,6 @@
-// Production checks and the 0013+0014 migration for the 2026-10-05 API rollout plan
-// (docs/demo/2026-10-05-api-rollout-plan.md).
+// Production checks and one pinned migration release. Current release: migration 0015 for the
+// 2026-10-07 earn-first release plan (docs/demo/2026-10-07-earn-first-release-plan.md). The
+// 2026-10-05 API rollout used this script for 0013+0014 (see that plan and git history).
 //
 // Run from the exact-source worktree's packages/db, so the migrations folder and drivers are the
 // ones the image was built from:
@@ -15,6 +16,10 @@
 // identity proof is liveness: migrate and postcheck require a reward-recovery completion newer
 // than the precheck's, which only the database the live worker writes to can show.
 //
+// Rehearsal: against a loopback database only, ROLLOUT_LIVE_FIXTURE=<json> replaces the live API
+// reads with a file, so a disposable Postgres can be checked and migrated. A non-loopback target
+// always reads the live API.
+//
 // Exit codes: 0 pass/applied, 1 fail or unexpected error (stop), 2 lock timeout (nothing applied).
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -24,20 +29,16 @@ import { isDeepStrictEqual } from "node:util";
 
 const MINT = "HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg";
 const PUBLIC_API = "https://hyphae-api.fly.dev";
+// The migrations this release applies, in order, pinned by the SHA-256 of their SQL files.
 const NEW_MIGRATIONS = {
-  "0013_raid_alerts": "7e0f951e3548d335dd8f299390daba14f6d8a6a3f79277a2068b2ecd4cc4b022",
-  "0014_member_journey": "fa479c949a4c2c96234be8ddb2034c8ddaec00df836bcc8e14e199cc743e5485",
+  "0015_members_earn_before_link":
+    "e7c19e651fac58fc6efd319b1773504e37374400eb01acfa98c3a62070d268e4",
 };
-const NEW_TABLES = [
-  "raid_announcements",
-  "raid_deliveries",
-  "raid_subscriptions",
-  "raid_lifecycle_events",
-  "raid_submission_receipts",
-  "raid_submission_sessions",
-  "submission_issues",
-];
-const NEW_ENUM = "raid_delivery_status";
+// What 0015 changes, read from the catalog: before it the three member columns are NOT NULL and
+// the check is absent; after it they are nullable, the check exists, and no member is without a
+// wallet yet (only the new image creates such rows).
+const NULLABLE_COLUMNS = ["wallet", "link_method", "linked_at"];
+const NEW_CHECK = "members_wallet_link_together";
 const COUNTED_TABLES = [
   "members",
   "contributions",
@@ -170,6 +171,34 @@ async function lastRecovery(client) {
   ).rows[0].at;
 }
 
+async function readShape(client) {
+  const nullable = {};
+  for (const { column_name, is_nullable } of (
+    await client.query(
+      `select column_name, is_nullable from information_schema.columns
+        where table_schema = 'public' and table_name = 'members' and column_name = any($1)`,
+      [NULLABLE_COLUMNS],
+    )
+  ).rows)
+    nullable[column_name] = is_nullable === "YES";
+  const check = (
+    await client.query(
+      `select count(*)::int as n from pg_constraint
+        where conname = $1 and conrelid = 'public.members'::regclass and contype = 'c'`,
+      [NEW_CHECK],
+    )
+  ).rows[0].n;
+  const walletLess = (
+    await client.query("select count(*)::int as n from public.members where wallet is null")
+  ).rows[0].n;
+  return { nullable, check_exists: check === 1, wallet_less_members: walletLess };
+}
+
+const untouched = (shape) =>
+  NULLABLE_COLUMNS.every((c) => shape.nullable[c] === false) && !shape.check_exists;
+const applied = (shape) =>
+  NULLABLE_COLUMNS.every((c) => shape.nullable[c] === true) && shape.check_exists;
+
 async function readState(client) {
   const one = async (text, values) => (await client.query(text, values)).rows;
   const s = {};
@@ -177,15 +206,7 @@ async function readState(client) {
   s.lock_timeout = (await one("show lock_timeout"))[0].lock_timeout;
   s.server = (await one("select current_database() as db, version() as version"))[0];
   s.journal = await readJournal(client);
-  s.new_tables = {};
-  for (const t of NEW_TABLES) {
-    const [{ exists }] = await one("select to_regclass($1) is not null as exists", [`public.${t}`]);
-    s.new_tables[t] = exists
-      ? Number((await one(`select count(*)::int as n from public.${t}`))[0].n)
-      : null;
-  }
-  s.new_enum_exists =
-    (await one("select count(*)::int as n from pg_type where typname = $1", [NEW_ENUM]))[0].n > 0;
+  s.shape = await readShape(client);
   s.communities = await one(
     `select id, mint, name, telegram_chat_id::text, admin_telegram_user_id::text, first_paid_epoch,
             reward_intake_paused_at from communities order by created_at`,
@@ -227,7 +248,14 @@ async function readState(client) {
   return s;
 }
 
-async function publicReads() {
+const LOOPBACK = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+
+async function publicReads(target) {
+  const fixture = process.env.ROLLOUT_LIVE_FIXTURE;
+  if (fixture) {
+    if (!LOOPBACK.has(target.host)) throw new Error("ROLLOUT_LIVE_FIXTURE is for loopback only");
+    return JSON.parse(readFileSync(fixture, "utf8"));
+  }
   const get = async (path) => {
     const res = await fetch(`${PUBLIC_API}${path}`);
     if (!res.ok) throw new Error(`GET ${path} returned ${res.status}`);
@@ -244,17 +272,20 @@ const ms = (v) => new Date(v).getTime();
 function checkState(s, live, journalExpected, phase) {
   const problems = [];
   const fail = (msg) => problems.push(msg);
-  const applied = phase === "pre" ? journalExpected.length - 2 : journalExpected.length;
+  const newCount = Object.keys(NEW_MIGRATIONS).length;
+  const appliedCount =
+    phase === "pre" ? journalExpected.length - newCount : journalExpected.length;
 
   if (s.read_only !== "on") fail(`transaction_read_only is ${s.read_only}`);
   if (s.lock_timeout !== "3s") fail(`lock_timeout is ${s.lock_timeout}, not 3s`);
-  if (!journalMatches(s.journal, journalExpected.slice(0, applied)))
-    fail(`journal (${s.journal.length} rows) is not exactly the first ${applied} expected entries`);
-  for (const [t, n] of Object.entries(s.new_tables)) {
-    if (phase === "pre" && n !== null) fail(`${t} already exists`);
-    if (phase === "post" && n !== 0) fail(`${t} is ${n === null ? "missing" : `not empty (${n})`}`);
-  }
-  if (s.new_enum_exists !== (phase === "post")) fail(`enum ${NEW_ENUM} presence is wrong`);
+  if (!journalMatches(s.journal, journalExpected.slice(0, appliedCount)))
+    fail(
+      `journal (${s.journal.length} rows) is not exactly the first ${appliedCount} expected entries`,
+    );
+  if (phase === "pre" && !untouched(s.shape)) fail("members already has 0015's shape");
+  if (phase === "post" && !applied(s.shape)) fail("members does not have 0015's shape");
+  if (s.shape.wallet_less_members !== 0)
+    fail(`${s.shape.wallet_less_members} member(s) without a wallet before the new image runs`);
 
   if (s.communities.length !== 1) fail(`communities has ${s.communities.length} rows, expected 1`);
   const lab = s.communities[0];
@@ -357,7 +388,7 @@ async function check(phase, baselinePath) {
   const conn = connectionTarget();
   const journalExpected = expectedJournal();
   const state = await withReadOnly(conn, readState);
-  const live = await publicReads();
+  const live = await publicReads(conn.target);
   const problems = checkState(state, live, journalExpected, phase);
   const report = { phase, target: conn.target };
   if (phase === "post") {
@@ -384,12 +415,12 @@ async function runMigrate(baselinePath) {
     if (journalExpected.find((e) => e.tag === tag)?.hash !== hash)
       throw new Error(`${tag} is missing or its hash differs from the pinned plan`);
   }
-  if (
-    journalExpected.length !== 15 ||
-    !journalExpected.slice(13).every((e) => e.tag in NEW_MIGRATIONS)
-  )
-    throw new Error("the migrations folder is not 0000-0012 plus exactly 0013 and 0014");
-  const before = journalExpected.slice(0, 13);
+  const newCount = Object.keys(NEW_MIGRATIONS).length;
+  const beforeCount = journalExpected.length - newCount;
+  if (!journalExpected.slice(beforeCount).every((e) => e.tag in NEW_MIGRATIONS))
+    throw new Error("the migrations folder does not end with exactly this release's migrations");
+  const before = journalExpected.slice(0, beforeCount);
+  const lastBefore = before.at(-1)?.tag;
   console.error(`target ${JSON.stringify(conn.target)}`);
 
   const { baseline, problems } = loadBaseline(baselinePath, conn.target);
@@ -399,9 +430,9 @@ async function runMigrate(baselinePath) {
   }));
   if (problems.length === 0) problems.push(...compareToBaseline(baseline, gate.state).problems);
   // Every precheck condition must still hold now, not only when the baseline was taken.
-  problems.push(...checkState(gate.state, await publicReads(), journalExpected, "pre"));
+  problems.push(...checkState(gate.state, await publicReads(conn.target), journalExpected, "pre"));
   if (!journalMatches(gate.journal, before))
-    problems.push("journal is not exactly 0000-0012 as expected");
+    problems.push(`journal is not exactly the ${beforeCount} migrations up to ${lastBefore}`);
   if (problems.length) {
     console.error(`NOT MIGRATING (nothing changed):\n- ${problems.join("\n- ")}`);
     return 1;
@@ -422,11 +453,9 @@ async function runMigrate(baselinePath) {
     state: await readState(c),
   })).catch(() => null);
   const unchanged =
-    after &&
-    journalMatches(after.journal, before) &&
-    Object.values(after.state.new_tables).every((n) => n === null) &&
-    !after.state.new_enum_exists;
-  const applied = after && journalMatches(after.journal, journalExpected);
+    after && journalMatches(after.journal, before) && untouched(after.state.shape);
+  const done =
+    after && journalMatches(after.journal, journalExpected) && applied(after.state.shape);
 
   if (failure) {
     const code = failure?.cause?.code ?? failure?.code ?? "unknown";
@@ -440,17 +469,19 @@ async function runMigrate(baselinePath) {
       ? "UNKNOWN: the database could not be read back"
       : unchanged
         ? "ROLLED BACK: journal and schema unchanged"
-        : applied
-          ? "COMMITTED: both migrations are applied despite the error"
+        : done
+          ? "COMMITTED: the migrations are applied despite the error"
           : `INCONSISTENT: journal has ${after.journal.length} rows`;
     console.error(`${outcome}. STOP: do not retry; reconcile and ask Cisco.`);
     return 1;
   }
-  if (!applied) {
-    console.error("STOP: migrator returned but the journal is not exactly 0000-0014");
+  if (!done) {
+    console.error("STOP: migrator returned but the journal or the schema is not as expected");
     return 1;
   }
-  console.error("APPLIED: journal 13 -> 15 rows, exactly 0000-0014");
+  console.error(
+    `APPLIED: journal ${beforeCount} -> ${journalExpected.length} rows, ending ${journalExpected.at(-1)?.tag}`,
+  );
   return 0;
 }
 
