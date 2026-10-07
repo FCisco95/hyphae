@@ -1,9 +1,9 @@
 ---
 date: 2026-10-07
-summary: Snapshot at 21:45Z. Jev live scorer release executed E0 to E5 (image jev-e5f864b on API and worker, migration 0017, JEV_SCORING=on); paused for Cisco's announcement with T2 (E6), after which the agent records the amendment to reward-jev/1 before T2 (E7).
+summary: Snapshot at 22:35Z. Jev live scorer release executed E0 to E5 (image jev-e5f864b on API and worker, migration 0017, JEV_SCORING=on); paused for Cisco's announcement with T2 (E6), after which the agent records the amendment to reward-jev/1 before T2 (E7).
 ---
 
-# Jev release paused at E6 (snapshot, 2026-10-07 21:45Z)
+# Jev release paused at E6 (snapshot, 2026-10-07 22:35Z)
 
 Written by Claude Opus 5.5, Session A, at Cisco's "close this session". Where this differs from [HANDOFF.md](../HANDOFF.md), the handoff wins.
 
@@ -21,7 +21,7 @@ Written by Claude Opus 5.5, Session A, at Cisco's "close this session". Where th
 
 ## Next
 
-1. Cisco posts the announcement with T2 and sends the X URL and T2.
+1. Cisco posts the announcement with T2 (a whole UTC minute at least 20 minutes after the post; not posted as of 22:35Z) and sends the X URL and T2. Record E7 before 2026-10-08T12:00Z, or ask him.
 2. Agent: E7 before T2, then the CHANGELOG entry with T2 and Step 7 acceptance (see [HANDOFF.md](../HANDOFF.md), "Next agent steps").
 
 ## Suggested skills

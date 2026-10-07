@@ -7,7 +7,7 @@ summary: Hyphae on 2026-10-07 night (Windows, Claude Opus 5.5, Session A). The J
 
 ## Metadata
 
-Last Updated: 2026-10-07T21:45Z (Windows)
+Last Updated: 2026-10-07T22:35Z (Windows)
 Project: Hyphae (Colosseum entry, Organic/MYCEL). Scope: the Jev live scorer release (paused between E5 and E6), epoch 2, the Oct 8 to 9 first-payout sitting.
 Updated By: Claude Opus 5.5 (`claude-opus-5-5`), Session A (questions, merge, review fixes, release E0 to E5)
 Snapshot: [docs/handoffs/2026-10-07-jev-release-paused-at-e6.md](handoffs/2026-10-07-jev-release-paused-at-e6.md). Earlier tonight: [jev-live merged](handoffs/2026-10-07-jev-live-merged.md), [raid buttons live](handoffs/2026-10-07-raid-buttons-live.md), [Jev plumbing](handoffs/2026-10-07-jev-plumbing.md). Where they differ, this file wins.
@@ -16,7 +16,7 @@ Snapshot: [docs/handoffs/2026-10-07-jev-release-paused-at-e6.md](handoffs/2026-1
 
 - **Live now:** API `6839d31b317318` and worker `817400c9901de8` on `jev-e5f864b` = `sha256:b3f5617d804a377e8eaae1c6c67641ffe85390e47d88c162f0723206994236c4` (source `e5f864b` = `origin/main`). Neon journal **18** (`0017_reward_amendment_chain` applied 21:17:57Z). Fly secrets `TYPESAFE_API_KEY` and `JEV_SCORING=on` deployed 21:36Z; worker booted clean, `reward-recovery` all zeros at 21:40Z.
 - **Jev is on but unused.** Epoch 2 still has one amendment (`reward-eval/2` from 18:00Z) and scores with Claude Haiku 5.5. Nothing changes for members until the second amendment, to `reward-jev/1`, is recorded and its time T2 passes.
-- **Paused at E6:** Cisco posts the approved announcement with T2 (suggested 22:15 UTC or later; at least 20 minutes after his post). Then the agent does E7 before T2: fingerprint, `amend-epoch.ts --plan`, the record, checks. Exact steps and every check: [release plan](demo/2026-10-07-jev-live-release-plan.md), sections "Record", "Step 6" and "Step 7".
+- **Paused at E6:** Cisco posts the approved announcement with T2: a whole UTC minute at least 20 minutes after his post (not posted as of 22:35Z). Then the agent does E7 before T2: fingerprint, `amend-epoch.ts --plan`, the record, checks. Exact steps and every check: [release plan](demo/2026-10-07-jev-live-release-plan.md), sections "Record", "Step 6" and "Step 7".
 - **If Cisco never posts:** nothing is wrong. Jev stays inert; Haiku 5.5 keeps scoring. To undo the release before E7: both machines back to `haiku55-328fb45` (`sha256:4218b2a9…`), optionally `fly secrets unset JEV_SCORING`; the migration stays (the old image runs on it). No deploy after 2026-10-08T12:00Z; no push or deploy 2026-10-08T22:00Z to 2026-10-10T00:00Z.
 - **Reviewed and accepted:** Codex ACCEPT on `1185ad1` after five medium findings ([review record](reviews/2026-10-07-jev-live.md)); calibration with Cisco's accepted misses ([report](evals/jev-v4-calibration-2026-10-07.md)).
 
@@ -26,7 +26,7 @@ Jev scores epoch 2 quality from an announced T2, recorded publicly, with Haiku 5
 
 ## Needs Cisco, in order
 
-1. **Post the announcement** (Hyphae Lab and X) with T2; the approved text is in the release plan's "Announcement" section. Then send the agent the X post URL and T2.
+1. **Post the announcement** (Hyphae Lab and X) with T2, a whole UTC minute at least 20 minutes after the post; the approved text is in the release plan's "Announcement" section (replace {T2}). Then send the agent the X post URL and T2. The release window (Cisco's yes) runs to 2026-10-08T12:00Z; recording the amendment later needs his say.
 2. **Push the release records:** `! git -C <hyphae repo> push origin main` (docs only; the site redeploys).
 3. **Oct 8 sitting** (C14 to C22) with the Ledger and the pot. See [the packet](demo/2026-10-08-first-payout-readiness.md).
 
