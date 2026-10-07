@@ -1,11 +1,11 @@
 ---
 date: 2026-10-07
-summary: Release of earn-first, one-tap Reply/Quote on X and the vault section. Applies migration 0015 to production through the rehearsed db.mjs, then updates the API machine and the worker to one new image built from 94ce60e. No proposal, no rubric or payout change, epoch 2 untouched. Prepared and rehearsed; needs Cisco's exact yes.
+summary: Release of earn-first, one-tap Reply/Quote on X and the vault section. Migration 0015 applied to production through the rehearsed db.mjs, then the API machine and the worker moved to image earn-94ce60e (sha256:2ff89500…). No proposal, no rubric or payout change, epoch 2 untouched. Executed 2026-10-07, every check PASS.
 ---
 
 # Earn-first release plan (source `94ce60e`)
 
-**Status: PREPARED, not authorized, not executed.** Written 2026-10-07 by Claude Opus 5.5 (`claude-opus-5-5`, effort high) on the Windows PC. Nothing in this document changed Fly, the database, Telegram, secrets or Vercel. Cisco chose the timing on 2026-10-07: before the deploy hold. Authorization is his exact sentence: **"yes, run the 2026-10-07 earn-first release plan at 94ce60e"**.
+**Status: EXECUTED 2026-10-07T14:26Z to 14:41Z, every check PASS (record at the end).** Written 2026-10-07 by Claude Opus 5.5 (`claude-opus-5-5`, effort high) on the Windows PC; preparing it changed nothing live. Cisco chose the timing on 2026-10-07: before the deploy hold. Authorization is his exact sentence: **"yes, run the 2026-10-07 earn-first release plan at 94ce60e"**.
 
 **What goes live:**
 
@@ -138,6 +138,21 @@ In the Hyphae Lab group, from the phone, send `/setup`. Step 2 should read "Link
 - **While `members` has no wallet-less row:** move the worker back, then the API. Use the tag form `scoring-6b2a4e3`, after `registry-digest.sh` confirms it still resolves to `sha256:def68189…`. Leave the migration in place.
 - **After a wallet-less member exists:** do not roll back to the old image. Fix forward, or ask for a ruling.
 
-## Execution record
+## Execution record (2026-10-07)
 
-Not executed.
+By Claude Opus 5.5 (`claude-opus-5-5`, effort xhigh) on the Windows PC, on Cisco's exact yes ("yes, run the 2026-10-07 earn-first release plan at 94ce60e"). Cisco pushed `main` (`0d14bd0..30cf429`) with `!` before E1.
+
+| Step | Time (UTC) | Result |
+|---|---|---|
+| Gate before the push | 14:22 | On `30cf429`, native: `pnpm test` 0 (core 110, read-client 26, web 119, API 845 passed / 3 skipped), `pnpm typecheck` 0, `pnpm lint` 0 |
+| 0 Guards | 14:24 to 14:26 | `94ce60e` an ancestor of `origin/main` = `30cf429`; runtime-tree diff empty; `main` = `origin/main` (only the untracked `.playwright-mcp/`); tag `earn-94ce60e` was `404`; `scoring-6b2a4e3` `200 sha256:def68189…`; both machines `started` on `def68189…`; `telegram.mjs` PASS (administrator, creator, webhook matches, 0 pending, no last error); `proposal-check`: bootstrap `activated`, one `pending` on `reward-eval/2` (earliest E3), epochs 1 and 2 on `reward-eval/1`. GitHub CI on `30cf429`: success (run 37636662243) |
+| 1 Worktree and image | 14:26 to 14:28 | Detached at exactly `94ce60e48b561937107a488ef47a6385ab7884c3`, clean, `pnpm install --frozen-lockfile` 14 s. `fly deploy --build-only --push --image-label earn-94ce60e --depot=false`, 350 MB. **`NEW=sha256:2ff89500a8fdde20794df0d363d352696ef36794c45e4a396b2bb53cd58e15f9`**; registry by tag and by digest both `200 NEW`; machines unchanged |
+| 2 Precheck | 14:28:32 | PASS: three columns NOT NULL, no check, 0 wallet-less members, journal 15 rows, no long transactions; counts: 2 members, 6 contributions, 3 intakes, 3 decisions |
+| 2 Wait | 14:30:18 | A `reward-recovery` completion newer than the baseline (14:25:18Z) |
+| 2 Migrate | 14:31:25 | `APPLIED: journal 15 -> 16 rows, ending 0015_members_earn_before_link`, exit 0. SQL SHA-256 `e7c19e65…d268e4` equals the plan |
+| 2 Postcheck | 14:31 | PASS: three columns nullable, `members_wallet_link_together` present, 0 wallet-less members, journal 16, counts unchanged |
+| 3 API update | 14:31:49 | Tag re-read `200 NEW`; `fly machine update 6839d31b317318 --image registry.fly.io/hyphae-api:earn-94ce60e --yes`, started 14:32:06Z on `NEW`; worker still on `def68189…`. `/health` 200; community 200 with `vault` = `{"status":"unavailable","reason":"community_not_on_chain"}`; epoch 2 `open`, `reward-eval/1`, rubric 1.2.0, 3 contributions counted; `/link` 200; `/docs` 200; `telegram.mjs` PASS; log `api listening on :8080`, only pg's known `sslmode` warning |
+| 4 Worker update | 14:32:49 | Tag re-read `200 NEW`; `fly machine update 817400c9901de8 … --yes`, started 14:33:01Z on `NEW`. Log `worker: consuming score, reward-evaluation, reward-retrieval, reward-notify, reward-recovery, reward-close, hold-check` at 14:33:05Z. **Worker proof PASS:** `reward-recovery` completed at 14:35:07Z and 14:40:05Z, every counter 0, no failed or retrying jobs, no stack line |
+| Site | 14:41 | `hyphae-delta.vercel.app` 200; `/security` serves the private-reporting text |
+
+Rollback was not needed. Not done: no proposal, secret, env, Fly config, Vercel setting, Telegram message, raid, link, payout or invitation. Rollback to `scoring-6b2a4e3` stays valid only while `members` has no wallet-less row. **Still Cisco's (Step 5):** the phone `/setup` check in the Hyphae Lab group. The local folder `../hyphae-earn-94ce60e` is the exact-source worktree; remove it with `git worktree remove` once release B no longer needs it.
