@@ -56,12 +56,12 @@ export async function amendEpochPrompt(
     if (effective >= epoch.closesAt.getTime()) {
       throw new Error("reward: effectiveAt must be before the epoch's close");
     }
-    const chain = await tx
+    const [latest] = await tx
       .select()
       .from(rewardConfigAmendments)
       .where(eq(rewardConfigAmendments.epochId, epoch.id))
-      .orderBy(asc(rewardConfigAmendments.effectiveAt));
-    const latest = chain.at(-1);
+      .orderBy(desc(rewardConfigAmendments.effectiveAt))
+      .limit(1);
     if (latest && latest.effectiveAt.getTime() > now.getTime()) {
       throw new Error(
         `reward: the previous amendment of epoch ${epoch.index} is not yet in effect`,
@@ -84,7 +84,9 @@ export async function amendEpochPrompt(
       ...fromPayload,
       scoring: { promptVersion: input.promptVersion, promptTemplateHash: hash },
     });
-    if (to.id === epoch.rewardConfigId || chain.some((x) => x.toConfigId === to.id)) {
+    // The way back to an amendment's config is allowed (Jev to the first amendment's prompt, as an
+    // emergency exit); the epoch's own config never is, and the database lets a config be left once.
+    if (to.id === epoch.rewardConfigId) {
       throw new Error(`reward: ${input.promptVersion} is already used by epoch ${epoch.index}`);
     }
 

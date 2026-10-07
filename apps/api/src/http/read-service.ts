@@ -786,6 +786,7 @@ export async function readContribution(
         memberId: rewardIntakes.memberId,
         capture: rewardIntakes.capture,
         reentryOf: rewardIntakes.reentryOf,
+        acceptedAt: rewardIntakes.acceptedAt,
       })
       .from(rewardIntakes)
       .where(eq(rewardIntakes.contributionId, contributionId));
@@ -911,8 +912,11 @@ export async function readContribution(
       capturedAt: string;
       limitations: string[];
     };
-    const admittedUnder = (await amendmentsOf(tx, intake.epochId)).find(
-      (a) => a.row.toConfigId === intake.configId,
+    // Two amendments can pin one config (the way back); the later one in effect at admission rules.
+    const admittedUnder = (await amendmentsOf(tx, intake.epochId)).findLast(
+      (a) =>
+        a.row.toConfigId === intake.configId &&
+        a.row.effectiveAt.getTime() <= intake.acceptedAt.getTime(),
     );
 
     return {

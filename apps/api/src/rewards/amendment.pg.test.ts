@@ -198,6 +198,18 @@ describe("a second amendment on postgres-js", () => {
       effective_at: "2026-10-01T04:00:00.000000Z",
       prompt_version: "reward-jev/1",
     });
-    await expect(amend("reward-eval/2", 6, 4 * HOUR + 10 * 60_000)).rejects.toThrow(/already/);
+    // The way back to the first amendment's prompt: a contribution admitted after it reads that
+    // amendment's time, not the earlier amendment that pinned the same config.
+    await amend("reward-eval/2", 6, 4 * HOUR + 10 * 60_000);
+    const returned = await s.admitAt(6 * HOUR);
+    const later6 = new Date(T0.getTime() + 7 * HOUR);
+    const back = ReadApiV1.contribution.parse(
+      await readContribution(db, returned.contributionId, later6),
+    );
+    expect(back.amendment).toEqual({
+      effective_at: "2026-10-01T06:00:00.000000Z",
+      prompt_version: "reward-eval/2",
+    });
+    await expect(amend("reward-eval/1", 8, 6 * HOUR + 10 * 60_000)).rejects.toThrow(/already used/);
   });
 });

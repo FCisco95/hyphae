@@ -402,6 +402,20 @@ describe("pilot amendments in the epoch audit manifest", () => {
       ).toThrow(/config/);
     });
 
+    it("commits the way back to an earlier amendment's config", () => {
+      const plain = auditFixture();
+      const back = {
+        ...second,
+        effective_at: "2026-10-07T22:00:00.000000Z",
+        recorded_at: "2026-10-07T20:30:00.000000Z",
+        from: { ...second.to },
+        to: { ...amendment.to },
+      };
+      expect(() =>
+        epochAuditHash({ ...plain, amendments: [amendment, second, back] }),
+      ).not.toThrow();
+    });
+
     it("refuses amendments out of order", () => {
       const plain = auditFixture();
       expect(() => epochAuditHash({ ...plain, amendments: [second, amendment] })).toThrow(/sorted/);

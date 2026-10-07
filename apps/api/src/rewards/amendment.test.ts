@@ -512,11 +512,36 @@ describe("a second amendment, to a Jev scorer", () => {
     expect(await amendmentsOf(l.community.id)).toHaveLength(1);
   });
 
-  it("refuses to return to a config the epoch has already used", async () => {
+  it("refuses to return to the epoch's own config", async () => {
     const l = await lane();
     await l.amend({}, 30 * MIN);
-    await expect(second(l, { promptVersion: "reward-eval/1" })).rejects.toThrow(/already/);
-    expect(await amendmentsOf(l.community.id)).toHaveLength(1);
+    await second(l);
+    await expect(
+      l.amend(
+        { promptVersion: "reward-eval/1", effectiveAt: at(6 * 3_600_000) },
+        4 * 3_600_000 + MIN,
+      ),
+    ).rejects.toThrow(/already used/);
+    expect(await amendmentsOf(l.community.id)).toHaveLength(2);
+  });
+
+  it("allows the way back from Jev to the first amendment's prompt, once", async () => {
+    const l = await lane();
+    const first = await l.amend({}, 30 * MIN);
+    const jev = await second(l);
+    const back = await l.amend(
+      { promptVersion: "reward-eval/2", effectiveAt: at(6 * 3_600_000) },
+      4 * 3_600_000 + MIN,
+    );
+    expect(back).toMatchObject({ fromConfigId: jev.toConfigId, toConfigId: first.toConfigId });
+    // The first amendment's config has now been left twice; the chain ends here.
+    await expect(
+      l.amend(
+        { promptVersion: "reward-jev/1", registry, effectiveAt: at(8 * 3_600_000) },
+        6 * 3_600_000 + MIN,
+      ),
+    ).rejects.toThrow();
+    expect(await amendmentsOf(l.community.id)).toHaveLength(3);
   });
 
   it("is a chain the database enforces: a config can be amended away from only once", async () => {

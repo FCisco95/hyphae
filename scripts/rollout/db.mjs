@@ -32,8 +32,7 @@ const MINT = "HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg";
 const PUBLIC_API = "https://hyphae-api.fly.dev";
 // The migrations this release applies, in order, pinned by the SHA-256 of their SQL files.
 const NEW_MIGRATIONS = {
-  "0017_reward_amendment_chain":
-    "d630d663625392762f3889eb6dfe78966840651fbd16ae68cf1c02bd03dfc3fe",
+  "0017_reward_amendment_chain": "d630d663625392762f3889eb6dfe78966840651fbd16ae68cf1c02bd03dfc3fe",
 };
 // 0015 is applied before and after: the three member columns are nullable and the check exists.
 const NULLABLE_COLUMNS = ["wallet", "link_method", "linked_at"];
