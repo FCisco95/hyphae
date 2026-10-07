@@ -6,7 +6,7 @@ const Env = z.object({
   TELEGRAM_WEBHOOK_SECRET: z.string().min(16),
   ANTHROPIC_API_KEY: z.string().optional(),
   DEEPSEEK_API_KEY: z.string().optional(),
-  SCORING_MODEL: z.string().default("anthropic:claude-sonnet-5"),
+  SCORING_MODEL: z.string().default("anthropic:claude-haiku-5-5"),
   // Jev reward scoring stays off until an operator turns it on, and needs the TypeSafe key.
   JEV_SCORING: z.enum(["on", "off"]).default("off"),
   TYPESAFE_API_KEY: z.string().min(1).optional(),

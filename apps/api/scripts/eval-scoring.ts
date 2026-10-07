@@ -131,12 +131,12 @@ if (values.backend === "jev") {
 } else if (values.backend !== "sonnet") {
   throw new Error(`eval-scoring: unknown backend ${values.backend} (sonnet or jev)`);
 } else if (values["dry-run"]) {
-  const modelId = values.model ?? process.env.SCORING_MODEL ?? "anthropic:claude-sonnet-5";
+  const modelId = values.model ?? process.env.SCORING_MODEL ?? "anthropic:claude-haiku-5-5";
   console.log(
     JSON.stringify({ cases: cases.length, rubricVersion: rubric.version, model: modelId }),
   );
 } else {
-  const modelId = values.model ?? process.env.SCORING_MODEL ?? "anthropic:claude-sonnet-5";
+  const modelId = values.model ?? process.env.SCORING_MODEL ?? "anthropic:claude-haiku-5-5";
   const model = scoringModel(modelId, {
     anthropic: process.env.ANTHROPIC_API_KEY,
     deepseek: process.env.DEEPSEEK_API_KEY,

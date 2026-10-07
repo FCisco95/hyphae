@@ -2,11 +2,13 @@ import { createAnthropic } from "@ai-sdk/anthropic";
 import { createDeepSeek } from "@ai-sdk/deepseek";
 import type { LanguageModel } from "ai";
 
-// USD per 1M tokens. Anthropic list prices as of 2026-07-29; DeepSeek peak-hour prices from
+// USD per 1M tokens. Anthropic list prices as of 2026-10-07 (Haiku 5.5 is $0.50/$2.50 above 100k
+// prompt tokens; a scoring prompt is a few thousand); DeepSeek peak-hour prices from
 // api-docs.deepseek.com/quick_start/pricing on 2026-09-17 (off-peak is half — recorded cost is
 // an upper bound). Only used for the cost column in scoring_runs.
 const PRICES: Record<string, { in: number; out: number }> = {
-  "anthropic:claude-sonnet-5": { in: 3, out: 15 },
+  "anthropic:claude-haiku-5-5": { in: 0.1, out: 0.5 },
+  "anthropic:claude-sonnet-5": { in: 2, out: 10 },
   "anthropic:claude-opus-5": { in: 5, out: 25 },
   "anthropic:claude-haiku-4-5": { in: 1, out: 5 },
   "deepseek:deepseek-flash": { in: 0.3, out: 1.2 },
