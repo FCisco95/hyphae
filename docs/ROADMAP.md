@@ -7,6 +7,22 @@ summary: Hyphae roadmap from the 2026-10-06 review. Five ranked next steps befor
 
 Written 2026-10-06 (Claude Sonnet 5.5, effort high) from Cisco's question "what is this protocol missing, how do we make it effortless, useful for Solana, scalable and professional". Items 1 to 5 were accepted by Cisco on 2026-10-06. This file lists engineering and product work only; judging strategy stays in the private vault.
 
+## Direction from 2026-10-07: easy to adopt, easy to engage (no date limit)
+
+Cisco, 2026-10-07: keep improving until he calls a stop; setup should be buttons and an API, Organic should spawn a community and its payments with a script, and engaging must be easy because "no one is doing it". The payout safeguards below (the sitting and its deploy hold) still apply unless Cisco lifts them. Full reasoning, the Organic contract and the founder decisions: [organic-sync brief](handoffs/2026-10-07-organic-sync-brief.md).
+
+Ranked by what it unblocks. Items marked **decision** wait for Cisco's ruling; the rest are the agent's to build, review and stage. Each deploy needs its own yes.
+
+1. **Earn before you link** (decision: rule wording). Today a member must sign a wallet before they can submit at all (`apps/api/src/bot/commands/submit.ts:36`). Accept replies first; the wallet is still required by the close to be paid.
+2. **One-tap reply and quote.** Raid messages and alerts get "Reply on X" (`x.com/intent/tweet?in_reply_to=<id>`) and "Quote on X" buttons, then "Paste my link".
+3. **Show the vault before the first payout.** Community API and page show `vault_address`, network and live balance, plus how to fund it.
+4. **Organic integration API** (decisions: who may spawn a community; who holds each publisher key). `POST /v1/integrations/communities`, a one-tap add-to-group link (Telegram `startgroup` deep link), an unsigned `initialize_community` transaction, then funding and the existing reads. Needs a threat model and a Codex review.
+5. **`hyphae community create`**, one operator command over the same flow, and a recorded devnet run: spawn, fund, score, publish, claim.
+6. **Rules test at the payout gate, not the front door** (decision), and **the minimum hold** for epoch 3 onward (decision: economics).
+7. **Funnel counts**: joined, linked, rules passed, first reply, credited, paid, as counts only.
+
+Earlier items 2a to 2d (domain, deep link to wallets, Sign-In With Solana, funnel) and 5 (Blink) stay below; the old date cut rules no longer apply.
+
 **Calendar that constrains everything**
 
 | When (UTC) | What |

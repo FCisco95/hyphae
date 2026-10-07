@@ -1,6 +1,6 @@
 ---
 date: 2026-10-07
-summary: Hyphae on 2026-10-07 morning (Windows, Claude Opus 5.5, effort high). Prompt-injection check published (21 of 21 injection runs credited 0); security and trust page (/security + docs/SECURITY.md) built, Codex fact-checked (NEEDS-FIXES, fixed, ACCEPT) and committed locally. Private vulnerability reporting enabled (verified 10:54Z); waiting on Cisco's push before 2026-10-08T22:00Z. Live state unchanged since 2026-10-06T20:24Z.
+summary: Hyphae on 2026-10-07 morning (Windows, Claude Opus 5.5, effort high). Prompt-injection check published (21 of 21 injection runs credited 0); security and trust page (/security + docs/SECURITY.md) built, Codex fact-checked (NEEDS-FIXES, fixed, ACCEPT) and committed locally. Pushed and live (0d14bd0, CI success). New direction: easy to adopt, easy to engage, no date limit; see the 2026-10-07 organic-sync brief and ROADMAP. Live state unchanged since 2026-10-06T20:24Z.
 ---
 
 # Hyphae handoff
@@ -106,7 +106,7 @@ Epoch 2 closes Oct 9 00:00Z. Oct 8 pause 23:00Z, final C18b after 23:45Z, correc
 
 ## Quick Reference
 
-- [ROADMAP](ROADMAP.md) · [scoring release](demo/2026-10-06-scoring-release-plan.md) · [link release](demo/2026-10-06-link-release-plan.md) · [calibration report](rubrics/eval/reward-eval-2-calibration.md) · [rubric changelog](rubrics/CHANGELOG.md) · [payout runbook](demo/2026-10-08-first-payout-readiness.md) · [submission checklist](demo/2026-10-10-submission-checklist.md) · [organic-sync brief](handoffs/2026-10-06-organic-sync-brief.md) · [build log](BUILDLOG.md).
+- [ROADMAP](ROADMAP.md) · [organic-sync brief 2026-10-07](handoffs/2026-10-07-organic-sync-brief.md) · [scoring release](demo/2026-10-06-scoring-release-plan.md) · [link release](demo/2026-10-06-link-release-plan.md) · [calibration report](rubrics/eval/reward-eval-2-calibration.md) · [rubric changelog](rubrics/CHANGELOG.md) · [payout runbook](demo/2026-10-08-first-payout-readiness.md) · [submission checklist](demo/2026-10-10-submission-checklist.md) · [organic-sync brief](handoffs/2026-10-06-organic-sync-brief.md) · [build log](BUILDLOG.md).
 - Commands (from `apps/api`, with the repo `.env`): `pnpm --filter @hyphae/api eval:reward-prompt --cases ../../docs/rubrics/eval/reward-eval-cases.json --rubric ../../docs/rubrics/mycel-1.2.0.json --runs 3`; `node scripts/rollout/telegram.mjs -1003934645546 784434992` (from the repo root, with `--env-file=.env`); `registry-digest.sh <tag|digest>`.
 - Rollback targets: API tag `link-121906f` = `sha256:b1e7091a…`; worker tag `deployment-01M3XYDW5XW7AEAY68CKVPKC2X` = `sha256:1c2d6dd5…`. flyctl 0.4.104 rejects the digest form of `fly machine update`: use the tag form after `registry-digest.sh` confirms the tag resolves to the target digest.
 - Mint (Hyphae Lab): `HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg`; API `https://hyphae-api.fly.dev`; site `https://hyphae-delta.vercel.app`.
