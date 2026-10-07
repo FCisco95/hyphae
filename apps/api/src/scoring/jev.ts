@@ -133,23 +133,25 @@ export function jevRequest(input: ScoringInput, set: JevQuestionSet): Request {
   return {
     model: JEV_MODEL,
     state,
-    questions:
-      set.kind === "weighted"
-        ? {
-            ...set.criteria,
-            ...set.flags,
-            ai_slop_obvious: set.aiSlopObvious,
-            quality: set.quality,
-          }
-        : {
-            ...set.gates,
-            ai_slop: set.aiSlop,
-            ai_slop_obvious: set.aiSlopObvious,
-            polished: set.polished,
-            ...set.bonuses,
-          },
+    questions: questionsOf(set),
   };
 }
+
+const questionsOf = (set: JevQuestionSet): Questions =>
+  set.kind === "weighted"
+    ? {
+        ...set.criteria,
+        ...set.flags,
+        ai_slop_obvious: set.aiSlopObvious,
+        quality: set.quality,
+      }
+    : {
+        ...set.gates,
+        ai_slop: set.aiSlop,
+        ai_slop_obvious: set.aiSlopObvious,
+        polished: set.polished,
+        ...set.bonuses,
+      };
 
 export const requestHash = (request: Request): string => sha256Hex(canonicalJson(request));
 
@@ -182,6 +184,12 @@ const noulOf =
   };
 
 export function composeJev(res: JevResponse, rubric: Rubric, set: JevQuestionSet): ScoreOutput {
+  // Every question asked must come back with an answer of its type, read or not: the composition
+  // skips some answers, and a malformed response must go to reconciliation, never to a score.
+  for (const [id, q] of Object.entries(questionsOf(set))) {
+    if (res.answers[id]?.type !== q.type)
+      throw new Error(`jev: no ${q.type === "noul" ? "yes/no" : "score"} answer for ${id}`);
+  }
   return set.kind === "weighted"
     ? composeWeighted(res, rubric, set)
     : composeGated(res, rubric, set);

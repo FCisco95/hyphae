@@ -188,6 +188,12 @@ describe("composeJev", () => {
     ).toBe(79);
   });
 
+  it("refuses a weighted response missing an answer it would not read", () => {
+    const r = response({ ai_slop: 0.1 });
+    delete (r.answers as Record<string, unknown>).ai_slop_obvious;
+    expect(() => composeJev(JevResponseSchema.parse(r), rubric, set)).toThrow(/ai_slop_obvious/);
+  });
+
   it("refuses a response missing an answer", () => {
     const r = response(allCriteria(1));
     delete (r.answers as Record<string, unknown>).spam;
@@ -361,6 +367,26 @@ describe("composeJev with gates and bonuses", () => {
     const r = gatedResponse();
     delete (r.answers as Record<string, unknown>).adds_own;
     expect(() => composeJev(JevResponseSchema.parse(r), rubric, gated)).toThrow(/adds_own/);
+  });
+
+  // A malformed response must reconcile, not score, even when the missing answer would not be read.
+  it.each(gatedIds)("refuses a response missing %s, whatever the other answers", (id) => {
+    const r = gatedResponse();
+    delete (r.answers as Record<string, unknown>)[id];
+    expect(() => composeJev(JevResponseSchema.parse(r), rubric, gated)).toThrow(
+      new RegExp(`for ${id}$`),
+    );
+  });
+
+  it("refuses an answer of the wrong type, even one the score would not read", () => {
+    const r = gatedResponse({ ai_slop: 0.9 });
+    (r.answers as Record<string, unknown>).polished = {
+      type: "score",
+      score: 1,
+      confidence: 1,
+      probabilities: { "0": 0, "1": 1 },
+    };
+    expect(() => composeJev(JevResponseSchema.parse(r), rubric, gated)).toThrow(/polished/);
   });
 });
 
