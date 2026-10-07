@@ -2,6 +2,22 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-07 (night) · A cheaper judge that filters instead of ranks
+
+**The goal:** I want Jev, TypeSafe's small judgment model, to score rewards instead of a large language model. The job is a filter: remove "gm", hype, AI rewrites of the post, shills and plugs, give organic replies a fair mid score, and not try to rank the best ones finely.
+
+**Built (local, not deployed):** question set v4. Jev answers 14 yes/no questions about a reply, and code turns the answers into a score. Any gate zeroes it: generic, a restatement of the post in AI or polished wording, unrelated, a plug for something else, a breach of the rubric's "never" list, an instruction to the scorer, spam. Otherwise a reply starts at 65 and earns up to 10 more for each of a real question, a suggestion, something of the author's own, and reasoning. The production credit rules still apply after: hard zeros, AI caps, the 60 floor.
+
+**How I checked it:** the agent wrote 64 new replies under four posts, in five languages, and I labeled them blind before seeing any score. Where my labels broke my own rules, I ruled first: instructions to the scorer earn zero, because a line that works on every post is an exploit; price and buy talk stays zero under the pinned rubric; empty slogans and restatements of the post are zero; airdrop asks are zero. The agent tuned on half the replies and reported on the other half.
+
+**Numbers:** the 28 reward cases are 84 of 84 right in three runs; my own replies and the sincere ones pass at 74 to 95, every zero case is 0. On the 64 replies: two jokes built on a cheer ("gm (sorry, couldn't resist)") are zeroed, and one reply I labeled zero passes. No reply flipped between runs. About USD 0.0002 per scored reply, against about USD 0.0088 for the large model. Tests 971 API passing, typecheck and lint clean.
+
+**Decision and why:** keep the false zeros on cheer-jokes for now. A false zero costs one reply's points and a public admin correction can restore it; paying the bad tail costs everyone.
+
+**Commits:** `84303ab` (v4 and its composition), `4da98e1` (calibration report, holdout and every answer).
+
+**Next:** wire v4 into the production scoring path built in parallel, an independent review, then I decide how Jev is introduced: a recorded amendment in epoch 2, or epoch 3.
+
 ## 2026-10-07 (night) · One raid at a time was holding the community back
 
 **What I found:** I opened a new post while a long raid was still live, and the bot refused: "An active brief already exists." Waiting up to 48 hours for a raid to run out is unfair to people who want to engage with the new post.
