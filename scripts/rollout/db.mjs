@@ -1,7 +1,7 @@
-// Production checks and one pinned migration release. Current release: migration 0016 for the
-// 2026-10-07 epoch 2 pilot amendment release plan
-// (docs/demo/2026-10-07-pilot-amendment-release-plan.md). The earn-first release used it for 0015
-// and the 2026-10-05 API rollout for 0013+0014 (see those plans and git history).
+// Production checks and one pinned migration release. Current release: migration 0017 for the
+// Jev live scorer release plan (docs/demo/2026-10-07-jev-live-release-plan.md). The pilot amendment
+// release used it for 0016, the earn-first release for 0015 and the 2026-10-05 API rollout for
+// 0013+0014 (see those plans and git history).
 //
 // Run from the exact-source worktree's packages/db, so the migrations folder and drivers are the
 // ones the image was built from:
@@ -32,21 +32,24 @@ const MINT = "HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg";
 const PUBLIC_API = "https://hyphae-api.fly.dev";
 // The migrations this release applies, in order, pinned by the SHA-256 of their SQL files.
 const NEW_MIGRATIONS = {
-  "0016_reward_config_amendments":
-    "34a7f77df2a7b9b0ac336f3b6a42375663af5986edaed4a29b0131ac3900424a",
+  "0017_reward_amendment_chain":
+    "d630d663625392762f3889eb6dfe78966840651fbd16ae68cf1c02bd03dfc3fe",
 };
 // 0015 is applied before and after: the three member columns are nullable and the check exists.
 const NULLABLE_COLUMNS = ["wallet", "link_method", "linked_at"];
 const MEMBERS_CHECK = "members_wallet_link_together";
-// What 0016 changes, read from the catalog: one new table with its three checks and its unique
-// index, and no row in it (only the amend-epoch step records one, after the new image runs).
+// What 0017 changes, read from the catalog: the amendments table keeps its three checks and its
+// rows (the epoch 2 amendment recorded on 2026-10-07) and swaps its unique index from "one per
+// epoch" to "one per (epoch, from config)". Only the amend-epoch step records a second row, after
+// the new image runs.
 const NEW_TABLE = "reward_config_amendments";
 const NEW_TABLE_CHECKS = [
   "reward_config_amendments_future",
   "reward_config_amendments_changes",
   "reward_config_amendments_hash_format",
 ];
-const NEW_TABLE_INDEX = "reward_config_amendments_epoch";
+const OLD_INDEX = "reward_config_amendments_epoch";
+const NEW_INDEX = "reward_config_amendments_epoch_from";
 const COUNTED_TABLES = [
   "members",
   "contributions",
@@ -54,6 +57,7 @@ const COUNTED_TABLES = [
   "reward_decisions",
   "epochs",
   "tasks",
+  "reward_config_amendments",
   "reward_snapshot_entries",
   "leaves",
 ];
@@ -208,15 +212,19 @@ async function readShape(client) {
             [`public.${NEW_TABLE}`],
           )
         ).rows.map((r) => r.conname),
-        unique_index:
-          (
-            await client.query(
-              `select count(*)::int as n from pg_indexes i join pg_class c on c.relname = i.indexname
-               join pg_index x on x.indexrelid = c.oid
-              where i.schemaname = 'public' and i.tablename = $1 and i.indexname = $2 and x.indisunique`,
-              [NEW_TABLE, NEW_TABLE_INDEX],
-            )
-          ).rows[0].n === 1,
+        // Every unique index on the table with its column list, so a swap is seen exactly.
+        unique_indexes: (
+          await client.query(
+            `select c.relname as name,
+                    (select string_agg(a.attname, ',' order by k.ord)
+                       from unnest(x.indkey) with ordinality as k(attnum, ord)
+                       join pg_attribute a on a.attrelid = x.indrelid and a.attnum = k.attnum) as columns
+               from pg_index x join pg_class c on c.oid = x.indexrelid
+              where x.indrelid = $1::regclass and x.indisunique and not x.indisprimary
+              order by c.relname`,
+            [`public.${NEW_TABLE}`],
+          )
+        ).rows.map((r) => `${r.name}(${r.columns})`),
         rows: (await client.query(`select count(*)::int as n from public.${NEW_TABLE}`)).rows[0].n,
       }
     : null;
@@ -225,13 +233,14 @@ async function readShape(client) {
 
 const has0015 = (shape) =>
   NULLABLE_COLUMNS.every((c) => shape.nullable[c] === true) && shape.members_check_exists;
-const untouched = (shape) => has0015(shape) && shape.amendments_table === null;
-const applied = (shape) =>
+const withIndexes = (shape, indexes) =>
   has0015(shape) &&
   shape.amendments_table !== null &&
   isDeepStrictEqual(shape.amendments_table.checks, [...NEW_TABLE_CHECKS].sort()) &&
-  shape.amendments_table.unique_index &&
-  shape.amendments_table.rows === 0;
+  isDeepStrictEqual(shape.amendments_table.unique_indexes, indexes);
+// 0016's table, with its one-per-epoch unique index, is the state before; 0017 swaps the index.
+const untouched = (shape) => withIndexes(shape, [`${OLD_INDEX}(epoch_id)`]);
+const applied = (shape) => withIndexes(shape, [`${NEW_INDEX}(epoch_id,from_config_id)`]);
 
 async function readState(client) {
   const one = async (text, values) => (await client.query(text, values)).rows;
@@ -316,8 +325,8 @@ function checkState(s, live, journalExpected, phase) {
       `journal (${s.journal.length} rows) is not exactly the first ${appliedCount} expected entries`,
     );
   if (!has0015(s.shape)) fail("members does not have 0015's shape");
-  if (phase === "pre" && !untouched(s.shape)) fail(`${NEW_TABLE} already exists`);
-  if (phase === "post" && !applied(s.shape)) fail(`${NEW_TABLE} is not exactly 0016's empty table`);
+  if (phase === "pre" && !untouched(s.shape)) fail(`${NEW_TABLE} is not exactly 0016's table`);
+  if (phase === "post" && !applied(s.shape)) fail(`${NEW_TABLE} is not exactly 0017's table`);
 
   if (s.communities.length !== 1) fail(`communities has ${s.communities.length} rows, expected 1`);
   const lab = s.communities[0];
@@ -391,6 +400,9 @@ function compareToBaseline(baseline, state) {
     deltas[t] = state.counts[t] - baseline.state.counts[t];
     if (!(deltas[t] >= 0)) problems.push(`${t} lost rows or is invalid (delta ${deltas[t]})`);
   }
+  // This release records no amendment; the second one comes only after the new image runs.
+  if (deltas.reward_config_amendments !== 0)
+    problems.push(`reward_config_amendments changed by ${deltas.reward_config_amendments}`);
   const age = ms(state.reference.at) - ms(baseline.state.reference.at);
   if (!(age >= 0 && age <= BASELINE_MAX_AGE_MS)) problems.push("baseline is older than 2 hours");
   const last = state.queue?.last_reward_recovery_completed;
