@@ -1,48 +1,43 @@
 ---
 date: 2026-10-07
-summary: Hyphae on 2026-10-07 late night (Windows, Claude Sonnet 5.5). Live image buttons-ed32b4f on API and worker: up to 3 open raids per community, /raid length buttons, /raids Close menu (all Codex ACCEPT, no migration). Epoch 2 pilot amendment (reward-eval/2 from 18:00Z) still in force. The Sonnet 5.5 scorer switch is parked; Cisco is deciding Haiku 5.5 vs Jev in other sessions.
+summary: Hyphae on 2026-10-07 night (Windows, Claude Opus 5.5, Session A merge). Live image haiku55-328fb45 (Claude Haiku 5.5 on reward-eval/2) on API and worker since ~20:01Z. The Jev live scorer release is assembled on local branch jev-live (question set v4 as reward-jev/1, Session B's production path, migration 0017, review fixes, merged with feat/haiku-55 and origin/main); gate green, Codex ACCEPT on 1185ad1 after five medium findings fixed, nothing pushed or deployed. Cisco accepted v4's three known misses and approved the public texts. Next: Cisco's exact yes, then main to jev-live, his push, and the release plan steps before 2026-10-08T12:00Z.
 ---
 
 # Hyphae handoff
 
 ## Metadata
 
-Last Updated: 2026-10-07T20:15Z (Windows)
-Project: Hyphae (Colosseum entry, Organic/MYCEL). Scope: live testing in epoch 2, the Oct 8 to 9 first-payout sitting, the scoring model.
-Updated By: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
-Snapshot: [docs/handoffs/2026-10-07-raid-buttons-live.md](handoffs/2026-10-07-raid-buttons-live.md). Earlier: [pilot amendment live](handoffs/2026-10-07-pilot-amendment-live.md). Older, longer text: [2026-10-06 archive](handoffs/2026-10-06-handoff-archive-before-reorganization.md). Where they differ, this file wins.
-
-## Jev live scorer arc (parallel branches, read before touching scoring)
-
-Cisco ruled 2026-10-07 that Jev replaces the Anthropic scorer for epoch 2, deployed before 2026-10-08T12:00Z. Two branches, nothing pushed: Session A `feat/jev-reward` (questions, composition, holdout) and Session B `FCisco95/jev-plumbing` (production path, chained amendments, migration 0017, release plan). **If your task touches scoring, amendments, migration 0017, `scripts/rollout/db.mjs` or the Sonnet 5.5 switch, read [the Jev plumbing handoff](handoffs/2026-10-07-jev-plumbing.md) first: its "When to use this" table says which document answers which task.** Production is unchanged and Jev is inert until it is registered and `JEV_SCORING=on`. The Sonnet 5.5 switch below is superseded by this ruling.
+Last Updated: 2026-10-07T20:54Z (Windows)
+Project: Hyphae (Colosseum entry, Organic/MYCEL). Scope: live testing in epoch 2, the Jev live scorer release, the Oct 8 to 9 first-payout sitting.
+Updated By: Claude Opus 5.5 (`claude-opus-5-5`), Session A (questions, merge, review fixes)
+Snapshot: [docs/handoffs/2026-10-07-jev-live-merged.md](handoffs/2026-10-07-jev-live-merged.md). Earlier: [raid buttons live](handoffs/2026-10-07-raid-buttons-live.md), [Jev plumbing](handoffs/2026-10-07-jev-plumbing.md), [pilot amendment live](handoffs/2026-10-07-pilot-amendment-live.md). Where they differ, this file wins.
 
 ## TL;DR
 
-- **Live now:** API `6839d31b317318` and worker `817400c9901de8` both on `buttons-ed32b4f` = `sha256:fa0b2c955b16e7096c629aebeb6c65ca46337ba3365d75e254c59c655529a5ed` since 2026-10-07 ~19:52Z. Neon journal still at `0016`. Adds, on top of `amend-b265204`: up to 3 open raids per community (777a5b8) and raid buttons (135e900, ed32b4f): `/raid <link>` asks 6/12/24/48h, `/raids` lists open raids with Close buttons. Both Codex ACCEPT. The Sonnet 5.5 scorer switch is NOT in this image and is parked on branch `feat/sonnet55-medium` (eval: scored legit pilot cases R2 and P3 at 0 on all runs, where Sonnet 5 scores 68 to 78; per session notes, not yet in a committed file). Jev scoring is being built in other sessions; whoever deploys next must build from `origin/main` at `ed32b4f` or later.
-- **Epoch 2 pilot amendment** `a75dbfeb-1484-46df-aaae-9cd8d43a7827`: contributions admitted at or after **2026-10-07T18:00:00Z** score with `reward-eval/2`; earlier ones keep `reward-eval/1`. Announced on X at 17:06Z ([post](https://x.com/organic_mycel/status/2107880131390013632)), recorded 17:12:35Z, public on `GET /v1/communities/<mint>/epochs/2` and the epoch page. Raid on that post open since 17:07:53Z.
-- **Payout ruling (Cisco, 2026-10-07):** testers who meet every existing condition before the close are paid from the approved 0.5 SOL pot. He would add "one more SOL" if engagement grows: not a ruling until he names the amount and the epoch.
-- **Scorer, open:** the Sonnet 5.5 medium switch is NOT shipped. Code is parked on branch `feat/sonnet55-medium`; per session notes its eval scored legitimate pilot cases R2 and P3 at 0 on every run (Sonnet 5: 68 to 78) and had one timeout. Cisco is choosing Haiku 5.5 (`feat/haiku-55`) or Jev (`feat/jev-reward`, `FCisco95/jev-plumbing`, `jev-live`) in other sessions. Haiku 4.5 missed 6 of 28 (R1, R2). Deploy cutoff Oct 8 12:00Z still applies.
-- **Pushed:** `origin/main` = `9f67137` (code ed32b4f). Nothing of mine is local-only. Any deploy must build from `origin/main` at `ed32b4f` or later, or the raid changes drop out of the image.
+- **Live now:** API `6839d31b317318` and worker `817400c9901de8` on `haiku55-328fb45` = `sha256:4218b2a901b93db1bf1cad550c4fd219a817552e92e45fc70c669c6f9e097d12` since ~20:01Z (source `feat/haiku-55` = `ed32b4f` + `328fb45`; Claude Haiku 5.5 scores `reward-eval/2`; Codex ACCEPT). `328fb45` is not on `origin/main` yet. Neon journal at `0016`.
+- **Jev release, ready to review, not released:** local branch `jev-live` (worktree `hyphae-jev-reward`). It holds question set v4 registered as `reward-jev/1`, Session B's production path (request committed before the call, no retries, 30 s timeout, reconciliation), migration `0017` (amendments chain), the member-readable receipt, the security page naming TypeSafe, five review fixes (Codex ACCEPT on `1185ad1`), and merges of `origin/main` and `feat/haiku-55` (Haiku 5.5 stays the Anthropic model: effort, contributions admitted before T2, and the fallback with Jev off). Plan: [jev-live release plan](demo/2026-10-07-jev-live-release-plan.md). Review: [record](reviews/2026-10-07-jev-live.md).
+- **Calibration:** 28 reward cases 84 of 84 right; 64-reply holdout labeled blind by Cisco, three known misses he accepted ([report](evals/jev-v4-calibration-2026-10-07.md)). About USD 0.0002 per reply.
+- **Epoch 2:** amendment `a75dbfeb` (`reward-eval/2` from 18:00Z) in force. Jev would come in as a second recorded amendment at a time T2 Cisco announces.
+- **Cisco's rulings tonight:** Jev is the target quality scorer; Haiku 5.5 is the live floor, the effort model and the fallback. v4 released with its three known misses. Instructions to the scorer earn 0 (new, announced). The reason, the announcement and the site line are approved (in the plan).
 
 ## Current Objective
 
-Real testers get valid scores in epoch 2 and some can be paid at the Oct 8 to 9 sitting, with every scoring change public and non-retroactive.
+Jev scores epoch 2 quality live before 2026-10-08T12:00Z, announced and recorded, with Haiku 5.5 as the floor; then the Oct 8 to 9 payout sitting.
 
 ## Needs Cisco, in order
 
-1. **Decide the scorer** (Haiku 5.5 or Jev) in the sessions that own it; show the eval numbers before any release. A release needs its own exact yes.
-2. **Telegram heads-up (before 18:00Z, if not done):** "the new scoring starts at 18:00 UTC; reply on X now if you like, but tap Submit after 18:00."
-3. **A reply after 18:00Z** to the pilot-update post, submitted with the raid's Submit button, so Step 8 acceptance can be checked (his 17:10 reply stays 58 → 0 under `reward-eval/1`: it was admitted before the change).
-4. **Phone `/setup` check** (release A Step 5): step 2 should read "Link your wallet to be paid … You can reply to raids before this."
-5. **Telegram menu (optional):** add `/raids` to the BotFather command list; it works when typed.
-6. **Oct 8 sitting** (C14 to C22) with the Ledger and the pot; more payable members now possible, so C18b attestation covers each tester's X account. See [the packet](demo/2026-10-08-first-payout-readiness.md).
-7. Pushes to `main` are always `! git push origin main` (the agent's push is blocked).
+1. **The exact yes:** "yes, run the Jev live scorer release" (the plan's proposed sentence). Without it by about 2026-10-08T08:00Z, epoch 2 stays on Haiku 5.5 and Jev waits; no deploy after 12:00Z.
+2. **Push:** `! git push origin main` after the agent puts `main` on `jev-live` (plan Step 0.0; the site redeploys with the security page update).
+3. **One `fly secrets` line** (plan Step 4, E5): `TYPESAFE_API_KEY` and `JEV_SCORING=on`, only after the image and migration checks pass.
+4. **Post the announcement** with T2 and give the agent the post URL and T2; then the agent records the amendment.
+5. **Oct 8 sitting** (C14 to C22) with the Ledger and the pot. See [the packet](demo/2026-10-08-first-payout-readiness.md).
 
 ## Current State
 
 | Area | State |
 |---|---|
-| API and worker | Both `started` on `sha256:fa0b2c955b16e7096c629aebeb6c65ca46337ba3365d75e254c59c655529a5ed` (tag `buttons-ed32b4f`, since ~19:52Z). Chain: earn-94ce60e, amend-b265204, raids-777a5b8 (`sha256:5185a5ec...`), buttons-ed32b4f. Rollback to `amend-b265204` or `raids-777a5b8` is allowed (no migration since 0016); never below `amend-b265204`. |
+| API and worker | Both `started` on `sha256:4218b2a901b93db1bf1cad550c4fd219a817552e92e45fc70c669c6f9e097d12` (tag `haiku55-328fb45`, since ~20:01Z). Chain: earn-94ce60e, amend-b265204, raids-777a5b8, buttons-ed32b4f (`sha256:fa0b2c95…`), haiku55-328fb45. No migration since 0016. |
+| Jev release | Branch `jev-live`, local only, see TL;DR. Final gate on `1185ad1`: tests (API 1037), typecheck, lint, drizzle check all 0; `test:pg` 74 of 74 (five raid-alert and private-journey tests fail only under heavy machine load; recorded in the review). Live check through the production client: 0 errors, slowest call 607 ms. |
 | Database | Neon journal 17 rows, ending `0016_reward_config_amendments`. `members` has 0015's nullable wallet shape. One row in `reward_config_amendments`. |
 | Epoch 2 | Open until 2026-10-09T00:00Z, base config `df5be064…` (rubric 1.2.0, `reward-eval/1`), amended to config `d265af98…` (`reward-eval/2`, digest `9f4bfac8182a`, the same config the pending epoch 3 proposal pins) from 18:00Z. 4 contributions, 4 decisions as of 17:29Z. History from before the release byte-identical (`scripts/rollout/decisions-digest.mjs` with cutoff 15:22Z: intakes 3 `79ed17cc`, decisions 3 `5897c505`, dispatches 3 `6af848b1`). |
 | Epoch 3 | Not created. Materializes after Oct 9 00:00Z and must activate the pending `reward-eval/2` proposal `2ce6085a…`. |

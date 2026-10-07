@@ -16,9 +16,11 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 
 **Decisions and why:** I accepted v4 with its three known misses: the false zeros on cheer-jokes cost one reply's points each, and a public admin correction can restore them, while paying the bad tail costs everyone. Jev starts in epoch 2 by a second recorded amendment, not in epoch 3. And the announcement says the one new zero plainly: a reply that tries to instruct the scorer scores 0, which the rubric does not list. The security page now names TypeSafe as a service that reads contributions.
 
-**Commits (branch `jev-live`, local):** `99bc61a`, `f2caae3`, `ceb768a`, `07db478`, `9326fd7` (the production path and migration 0017), `17546e4`, `df199bb` (v4 and its calibration), `2473c62`, `03d618d` (the registry entry and receipt wording), `3942112` (security page), plus the records.
+**Review:** an independent Codex pass found five medium problems over three rounds, all fixed test-first. A response missing an answer the score did not need could still score. A paid response that failed a check was parked without the response, its cost or its latency. A response arriving after another worker had parked the call was dropped. A failed schema check kept the score but not the raw response. And an operator could mark a call "never sent" while a paid response sat on it, which would have allowed a second billed call. Final verdict ACCEPT. Haiku 5.5 went live in another session at 20:01, so the release now builds on it: Haiku stays the model for effort, for replies admitted before the switch, and the fallback.
 
-**Next:** the independent Codex review must accept it before anything is pushed. Then my exact yes, the push, migration 0017, the new image, the key, the announcement, and the amendment, one step at a time, before Oct 8 12:00 UTC.
+**Commits (branch `jev-live`, local):** `99bc61a`, `f2caae3`, `ceb768a`, `07db478`, `9326fd7` (the production path and migration 0017), `17546e4`, `df199bb` (v4 and its calibration), `2473c62`, `03d618d` (the registry entry and receipt wording), `3942112` (security page), `9f1da15`, `f581a27`, `fe48d72`, `1185ad1` (review fixes), `00ce8f4` (Haiku merge), plus the records.
+
+**Next:** my exact yes, then the push, migration 0017, the new image, the key, the announcement, and the amendment, one step at a time, before Oct 8 12:00 UTC.
 
 ## 2026-10-07 (late night) · Raids now run from buttons
 

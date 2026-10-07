@@ -14,7 +14,7 @@ summary: Draft release plan for making Jev the live epoch 2 reward scorer by a s
 | # | Blocker | Owner |
 |---|---|---|
 | 1 | Question set `v4` wired into `scoring/jev-registry.ts`, its holdout report done, R1-R3 and P1-P5 passing 3 of 3, every labeled zero staying zero | **Done, with exceptions for Cisco to accept:** registered as `reward-jev/1` (`2473c62`); [calibration](../evals/jev-v4-calibration-2026-10-07.md): 84 of 84 on the reward cases, R1-R3 and P1-P5 pass 3 of 3 (74 to 95). On the 64-reply holdout one labeled zero passes (reply 26, 74) and two labeled passes are zeroed (jokes built on a cheer). Rerun live through the production client and registry: same results, 0 errors, slowest call 607 ms. **Cisco accepted these three misses and chose to release (2026-10-07, about 20:50Z).** |
-| 2 | Codex review (read-only, xhigh) of `git diff ed32b4f..HEAD` on `jev-live`, then of the merged head with `feat/haiku-55` (the live image's source): ACCEPT. Money-bearing scoring: no push before it | Agent runs it, fixes test-first |
+| 2 | Codex review (read-only, xhigh) of `git diff ed32b4f..HEAD` on `jev-live`, then of the merged head with `feat/haiku-55` (the live image's source): ACCEPT. Money-bearing scoring: no push before it | **Done: ACCEPT** on `1185ad1` after five medium findings were fixed test-first ([review record](../reviews/2026-10-07-jev-live.md)) |
 | 3 | The exact public sentence for what Jev is and why (the pages say "prompt" today) | **Done:** Cisco approved the reason, the announcement and the line (below); the security page names TypeSafe and the amendment chain |
 | 4 | `TYPESAFE_API_KEY` added as a Fly secret by Cisco (Step 4). The agent never sets it | Cisco |
 
@@ -66,6 +66,7 @@ It must say the new zero: question set v4 zeroes a reply that tries to instruct 
 
 ## Step 0. Guards (read-only)
 
+0. **Before E0, put `main` on `jev-live` (agent, after the yes).** At 20:54Z local `main` was `origin/main` (`fb89ba4`) plus `3adcf63`, the session prompts, whose content is `a366d60` in `jev-live`. Check `git cherry -v jev-live main` prints only `-` lines (nothing on `main` that `jev-live` lacks), then in the main checkout `git reset --keep jev-live` (keeps untracked files, refuses if anything local would be lost); `git status -sb` must show `main...origin/main [ahead N]` and no behind. This also publishes `328fb45` (Haiku 5.5, live since 20:01Z but not yet on `origin/main`).
 1. Cisco's push done (E0). `git fetch origin`; the source `<SHA>` is an ancestor of `origin/main`; runtime-tree diff empty; `git status -sb` clean and not ahead. GitHub CI on the pushed head: success.
 2. Gate on `<SHA>`, native: `pnpm test`, `pnpm typecheck`, `pnpm lint` (exit codes), `pnpm --filter @hyphae/db exec drizzle-kit check`, `pnpm --filter @hyphae/api test:pg` (Docker). Known intermittents: the member-journey and raid-alert Postgres tests, and `src/link/page-handoff.test.ts` under load; a failure outside that list stops the release.
 3. `registry-digest.sh jev-<sha7>` prints `404`; `registry-digest.sh haiku55-328fb45` prints `200 sha256:4218b2a9…`.
