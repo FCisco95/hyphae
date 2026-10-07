@@ -12,6 +12,10 @@ Project: Hyphae (Colosseum entry, Organic/MYCEL). Scope: live testing in epoch 2
 Updated By: Claude Opus 5.5 (`claude-opus-5-5`), effort xhigh
 Snapshot: [docs/handoffs/2026-10-07-pilot-amendment-live.md](handoffs/2026-10-07-pilot-amendment-live.md). Older, longer text: [2026-10-06 archive](handoffs/2026-10-06-handoff-archive-before-reorganization.md). Where they differ, this file wins.
 
+## Jev live scorer arc (parallel branches, read before touching scoring)
+
+Cisco ruled 2026-10-07 that Jev replaces the Anthropic scorer for epoch 2, deployed before 2026-10-08T12:00Z. Two branches, nothing pushed: Session A `feat/jev-reward` (questions, composition, holdout) and Session B `FCisco95/jev-plumbing` (production path, chained amendments, migration 0017, release plan). **If your task touches scoring, amendments, migration 0017, `scripts/rollout/db.mjs` or the Sonnet 5.5 switch, read [the Jev plumbing handoff](handoffs/2026-10-07-jev-plumbing.md) first: its "When to use this" table says which document answers which task.** Production is unchanged and Jev is inert until it is registered and `JEV_SCORING=on`. The Sonnet 5.5 switch below is superseded by this ruling.
+
 ## TL;DR
 
 - **Live now:** API `6839d31b317318` and worker `817400c9901de8` both on `raids-777a5b8` = `sha256:5185a5ecbed5647703b5fe0a9f31365dcf200e1f929a595993f22669fbd36e50` since 2026-10-07 ~19:15Z. Neon journal still at `0016`. On top of `amend-b265204` it adds up to 3 open raids per community (`MAX_OPEN_RAIDS`, commit 777a5b8, Codex ACCEPT). The Sonnet 5.5 scorer switch (1a85dc0) is NOT in this image.
