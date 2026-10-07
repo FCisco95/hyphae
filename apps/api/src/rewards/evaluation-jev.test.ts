@@ -203,6 +203,56 @@ describe("a Jev-pinned epoch", () => {
     expect(await decisionsOf(intake.contributionId)).toHaveLength(0);
   });
 
+  it("parks a malformed response, keeping what was paid for: the response, latency and cost", async () => {
+    const l = await lane();
+    const intake = await l.admitOne();
+    const { def } = fakeDef(() => {
+      throw new Error("jev: no yes/no answer for explains");
+    });
+    const paid = {
+      model: MODEL,
+      answers: { generic: { type: "noul", noul: 0.1 } },
+      usage: { input_tokens: 2000, output_tokens: 0 },
+    };
+    const tr: JevTransport = async () => ({ response: paid, latencyMs: 40, mode: "live" });
+    const result = await runEvaluation(
+      t.db,
+      { communityId: l.community.id, target: { contributionId: intake.contributionId } },
+      deps(def, tr),
+    );
+    expect(result).toEqual({ status: "pending_reconciliation" });
+    const [d] = await dispatchesOf(intake.contributionId);
+    expect(d).toMatchObject({
+      state: "pending_reconciliation",
+      output: { jev: { response: paid } },
+      latencyMs: 40,
+      costMicroUsd: 84,
+    });
+    expect(d?.error).toContain("explains");
+  });
+
+  it("parks a call that got no response with nothing to keep", async () => {
+    const l = await lane();
+    const intake = await l.admitOne();
+    const { def } = fakeDef(() => composed(72));
+    const failing: JevTransport = async () => {
+      throw new Error("Request timed out after 30000 ms");
+    };
+    await runEvaluation(
+      t.db,
+      { communityId: l.community.id, target: { contributionId: intake.contributionId } },
+      deps(def, failing),
+    );
+    const [d] = await dispatchesOf(intake.contributionId);
+    expect(d).toMatchObject({
+      state: "pending_reconciliation",
+      output: null,
+      latencyMs: null,
+      costMicroUsd: null,
+    });
+    expect(d?.error).toContain("timed out");
+  });
+
   it("parks a composed output that fails the reward schema, keeping the output as evidence", async () => {
     const l = await lane();
     const intake = await l.admitOne();
@@ -219,6 +269,7 @@ describe("a Jev-pinned epoch", () => {
       error: "output failed the reward schema",
     });
     expect(d?.output).toMatchObject({ score: 172 });
+    expect(d).toMatchObject({ latencyMs: 40, costMicroUsd: 84 });
   });
 
   it("parks a call whose request is not the one the dispatch committed", async () => {
@@ -237,6 +288,10 @@ describe("a Jev-pinned epoch", () => {
     expect(result).toEqual({ status: "pending_reconciliation" });
     const [d] = await dispatchesOf(intake.contributionId);
     expect(d?.error).toContain("request hash");
+    expect(d).toMatchObject({
+      output: { jev: { response: { answers: { quality: { type: "score", score: 2 } } } } },
+      latencyMs: 40,
+    });
     expect(await decisionsOf(intake.contributionId)).toHaveLength(0);
   });
 

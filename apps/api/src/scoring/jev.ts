@@ -155,6 +155,17 @@ const questionsOf = (set: JevQuestionSet): Questions =>
 
 export const requestHash = (request: Request): string => sha256Hex(canonicalJson(request));
 
+// tokens × $/1M tokens = µ$
+const costOf = (usage: JevResponse["usage"]): number => Math.round(usage.input_tokens * PRICE_IN);
+
+// The cost of a response that failed later checks, from its usage; null when it has none readable.
+export function jevCostMicroUsd(response: unknown): number | null {
+  const usage = JevResponseSchema.shape.usage.safeParse(
+    (response as { usage?: unknown } | null)?.usage,
+  );
+  return usage.success ? costOf(usage.data) : null;
+}
+
 const Answer = z.discriminatedUnion("type", [
   z.object({ type: z.literal("noul"), noul: z.number().min(0).max(1) }),
   z.object({
@@ -346,8 +357,7 @@ export async function runJev(
     metricsSource: mode === "replay" ? "recorded-call" : "current-call",
     latencyMs,
     usage: res.usage,
-    // tokens × $/1M tokens = µ$
-    costMicroUsd: Math.round(res.usage.input_tokens * PRICE_IN),
+    costMicroUsd: costOf(res.usage),
     answers: res.answers,
     output: composeJev(res, input.rubric, set),
   };

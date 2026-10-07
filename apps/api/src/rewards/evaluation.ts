@@ -24,6 +24,7 @@ import {
   tasks,
 } from "@hyphae/db";
 import { and, desc, eq, ne } from "drizzle-orm";
+import { jevCostMicroUsd } from "../scoring/jev.js";
 import {
   type JevRegistry,
   type JevScorerDef,
@@ -531,7 +532,14 @@ export async function completeDispatch(
 // work waits for its original outcome or an operator's proof that nothing was sent.
 export async function markReconciliation(
   db: Db,
-  input: { communityId: string; dispatchId: string; error: string; output?: unknown },
+  input: {
+    communityId: string;
+    dispatchId: string;
+    error: string;
+    output?: unknown;
+    latencyMs?: number;
+    costMicroUsd?: number | null;
+  },
   deps: RewardDeps = {},
 ): Promise<void> {
   await withCommunityLock(db, input.communityId, deps, async (tx, _community, now) => {
@@ -541,6 +549,8 @@ export async function markReconciliation(
         state: "pending_reconciliation",
         error: input.error,
         output: input.output ?? null,
+        latencyMs: input.latencyMs ?? null,
+        costMicroUsd: input.costMicroUsd ?? null,
       })
       .where(
         and(
@@ -663,12 +673,19 @@ export async function runEvaluation(
 
   const { dispatch, request, purpose } = begun;
   let result: ProviderResult;
+  // What a Jev call returned, kept so a response that fails later checks is still on the record.
+  let received: { response: unknown; latencyMs: number } | undefined;
   try {
     if (request.kind === "prompt") {
       result = await deps.call(request.prompt, purpose);
     } else {
-      if (!deps.jev) throw new Error("reward: the Jev scorer is not enabled");
-      const score = await request.def.run(request.input, deps.jev.transport);
+      const jev = deps.jev;
+      if (!jev) throw new Error("reward: the Jev scorer is not enabled");
+      const score = await request.def.run(request.input, async (body) => {
+        const answer = await jev.transport(body);
+        received = { response: answer.response, latencyMs: answer.latencyMs };
+        return answer;
+      });
       result = {
         output: { ...score.output, jev: score.evidence },
         latencyMs: score.latencyMs,
@@ -682,7 +699,16 @@ export async function runEvaluation(
   } catch (err) {
     await markReconciliation(
       db,
-      { communityId: input.communityId, dispatchId: dispatch.id, error: String(err) },
+      {
+        communityId: input.communityId,
+        dispatchId: dispatch.id,
+        error: String(err),
+        ...(received && {
+          output: { jev: { response: received.response } },
+          latencyMs: received.latencyMs,
+          costMicroUsd: jevCostMicroUsd(received.response),
+        }),
+      },
       deps,
     );
     return { status: "pending_reconciliation" };
@@ -695,6 +721,8 @@ export async function runEvaluation(
         dispatchId: dispatch.id,
         error: "output failed the reward schema",
         output: result.output,
+        latencyMs: result.latencyMs,
+        costMicroUsd: result.costMicroUsd,
       },
       deps,
     );
