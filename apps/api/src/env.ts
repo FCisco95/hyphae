@@ -7,6 +7,9 @@ const Env = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   DEEPSEEK_API_KEY: z.string().optional(),
   SCORING_MODEL: z.string().default("anthropic:claude-sonnet-5"),
+  // Jev reward scoring stays off until an operator turns it on, and needs the TypeSafe key.
+  JEV_SCORING: z.enum(["on", "off"]).default("off"),
+  TYPESAFE_API_KEY: z.string().min(1).optional(),
   PUBLIC_WEB_URL: z.url().default("https://hyphae.fun"),
   PORT: z.coerce.number().default(8080),
   // Origin of the wallet-signing page and proof endpoints; it is part of every signed message.

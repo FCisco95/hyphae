@@ -25,6 +25,7 @@
     "@noble/hashes": "^2.4.0",
     "@organichub/verify": "0.1.0",
     "@solana/kit": "^8.3.0",
+    "@typesafe-ai/sdk": "0.6.0",
     "ai": "^7.0.0",
     "drizzle-orm": "^0.45.0",
     "grammy": "^1.46.0",

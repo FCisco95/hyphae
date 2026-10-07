@@ -10,6 +10,8 @@ import { type EvaluationTarget, type RunResult, runEvaluation } from "../rewards
 import { decisionNotified, markNotified, strandedWork } from "../rewards/recovery.js";
 import { recordRetrieval } from "../rewards/slots.js";
 import { defaultModel } from "../scoring/default-model.js";
+import { jevDepsFromEnv } from "../scoring/jev-config.js";
+import { JEV_REGISTRY } from "../scoring/jev-registry.js";
 import { callRewardModel, REWARD_CALL_TIMEOUT_MS } from "../scoring/run.js";
 import { captureLimitations, fetchPost } from "../x/oembed.js";
 import { boss, QUEUES } from "./queue.js";
@@ -39,6 +41,9 @@ export interface RewardNotifyJob {
   // Set for a decision's message, which is marked sent so the recovery sweep can resend it.
   decisionId?: string;
 }
+
+// Built once at boot: a bad Jev configuration stops the worker instead of stranding dispatches.
+const jev = jevDepsFromEnv(env, JEV_REGISTRY);
 
 // Longer than one provider call can take, so an older dispatch cannot be a live call.
 const RECONCILIATION_HORIZON_MS = REWARD_CALL_TIMEOUT_MS + 3.5 * 60_000;
@@ -77,6 +82,7 @@ export async function evaluateReward(job: RewardEvaluationJob): Promise<void> {
     model: defaultModel.id,
     horizonMs: RECONCILIATION_HORIZON_MS,
     call: (prompt, purpose) => callRewardModel(prompt, purpose, defaultModel),
+    ...(jev && { jev }),
   });
   console.log(JSON.stringify({ job: "reward-evaluation", ...job, status: result.status }));
   if (result.status === "in_flight") {

@@ -2,12 +2,12 @@ import {
   canonicalJson,
   effortEligible,
   type Prompt,
-  promptTemplateHash,
   type RewardPurpose,
   rawQuality,
   renderRewardPrompt,
   rewardOutputSchema,
   rewardPointUnits,
+  type ScoringInput,
   sha256Hex,
 } from "@hyphae/core";
 import {
@@ -24,6 +24,13 @@ import {
   tasks,
 } from "@hyphae/db";
 import { and, desc, eq, ne } from "drizzle-orm";
+import {
+  type JevRegistry,
+  type JevScorerDef,
+  type JevTransport,
+  pinHash,
+  routeFor,
+} from "../scoring/scorers.js";
 import { RewardConfigPayload, type RewardDeps, withCommunityLock } from "./config.js";
 import type { Capture, RewardIntake } from "./intake.js";
 import type { Nomination } from "./slots.js";
@@ -100,8 +107,19 @@ async function liveDispatch(tx: Tx, target: { slotId: string } | { qualityOf: st
   return row;
 }
 
+// What the one provider call carries: a rendered Anthropic prompt, or the typed questions a Jev
+// scorer answers about the same contribution.
+export type ScorerRequest =
+  | { kind: "prompt"; version: string; prompt: Prompt }
+  | { kind: "jev"; def: JevScorerDef; input: ScoringInput };
+
+export interface JevDeps {
+  registry: JevRegistry;
+  transport: JevTransport;
+}
+
 export type BeginResult =
-  | { status: "begun"; dispatch: Dispatch; prompt: Prompt; purpose: RewardPurpose }
+  | { status: "begun"; dispatch: Dispatch; request: ScorerRequest; purpose: RewardPurpose }
   | { status: "exists"; dispatch: Dispatch; ageMs: number }
   | { status: "not_ready"; reason: string };
 
@@ -110,7 +128,7 @@ export type BeginResult =
 export async function beginDispatch(
   db: Db,
   input: { communityId: string; target: EvaluationTarget; model: string },
-  deps: RewardDeps = {},
+  deps: RewardDeps & { jev?: JevDeps } = {},
 ): Promise<BeginResult> {
   return withCommunityLock(db, input.communityId, deps, async (tx, _community, now) => {
     let nomination: Nomination | undefined;
@@ -171,7 +189,7 @@ export async function beginDispatch(
       return { status: "not_ready", reason: "epoch_closed" };
     }
     const { promptVersion } = payload.scoring;
-    if (promptTemplateHash(promptVersion) !== payload.scoring.promptTemplateHash) {
+    if (pinHash(promptVersion, deps.jev?.registry) !== payload.scoring.promptTemplateHash) {
       if (nomination) {
         await tx
           .update(rewardNominations)
@@ -208,9 +226,10 @@ export async function beginDispatch(
     }
     const prior = purpose === "effort" ? await latestDecision(tx, contributionId) : undefined;
     if (purpose === "effort" && !prior) throw new Error("reward: upgrade without a decision");
-    const prompt = renderRewardPrompt(promptVersion, purpose, {
+    const route = routeFor(promptVersion, purpose, deps.jev?.registry);
+    if (!route) throw new Error(`reward: no scorer for ${promptVersion} although its pin matched`);
+    const scored: ScoringInput = {
       rubric: payload.rubric,
-      effortCriteria: payload.effort.criteria,
       task: task?.targetUrl
         ? {
             targetUrl: task.targetUrl,
@@ -225,11 +244,47 @@ export async function beginDispatch(
         text: contribution.text,
         authorHandle: (contribution.oembed as { handle?: string } | null)?.handle,
       },
-      limitations,
-      priorQuality: prior
-        ? { raw: prior.rawQuality, credited: prior.creditedQuality, reasoning: prior.explanation }
-        : undefined,
-    });
+    };
+    // A Jev version answers quality only; an effort judgment runs on the prompt version the Jev
+    // version names, and its dispatch records that version, not the epoch's.
+    const request: ScorerRequest =
+      route.kind === "jev"
+        ? { kind: "jev", def: route.def, input: scored }
+        : {
+            kind: "prompt",
+            version: route.version,
+            prompt: renderRewardPrompt(route.version, purpose, {
+              ...scored,
+              effortCriteria: payload.effort.criteria,
+              limitations,
+              priorQuality: prior
+                ? {
+                    raw: prior.rawQuality,
+                    credited: prior.creditedQuality,
+                    reasoning: prior.explanation,
+                  }
+                : undefined,
+            }),
+          };
+    const sent = (() => {
+      if (request.kind === "prompt") {
+        return {
+          model: input.model,
+          promptVersion: request.version,
+          promptHash: sha256Hex(request.prompt.system),
+          inputHash: sha256Hex(canonicalJson(request.prompt)),
+          input: request.prompt as unknown,
+        };
+      }
+      const { body, hash } = request.def.request(request.input);
+      return {
+        model: request.def.model,
+        promptVersion,
+        promptHash: request.def.templateHash,
+        inputHash: hash,
+        input: body,
+      };
+    })();
 
     let fence: number;
     if (nomination) {
@@ -267,16 +322,12 @@ export async function beginDispatch(
         fence,
         idempotencyKey: `${purpose}:${nomination?.id ?? contributionId}:${fence}`,
         state: "dispatched",
-        model: input.model,
-        promptVersion,
-        promptHash: sha256Hex(prompt.system),
-        inputHash: sha256Hex(canonicalJson(prompt)),
-        input: prompt,
+        ...sent,
         dispatchedAt: now,
       })
       .returning();
     if (!dispatch) throw new Error("reward: dispatch insert returned nothing");
-    return { status: "begun", dispatch, prompt, purpose };
+    return { status: "begun", dispatch, request, purpose };
   });
 }
 
@@ -565,6 +616,8 @@ export interface ProviderResult {
 export interface EvaluationDeps extends RewardDeps {
   model: string;
   call: (prompt: Prompt, purpose: RewardPurpose) => Promise<ProviderResult>;
+  // Set only where a Jev scorer is enabled; an epoch pinned to one is not ready without it.
+  jev?: JevDeps;
   // How long a dispatch without an outcome may be another worker's live call.
   horizonMs: number;
 }
@@ -608,10 +661,24 @@ export async function runEvaluation(
     return { status: "pending_reconciliation" };
   }
 
-  const { dispatch, prompt, purpose } = begun;
+  const { dispatch, request, purpose } = begun;
   let result: ProviderResult;
   try {
-    result = await deps.call(prompt, purpose);
+    if (request.kind === "prompt") {
+      result = await deps.call(request.prompt, purpose);
+    } else {
+      if (!deps.jev) throw new Error("reward: the Jev scorer is not enabled");
+      const score = await request.def.run(request.input, deps.jev.transport);
+      result = {
+        output: { ...score.output, jev: score.evidence },
+        latencyMs: score.latencyMs,
+        costMicroUsd: score.costMicroUsd,
+      };
+      // The row committed before the call is the record of what was asked; the call must match it.
+      if (score.requestHash !== dispatch.inputHash) {
+        throw new Error("jev: request hash differs from the dispatch's committed input hash");
+      }
+    }
   } catch (err) {
     await markReconciliation(
       db,
