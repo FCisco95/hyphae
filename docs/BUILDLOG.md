@@ -2,6 +2,15 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-07 (night) · One raid at a time was holding the community back
+
+**What I found:** I opened a new post while a long raid was still live, and the bot refused: "An active brief already exists." Waiting up to 48 hours for a raid to run out is unfair to people who want to engage with the new post.
+**Shipped:** a community can now have up to three open raids at once. The fourth is refused until one closes. `/help brief` lists every open raid. No migration.
+**Decision + why:** the one-raid rule was a pilot policy, not a technical limit. Submit buttons already carry the raid id and the one-reply, one-quote cap is counted per raid, so raids do not interfere. I kept a ceiling of three so one admin cannot flood the chat. The weekly per-wallet cap still bounds what any member can earn.
+**Numbers:** 870 API tests, 123 web tests, 73 real-Postgres tests, lint and typecheck green. A race test opens five raids at once: exactly three succeed. Codex (other model family, xhigh, read-only) reviewed the diff: ACCEPT, no findings.
+**Commits:** 777a5b8. Image `raids-777a5b8` = `sha256:5185a5ecbed5647703b5fe0a9f31365dcf200e1f929a595993f22669fbd36e50`, API and worker, live.
+**Next:** more one-tap controls for admins (buttons instead of commands), then the Sonnet 5.5 scorer switch, which is still unreleased.
+
 ## 2026-10-07 (evening) · Scoring was too strict, so I changed it in public
 
 **What I found:** testers were writing honest replies and scoring under the 60 floor. Mine did too: "Best call. I guess Hyphae is a continuous improvement algorithm…" scored 58, so 0, under epoch 2's strict prompt. I need valid scores during live testing, and nobody keeps engaging for zero.

@@ -14,7 +14,7 @@ Snapshot: [docs/handoffs/2026-10-07-pilot-amendment-live.md](handoffs/2026-10-07
 
 ## TL;DR
 
-- **Live now:** API `6839d31b317318` and worker `817400c9901de8` both on `amend-b265204` = `sha256:161252f99dcc4b790e4742f99c9c3f0b4ad43bc6200157d756e33b6e9dfd947a` since 16:46Z. Neon journal at `0016`. It carries earn-first, the one-tap X buttons, the vault panel and the pilot amendment.
+- **Live now:** API `6839d31b317318` and worker `817400c9901de8` both on `raids-777a5b8` = `sha256:5185a5ecbed5647703b5fe0a9f31365dcf200e1f929a595993f22669fbd36e50` since 2026-10-07 ~19:15Z. Neon journal still at `0016`. On top of `amend-b265204` it adds up to 3 open raids per community (`MAX_OPEN_RAIDS`, commit 777a5b8, Codex ACCEPT). The Sonnet 5.5 scorer switch (1a85dc0) is NOT in this image.
 - **Epoch 2 pilot amendment** `a75dbfeb-1484-46df-aaae-9cd8d43a7827`: contributions admitted at or after **2026-10-07T18:00:00Z** score with `reward-eval/2`; earlier ones keep `reward-eval/1`. Announced on X at 17:06Z ([post](https://x.com/organic_mycel/status/2107880131390013632)), recorded 17:12:35Z, public on `GET /v1/communities/<mint>/epochs/2` and the epoch page. Raid on that post open since 17:07:53Z.
 - **Payout ruling (Cisco, 2026-10-07):** testers who meet every existing condition before the close are paid from the approved 0.5 SOL pot. He would add "one more SOL" if engagement grows: not a ruling until he names the amount and the epoch.
 - **Cisco's next decision, already made:** switch the scorer to Claude Sonnet 5.5 at medium effort. Not done yet: needs code (the scorer sends no effort today), an eval, a Codex review and a deploy before Oct 8 12:00Z.
