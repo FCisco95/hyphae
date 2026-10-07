@@ -2,6 +2,9 @@ import type { ContributionRowV1, SelectedV1 } from "@hyphae/core";
 
 // "2026-10-02T00:00:00.000000Z" -> "2026-10-02 00:00 UTC". Every time on the site is UTC.
 export const utc = (iso: string) => `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
+// A boundary that decides something: shown to the minute only when that is exact.
+export const utcExact = (iso: string) =>
+  iso.slice(16) === ":00.000000Z" ? utc(iso) : `${iso.slice(0, 10)} ${iso.slice(11, 26)} UTC`;
 
 export const shortWallet = (w: string) => `${w.slice(0, 4)}…${w.slice(-4)}`;
 export const shortId = (id: string) => id.slice(0, 8);

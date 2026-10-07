@@ -42,7 +42,8 @@ export async function amendEpochPrompt(
       throw new Error(`reward: epoch ${input.epochIndex} is not the epoch open now`);
     }
     const effective = input.effectiveAt.getTime();
-    if (effective % 1000 !== 0) throw new Error("reward: effectiveAt must be a whole second");
+    // Announced times are whole minutes, so the minute shown on every page is the exact boundary.
+    if (effective % 60_000 !== 0) throw new Error("reward: effectiveAt must be a whole minute");
     if (effective <= now.getTime()) {
       throw new Error(
         "reward: effectiveAt must be in the future; amendments are never retroactive",

@@ -20,6 +20,7 @@ import {
   shortWallet,
   sol,
   utc,
+  utcExact,
 } from "../lib/format.js";
 import { BOT } from "../lib/links.js";
 import { settlementOf } from "../lib/settlement.js";
@@ -416,7 +417,7 @@ function AmendmentPanel({ epoch }: { epoch: LooseEpochV1 }) {
       {epoch.amendments.map((a) => (
         <div key={a.effective_at}>
           <p>
-            From {utc(a.effective_at)}, contributions admitted in this epoch are scored with{" "}
+            From {utcExact(a.effective_at)}, contributions admitted in this epoch are scored with{" "}
             {a.to.prompt_version} instead of {a.from.prompt_version}.
           </p>
           <blockquote>{a.reason}</blockquote>
@@ -682,8 +683,8 @@ export function ContributionView({ c }: { c: ContributionV1 }) {
       <p className="banner">{STATE[c.state]}</p>
       {c.amendment && (
         <p className="muted">
-          Scored under this epoch's pilot amendment: {c.amendment.prompt_version}, in effect from{" "}
-          {utc(c.amendment.effective_at)}.
+          Admitted under this epoch's pilot amendment, so {c.amendment.prompt_version} scores it (in
+          effect from {utcExact(c.amendment.effective_at)}).
         </p>
       )}
       <Panel title="The work">

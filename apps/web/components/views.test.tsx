@@ -116,11 +116,33 @@ describe("a pilot amendment", () => {
     );
   });
 
-  it("a contribution admitted under it says so", () => {
+  it("a contribution admitted under it says so, scored or not", () => {
     expect(text(<ContributionView c={f.amendedContribution} />)).toContain(
-      "Scored under this epoch's pilot amendment: reward-eval/2, in effect from 2026-10-07 18:00 UTC.",
+      "Admitted under this epoch's pilot amendment, so reward-eval/2 scores it (in effect from 2026-10-07 18:00 UTC).",
     );
     expect(text(<ContributionView c={f.pendingAtClose} />)).not.toContain("pilot amendment");
+  });
+
+  it("shows an effective time that is not a whole minute to the microsecond", () => {
+    const at = "2026-10-07T18:00:30.000000Z";
+    const [a] = f.amendedEpoch.amendments ?? [];
+    if (!a) throw new Error("fixture");
+    const t = text(
+      <EpochView
+        epoch={{ ...f.amendedEpoch, amendments: [{ ...a, effective_at: at }] }}
+        list={f.contributions}
+      />,
+    );
+    expect(t).toContain("From 2026-10-07 18:00:30.000000 UTC,");
+    const c = text(
+      <ContributionView
+        c={{
+          ...f.amendedContribution,
+          amendment: { effective_at: at, prompt_version: "reward-eval/2" },
+        }}
+      />,
+    );
+    expect(c).toContain("(in effect from 2026-10-07 18:00:30.000000 UTC)");
   });
 });
 

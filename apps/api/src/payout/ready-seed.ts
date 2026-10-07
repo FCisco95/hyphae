@@ -59,8 +59,8 @@ export async function seedReadyEpoch(
     chainAddress?: string | null;
     // false creates pre-B6 rows for migration/refusal tests.
     storeCommitments?: boolean;
-    // Pins reward-eval/1 and amends the epoch to reward-eval/2 from minute 25, so the floor and
-    // unsigned contributions are judged under the amendment.
+    // Pins reward-eval/1 and amends the epoch to reward-eval/2 from minute 25 or 26, so the floor
+    // and unsigned contributions are judged under the amendment.
     amended?: boolean;
   },
 ): Promise<ReadySeed> {
@@ -210,7 +210,8 @@ export async function seedReadyEpoch(
         communityId,
         epochIndex: 1,
         promptVersion: "reward-eval/2",
-        effectiveAt: new Date(t0.getTime() + 25 * MIN),
+        // t0 is a whole second; an amendment takes effect on a whole minute.
+        effectiveAt: new Date(Math.ceil((t0.getTime() + 25 * MIN) / MIN) * MIN),
         actor: "script:ready-seed",
         reason: "Pilot testing phase: scoring is less strict.",
       },

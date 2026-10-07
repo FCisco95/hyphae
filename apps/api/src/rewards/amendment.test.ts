@@ -180,10 +180,13 @@ describe("amendEpochPrompt: refusals", () => {
     await expect(l.amend({ effectiveAt: at(WEEK_MS) }, 30 * MIN)).rejects.toThrow(/close/);
   });
 
-  it("refuses an effective time that is not a whole second", async () => {
+  it("refuses an effective time that is not a whole minute, as announced", async () => {
     const l = await lane();
+    await expect(l.amend({ effectiveAt: at(EFFECTIVE_MS + 30_000) }, 30 * MIN)).rejects.toThrow(
+      /whole minute/,
+    );
     await expect(l.amend({ effectiveAt: at(EFFECTIVE_MS + 1) }, 30 * MIN)).rejects.toThrow(
-      /whole second/,
+      /whole minute/,
     );
   });
 
