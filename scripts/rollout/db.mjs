@@ -1,6 +1,7 @@
-// Production checks and one pinned migration release. Current release: migration 0015 for the
-// 2026-10-07 earn-first release plan (docs/demo/2026-10-07-earn-first-release-plan.md). The
-// 2026-10-05 API rollout used this script for 0013+0014 (see that plan and git history).
+// Production checks and one pinned migration release. Current release: migration 0016 for the
+// 2026-10-07 epoch 2 pilot amendment release plan
+// (docs/demo/2026-10-07-pilot-amendment-release-plan.md). The earn-first release used it for 0015
+// and the 2026-10-05 API rollout for 0013+0014 (see those plans and git history).
 //
 // Run from the exact-source worktree's packages/db, so the migrations folder and drivers are the
 // ones the image was built from:
@@ -31,14 +32,21 @@ const MINT = "HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg";
 const PUBLIC_API = "https://hyphae-api.fly.dev";
 // The migrations this release applies, in order, pinned by the SHA-256 of their SQL files.
 const NEW_MIGRATIONS = {
-  "0015_members_earn_before_link":
-    "e7c19e651fac58fc6efd319b1773504e37374400eb01acfa98c3a62070d268e4",
+  "0016_reward_config_amendments":
+    "34a7f77df2a7b9b0ac336f3b6a42375663af5986edaed4a29b0131ac3900424a",
 };
-// What 0015 changes, read from the catalog: before it the three member columns are NOT NULL and
-// the check is absent; after it they are nullable, the check exists, and no member is without a
-// wallet yet (only the new image creates such rows).
+// 0015 is applied before and after: the three member columns are nullable and the check exists.
 const NULLABLE_COLUMNS = ["wallet", "link_method", "linked_at"];
-const NEW_CHECK = "members_wallet_link_together";
+const MEMBERS_CHECK = "members_wallet_link_together";
+// What 0016 changes, read from the catalog: one new table with its three checks and its unique
+// index, and no row in it (only the amend-epoch step records one, after the new image runs).
+const NEW_TABLE = "reward_config_amendments";
+const NEW_TABLE_CHECKS = [
+  "reward_config_amendments_future",
+  "reward_config_amendments_changes",
+  "reward_config_amendments_hash_format",
+];
+const NEW_TABLE_INDEX = "reward_config_amendments_epoch";
 const COUNTED_TABLES = [
   "members",
   "contributions",
@@ -185,19 +193,45 @@ async function readShape(client) {
     await client.query(
       `select count(*)::int as n from pg_constraint
         where conname = $1 and conrelid = 'public.members'::regclass and contype = 'c'`,
-      [NEW_CHECK],
+      [MEMBERS_CHECK],
     )
   ).rows[0].n;
-  const walletLess = (
-    await client.query("select count(*)::int as n from public.members where wallet is null")
-  ).rows[0].n;
-  return { nullable, check_exists: check === 1, wallet_less_members: walletLess };
+  const [{ exists }] = (
+    await client.query("select to_regclass($1) is not null as exists", [`public.${NEW_TABLE}`])
+  ).rows;
+  const table = exists
+    ? {
+        checks: (
+          await client.query(
+            `select conname from pg_constraint
+              where conrelid = $1::regclass and contype = 'c' order by conname`,
+            [`public.${NEW_TABLE}`],
+          )
+        ).rows.map((r) => r.conname),
+        unique_index:
+          (
+            await client.query(
+              `select count(*)::int as n from pg_indexes i join pg_class c on c.relname = i.indexname
+               join pg_index x on x.indexrelid = c.oid
+              where i.schemaname = 'public' and i.tablename = $1 and i.indexname = $2 and x.indisunique`,
+              [NEW_TABLE, NEW_TABLE_INDEX],
+            )
+          ).rows[0].n === 1,
+        rows: (await client.query(`select count(*)::int as n from public.${NEW_TABLE}`)).rows[0].n,
+      }
+    : null;
+  return { nullable, members_check_exists: check === 1, amendments_table: table };
 }
 
-const untouched = (shape) =>
-  NULLABLE_COLUMNS.every((c) => shape.nullable[c] === false) && !shape.check_exists;
+const has0015 = (shape) =>
+  NULLABLE_COLUMNS.every((c) => shape.nullable[c] === true) && shape.members_check_exists;
+const untouched = (shape) => has0015(shape) && shape.amendments_table === null;
 const applied = (shape) =>
-  NULLABLE_COLUMNS.every((c) => shape.nullable[c] === true) && shape.check_exists;
+  has0015(shape) &&
+  shape.amendments_table !== null &&
+  isDeepStrictEqual(shape.amendments_table.checks, [...NEW_TABLE_CHECKS].sort()) &&
+  shape.amendments_table.unique_index &&
+  shape.amendments_table.rows === 0;
 
 async function readState(client) {
   const one = async (text, values) => (await client.query(text, values)).rows;
@@ -281,10 +315,9 @@ function checkState(s, live, journalExpected, phase) {
     fail(
       `journal (${s.journal.length} rows) is not exactly the first ${appliedCount} expected entries`,
     );
-  if (phase === "pre" && !untouched(s.shape)) fail("members already has 0015's shape");
-  if (phase === "post" && !applied(s.shape)) fail("members does not have 0015's shape");
-  if (s.shape.wallet_less_members !== 0)
-    fail(`${s.shape.wallet_less_members} member(s) without a wallet before the new image runs`);
+  if (!has0015(s.shape)) fail("members does not have 0015's shape");
+  if (phase === "pre" && !untouched(s.shape)) fail(`${NEW_TABLE} already exists`);
+  if (phase === "post" && !applied(s.shape)) fail(`${NEW_TABLE} is not exactly 0016's empty table`);
 
   if (s.communities.length !== 1) fail(`communities has ${s.communities.length} rows, expected 1`);
   const lab = s.communities[0];
