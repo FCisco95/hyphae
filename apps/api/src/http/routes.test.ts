@@ -231,6 +231,7 @@ describe("the claim route and settled epochs", () => {
       creation: async () => {
         throw new Error("rpc down");
       },
+      balance: async () => 0n,
       latestBlockhash: async () => {
         throw new Error("rpc down");
       },

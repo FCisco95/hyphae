@@ -234,8 +234,26 @@ function readApiSchemas(strict: boolean) {
       reward_intake: z.enum(["open", "paused"]),
       current_epoch: count.nullable(),
       epochs: z.array(obj({ index: count, opens_at: iso, closes_at: iso, status: epochStatus })),
+      // Where to fund the community, from its account on chain, before any epoch is published.
+      // Added inside v1 (A4): the api always sends it; consumers accept a response without it.
+      vault: z
+        .union([
+          obj({
+            status: z.literal("available"),
+            network,
+            program_id: base58,
+            community_address: base58,
+            vault_address: base58,
+            admin: base58,
+            fee_recipient: base58,
+            balance_lamports: uint,
+            outstanding_lamports: uint,
+          }),
+          unavailable,
+        ])
+        .optional(),
       as_of: iso,
-    }),
+    }).refine((c) => !strict || c.vault !== undefined),
     epoch: obj({
       community: obj({ mint: z.string().min(1), name: z.string() }),
       index: count,

@@ -44,6 +44,8 @@ describe("CommunityView", () => {
   it("lists epochs with their window and status", () => {
     const t = text(<CommunityView community={f.community} />);
     expect(t).toContain("Hyphae Lab");
+    expect(t).toContain("Fund this community");
+    expect(t).toContain("not on Solana yet");
     expect(t).toContain("Epoch 2");
     expect(t).toContain("2026-10-02 00:00 UTC");
     expect(t).toMatch(/open/i);

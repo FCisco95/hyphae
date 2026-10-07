@@ -57,3 +57,6 @@ export const networkName = (n: "solana:devnet" | "solana:mainnet") =>
 
 export const explorerTx = (signature: string, network: "solana:devnet" | "solana:mainnet") =>
   `https://explorer.solana.com/tx/${signature}${network === "solana:devnet" ? "?cluster=devnet" : ""}`;
+
+export const explorerAddress = (account: string, network: "solana:devnet" | "solana:mainnet") =>
+  `https://explorer.solana.com/address/${account}${network === "solana:devnet" ? "?cluster=devnet" : ""}`;

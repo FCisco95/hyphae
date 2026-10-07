@@ -35,6 +35,8 @@ export interface SettlementReader {
     hint?: { signature?: string | null; blockTime?: bigint },
   ): Promise<string | null>;
   latestBlockhash(): Promise<{ blockhash: string; lastValidBlockHeight: bigint }>;
+  // The lamports held at `at`, any owner.
+  balance(at: string): Promise<bigint>;
 }
 
 // The chain is read after the database, under one deadline, because the web client gives up at
@@ -80,7 +82,7 @@ const failure = (error: unknown) =>
   );
 
 // `work`, or `fallback` once `until` (epoch ms) passes. `work` must not reject.
-function byDeadline<T>(work: Promise<T>, until: number, fallback: T): Promise<T> {
+export function byDeadline<T>(work: Promise<T>, until: number, fallback: T): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<T>((resolve) => {
     timer = setTimeout(() => resolve(fallback), Math.max(0, until - Date.now()));

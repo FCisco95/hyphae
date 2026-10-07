@@ -150,6 +150,7 @@ function fakeReader(network: "solana:devnet" | "solana:mainnet" = "solana:devnet
       state.inFlight -= 1;
       return (touched.get(at) ?? []).find((t) => t.instructions.some(matches))?.signature ?? null;
     },
+    balance: async () => 0n,
     latestBlockhash: async () => {
       up();
       return { blockhash: BLOCKHASH, lastValidBlockHeight: 1000n };

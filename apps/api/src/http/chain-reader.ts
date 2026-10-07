@@ -60,6 +60,12 @@ export function settlementReader(rpc: Rpc<SolanaRpcApi>, timeoutMs = 1_500): Set
       }
       return found?.signature ?? null;
     },
+    async balance(at) {
+      const { value } = await rpc
+        .getBalance(address(at), { commitment: "confirmed" })
+        .send({ abortSignal: abortSignal() });
+      return value;
+    },
     async latestBlockhash() {
       const { value } = await rpc
         .getLatestBlockhash({ commitment: "confirmed" })

@@ -27,6 +27,7 @@ export const community: CommunityV1 = {
     { index: 2, opens_at: ts(2), closes_at: ts(9), status: "open" },
     { index: 1, opens_at: ts(1), closes_at: ts(2), status: "closed" },
   ],
+  vault: { status: "unavailable", reason: "community_not_on_chain" },
   as_of: ts(3),
 };
 

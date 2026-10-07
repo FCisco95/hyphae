@@ -104,7 +104,7 @@ export function readRoutes(deps: {
   };
 
   app.get("/communities/:mint", async (c) =>
-    send(c, await readCommunity(db, mint(c.req.param("mint")), await now())),
+    send(c, await readCommunity(db, mint(c.req.param("mint")), await now(), deps.chain)),
   );
   app.get("/communities/:mint/epochs/:index", async (c) => {
     const body = await readEpoch(

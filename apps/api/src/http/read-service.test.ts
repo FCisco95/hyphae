@@ -50,6 +50,8 @@ describe("readCommunity", () => {
       [1, "closed"],
     ]);
     expect(c.as_of).toBe("2026-11-20T12:00:00.000000Z");
+    // Without a chain reader the vault cannot be confirmed, so it is unavailable, never guessed.
+    expect(c.vault).toEqual({ status: "unavailable", reason: "chain_unconfigured" });
   });
 
   it("returns null for an unknown mint", async () => {

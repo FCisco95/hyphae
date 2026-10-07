@@ -116,6 +116,7 @@ const community = {
   reward_intake: "open",
   current_epoch: 1,
   epochs: [{ index: 1, opens_at: ts, closes_at: ts, status: "open" }],
+  vault: { status: "unavailable", reason: "community_not_on_chain" },
   as_of: ts,
 };
 
@@ -161,6 +162,25 @@ const ok = (schema: { safeParse: (v: unknown) => { success: boolean } }, v: unkn
 describe("read API v1 schemas", () => {
   it("accept the documented shapes", () => {
     expect(ok(ReadApiV1.community, community)).toBe(true);
+    const vault = {
+      status: "available",
+      network: "solana:mainnet",
+      program_id: at[0],
+      community_address: at[1],
+      vault_address: at[2],
+      admin: at[0],
+      fee_recipient: at[1],
+      balance_lamports: "1500000000",
+      outstanding_lamports: "0",
+    };
+    expect(ok(ReadApiV1.community, { ...community, vault })).toBe(true);
+    // The api must send the vault; a consumer accepts a response from before it was added.
+    const { vault: _omit, ...withoutVault } = community;
+    expect(ok(ReadApiV1.community, withoutVault)).toBe(false);
+    expect(ok(ReadApiV1Loose.community, withoutVault)).toBe(true);
+    expect(
+      ok(ReadApiV1.community, { ...community, vault: { ...vault, balance_lamports: "-1" } }),
+    ).toBe(false);
     expect(ok(ReadApiV1.epoch, epoch)).toBe(true);
     expect(ok(ReadApiV1.contributions, contributions)).toBe(true);
     expect(ok(ReadApiV1.leaderboard, leaderboard)).toBe(true);

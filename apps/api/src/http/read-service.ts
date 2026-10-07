@@ -63,6 +63,7 @@ import {
   settlementOf,
   walletClaimOf,
 } from "./settlement.js";
+import { readVault } from "./vault.js";
 
 // The public read API v1 (H-CONTRACT Part A). Every function selects named columns only, so no
 // Telegram id, username, session, proof or idempotency key can reach a response (A5), and none
@@ -88,6 +89,7 @@ async function findCommunity(tx: Db, mint: string) {
       name: communities.name,
       pausedAt: communities.rewardIntakePausedAt,
       firstPaidEpoch: communities.firstPaidEpoch,
+      chainAddress: communities.chainAddress,
     })
     .from(communities)
     .where(eq(communities.mint, mint));
@@ -429,8 +431,14 @@ async function rows(
   });
 }
 
-export async function readCommunity(db: Db, mint: string, now: Date): Promise<CommunityV1 | null> {
-  return readOnly(db, async (tx) => {
+export async function readCommunity(
+  db: Db,
+  mint: string,
+  now: Date,
+  chain?: SettlementReader,
+): Promise<CommunityV1 | null> {
+  const until = Date.now() + CHAIN_DEADLINE_MS;
+  const read = await readOnly(db, async (tx) => {
     const community = await findCommunity(tx, mint);
     if (!community) return null;
     const list = await findEpochs(tx, community.id);
@@ -440,7 +448,7 @@ export async function readCommunity(db: Db, mint: string, now: Date): Promise<Co
     return {
       mint: community.mint,
       name: community.name,
-      reward_intake: community.pausedAt ? "paused" : "open",
+      reward_intake: (community.pausedAt ? "paused" : "open") as CommunityV1["reward_intake"],
       current_epoch: current?.row.index ?? null,
       epochs: list.map((e) => ({
         index: e.row.index,
@@ -448,9 +456,13 @@ export async function readCommunity(db: Db, mint: string, now: Date): Promise<Co
         closes_at: e.closesAt,
         status: epochStatus(e, now),
       })),
-      as_of: dateUs(now),
+      chainAddress: community.chainAddress,
     };
   });
+  if (!read) return null;
+  const { chainAddress, ...body } = read;
+  const vault = await readVault({ mint: body.mint, chainAddress }, chain, until);
+  return { ...body, vault, as_of: dateUs(now) };
 }
 
 // The recorded publication of an epoch, as the settlement sections need it.

@@ -23,6 +23,7 @@ import {
 } from "../lib/format.js";
 import { BOT } from "../lib/links.js";
 import { settlementOf } from "../lib/settlement.js";
+import { FundPanel } from "./fund.js";
 import { ButtonLink, EvidenceLink, Panel, Stat, Stats, StatusPill, type Tone } from "./ui.js";
 
 // Pure views over parsed read-API responses. Pages fetch; these only render.
@@ -200,6 +201,7 @@ export function CommunityView({
           </p>
         </Panel>
       </div>
+      {community.vault ? <FundPanel vault={community.vault} /> : null}
       {community.epochs.length === 0 ? (
         <p className="empty">No reward epoch yet.</p>
       ) : (
