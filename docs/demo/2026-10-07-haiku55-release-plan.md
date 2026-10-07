@@ -5,7 +5,7 @@ summary: Release that moves the reward scorer from Claude Sonnet 5 to Claude Hai
 
 # Haiku 5.5 scorer release plan (source `06ed390`)
 
-**Status: PREPARED, NOT RUN.** Written 2026-10-07 by Claude Sonnet 5.5 (`claude-sonnet-5-5`) on the Windows PC from the live source `777a5b8` plus one commit. Preparing it changed nothing live. Authorization is Cisco's exact sentence: **"yes, run the Haiku 5.5 scorer release"**. Cisco's ruling (2026-10-07): use Haiku 5.5 now; Jev (typesafe System One) is the next scorer and is built in parallel, so this release is the safe step, not the end state.
+**Status: PREPARED, NOT RUN. Codex review (`gpt-6-astra`, xhigh, read-only): NEEDS-FIXES (live image was `raids-777a5b8`, not `amend-b265204`; fingerprint cutoff; public wording; rollback bound; judged denominators), fixed, fix check NEEDS-FIXES (late notification time can change the digest), fixed, ACCEPT on `24e38ee`.** Written 2026-10-07 by Claude Sonnet 5.5 (`claude-sonnet-5-5`) on the Windows PC from the live source `777a5b8` plus one commit. Preparing it changed nothing live. Authorization is Cisco's exact sentence: **"yes, run the Haiku 5.5 scorer release"**. Cisco's ruling (2026-10-07): use Haiku 5.5 now; Jev (typesafe System One) is the next scorer and is built in parallel, so this release is the safe step, not the end state.
 
 ## What goes live
 
