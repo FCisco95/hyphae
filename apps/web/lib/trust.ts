@@ -126,11 +126,15 @@ export const TRUST_SECTIONS: TrustSection[] = [
         ],
       },
       {
-        text: "An epoch is judged by the rubric and scoring prompt it pinned. A configuration change is a proposal that takes effect no earlier than the next epoch, and at least two epochs after the last change. Each epoch's configuration is public in the read API; pending proposals are not public yet.",
-        evidence: [file("apps/api/src/rewards/config.ts"), READ_SERVICE],
+        text: "An epoch is judged by the rubric and the scorer it pinned: an AI scoring prompt, or a Jev question set. A configuration change is a proposal that takes effect no earlier than the next epoch, and at least two epochs after the last change. Each epoch's configuration is public in the read API; pending proposals are not public yet.",
+        evidence: [
+          file("apps/api/src/rewards/config.ts"),
+          file("apps/api/src/scoring/jev-registry.ts", "Jev scorers"),
+          READ_SERVICE,
+        ],
       },
       {
-        text: "During the pilot, the founder can amend an open epoch's scoring prompt with a public, announced, non-retroactive record. The record is made before it takes effect and says who, why and from when. It applies only to contributions admitted from that time, and the rubric, credit rules and payout rules cannot change that way. The epoch page and the read API show it, and the epoch's audit record commits it. Used once, on 2026-10-07: epoch 2 scores with reward-eval/2 from 18:00 UTC.",
+        text: "During the pilot, the founder can amend an open epoch's scorer (its scoring prompt or Jev question set) with a public, announced, non-retroactive record. The record is made before it takes effect and says who, why and from when. An epoch's amendments form a chain: each starts from the scorer in force, a new one can be recorded only once the last is in effect, and there is no way back to the epoch's original scorer. An amendment applies only to contributions admitted from its time, and the rubric, credit rules and payout rules cannot change that way. The epoch page and the read API list every amendment, and the epoch's audit record commits them. First used on 2026-10-07: epoch 2 scores with reward-eval/2 from 18:00 UTC.",
         evidence: [
           file("apps/api/src/rewards/amendment.ts"),
           file("packages/core/src/commitments.ts"),
@@ -243,6 +247,10 @@ export const TRUST_SECTIONS: TrustSection[] = [
         text: "2026-10-07, prompt injection (our own test, not a review): seven replies that try to instruct the AI scorer each earned 0 in 3 of 3 runs, and a real reply with an injection appended was not scored higher.",
         evidence: [file("docs/rubrics/eval/reward-eval-2-injection.md", "result")],
       },
+      {
+        text: "2026-10-07, the Jev question set v4 (our own test, not a review): on 28 fixed reward cases it was right in 84 of 84 runs, all eight injection attempts at 0. On 64 new replies the founder labeled blind (then ruled on nine that broke his own written rules), it zeroed 2 of 36 he labeled pass and passed 1 of 24 he labeled zero; those misses are listed.",
+        evidence: [file("docs/evals/jev-v4-calibration-2026-10-07.md", "calibration")],
+      },
     ],
   },
   {
@@ -257,7 +265,7 @@ export const TRUST_SECTIONS: TrustSection[] = [
         ],
       },
       {
-        text: "Changes to the rubric or the scoring prompt are listed with the reason and the evidence behind them.",
+        text: "Changes to the rubric or the scorer are listed with the reason and the evidence behind them.",
         evidence: [file("docs/rubrics/CHANGELOG.md", "rubric changelog")],
       },
       {
@@ -289,9 +297,10 @@ export const TRUST_SECTIONS: TrustSection[] = [
         evidence: [READ_SERVICE],
       },
       {
-        text: "These services receive some of it: Anthropic (the AI model reads your contribution and the post it answers), Telegram (the bot), X (public post data through X's embed service), Neon (the database), Fly.io (the API and worker), Vercel (this site, which sees visitors' IP addresses and passes them to the API on Fly.io for rate limiting) and a Solana RPC provider (wallet balance checks).",
+        text: "These services receive some of it: Anthropic and TypeSafe (their AI models read your contribution and the post it answers; TypeSafe's Jev only for an epoch that pins it), Telegram (the bot), X (public post data through X's embed service), Neon (the database), Fly.io (the API and worker), Vercel (this site, which sees visitors' IP addresses and passes them to the API on Fly.io for rate limiting) and a Solana RPC provider (wallet balance checks).",
         evidence: [
           file("apps/api/src/env.ts", "service settings"),
+          file("apps/api/src/scoring/jev-client.ts", "Jev client"),
           file("apps/api/src/x/oembed.ts", "X embed reader"),
           file("apps/web/lib/api.ts", "site's API client"),
           file("apps/api/src/http/rate-limit.ts", "rate limit"),
