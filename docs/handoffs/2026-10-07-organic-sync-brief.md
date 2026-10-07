@@ -11,6 +11,33 @@ From: Hyphae session, Windows, Claude Opus 5.5 (effort high). To: the Organic / 
 
 "The better these results are, the better the score." Asked by an evaluator "can you set up a new community, fund a wallet, and show which wallet it is?", Cisco cannot answer today. Setup should be straightforward, with buttons ("open this, create this"), and usable through an API. Organic should be able to spawn a community and its payments with a script. Engagement is too hard: "no one is doing it, so I need to make it easier." **Plan without dates:** keep improving until Cisco calls a stop. The payout safeguards (the first payout sitting and its deploy hold) stay unless Cisco lifts them explicitly.
 
+## Correction from Cisco (2026-10-07, later the same day): these are Organic communities
+
+The contract below said "spawn a Hyphae community". Cisco corrected it: **the community is an Organic community.**
+
+- **Organic's job (automatic, when a token bonds on Organic's launchpad):** create the community page inside Organic, a Telegram group already configured with the bots, its channels, and the treasury wallets. "All have automatically created."
+- **Hyphae's job:**
+  1. the engine that Organic's automation calls: register the community, return its vault, report status;
+  2. a way to create other communities manually inside Hyphae (an operator path, for communities that are not on Organic);
+  3. a sign-in where a member or admin sees their tasks, evaluations and money;
+  4. a general public page with a leaderboard of tokens being paid and Organic users, showing the least information about holders that still proves the payouts.
+
+**Uncomfortable fact for the Telegram part:** Telegram's Bot API cannot create a group or a channel. Only a user account can, through Telegram's user API (MTProto). Two ways to get "a Telegram already configured":
+
+| Option | What it takes | Risk |
+|---|---|---|
+| **One-tap group link (recommended)** | Organic shows the owner one link, `t.me/hyphaeprotocol_bot?startgroup=<code>&admin=<rights>`. Telegram creates or picks the group and adds the bot as an admin with those rights in one step. Hyphae matches the code to the registered community. | One tap by the owner. No automated Telegram account. |
+| Fully automatic | An Organic-owned Telegram user account, driven by MTProto, creates the group and channel and adds the bots. | A user account automated at scale can be limited or banned by Telegram. It also needs its own credentials and custody. |
+
+**Least information on the public page (recommendation):**
+- Per community: tokens paid, SOL paid, number of paid members, and epochs.
+- Per member: the shortened verified wallet (already public on Solana), points, and SOL paid.
+- No Telegram name, ID or X handle unless the member opts in. Contribution receipts already show the X link of each scored post; the leaderboard does not add identity on top of that.
+
+**Sign-in (recommendation):** Telegram Login. Every member already has a Telegram identity, and with earn-first a wallet is optional until payment. A wallet sign-in (Sign-In With Solana) can be added for wallet-only views.
+
+**Decision 1 below is answered by this correction:** Organic's automation is the authority for Organic communities, and an operator creates the others. Decision 2 (who holds each community's publisher key) stays open. Cisco mentioned treasury wallets created by Organic; whether the publisher key is one of them is his call.
+
 ## What changed on 2026-10-07 (pushed, `0d14bd0`)
 
 | Change | Evidence |
@@ -22,6 +49,17 @@ From: Hyphae session, Windows, Claude Opus 5.5 (effort high). To: the Organic / 
 | Both repos are **public**; Cisco ruled `FCisco95/hyphae` stays public, so the Colosseum collaborator step is not needed | `gh repo view`, handoff |
 
 Live services unchanged: API and worker on `sha256:def68189…` since 2026-10-06T20:24Z; one pending proposal (`reward-eval/2`, epoch 3).
+
+## Built later on 2026-10-07 (committed locally, not pushed, not deployed)
+
+| Change | Commit |
+|---|---|
+| **One-tap Reply on X / Quote on X** buttons on the group raid message and the private raid alert. They open X's composer already attached to the raid post | `4457da6` |
+| **Vault visible before the first payout:** `GET /v1/communities/:mint` gains a `vault` section (network, vault address, admin, fee recipient, balance, what published epochs owe), read from the bound community account with fail-closed checks. The community page shows "Fund this community", or "do not send SOL" until the vault is confirmed. Additive inside v1: the SDK's loose schema accepts responses without it | `9b75532` |
+| **Earn before linking** (Cisco's ruling): a group member can submit and take the rules test before linking a wallet; payment still needs a wallet signed before the close. Migration `0015` makes `members.wallet`, `link_method` and `linked_at` nullable (set together) | `a25eec3` |
+| Codex review fixes: group commands and rules passes ask Telegram for membership every time | `94ce60e` |
+
+These need a deploy: migration 0015 on production, then the API, then the worker. Each needs Cisco's own yes. Once wallet-less members exist, rolling the API back to the old image is unsafe (the old `/me` assumes a wallet).
 
 ## Where it is hard today (facts, with the file that shows it)
 
@@ -98,5 +136,5 @@ The same steps work from a Hyphae command, `hyphae community create`, for an ope
 ```text
 /organic-sync post-ship
 Source: the Hyphae repo docs/handoffs/2026-10-07-organic-sync-brief.md, then docs/HANDOFF.md and docs/ROADMAP.md (read them; do not write to the Hyphae repo).
-Reconcile the vault's Hyphae and Organic notes with: the 2026-10-07 injection check and security page (live), the private-vulnerability-reporting contact, the retention ruling, both repos public (no collaborator step), and Cisco's direction to plan without dates until he calls a stop (payout safeguards unchanged). Record the proposed Organic integration contract (register by API, one-tap add-to-group link, unsigned initialize transaction, vault funding, existing settlement read) as a proposal, not a built feature, and list the five founder decisions with the recommendations. For organic-app, draft the Organic-side work as a separate plan (owner verification as the authority, the integration key, a spawn-fund-watch script); do not build it from the vault. Correct the three stale claims. Keep strategy and judging reasoning in the vault; the Hyphae repo carries only engineering facts. Do not change reward, epoch, payout or rubric rules.
+Read the "Correction from Cisco" section first: these are Organic communities, created automatically by Organic when a token bonds; Hyphae is the engine it calls, plus manual creation, a sign-in view and a public payouts page with minimal holder information. Reconcile the vault's Hyphae and Organic notes with: the 2026-10-07 injection check and security page (live), the private-vulnerability-reporting contact, the retention ruling, both repos public (no collaborator step), and Cisco's direction to plan without dates until he calls a stop (payout safeguards unchanged). Record the proposed Organic integration contract (register by API, one-tap add-to-group link, unsigned initialize transaction, vault funding, existing settlement read) as a proposal, not a built feature, and list the five founder decisions with the recommendations. For organic-app, draft the Organic-side work as a separate plan (owner verification as the authority, the integration key, a spawn-fund-watch script); do not build it from the vault. Correct the three stale claims. Keep strategy and judging reasoning in the vault; the Hyphae repo carries only engineering facts. Do not change reward, epoch, payout or rubric rules.
 ```

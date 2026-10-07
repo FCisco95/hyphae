@@ -21,6 +21,12 @@ Ranked by what it unblocks. Items marked **decision** wait for Cisco's ruling; t
 6. **Rules test at the payout gate, not the front door** (decision), and **the minimum hold** for epoch 3 onward (decision: economics).
 7. **Funnel counts**: joined, linked, rules passed, first reply, credited, paid, as counts only.
 
+**Progress and corrections, 2026-10-07 (local commits, not deployed):** item 1 built (`a25eec3`, review fixes `94ce60e`), item 2 built (`4457da6`), item 3 built (`9b75532`). Cisco's correction to item 4: the communities are **Organic communities**, created automatically by Organic when a token bonds (page, Telegram group with bots, channels, treasury). Hyphae is the engine Organic's automation calls. Telegram's Bot API cannot create groups, so the recommended step is the one-tap `startgroup` link. New items from the same correction:
+
+8. **Operator creation inside Hyphae** for communities not on Organic (the same flow as item 5, from a Hyphae page or command).
+9. **Sign-in** (Telegram Login recommended) where a member or admin sees their tasks, evaluations and money.
+10. **Public payouts page across communities:** tokens and SOL paid, paid members, epochs; members shown by shortened verified wallet only, no Telegram or X identity unless they opt in.
+
 Earlier items 2a to 2d (domain, deep link to wallets, Sign-In With Solana, funnel) and 5 (Blink) stay below; the old date cut rules no longer apply.
 
 **Calendar that constrains everything**

@@ -1,6 +1,6 @@
 ---
 date: 2026-10-07
-summary: Hyphae on 2026-10-07 morning (Windows, Claude Opus 5.5, effort high). Prompt-injection check published (21 of 21 injection runs credited 0); security and trust page (/security + docs/SECURITY.md) built, Codex fact-checked (NEEDS-FIXES, fixed, ACCEPT) and committed locally. Pushed and live (0d14bd0, CI success). New direction: easy to adopt, easy to engage, no date limit; see the 2026-10-07 organic-sync brief and ROADMAP. Live state unchanged since 2026-10-06T20:24Z.
+summary: Hyphae on 2026-10-07 (Windows, Claude Opus 5.5, effort high). Morning, pushed and live: injection check and /security page (0d14bd0). Afternoon, committed locally, not pushed or deployed: earn before linking (migration 0015), one-tap Reply/Quote on X, vault shown before the first payout; Codex NEEDS-FIXES, fixed, ACCEPT. Cisco decides the release timing (migration, API, worker) against the payout sitting. Organic-sync brief corrected: these are Organic communities.
 ---
 
 # Hyphae handoff
@@ -25,8 +25,8 @@ Get the first real members scored in epoch 3 and keep the Oct 8 to 9 payout sitt
 
 ## Needs Cisco, in order
 
-1. **Switch on private vulnerability reporting (one action, yours, before the push):** github.com/FCisco95/hyphae-program, Settings, Security (Advanced Security / Code security), "Private vulnerability reporting", Enable. The security page tells people to report there; today the API reads `{"enabled":false}`. Tell the agent when done; it checks that `gh api repos/FCisco95/hyphae-program/private-vulnerability-reporting` reads `{"enabled":true}`.
-2. **Push (yours, after 1 passes, before 2026-10-08T22:00Z):** `! git push origin main`. It redeploys the site on Vercel with the new page. Local `main` is ahead of `origin/main` (`9e133ba`) by the commits listed under Recent Changes.
+1. **Release timing for earn-first (decision, yours):** the afternoon commits need migration `0015` on production, then the API, then the worker, each by its own yes. Pushing `main` redeploys the website, whose new text says members can reply before linking, so the push goes with the release, not before it. The agent prepares the release plan and a 0015 version of `scripts/rollout/db.mjs` (rehearsed on a throwaway Postgres) once Cisco picks the timing.
+2. **Push (yours, with the release):** `! git push origin main`. Local `main` is ahead of `origin/main` (`0d14bd0`) by the afternoon commits under Recent Changes. Private vulnerability reporting is enabled (verified 10:54Z).
 3. **Phone test (one action, yours):** on the phone, send `/setup` in the registered group, open the private link page inside Phantom or Solflare's browser, sign, and tell the agent what is on the screen and whether "Wallet linked" arrives in Telegram. This gates recruitment.
 4. **Decisions for the roadmap:** real members after Oct 9 00:00Z (roadmap item 1) and the Hyphae-owned domain for the link page (item 2a: buy a domain, approve the `LINK_ORIGIN` secret change and Fly certificate; by Oct 8 12:00Z or after Oct 10).
 5. **Oct 8 sitting** (C14 to C22): you, the Ledger and about 0.52 SOL plus fees; see [the packet](demo/2026-10-08-first-payout-readiness.md).
@@ -63,6 +63,8 @@ After Oct 10: wallet record endpoint and page, self-serve communities, more cont
 
 ## Recent Changes
 
+- 2026-10-07 afternoon (local, not pushed, not deployed): `1268d34` organic-sync brief and roadmap; `4457da6` one-tap Reply/Quote on X; `9b75532` vault section in `GET /v1/communities/:mint` and the "Fund this community" panel; `a25eec3` earn before linking (migration `0015`); `94ce60e` Codex review fixes (Telegram membership checked every time); plus the records. Review: [Codex record](reviews/2026-10-07-earn-first-vault-buttons.md), NEEDS-FIXES then ACCEPT.
+
 - 2026-10-07 (local, not pushed): `e09141c` docs(scoring) injection cases I1-I8 and published result; `db454d4` feat(web) security and trust page + `docs/SECURITY.md`; `d87ca7a` fix(web) six Codex fact-check corrections; plus a docs commit (build log, review record, this handoff).
 
 - `6b2a4e3` fix(scoring): the reward-prompt eval fails on any miss or error and validates `--runs` (Codex finding).
@@ -73,6 +75,8 @@ After Oct 10: wallet record endpoint and page, self-serve communities, more cont
 
 ## Validation
 
+2026-10-07 afternoon, on `94ce60e`: `pnpm test` 0 (core 110, read-client 26, web 119, API 845 passed / 3 skipped), `pnpm typecheck` 0, `pnpm lint` 0, `drizzle-kit check` fine, `test:pg` 71 passed (Docker Postgres 17). Mutation probes: the race fix and the group-membership check each fail their tests when removed.
+
 2026-10-07: read-only checks PASS (both Fly machines on `sha256:def68189…`; `proposal-check.mts`: one `pending` proposal, `reward-eval/2`, rubric 1.2.0, earliest epoch 3; epochs 1 and 2 on `reward-eval/1`). Native gate on `db454d4`: `pnpm test` 0 (core 110, read-client 26, web 115, API 822 passed / 3 skipped), `pnpm typecheck` 0, `pnpm lint` 0; after `d87ca7a`: web tests 115 passed, web typecheck 0, lint 0. Visual check of `/security` at 390 px (no horizontal scroll) and 1280 px. Mutation probe: a wrong file link and a drifted SECURITY.md each fail `trust.test.ts`.
 
 Earlier:
@@ -80,6 +84,9 @@ Earlier:
 Gate on `6b2a4e3` (native Windows): `pnpm test` 0 (core 110, read-client 26, web 107, API 822 passed / 3 skipped), `pnpm typecheck` 0, `pnpm lint` 0. CI on `bfe8609` was running when this handoff was written; `667b036` CI was success. Live acceptance for both releases is in their execution records. Not run: a real-phone signature, an epoch 3 scoring run (does not exist yet), real members.
 
 ## Known Issues / Watch List
+
+- **Earn-first release order and rollback:** migration `0015` first (it takes an ACCESS EXCLUSIVE lock and scans `members`: bounded lock timeout), then the API, then the worker. The old image works on the migrated schema. Once wallet-less members exist, rolling the API back to the old image is unsafe (its `/me` reads a null wallet); fix forward instead.
+- **Model spend on members who never link:** earn first means the scorer runs for people who may never sign a wallet. Prompt limit 10 per hour per user is unchanged.
 
 - **Trust gaps the page states plainly:** the publisher key can publish any payout list (program review H1, kept as the custody model); the epoch audit record behind `audit_hash` is stored but not served by any API; on-chain verification (`solana-verify verify-from-repo`, needs one Ledger approval) was never done; pending config proposals are not public; X ownership and reply relation are unverified.
 
