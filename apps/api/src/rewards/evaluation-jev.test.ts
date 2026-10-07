@@ -231,6 +231,43 @@ describe("a Jev-pinned epoch", () => {
     expect(d?.error).toContain("explains");
   });
 
+  it("keeps a late response on a dispatch another run already parked, without reopening it", async () => {
+    const l = await lane();
+    const intake = await l.admitOne();
+    const target = {
+      communityId: l.community.id,
+      target: { contributionId: intake.contributionId },
+    };
+    const { def } = fakeDef(() => {
+      throw new Error("jev: no yes/no answer for explains");
+    });
+    const paid = { model: MODEL, answers: {}, usage: { input_tokens: 2000, output_tokens: 0 } };
+    let second: unknown;
+    // While this call is out, another worker finds no outcome past the horizon and parks it.
+    const slow: JevTransport = async () => {
+      second = await runEvaluation(
+        t.db,
+        target,
+        deps(def, transport().fn, { clock: later(9 * MIN) }),
+      );
+      return { response: paid, latencyMs: 400_000, mode: "live" };
+    };
+    expect(await runEvaluation(t.db, target, deps(def, slow))).toEqual({
+      status: "pending_reconciliation",
+    });
+    expect(second).toEqual({ status: "pending_reconciliation" });
+    const [d] = await dispatchesOf(intake.contributionId);
+    expect(d).toMatchObject({
+      state: "pending_reconciliation",
+      output: { jev: { response: paid } },
+      latencyMs: 400_000,
+      costMicroUsd: 84,
+    });
+    expect(d?.error).toContain("no outcome recorded within");
+    expect(d?.error).toContain("explains");
+    expect(await decisionsOf(intake.contributionId)).toHaveLength(0);
+  });
+
   it("parks a call that got no response with nothing to keep", async () => {
     const l = await lane();
     const intake = await l.admitOne();
@@ -268,7 +305,10 @@ describe("a Jev-pinned epoch", () => {
       state: "pending_reconciliation",
       error: "output failed the reward schema",
     });
-    expect(d?.output).toMatchObject({ score: 172 });
+    expect(d?.output).toMatchObject({
+      score: 172,
+      jev: { response: { answers: { quality: { type: "score", score: 2 } } } },
+    });
     expect(d).toMatchObject({ latencyMs: 40, costMicroUsd: 84 });
   });
 

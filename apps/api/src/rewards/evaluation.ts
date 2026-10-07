@@ -23,7 +23,7 @@ import {
   rewardSlots,
   tasks,
 } from "@hyphae/db";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { jevCostMicroUsd } from "../scoring/jev.js";
 import {
   type JevRegistry,
@@ -560,6 +560,27 @@ export async function markReconciliation(
         ),
       )
       .returning();
+    // A response that arrives after another run already parked the dispatch is still evidence of
+    // what was paid for: attach it once, keeping the state and the first error.
+    if (!dispatch && input.output !== undefined) {
+      await tx
+        .update(rewardDispatches)
+        .set({
+          output: input.output,
+          latencyMs: input.latencyMs ?? null,
+          costMicroUsd: input.costMicroUsd ?? null,
+          error: sql`coalesce(${rewardDispatches.error}, '') || ${`; then: ${input.error}`}`,
+        })
+        .where(
+          and(
+            eq(rewardDispatches.id, input.dispatchId),
+            eq(rewardDispatches.communityId, input.communityId),
+            eq(rewardDispatches.state, "pending_reconciliation"),
+            isNull(rewardDispatches.output),
+          ),
+        );
+      return;
+    }
     if (dispatch?.nominationId) {
       await tx
         .update(rewardNominations)
@@ -675,6 +696,10 @@ export async function runEvaluation(
   let result: ProviderResult;
   // What a Jev call returned, kept so a response that fails later checks is still on the record.
   let received: { response: unknown; latencyMs: number } | undefined;
+  const withResponse = (output: object): object =>
+    received
+      ? { ...output, jev: { ...(output as { jev?: object }).jev, response: received.response } }
+      : output;
   try {
     if (request.kind === "prompt") {
       result = await deps.call(request.prompt, purpose);
@@ -704,7 +729,7 @@ export async function runEvaluation(
         dispatchId: dispatch.id,
         error: String(err),
         ...(received && {
-          output: { jev: { response: received.response } },
+          output: withResponse({}),
           latencyMs: received.latencyMs,
           costMicroUsd: jevCostMicroUsd(received.response),
         }),
@@ -720,7 +745,7 @@ export async function runEvaluation(
         communityId: input.communityId,
         dispatchId: dispatch.id,
         error: "output failed the reward schema",
-        output: result.output,
+        output: withResponse(result.output as object),
         latencyMs: result.latencyMs,
         costMicroUsd: result.costMicroUsd,
       },
