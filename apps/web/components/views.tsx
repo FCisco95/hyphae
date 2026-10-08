@@ -484,7 +484,7 @@ function SchedulePanel({ epoch }: { epoch: LooseEpochV1 }) {
     <Panel title="Schedule change">
       <p>
         This epoch closes on {utcExact(epoch.closes_at)}: {spanWords(Math.abs(shift))}{" "}
-        {shift > 0 ? "later" : "earlier"} than its configured {spanWords(configured)} window, which
+        {shift > 0 ? "later" : "earlier"} than its configured window of {spanWords(configured)}, which
         would have ended on {utcExact(planned)}.
       </p>
       <p className="muted">

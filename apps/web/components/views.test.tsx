@@ -175,7 +175,7 @@ describe("a schedule change", () => {
     const t = view(f.movedCloseEpoch);
     expect(t).toContain("Schedule change");
     expect(t).toContain(
-      "This epoch closes on 2026-10-10 00:00 UTC: 1 day later than its configured 7 days window, which would have ended on 2026-10-09 00:00 UTC.",
+      "This epoch closes on 2026-10-10 00:00 UTC: 1 day later than its configured window of 7 days, which would have ended on 2026-10-09 00:00 UTC.",
     );
     expect(t).toContain("The change and its reason are recorded in the public changelog .");
     expect(t).not.toMatch(NEVER);
@@ -188,7 +188,7 @@ describe("a schedule change", () => {
 
   it("says earlier when the window is shorter, in days and hours", () => {
     expect(view(f.shortenedEpoch)).toContain(
-      "This epoch closes on 2026-10-08 21:00 UTC: 3 hours earlier than its configured 7 days window, which would have ended on 2026-10-09 00:00 UTC.",
+      "This epoch closes on 2026-10-08 21:00 UTC: 3 hours earlier than its configured window of 7 days, which would have ended on 2026-10-09 00:00 UTC.",
     );
   });
 
