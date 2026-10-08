@@ -1,0 +1,1 @@
+CREATE INDEX "member_wallet_links_wallet" ON "member_wallet_links" USING btree ("wallet");

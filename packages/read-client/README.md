@@ -46,6 +46,7 @@ Use `examples/consumer.mjs` from this repository as a runnable separate-project 
 | `getContribution` | contribution UUID, optional `{ signal }` |
 | `getClaim` | `mint, index, wallet`, optional `{ signal }` |
 | `getWalletClaims` | wallet, optional `{ offset, limit, signal }` |
+| `getWalletRecord` | wallet, optional `{ offset, limit, signal }` |
 
 Epoch indexes 1–999999999, pagination offset 0–999999999, limit 1–100 (default 50). UUIDs normalize to lowercase. Method arguments follow the existing API validators; response identity and pagination must match the request. Mint-scoped reads never substitute a default community. Wallet claims may span communities and legitimately be empty.
 
@@ -67,7 +68,7 @@ pnpm --filter @hyphae/read-client typecheck
 pnpm --filter @hyphae/read-client verify:package
 ```
 
-`verify:package` builds/packs, installs the tarball in a temporary project outside the workspace with scripts disabled and offline dependencies, checks declarations, exercises all seven reads and two communities against local fixtures, and bundles an installed consumer for browsers. It retains the tarball and report under ignored `dist/`, and removes the temporary consumer/server. Local fixtures are not device, production or payment proof.
+`verify:package` builds/packs, installs the tarball in a temporary project outside the workspace with scripts disabled and offline dependencies, checks declarations, exercises all eight reads and two communities against local fixtures, and bundles an installed consumer for browsers. It retains the tarball and report under ignored `dist/`, and removes the temporary consumer/server. Local fixtures are not device, production or payment proof.
 
 For actual Chromium execution across separate page/API origins, use an existing Playwright installation's `index.mjs` path; no browser/package is installed by this check:
 

@@ -487,3 +487,145 @@ describe("claim route", () => {
     expect(ok(ReadApiV1.claim, { ...claim, payment: { status: "paid" } })).toBe(false);
   });
 });
+
+describe("wallet record", () => {
+  const tally = {
+    contributions: 2,
+    counted: 1,
+    credited: 1,
+    average_credited_quality: 85,
+    point_units: "25500000000",
+    points: "255",
+  };
+  const entry = {
+    community: { mint: "Mint1", name: "Hyphae Lab" },
+    index: 1,
+    opens_at: ts,
+    closes_at: ts,
+    status: "closed",
+    member_id: uuid(2),
+    totals: tally,
+    contributions: [
+      {
+        id: uuid(1),
+        kind: "reply",
+        accepted_at: ts,
+        state: "counted",
+        credited_quality: 85,
+        point_units: "25500000000",
+        points: "255",
+      },
+      {
+        id: uuid(4),
+        kind: "text",
+        accepted_at: ts,
+        state: "pending_at_close",
+        credited_quality: null,
+        point_units: null,
+        points: null,
+      },
+    ],
+    payout: {
+      status: "allocated",
+      network: "solana:mainnet",
+      amount_lamports: "121250000",
+      payment: { status: "paid", claim_tx: SIG },
+    },
+  };
+  const record = {
+    wallet: at[4],
+    as_of: ts,
+    totals: { communities: 1, epochs: 1, ...tally },
+    communities: [{ mint: "Mint1", name: "Hyphae Lab", totals: { epochs: 1, ...tally } }],
+    total_epochs: 1,
+    offset: 0,
+    limit: 50,
+    epochs: [entry],
+  };
+  const withEntry = (over: Record<string, unknown>) => ({
+    ...record,
+    epochs: [{ ...entry, ...over }],
+  });
+
+  it("accept a record with each payout state, and an epoch without a settlement", () => {
+    expect(ok(ReadApiV1.walletRecord, record)).toBe(true);
+    for (const payment of [
+      { status: "claimable" },
+      { status: "unavailable", reason: "chain_unavailable" },
+    ]) {
+      expect(ok(ReadApiV1.walletRecord, withEntry({ payout: { ...entry.payout, payment } }))).toBe(
+        true,
+      );
+    }
+    for (const reason of ["no_settlement", "before_first_paid_epoch", "no_allocation"]) {
+      expect(
+        ok(ReadApiV1.walletRecord, withEntry({ payout: { status: "unavailable", reason } })),
+      ).toBe(true);
+    }
+  });
+
+  it("never call a payout paid without its claim transaction", () => {
+    expect(
+      ok(
+        ReadApiV1.walletRecord,
+        withEntry({ payout: { ...entry.payout, payment: { status: "paid" } } }),
+      ),
+    ).toBe(false);
+    expect(
+      ok(
+        ReadApiV1.walletRecord,
+        withEntry({ payout: { status: "allocated", payment: entry.payout.payment } }),
+      ),
+    ).toBe(false);
+  });
+
+  it("refuse Telegram identifiers, X handles and contribution links", () => {
+    expect(ok(ReadApiV1.walletRecord, { ...record, telegram_username: "x" })).toBe(false);
+    expect(ok(ReadApiV1.walletRecord, withEntry({ x_handle: "someone" }))).toBe(false);
+    expect(
+      ok(
+        ReadApiV1.walletRecord,
+        withEntry({
+          contributions: [
+            { ...entry.contributions[0], url: "https://x.com/someone/status/1" },
+            entry.contributions[1],
+          ],
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("refuse counts that cannot hold, and an average without a counted contribution", () => {
+    expect(ok(ReadApiV1.walletRecord, withEntry({ totals: { ...tally, credited: 2 } }))).toBe(
+      false,
+    );
+    expect(ok(ReadApiV1.walletRecord, withEntry({ totals: { ...tally, contributions: 3 } }))).toBe(
+      false,
+    );
+    const none = { ...tally, counted: 0, credited: 0, average_credited_quality: 85 };
+    expect(ok(ReadApiV1.walletRecord, withEntry({ totals: none }))).toBe(false);
+    expect(ok(ReadApiV1.walletRecord, { ...record, totals: { ...record.totals, epochs: 2 } })).toBe(
+      false,
+    );
+  });
+
+  it("refuse a score on a contribution that is not counted, and a counted one without it", () => {
+    const [counted, pending] = entry.contributions;
+    expect(
+      ok(
+        ReadApiV1.walletRecord,
+        withEntry({ contributions: [counted, { ...pending, credited_quality: 70 }] }),
+      ),
+    ).toBe(false);
+    expect(
+      ok(
+        ReadApiV1.walletRecord,
+        withEntry({ contributions: [{ ...counted, points: null }, pending] }),
+      ),
+    ).toBe(false);
+  });
+
+  it("the loose variant accepts additive fields, for consumers", () => {
+    expect(ok(ReadApiV1Loose.walletRecord, { ...record, badges: [] })).toBe(true);
+  });
+});

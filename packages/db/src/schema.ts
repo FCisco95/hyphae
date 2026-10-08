@@ -951,6 +951,8 @@ export const memberWalletLinks = pgTable(
   (t) => [
     uniqueIndex("member_wallet_links_one_current").on(t.memberId).where(sql`${t.validTo} is null`),
     index("member_wallet_links_member_from").on(t.memberId, t.validFrom),
+    // The public wallet record looks links up by wallet alone.
+    index("member_wallet_links_wallet").on(t.wallet),
     check(
       "member_wallet_links_signature_has_proof",
       sql`${t.method} <> 'signature' or ${t.proofRequestId} is not null`,

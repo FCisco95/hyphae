@@ -9,6 +9,7 @@ export type Leaderboard = z.infer<typeof ReadApiV1Loose.leaderboard>;
 export type Contribution = z.infer<typeof ReadApiV1Loose.contribution>;
 export type Claim = z.infer<typeof ReadApiV1Loose.claim>;
 export type WalletClaims = z.infer<typeof ReadApiV1Loose.walletClaims>;
+export type WalletRecord = z.infer<typeof ReadApiV1Loose.walletRecord>;
 
 export type ReadErrorCode =
   | "invalid_configuration"
@@ -291,6 +292,17 @@ export function createHyphaeReadClient(options: ClientOptions = {}) {
       return get(
         `/wallets/${wallet}/claims?${query}`,
         ReadApiV1Loose.walletClaims,
+        (d) => d.wallet === wallet && d.offset === page.offset && d.limit === page.limit,
+        opts,
+      );
+    },
+    getWalletRecord(wallet: string, opts: PageOptions = {}): Promise<WalletRecord> {
+      text(wallet, WALLET);
+      const page = paging(opts);
+      const query = new URLSearchParams({ offset: String(page.offset), limit: String(page.limit) });
+      return get(
+        `/wallets/${wallet}/record?${query}`,
+        ReadApiV1Loose.walletRecord,
         (d) => d.wallet === wallet && d.offset === page.offset && d.limit === page.limit,
         opts,
       );
