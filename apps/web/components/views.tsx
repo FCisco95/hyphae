@@ -15,6 +15,8 @@ import {
   explorerTx,
   multiplier,
   networkName,
+  payoutSentence,
+  rowState,
   STATE,
   shortId,
   shortWallet,
@@ -525,7 +527,7 @@ export function EpochView({ epoch, list }: { epoch: LooseEpochV1; list: Contribu
                     ? `${r.selected.points} (${multiplier(r.selected.multiplier_bps)})`
                     : "—"}
                 </td>
-                <td data-label="State">{STATE[r.state]}</td>
+                <td data-label="State">{rowState(r)}</td>
               </tr>
             ))}
           </tbody>
@@ -571,6 +573,7 @@ export function LeaderboardView({ board }: { board: LeaderboardV1 }) {
               <th>Exact points</th>
               <th>Whole points</th>
               <th>Counted</th>
+              <th>Payout</th>
             </tr>
           </thead>
           <tbody>
@@ -593,6 +596,9 @@ export function LeaderboardView({ board }: { board: LeaderboardV1 }) {
                 </td>
                 <td data-label="Counted" className="num">
                   {e.counted} of {e.contributions}
+                </td>
+                <td data-label="Payout">
+                  {e.payout ? payoutSentence(e.payout, board.closed) : "—"}
                 </td>
               </tr>
             ))}
@@ -681,7 +687,7 @@ export function ContributionView({ c }: { c: ContributionV1 }) {
           <WalletCell w={c} /> · submitted {utc(c.accepted_at)}
         </p>
       </header>
-      <p className="banner">{STATE[c.state]}</p>
+      <p className="banner">{rowState(c)}</p>
       {c.amendment && (
         <p className="muted">
           Admitted under this epoch's pilot amendment, so {c.amendment.prompt_version} scores it (in
