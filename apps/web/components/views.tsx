@@ -23,6 +23,7 @@ import {
   utcExact,
 } from "../lib/format.js";
 import { BOT } from "../lib/links.js";
+import { walletPath } from "../lib/record.js";
 import { settlementOf } from "../lib/settlement.js";
 import { FundPanel } from "./fund.js";
 import { ButtonLink, EvidenceLink, Panel, Stat, Stats, StatusPill, type Tone } from "./ui.js";
@@ -34,9 +35,13 @@ type Wallet = Pick<ContributionRowV1, "wallet" | "wallet_status">;
 function WalletCell({ w }: { w: Wallet }) {
   if (w.wallet_status === "verified" && w.wallet) {
     return (
-      <span className="mono wallet-verified" title={`${w.wallet}, verified by signature`}>
+      <a
+        className="mono wallet-verified"
+        href={walletPath(w.wallet)}
+        title={`${w.wallet}, verified by signature`}
+      >
         {shortWallet(w.wallet)}
-      </span>
+      </a>
     );
   }
   return (
@@ -51,7 +56,7 @@ const EPOCH_STATUS: Record<EpochV1["status"], [string, Tone]> = {
   closed: ["Final", "final"],
 };
 
-function StatusBadge({ epoch }: { epoch: Pick<EpochV1, "status" | "final"> }) {
+export function StatusBadge({ epoch }: { epoch: Pick<EpochV1, "status" | "final"> }) {
   const [label, tone] = EPOCH_STATUS[epoch.status];
   return <StatusPill tone={tone}>{label}</StatusPill>;
 }
