@@ -33,6 +33,50 @@ function server(handle: (call: number, init: RequestInit | undefined) => Promise
 }
 const ok = () => Promise.resolve(Response.json(answer));
 
+// Headers at once, then the body on the server's own schedule. As fetch does, aborting the
+// request's signal ends a body that is still being read.
+function streamingServer(send: (body: ReadableStreamDefaultController<Uint8Array>) => () => void) {
+  const state = { requests: 0, signal: undefined as AbortSignal | undefined, bodyCancelled: false };
+  const fetch = async (_url: string | URL | Request, init?: RequestInit) => {
+    state.requests += 1;
+    const signal = init?.signal ?? undefined;
+    state.signal = signal;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const stop = send(controller);
+        signal?.addEventListener(
+          "abort",
+          () => {
+            stop();
+            state.bodyCancelled = true;
+            controller.error(signal.reason);
+          },
+          { once: true },
+        );
+      },
+    });
+    return new Response(body, { headers: { "content-type": "application/json" } });
+  };
+  return { state, fetch };
+}
+const encoded = new TextEncoder().encode(JSON.stringify(answer));
+// The whole answer, `size` bytes every `everyMs`.
+function trickle(size: number, everyMs: number) {
+  const progress = { sent: 0 };
+  const send = (body: ReadableStreamDefaultController<Uint8Array>) => {
+    const timer = setInterval(() => {
+      body.enqueue(encoded.subarray(progress.sent, progress.sent + size));
+      progress.sent += size;
+      if (progress.sent >= encoded.length) {
+        clearInterval(timer);
+        body.close();
+      }
+    }, everyMs);
+    return () => clearInterval(timer);
+  };
+  return { progress, send };
+}
+
 describe("claudeTransport", () => {
   it("sends the committed body as it is, once, and returns the response with its latency", async () => {
     const s = server(ok);
@@ -78,6 +122,54 @@ describe("claudeTransport", () => {
     ).rejects.toThrow();
     expect(Date.now() - started).toBeLessThan(2_000);
     expect(s.seen).toHaveLength(1);
+  });
+
+  it("gives up at the deadline when the headers arrive but the body stalls", async () => {
+    const s = streamingServer((body) => {
+      const late = setTimeout(() => {
+        body.enqueue(encoded);
+        body.close();
+      }, 1_000);
+      return () => clearTimeout(late);
+    });
+    const started = Date.now();
+    await expect(
+      claudeTransport({ apiKey: "sk-ant-test", fetch: s.fetch, timeoutMs: 40 })(body),
+    ).rejects.toThrow("claude: no complete response within 40 ms");
+    const elapsed = Date.now() - started;
+    expect(elapsed).toBeGreaterThanOrEqual(35);
+    expect(elapsed).toBeLessThan(500);
+    expect(s.state.signal?.aborted).toBe(true);
+    expect(s.state.bodyCancelled).toBe(true);
+    expect(s.state.requests).toBe(1);
+  });
+
+  it("gives up at the deadline while the body is still arriving piece by piece", async () => {
+    const t = trickle(4, 10);
+    const s = streamingServer(t.send);
+    await expect(
+      claudeTransport({ apiKey: "sk-ant-test", fetch: s.fetch, timeoutMs: 50 })(body),
+    ).rejects.toThrow("claude: no complete response within 50 ms");
+    const sentAtDeadline = t.progress.sent;
+    expect(sentAtDeadline).toBeGreaterThan(0);
+    expect(sentAtDeadline).toBeLessThan(encoded.length);
+    expect(s.state.signal?.aborted).toBe(true);
+    expect(s.state.bodyCancelled).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(t.progress.sent).toBe(sentAtDeadline);
+    expect(s.state.requests).toBe(1);
+  });
+
+  it("returns a body that finishes inside the deadline", async () => {
+    const s = streamingServer(trickle(Math.ceil(encoded.length / 3), 5).send);
+    const result = await claudeTransport({
+      apiKey: "sk-ant-test",
+      fetch: s.fetch,
+      timeoutMs: 1_000,
+    })(body);
+    expect(result).toMatchObject({ response: answer, mode: "live" });
+    expect(s.state.signal?.aborted).toBe(false);
+    expect(s.state.requests).toBe(1);
   });
 
   it("stays inside the reconciliation horizon's assumption about one call", () => {
