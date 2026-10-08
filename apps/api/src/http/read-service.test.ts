@@ -11,7 +11,7 @@ import {
   rulesTestPasses,
   schema,
 } from "@hyphae/db";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -23,11 +23,13 @@ import { beginDispatch, completeDispatch, runEvaluation } from "../rewards/evalu
 import { at, createTestDb, later, rubric, seedRewardLane, T0 } from "../rewards/test-db.js";
 import { type AuditDemo, fakeModel, seedAuditDemo, seedSignedLink } from "./demo-seed.js";
 import {
+  readClaim,
   readCommunity,
   readContribution,
   readContributions,
   readEpoch,
   readLeaderboard,
+  readWalletClaims,
   readWalletRecord,
 } from "./read-service.js";
 
@@ -757,6 +759,37 @@ describe("readWalletRecord", () => {
       linkedAt: T0,
     });
     expect(await readWalletRecord(t.db, quiet, all, NOW)).toBeNull();
+  });
+});
+
+describe("a read's clock", () => {
+  it("is read inside the read's own snapshot, and the read is as of it", async () => {
+    const seen: string[] = [];
+    const clock = async (tx: Db) => {
+      const result = await tx.execute(
+        sql`select current_setting('transaction_isolation') as iso, current_setting('transaction_read_only') as ro`,
+      );
+      const rows = (Array.isArray(result) ? result : (result as { rows: unknown[] }).rows) as {
+        iso: string;
+        ro: string;
+      }[];
+      seen.push(`${rows[0]?.iso}/${rows[0]?.ro}`);
+      return NOW;
+    };
+    const all = { offset: 0, limit: 50 };
+    const asOf = [
+      (await readCommunity(t.db, demo.mint, clock))?.as_of,
+      (await readEpoch(t.db, demo.mint, 2, clock))?.as_of,
+      (await readContributions(t.db, demo.mint, 2, all, clock))?.as_of,
+      (await readLeaderboard(t.db, demo.mint, 2, all, clock))?.as_of,
+      (await readWalletRecord(t.db, demo.signedWallet, all, clock))?.as_of,
+      (await readWalletClaims(t.db, demo.signedWallet, all, clock)).as_of,
+    ];
+    // A contribution names no as_of; nothing is published, so there is no claim.
+    expect(await readContribution(t.db, demo.contributions.openCounted, clock)).not.toBeNull();
+    expect(await readClaim(t.db, demo.mint, 1, demo.signedWallet, clock)).toBeNull();
+    expect(asOf).toEqual(asOf.map(() => "2026-11-20T12:00:00.000000Z"));
+    expect(seen).toEqual(Array.from({ length: 8 }, () => "repeatable read/on"));
   });
 });
 
