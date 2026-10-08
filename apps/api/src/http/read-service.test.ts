@@ -7,13 +7,15 @@ import {
   epochs,
   holdChecks,
   members,
+  memberWalletLinks,
   rulesTestPasses,
   schema,
 } from "@hyphae/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { randomAddress } from "../payout/ready-seed.js";
 import { amendEpochPrompt } from "../rewards/amendment.js";
 import { closeEpoch } from "../rewards/close.js";
 import { buildRewardConfigPayload } from "../rewards/config.js";
@@ -26,6 +28,7 @@ import {
   readContributions,
   readEpoch,
   readLeaderboard,
+  readWalletRecord,
 } from "./read-service.js";
 
 const NOW = new Date("2026-11-20T12:00:00.000Z");
@@ -570,6 +573,152 @@ describe("payout status", () => {
   });
 });
 
+describe("readWalletRecord", () => {
+  const all = { offset: 0, limit: 50 };
+  const DAY = 86_400_000;
+
+  // A member's open link ends where the next one starts, as a relink records it.
+  async function relink(
+    lane: AuditDemo,
+    member: "signed" | "pasted",
+    wallet: string,
+    at: Date,
+    telegramUserId: bigint,
+  ) {
+    await t.db
+      .update(memberWalletLinks)
+      .set({ validTo: at })
+      .where(
+        and(
+          eq(memberWalletLinks.memberId, lane.members[member]),
+          isNull(memberWalletLinks.validTo),
+        ),
+      );
+    await seedSignedLink(t.db, {
+      communityId: lane.communityId,
+      memberId: lane.members[member],
+      telegramUserId,
+      wallet,
+      tokenDigest: `relink-${wallet}`,
+      linkedAt: at,
+    });
+  }
+
+  it("lists every epoch that shows the wallet, newest first, each contribution with its state", async () => {
+    const r = strict(
+      ReadApiV1.walletRecord,
+      await readWalletRecord(t.db, demo.signedWallet, all, NOW),
+    );
+    expect([r.wallet, r.as_of, r.total_epochs]).toEqual([
+      demo.signedWallet,
+      "2026-11-20T12:00:00.000000Z",
+      2,
+    ]);
+    expect(r.epochs.map((e) => [e.community.mint, e.index, e.status, e.member_id])).toEqual([
+      [demo.mint, 2, "open", demo.members.signed],
+      [demo.mint, 1, "closed", demo.members.signed],
+    ]);
+    const [open, closed] = r.epochs;
+    expect(
+      closed?.contributions.map((c) => [c.id, c.kind, c.state, c.credited_quality, c.points]),
+    ).toEqual([
+      [demo.contributions.upgraded, "post", "counted", 85, "255"],
+      [demo.contributions.offTopic, "text", "counted", 0, "0"],
+    ]);
+    expect(closed?.totals).toEqual({
+      contributions: 2,
+      counted: 2,
+      credited: 1,
+      average_credited_quality: 42.5,
+      point_units: "25500000000",
+      points: "255",
+    });
+    expect(open?.totals).toMatchObject({ contributions: 1, counted: 1, credited: 1, points: "70" });
+    // Neither epoch has a recorded publication, so neither shows a payout.
+    expect(r.epochs.map((e) => e.payout)).toEqual([
+      { status: "unavailable", reason: "no_settlement" },
+      { status: "unavailable", reason: "no_settlement" },
+    ]);
+    const totals = {
+      contributions: 3,
+      counted: 3,
+      credited: 2,
+      average_credited_quality: 51.67,
+      point_units: "32500000000",
+      points: "325",
+    };
+    expect(r.totals).toEqual({ communities: 1, epochs: 2, ...totals });
+    expect(r.communities).toEqual([
+      { mint: demo.mint, name: "Hyphae Demo", totals: { epochs: 2, ...totals } },
+    ]);
+  });
+
+  it("pages the epochs and keeps the totals of all of them", async () => {
+    const r = strict(
+      ReadApiV1.walletRecord,
+      await readWalletRecord(t.db, demo.signedWallet, { offset: 1, limit: 1 }, NOW),
+    );
+    expect([r.total_epochs, r.offset, r.limit, r.totals.points]).toEqual([2, 1, 1, "325"]);
+    expect(r.epochs.map((e) => e.index)).toEqual([1]);
+  });
+
+  it("lists pending, unresolved and late contributions without a score", async () => {
+    const lane = await seedAuditDemo(t.db, NOW);
+    const wallet = randomAddress();
+    // Signed before epoch 1 opened: both epochs show it.
+    await relink(
+      lane,
+      "pasted",
+      wallet,
+      new Date(NOW.getTime() - 8 * DAY - 30 * 60_000),
+      987654321988n,
+    );
+    const r = strict(ReadApiV1.walletRecord, await readWalletRecord(t.db, wallet, all, NOW));
+    const closed = r.epochs.find((e) => e.index === 1);
+    expect(closed?.contributions.map((c) => [c.state, c.credited_quality, c.point_units])).toEqual([
+      ["pending_at_close", null, null],
+      ["pending_reconciliation", null, null],
+      ["excluded", null, null],
+    ]);
+    expect(closed?.totals).toMatchObject({
+      contributions: 3,
+      counted: 0,
+      credited: 0,
+      average_credited_quality: null,
+      points: "0",
+    });
+    expect(r.epochs.find((e) => e.index === 2)?.contributions.map((c) => c.state)).toEqual([
+      "pending",
+    ]);
+  });
+
+  it("an epoch belongs to the wallet signed at its close, or now while it is open", async () => {
+    const lane = await seedAuditDemo(t.db, NOW);
+    const next = randomAddress();
+    await relink(lane, "signed", next, new Date(NOW.getTime() - 60_000), 987654321987n);
+    const before = await readWalletRecord(t.db, lane.signedWallet, all, NOW);
+    expect(before?.epochs.map((e) => e.index)).toEqual([1]);
+    const after = await readWalletRecord(t.db, next, all, NOW);
+    expect(after?.epochs.map((e) => e.index)).toEqual([2]);
+  });
+
+  it("has no record for an unknown wallet, a pasted one, or a signed one without contributions", async () => {
+    expect(await readWalletRecord(t.db, randomAddress(), all, NOW)).toBeNull();
+    expect(await readWalletRecord(t.db, demo.pastedWallet, all, NOW)).toBeNull();
+    const lane = await seedRewardLane(t.db);
+    const quiet = randomAddress();
+    await seedSignedLink(t.db, {
+      communityId: lane.community.id,
+      memberId: lane.member.id,
+      telegramUserId: 42n,
+      wallet: quiet,
+      tokenDigest: `quiet-${lane.community.mint}`,
+      linkedAt: T0,
+    });
+    expect(await readWalletRecord(t.db, quiet, all, NOW)).toBeNull();
+  });
+});
+
 describe("public reads and the community lock", () => {
   // Migrates a fresh database inside the test, so it gets the 0008 backfill test's timeout.
   it("never lock a row", async () => {
@@ -592,6 +741,7 @@ describe("public reads and the community lock", () => {
     await readContributions(db, d.mint, 2, { offset: 0, limit: 50 }, NOW);
     await readLeaderboard(db, d.mint, 2, { offset: 0, limit: 50 }, NOW);
     await readContribution(db, d.contributions.openCounted, NOW);
+    await readWalletRecord(db, d.signedWallet, { offset: 0, limit: 50 }, NOW);
     expect(queries.length).toBeGreaterThan(5);
     expect(
       queries.filter((q) => /\bfor (update|share|no key update|key share)\b/i.test(q)),

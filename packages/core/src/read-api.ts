@@ -283,6 +283,85 @@ function readApiSchemas(strict: boolean) {
       (r.source === "correction") === (r.correction !== null),
   );
 
+  // A wallet's public record: every epoch whose public reads show this wallet for a member, that
+  // is, the member's signed link valid at the close (now while it is open). No contribution link
+  // is repeated here: an X link names the account that posted.
+  function walletRecordSchema() {
+    const tallyShape = {
+      contributions: count,
+      // Contributions with a selected judgement, and those of them credited above zero.
+      counted: count,
+      credited: count,
+      // Mean credited quality of the counted contributions, to two decimals; null with none.
+      average_credited_quality: z.number().min(0).max(100).nullable(),
+      point_units: uint,
+      points: decimal,
+    };
+    const tallyRule = (t: {
+      contributions: number;
+      counted: number;
+      credited: number;
+      average_credited_quality: number | null;
+    }) =>
+      t.credited <= t.counted &&
+      t.counted <= t.contributions &&
+      (t.counted === 0) === (t.average_credited_quality === null);
+    const item = obj({
+      id: uuid,
+      kind: z.enum(["reply", "quote", "post", "text"]),
+      accepted_at: iso,
+      state,
+      credited_quality: quality.nullable(),
+      point_units: uint.nullable(),
+      points: decimal.nullable(),
+    }).refine(
+      (c) =>
+        (c.state === "counted") === (c.credited_quality !== null) &&
+        (c.credited_quality !== null) === (c.point_units !== null) &&
+        (c.point_units !== null) === (c.points !== null),
+    );
+    // The leaf of this wallet in the epoch's recorded publication. Paid only with the claim
+    // transaction the chain shows; anything the chain cannot confirm is unavailable, never zero.
+    const payout = z.union([
+      obj({
+        status: z.literal("allocated"),
+        network,
+        amount_lamports: uint,
+        payment: z.union([obj({ status: z.literal("claimable") }), paid, unavailable]),
+      }),
+      unavailable,
+    ]);
+    const epochEntry = obj({
+      community: obj({ mint: z.string().min(1), name: z.string() }),
+      index: count,
+      opens_at: iso,
+      closes_at: iso,
+      status: epochStatus,
+      member_id: uuid,
+      totals: obj(tallyShape).refine(tallyRule),
+      contributions: z.array(item),
+      payout,
+    }).refine((e) => e.contributions.length === e.totals.contributions);
+    return obj({
+      wallet: base58,
+      as_of: iso,
+      totals: obj({ communities: count, epochs: count, ...tallyShape }).refine(tallyRule),
+      communities: z.array(
+        obj({
+          mint: z.string().min(1),
+          name: z.string(),
+          totals: obj({ epochs: count, ...tallyShape }).refine(tallyRule),
+        }),
+      ),
+      total_epochs: count,
+      offset: count,
+      limit: z.number().int().min(1).max(100),
+      epochs: z.array(epochEntry),
+    }).refine(
+      (r) => r.totals.epochs === r.total_epochs && r.totals.communities === r.communities.length,
+    );
+  }
+
   return {
     community: obj({
       mint: z.string().min(1),
@@ -449,6 +528,7 @@ function readApiSchemas(strict: boolean) {
         }),
       ),
     }),
+    walletRecord: walletRecordSchema(),
     error: obj({ error: z.enum(["not_found", "bad_request", "unavailable"]) }),
   };
 }
@@ -468,6 +548,8 @@ export type SelectedV1 = NonNullable<ContributionRowV1["selected"]>;
 export type ClaimV1 = z.infer<typeof ReadApiV1.claim>;
 export type WalletClaimsV1 = z.infer<typeof ReadApiV1.walletClaims>;
 export type WalletClaimV1 = WalletClaimsV1["claims"][number];
+export type WalletRecordV1 = z.infer<typeof ReadApiV1.walletRecord>;
+export type WalletRecordEpochV1 = WalletRecordV1["epochs"][number];
 export type SettlementV1 = NonNullable<EpochV1["settlement"]>;
 export type AllocationV1 = SettlementV1["allocation"];
 export type PaymentV1 = SettlementV1["payment"];

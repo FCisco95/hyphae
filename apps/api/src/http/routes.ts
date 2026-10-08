@@ -1,5 +1,6 @@
 import type { EpochV1 } from "@hyphae/core";
 import type { Db } from "@hyphae/db";
+import { isAddress } from "@solana/kit";
 import { sql } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import { openApiDocument } from "./openapi.js";
@@ -13,6 +14,7 @@ import {
   readEpoch,
   readLeaderboard,
   readWalletClaims,
+  readWalletRecord,
 } from "./read-service.js";
 import type { SettlementReader } from "./settlement.js";
 
@@ -36,6 +38,11 @@ const mint = (v: string) => {
 };
 const wallet = (v: string) => {
   if (!WALLET.test(v)) throw new BadRequest();
+  return v;
+};
+// Base58 that decodes to exactly 32 bytes.
+const address = (v: string) => {
+  if (!isAddress(v)) throw new BadRequest();
   return v;
 };
 const uuid = (v: string) => {
@@ -134,6 +141,18 @@ export function readRoutes(deps: {
     send(
       c,
       await readWalletClaims(db, wallet(c.req.param("wallet")), paging(c), await now(), deps.chain),
+    ),
+  );
+  app.get("/wallets/:wallet/record", async (c) =>
+    send(
+      c,
+      await readWalletRecord(
+        db,
+        address(c.req.param("wallet")),
+        paging(c),
+        await now(),
+        deps.chain,
+      ),
     ),
   );
   app.get("/communities/:mint/epochs/:index/contributions", async (c) => {

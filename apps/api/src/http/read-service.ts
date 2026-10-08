@@ -13,6 +13,8 @@ import {
   type RevisionV1,
   type SelectedV1,
   type WalletClaimsV1,
+  type WalletRecordEpochV1,
+  type WalletRecordV1,
   wholePoints,
 } from "@hyphae/core";
 import {
@@ -65,6 +67,7 @@ import {
   type SettlementReader,
   settlementOf,
   walletClaimOf,
+  walletPayoutOf,
 } from "./settlement.js";
 import { readVault } from "./vault.js";
 
@@ -677,6 +680,197 @@ export async function readWalletClaims(
     offset: page.offset,
     limit: page.limit,
     claims,
+  };
+}
+
+type RecordItem = WalletRecordEpochV1["contributions"][number];
+
+function tally(items: RecordItem[]): WalletRecordEpochV1["totals"] {
+  const counted = items.flatMap((i) => (i.credited_quality === null ? [] : [i.credited_quality]));
+  const units = items.reduce((sum, i) => sum + BigInt(i.point_units ?? 0), 0n);
+  const quality = counted.reduce((sum, q) => sum + q, 0);
+  return {
+    contributions: items.length,
+    counted: counted.length,
+    credited: counted.filter((q) => q > 0).length,
+    average_credited_quality: counted.length
+      ? Math.round((quality * 100) / counted.length) / 100
+      : null,
+    point_units: units.toString(),
+    points: exactPoints(units),
+  };
+}
+
+// A wallet's public record: every epoch whose public reads show `wallet` for a member (the signed
+// link valid at the close, or now while open, as publicWallets serves it), across communities,
+// newest first. Null when there is none, so the route cannot tell whether a wallet is linked at all.
+export async function readWalletRecord(
+  db: Db,
+  wallet: string,
+  page: { offset: number; limit: number },
+  now: Date,
+  chain?: SettlementReader,
+  deadlineMs = CHAIN_DEADLINE_MS,
+): Promise<WalletRecordV1 | null> {
+  const read = await readOnly(db, async (tx) => {
+    const links = await tx
+      .select({
+        memberId: memberWalletLinks.memberId,
+        communityId: memberWalletLinks.communityId,
+        validFrom: memberWalletLinks.validFrom,
+        validTo: memberWalletLinks.validTo,
+      })
+      .from(memberWalletLinks)
+      .where(and(eq(memberWalletLinks.wallet, wallet), eq(memberWalletLinks.method, "signature")));
+    if (links.length === 0) return null;
+    const found = await tx
+      .select({
+        id: communities.id,
+        mint: communities.mint,
+        name: communities.name,
+        firstPaidEpoch: communities.firstPaidEpoch,
+      })
+      .from(communities)
+      .where(inArray(communities.id, [...new Set(links.map((l) => l.communityId))]));
+
+    const shown: { community: (typeof found)[number]; epoch: EpochView; memberId: string }[] = [];
+    for (const community of found) {
+      for (const epoch of await findEpochs(tx, community.id)) {
+        const at = walletTime(epoch.row, now).getTime();
+        for (const l of links) {
+          if (
+            l.communityId === community.id &&
+            l.validFrom.getTime() <= at &&
+            (l.validTo === null || l.validTo.getTime() > at)
+          ) {
+            shown.push({ community, epoch, memberId: l.memberId });
+          }
+        }
+      }
+    }
+    const intakes = shown.length
+      ? await tx
+          .select({ ...intakeColumns, epochId: rewardIntakes.epochId })
+          .from(rewardIntakes)
+          .where(
+            and(
+              inArray(rewardIntakes.epochId, [...new Set(shown.map((s) => s.epoch.row.id))]),
+              inArray(rewardIntakes.memberId, [...new Set(shown.map((s) => s.memberId))]),
+            ),
+          )
+          .orderBy(...intakeOrder)
+      : [];
+    const kinds = new Map(
+      intakes.length
+        ? (
+            await tx
+              .select({ id: contributions.id, kind: contributions.kind })
+              .from(contributions)
+              .where(
+                inArray(
+                  contributions.id,
+                  intakes.map((i) => i.contributionId),
+                ),
+              )
+          ).map((c) => [c.id, c.kind])
+        : [],
+    );
+
+    const taken: { epoch: Omit<WalletRecordEpochV1, "payout">; source: (typeof shown)[number] }[] =
+      [];
+    for (const s of shown) {
+      const mine = intakes.filter((i) => i.epochId === s.epoch.row.id && i.memberId === s.memberId);
+      if (mine.length === 0) continue;
+      const entries = withStates(
+        mine,
+        await statesFor(
+          tx,
+          s.epoch,
+          mine.map((i) => i.contributionId),
+          now,
+        ),
+      );
+      const decisions = await decisionsById(
+        tx,
+        entries.flatMap((e) => (e.state === "counted" && e.decisionId ? [e.decisionId] : [])),
+      );
+      const items = entries.map((e): RecordItem => {
+        const kind = kinds.get(e.contributionId);
+        if (!kind) throw new Error(`read: contribution ${e.contributionId} missing`);
+        const d = e.state === "counted" && e.decisionId ? decisions.get(e.decisionId) : undefined;
+        if (e.state === "counted" && !d) throw new Error(`read: decision ${e.decisionId} missing`);
+        return {
+          id: e.contributionId,
+          kind,
+          accepted_at: e.acceptedAt,
+          state: e.state,
+          credited_quality: d ? d.creditedQuality : null,
+          point_units: d ? d.pointUnits.toString() : null,
+          points: d ? exactPoints(d.pointUnits) : null,
+        };
+      });
+      taken.push({
+        epoch: {
+          community: { mint: s.community.mint, name: s.community.name },
+          index: s.epoch.row.index,
+          opens_at: s.epoch.opensAt,
+          closes_at: s.epoch.closesAt,
+          status: epochStatus(s.epoch, now),
+          member_id: s.memberId,
+          totals: tally(items),
+          contributions: items,
+        },
+        source: s,
+      });
+    }
+    // Newest first. The timestamps share one format, so they order as strings.
+    taken.sort(({ epoch: a }, { epoch: b }) =>
+      a.closes_at !== b.closes_at
+        ? a.closes_at < b.closes_at
+          ? 1
+          : -1
+        : a.community.mint !== b.community.mint
+          ? a.community.mint < b.community.mint
+            ? -1
+            : 1
+          : b.index - a.index,
+    );
+    const slice: { epoch: Omit<WalletRecordEpochV1, "payout">; facts: PublicationFacts }[] = [];
+    for (const { epoch, source } of taken.slice(page.offset, page.offset + page.limit)) {
+      const facts = await publicationFacts(tx, source.epoch.row, source.community.firstPaidEpoch);
+      slice.push({ epoch, facts });
+    }
+    return { all: taken.map((e) => e.epoch), slice };
+  });
+  if (!read?.all.length) return null;
+
+  const until = Date.now() + deadlineMs;
+  const shownEpochs = await mapLimit(read.slice, LOOKUPS_AT_ONCE, async ({ epoch, facts }) => ({
+    ...epoch,
+    payout: await walletPayoutOf(facts, chain, wallet, epoch.member_id, until),
+  }));
+  const byMint = new Map<string, { name: string; epochs: typeof read.all }>();
+  for (const e of read.all) {
+    const c = byMint.get(e.community.mint) ?? { name: e.community.name, epochs: [] };
+    c.epochs.push(e);
+    byMint.set(e.community.mint, c);
+  }
+  const items = (of: typeof read.all) => of.flatMap((e) => e.contributions);
+  return {
+    wallet,
+    as_of: dateUs(now),
+    totals: { communities: byMint.size, epochs: read.all.length, ...tally(items(read.all)) },
+    communities: [...byMint]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([mint, c]) => ({
+        mint,
+        name: c.name,
+        totals: { epochs: c.epochs.length, ...tally(items(c.epochs)) },
+      })),
+    total_epochs: read.all.length,
+    offset: page.offset,
+    limit: page.limit,
+    epochs: shownEpochs,
   };
 }
 

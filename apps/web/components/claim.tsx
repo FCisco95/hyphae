@@ -1,5 +1,6 @@
 import type { ClaimV1, LooseEpochV1 } from "@hyphae/core";
 import { networkName, shortWallet, sol } from "../lib/format.js";
+import { walletPath } from "../lib/record.js";
 import { settlementOf } from "../lib/settlement.js";
 import { ClaimPanel } from "./claim-panel.js";
 import { Panel, Stat, Stats } from "./ui.js";
@@ -16,9 +17,9 @@ export function ClaimSummary({ claim }: { claim: ClaimV1 }) {
         <Stat
           label="Wallet"
           value={
-            <span className="mono" title={claim.wallet}>
+            <a className="mono" href={walletPath(claim.wallet)} title={claim.wallet}>
               {shortWallet(claim.wallet)}
-            </span>
+            </a>
           }
         />
         <Stat

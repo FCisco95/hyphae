@@ -95,6 +95,9 @@ describe("read API data exposure", () => {
     }
     expect(ids.size).toBe(8);
     for (const id of ids) await fetchJson(`/contributions/${id}`);
+    // The record repeats no contribution link: an X link names the account that posted it.
+    const record = await fetchJson(`/wallets/${demo.signedWallet}/record`);
+    expect(JSON.stringify(record)).not.toContain("x.com");
 
     const all = bodies.join("\n");
     for (const secret of [

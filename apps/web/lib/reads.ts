@@ -26,3 +26,8 @@ export const readClaim = (mint: string, index: string, wallet: string, visitor: 
     fetch,
     { fresh: true, visitor },
   );
+export const readWalletRecord = (wallet: string, offset: number) =>
+  getJson(
+    `/v1/wallets/${enc(wallet)}/record?offset=${offset}&limit=20`,
+    ReadApiV1Loose.walletRecord,
+  );

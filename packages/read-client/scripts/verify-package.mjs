@@ -76,7 +76,8 @@ export async function exercise(c, requireRetryAfter = true) {
   const contribution = await c.getContribution(id);
   const claim = await c.getClaim(a.mint, 2, wallet);
   const claims = await c.getWalletClaims(wallet);
-  if (a.mint !== "CommunityA" || b.mint !== "CommunityB" || rows.offset !== 3 || board.epoch.index !== 2 || contribution.id !== id || claim.wallet !== wallet || claims.wallet !== wallet)
+  const record = await c.getWalletRecord(wallet);
+  if (a.mint !== "CommunityA" || b.mint !== "CommunityB" || rows.offset !== 3 || board.epoch.index !== 2 || contribution.id !== id || claim.wallet !== wallet || claims.wallet !== wallet || record.wallet !== wallet)
     throw new Error("identity/paging mismatch");
   if (epoch.totals.point_units !== "9007199254740993" || claim.payment.status !== "unavailable")
     throw new Error("precision/payment mismatch");
@@ -84,7 +85,7 @@ export async function exercise(c, requireRetryAfter = true) {
   catch (error) { if (error.code !== "not_found") throw error; }
   try { await c.getCommunity("RateLimited"); throw new Error("expected rate limit"); }
   catch (error) { if (error.code !== "rate_limited" || (requireRetryAfter && error.retryAfterSeconds !== 30)) throw error; }
-  return { status: "PASS", operations: 7, communities: [a.mint, b.mint], exactPointUnits: epoch.totals.point_units, payment: claim.payment.status };
+  return { status: "PASS", operations: 8, communities: [a.mint, b.mint], exactPointUnits: epoch.totals.point_units, payment: claim.payment.status };
 }
 `;
   writeFileSync(join(temp, "exercise.mjs"), exercise);

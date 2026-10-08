@@ -35,6 +35,7 @@ describe("read routes v1", () => {
       [`/communities/${m}/leaderboard?epoch=1`, ReadApiV1.leaderboard],
       [`/contributions/${demo.contributions.upgraded}`, ReadApiV1.contribution],
       [`/wallets/${WALLET}/claims`, ReadApiV1.walletClaims],
+      [`/wallets/${demo.signedWallet}/record`, ReadApiV1.walletRecord],
     ];
     for (const [path, schema] of cases) {
       const r = await get(path);
@@ -54,6 +55,9 @@ describe("read routes v1", () => {
       "public, max-age=15",
     );
     expect((await get(`/communities/${m}`)).headers.get("cache-control")).toBe(
+      "public, max-age=15",
+    );
+    expect((await get(`/wallets/${demo.signedWallet}/record`)).headers.get("cache-control")).toBe(
       "public, max-age=15",
     );
   });
@@ -77,6 +81,9 @@ describe("read routes v1", () => {
       "/contributions/00000000-0000-4000-8000-000000000000",
       `/communities/${demo.mint}/epochs/1/claims/So11111111111111111111111111111111111111112`,
       "/wallets/anything",
+      // A wallet without a public record, signed or not, is not found.
+      `/wallets/${randomAddress()}/record`,
+      `/wallets/${demo.pastedWallet}/record`,
     ]) {
       const r = await get(path);
       expect(r.status, path).toBe(404);
@@ -100,6 +107,11 @@ describe("read routes v1", () => {
       "/wallets/0OIl-not-base58/claims",
       `/wallets/${WALLET}/claims?limit=101`,
       `/wallets/${WALLET}/claims?offset=x`,
+      "/wallets/0OIl-not-base58/record",
+      // Base58, but 33 bytes: not an address.
+      `/wallets/${"z".repeat(44)}/record`,
+      `/wallets/${"1".repeat(32)}a/record`,
+      `/wallets/${demo.signedWallet}/record?limit=101`,
     ]) {
       const r = await get(path);
       expect(r.status, path).toBe(400);
@@ -267,6 +279,17 @@ describe("the claim route and settled epochs", () => {
     expect(body).toMatchObject({ wallet: seed.wallets.floor, total_claims: 1, limit: 10 });
     expect(body.claims.map((c) => [c.community.mint, c.payment])).toEqual([
       [seed.mint, { status: "unavailable", reason: "chain_unavailable" }],
+    ]);
+  });
+
+  it("serve a wallet's record briefly cached, its allocation served when the chain is down", async () => {
+    const { seed, app: live } = await publishedRoutes();
+    const r = await live.request(`/wallets/${seed.wallets.floor}/record`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get("cache-control")).toBe("public, max-age=15");
+    const body = ReadApiV1.walletRecord.parse(await r.json());
+    expect(body.epochs.map((e) => [e.community.mint, e.payout.status])).toEqual([
+      [seed.mint, "allocated"],
     ]);
   });
 
