@@ -20,7 +20,7 @@ assertProofConfig();
 // Scoring/settlement jobs still run in the frozen worker; private raid alerts use the API outbox.
 await startQueue();
 const notifyApi = new Api(env.TELEGRAM_BOT_TOKEN, { timeoutSeconds: 4 });
-const raidNotifier = startRaidNotifier(db, notifyApi);
+const raidNotifier = startRaidNotifier(db, notifyApi, env.PUBLIC_WEB_URL);
 stopApiOnSignals(raidNotifier.stop);
 
 const app = new Hono();

@@ -134,6 +134,13 @@
       "when": 1791466239413,
       "tag": "0018_member_wallet_links_wallet",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791474946724,
+      "tag": "0019_raid_recaps",
+      "breakpoints": true
     }
   ]
 }
