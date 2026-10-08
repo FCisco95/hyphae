@@ -78,6 +78,18 @@ export const openEpoch: EpochV1 = {
   final: false,
   snapshot: { status: "not_frozen" },
 };
+// The payload of a configured 7-day epoch, as the API serves it.
+const sevenDays = { version: 2, epoch: { durationSeconds: 604800 } };
+const windowed = (closesAt: string, payload: Record<string, unknown>): EpochV1 => ({
+  ...openEpoch,
+  closes_at: closesAt,
+  config: { ...openEpoch.config, payload },
+});
+// Epoch 2's close moved a day: 8 days against a 7-day duration.
+export const movedCloseEpoch = windowed(ts(10), sevenDays);
+export const onScheduleEpoch = windowed(ts(9), sevenDays);
+export const shortenedEpoch = windowed(ts(8, 21), sevenDays);
+export const noConfigEpoch = windowed(ts(10), {});
 export const closingEpoch: EpochV1 = { ...openEpoch, status: "closing", closed: true };
 export const AMENDED_AT = "2026-10-07T18:00:00.000000Z";
 export const amendedEpoch: EpochV1 = {
