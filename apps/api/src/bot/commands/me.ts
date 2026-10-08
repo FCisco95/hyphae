@@ -28,7 +28,7 @@ export async function me(ctx: CommandContext<Context>) {
 
   const ref = { communityId: community.id, memberId: member.id };
   const status = await mePayout(db, ref, { decimals: mintDecimals });
-  const check = status && payoutChecklist({ ...status, member });
+  const check = status && payoutChecklist(status);
   const button = check?.step && stepButton(check.step, ctx.me.username, community.id);
   return reply(
     ctx,

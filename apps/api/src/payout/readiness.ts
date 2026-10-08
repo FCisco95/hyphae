@@ -40,6 +40,9 @@ export interface EpochPayouts {
   // The pinned rubric's community, which names its token ("MYCEL").
   token: string;
   members: Map<string, PayoutV1>;
+  // The signed wallet each member's verdict used: walletAt(closes_at), the current link while the
+  // epoch is open. Empty when the epoch pays no one or is published.
+  wallets: Map<string, string | null>;
 }
 
 // The payout status of each named member in one epoch, judged by the gate's own terms and member
@@ -66,7 +69,11 @@ export async function epochPayouts(
   const terms = payTerms(epoch, input.community, rubric, deps.tests);
   const memberIds = [...new Set(input.memberIds)];
   const all = (payout: PayoutV1) => new Map(memberIds.map((m) => [m, payout]));
-  const base = { hold: terms.hold, token: rubric.community };
+  const base = {
+    hold: terms.hold,
+    token: rubric.community,
+    wallets: new Map<string, string | null>(),
+  };
   if (terms.published) return { ...base, members: all({ status: "published" }) };
   if (!terms.paidEpoch || !terms.test) {
     return { ...base, members: all({ status: "unpaid_epoch" }) };
@@ -113,6 +120,7 @@ export async function epochPayouts(
     members: new Map(
       verdicts.map((v) => [v.memberId, payoutOf(v, { closed: input.closed, holdRequired })]),
     ),
+    wallets: new Map(verdicts.map((v) => [v.memberId, v.wallet])),
   };
 }
 

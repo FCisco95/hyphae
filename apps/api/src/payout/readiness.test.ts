@@ -234,9 +234,7 @@ function schemasAccept(closed: boolean, payout: PayoutV1) {
       },
     ],
   };
-  return [ReadApiV1.leaderboard, ReadApiV1Loose.leaderboard].map(
-    (s) => s.safeParse(board).success,
-  );
+  return [ReadApiV1.leaderboard, ReadApiV1Loose.leaderboard].map((s) => s.safeParse(board).success);
 }
 
 describe("epochPayouts", () => {
