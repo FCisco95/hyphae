@@ -24,7 +24,7 @@ import {
   utc,
   utcExact,
 } from "../lib/format.js";
-import { BOT } from "../lib/links.js";
+import { APP_REPO, BOT } from "../lib/links.js";
 import { walletPath } from "../lib/record.js";
 import { settlementOf } from "../lib/settlement.js";
 import { FundPanel } from "./fund.js";
@@ -442,6 +442,59 @@ function AmendmentPanel({ epoch }: { epoch: LooseEpochV1 }) {
   );
 }
 
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+
+const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+
+// Whole days plus hours; minutes only when the span is not a whole number of hours.
+function spanWords(ms: number) {
+  const days = Math.floor(ms / DAY_MS);
+  const hours = Math.floor((ms % DAY_MS) / HOUR_MS);
+  const minutes = Math.round((ms % HOUR_MS) / MINUTE_MS);
+  return [
+    days ? plural(days, "day") : "",
+    hours ? plural(hours, "hour") : "",
+    minutes ? plural(minutes, "minute") : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+// The loose config payload is untyped, and older epochs may carry no duration.
+function configuredDurationMs(epoch: LooseEpochV1) {
+  const section = epoch.config.payload.epoch;
+  if (typeof section !== "object" || section === null) return null;
+  const seconds = (section as { durationSeconds?: unknown }).durationSeconds;
+  return typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0
+    ? seconds * 1000
+    : null;
+}
+
+// A moved close is said plainly, from the window and the configured duration alone.
+function SchedulePanel({ epoch }: { epoch: LooseEpochV1 }) {
+  const configured = configuredDurationMs(epoch);
+  if (configured === null) return null;
+  const opens = Date.parse(epoch.opens_at);
+  const shift = Date.parse(epoch.closes_at) - opens - configured;
+  if (!(Math.abs(shift) >= MINUTE_MS)) return null;
+  const planned = `${new Date(opens + configured).toISOString().slice(0, 19)}${epoch.opens_at.slice(19, 26)}Z`;
+  return (
+    <Panel title="Schedule change">
+      <p>
+        This epoch closes on {utcExact(epoch.closes_at)}: {spanWords(Math.abs(shift))}{" "}
+        {shift > 0 ? "later" : "earlier"} than its configured window of {spanWords(configured)}, which
+        would have ended on {utcExact(planned)}.
+      </p>
+      <p className="muted">
+        The change and its reason are recorded in the{" "}
+        <a href={`${APP_REPO}/blob/main/docs/rubrics/CHANGELOG.md`}>public changelog</a>.
+      </p>
+    </Panel>
+  );
+}
+
 export function EpochView({ epoch, list }: { epoch: LooseEpochV1; list: ContributionsV1 }) {
   const base = `/c/${epoch.community.mint}/e/${epoch.index}`;
   const c = epoch.counts;
@@ -485,6 +538,7 @@ export function EpochView({ epoch, list }: { epoch: LooseEpochV1; list: Contribu
         </ButtonLink>
       </div>
       <AmendmentPanel epoch={epoch} />
+      <SchedulePanel epoch={epoch} />
       <SettlementPanel epoch={epoch} />
       <h2>Contributions</h2>
       {list.contributions.length === 0 ? (

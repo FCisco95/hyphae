@@ -29,6 +29,8 @@ describe("fixtures", () => {
       f.retainedEpoch,
       f.chainDownEpoch,
       f.amendedEpoch,
+      f.movedCloseEpoch,
+      f.shortenedEpoch,
     ]) {
       ReadApiV1.epoch.parse(e);
     }
@@ -162,6 +164,42 @@ describe("a pilot amendment", () => {
       />,
     );
     expect(c).toContain("(in effect from 2026-10-07 18:00:30.000000 UTC)");
+  });
+});
+
+describe("a schedule change", () => {
+  const view = (epoch: Parameters<typeof EpochView>[0]["epoch"]) =>
+    text(<EpochView epoch={epoch} list={f.contributions} />);
+
+  it("says when a window runs longer than its configured duration", () => {
+    const t = view(f.movedCloseEpoch);
+    expect(t).toContain("Schedule change");
+    expect(t).toContain(
+      "This epoch closes on 2026-10-10 00:00 UTC: 1 day later than its configured window of 7 days, which would have ended on 2026-10-09 00:00 UTC.",
+    );
+    expect(t).toContain("The change and its reason are recorded in the public changelog .");
+    expect(t).not.toMatch(NEVER);
+    expect(
+      renderToStaticMarkup(<EpochView epoch={f.movedCloseEpoch} list={f.contributions} />),
+    ).toContain(
+      'href="https://github.com/FCisco95/hyphae/blob/main/docs/rubrics/CHANGELOG.md">public changelog</a>.',
+    );
+  });
+
+  it("says earlier when the window is shorter, in days and hours", () => {
+    expect(view(f.shortenedEpoch)).toContain(
+      "This epoch closes on 2026-10-08 21:00 UTC: 3 hours earlier than its configured window of 7 days, which would have ended on 2026-10-09 00:00 UTC.",
+    );
+  });
+
+  it("shows nothing when the window matches its duration", () => {
+    expect(view(f.onScheduleEpoch)).not.toContain("Schedule change");
+  });
+
+  it("shows nothing when the config carries no duration", () => {
+    expect(view(f.noConfigEpoch)).not.toContain("Schedule change");
+    expect(view(f.openEpoch)).not.toContain("Schedule change");
+    expect(view(f.firstV1Epoch)).not.toContain("Schedule change");
   });
 });
 
