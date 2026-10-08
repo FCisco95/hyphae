@@ -3,6 +3,7 @@ CREATE TABLE "raid_recaps" (
 	"community_id" uuid NOT NULL,
 	"status" "raid_delivery_status" NOT NULL,
 	"next_attempt_at" timestamp with time zone NOT NULL,
+	"retry_used" boolean DEFAULT false NOT NULL,
 	"attempted_at" timestamp with time zone NOT NULL,
 	"sent_at" timestamp with time zone,
 	"telegram_message_id" integer,

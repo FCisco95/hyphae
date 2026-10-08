@@ -114,6 +114,18 @@ const failing = (err: unknown) => ({
     throw err;
   },
 });
+const rateLimit = (parameters?: { retry_after?: number }) =>
+  new GrammyError(
+    "Too Many Requests",
+    {
+      ok: false,
+      error_code: 429,
+      description: "Too Many Requests",
+      ...(parameters && { parameters }),
+    },
+    "sendMessage",
+    {},
+  );
 const recapOf = async (taskId: string) =>
   (await t.db.select().from(raidRecaps).where(eq(raidRecaps.taskId, taskId)))[0];
 // A raid whose 48h window ended `ago` ms before `now`.
@@ -181,27 +193,32 @@ describe("recap claims", () => {
     expect(await claimRaidRecap(t.db, WEB, now)).toBeUndefined();
   });
 
+  it("sends nothing when the raid is cancelled between the claim and the send", async () => {
+    const { now, community } = await fixture();
+    const task = await expired(community.id, now, 10 * MIN);
+    const claim = await claimRaidRecap(t.db, WEB, now);
+    if (!claim) throw new Error("claim");
+    expect((await end(community, task.id, "cancelled", now)).status).toBe("changed");
+    const before = sends.length;
+    expect(await deliverRaidRecap(t.db, claim, ok)).toBe("skipped");
+    expect(sends.length).toBe(before);
+    expect(await recapOf(task.id)).toMatchObject({ status: "skipped", reason: "raid_cancelled" });
+    expect(await claimRaidRecap(t.db, WEB, new Date(now.getTime() + MIN))).toBeUndefined();
+  });
+
   it("retries a rate-limited send after Telegram's delay and posts once", async () => {
     const { now, community } = await fixture();
     const task = await expired(community.id, now, MIN);
     const first = await claimRaidRecap(t.db, WEB, now);
     if (!first) throw new Error("claim");
-    const limited = new GrammyError(
-      "Too Many Requests",
-      {
-        ok: false,
-        error_code: 429,
-        description: "Too Many Requests",
-        parameters: { retry_after: 30 },
-      },
-      "sendMessage",
-      {},
-    );
-    expect(await deliverRaidRecap(t.db, first, { ...failing(limited), clock: at(now) })).toBe(
-      "pending",
-    );
+    expect(
+      await deliverRaidRecap(t.db, first, {
+        ...failing(rateLimit({ retry_after: 30 })),
+        clock: at(now),
+      }),
+    ).toBe("pending");
     const pending = await recapOf(task.id);
-    expect(pending?.status).toBe("pending");
+    expect(pending).toMatchObject({ status: "pending", retryUsed: false });
     expect(pending?.nextAttemptAt).toEqual(new Date(now.getTime() + 30_000));
     expect(await claimRaidRecap(t.db, WEB, now)).toBeUndefined();
     const retry = await claimRaidRecap(
@@ -214,6 +231,74 @@ describe("recap claims", () => {
     const before = sends.length;
     expect(await deliverRaidRecap(t.db, retry, ok)).toBe("sent");
     expect(sends.length - before).toBe(1);
+    expect(await recapOf(task.id)).toMatchObject({ status: "sent", retryUsed: true });
+  });
+
+  it("ends the recap on a second rate limit; no later sweep sends a third request", async () => {
+    const { now, community } = await fixture();
+    const task = await expired(community.id, now, MIN);
+    let requests = 0;
+    const limited = (clockAt: Date) => ({
+      clock: at(clockAt),
+      send: async () => {
+        requests += 1;
+        throw rateLimit({ retry_after: 30 });
+      },
+    });
+    const first = await claimRaidRecap(t.db, WEB, now);
+    if (!first) throw new Error("claim");
+    expect(await deliverRaidRecap(t.db, first, limited(now))).toBe("pending");
+    const retryAt = new Date(now.getTime() + 30_000);
+    const retry = await claimRaidRecap(t.db, WEB, retryAt);
+    expect(retry?.taskId).toBe(task.id);
+    if (!retry) throw new Error("retry");
+    expect(await deliverRaidRecap(t.db, retry, limited(retryAt))).toBe("failed");
+    expect(await recapOf(task.id)).toMatchObject({
+      status: "failed",
+      reason: "rate_limit_retry_exhausted",
+      retryUsed: true,
+    });
+    for (const minutes of [1, 2, 10, 30, 58])
+      expect(
+        await claimRaidRecap(t.db, WEB, new Date(now.getTime() + minutes * MIN)),
+      ).toBeUndefined();
+    expect(requests).toBe(2);
+  });
+
+  it("waits 60 s when retry_after is missing or invalid", async () => {
+    const { now, community } = await fixture();
+    const raids = [
+      await expired(community.id, now, 3 * MIN),
+      await expired(community.id, now, 2 * MIN),
+      await expired(community.id, now, MIN),
+    ];
+    for (const parameters of [undefined, { retry_after: 0 }, { retry_after: 2.5 }]) {
+      const claim = await claimRaidRecap(t.db, WEB, now);
+      if (!claim) throw new Error("claim");
+      expect(
+        await deliverRaidRecap(t.db, claim, { ...failing(rateLimit(parameters)), clock: at(now) }),
+      ).toBe("pending");
+    }
+    for (const task of raids)
+      expect((await recapOf(task.id))?.nextAttemptAt).toEqual(new Date(now.getTime() + 60_000));
+  });
+
+  it("keeps a retry that falls past the one-hour window pending and never sends it", async () => {
+    const { now, community } = await fixture();
+    const task = await expired(community.id, now, 59 * MIN);
+    const first = await claimRaidRecap(t.db, WEB, now);
+    if (!first) throw new Error("claim");
+    expect(
+      await deliverRaidRecap(t.db, first, {
+        ...failing(rateLimit({ retry_after: 120 })),
+        clock: at(now),
+      }),
+    ).toBe("pending");
+    for (const minutes of [2, 3, 30])
+      expect(
+        await claimRaidRecap(t.db, WEB, new Date(now.getTime() + minutes * MIN)),
+      ).toBeUndefined();
+    expect(await recapOf(task.id)).toMatchObject({ status: "pending", retryUsed: false });
   });
 
   it("never resends a rejected or uncertain send", async () => {

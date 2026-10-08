@@ -1,3 +1,4 @@
+import { setTimeout } from "node:timers/promises";
 import { raidDeliveries, raidRecaps, raidSubscriptions, tasks } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { Api } from "grammy";
@@ -167,4 +168,39 @@ describe("API notifier runner with intercepted Telegram transport", () => {
       (await t.db.select().from(raidRecaps).where(eq(raidRecaps.taskId, task.id)))[0],
     ).toMatchObject({ status: "sent", telegramMessageId: 5 });
   });
+  it("retries a rate-limited recap once and never a third time, even after a restart", async () => {
+    const { community } = await seedCommunity(t.db);
+    const task = await seedTask(
+      t.db,
+      community.id,
+      new Date(Date.now() - 48 * 3_600_000 - 120_000),
+    );
+    const api = new Api("1:test");
+    let requests = 0;
+    let secondRequest!: () => void;
+    const limitedTwice = new Promise<void>((resolve) => {
+      secondRequest = resolve;
+    });
+    api.config.use(async (_prev, method) => {
+      if (method !== "sendMessage") return { ok: true, result: true } as never;
+      requests += 1;
+      if (requests === 2) secondRequest();
+      return {
+        ok: false,
+        error_code: 429,
+        description: "Too Many Requests: retry after 1",
+        parameters: { retry_after: 1 },
+      } as never;
+    });
+    const first = startRaidNotifier(t.db, api, WEB);
+    await limitedTwice;
+    await first.stop();
+    const restarted = startRaidNotifier(t.db, api, WEB);
+    await setTimeout(2_500);
+    await restarted.stop();
+    expect(requests).toBe(2);
+    expect(
+      (await t.db.select().from(raidRecaps).where(eq(raidRecaps.taskId, task.id)))[0],
+    ).toMatchObject({ status: "failed", reason: "rate_limit_retry_exhausted", retryUsed: true });
+  }, 15_000);
 });
