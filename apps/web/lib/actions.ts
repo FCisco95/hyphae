@@ -49,7 +49,8 @@ const NOT_JSON = fail(415, "Send the request as JSON.");
 const BODY_FAILED = fail(400, "That request could not be read. Try again.");
 const NOT_A_LINK = fail(400, "This is not a Hyphae claim link.");
 const NO_WALLET = fail(400, "Connect a Solana wallet to claim.");
-const UNREADABLE = fail(503, "Hyphae can't be read right now. Try again in a minute.");
+const UNREADABLE_MESSAGE = "Hyphae can't be read right now. Try again in a minute.";
+const UNREADABLE = fail(503, UNREADABLE_MESSAGE);
 
 async function epochOf(mint: string, index: string) {
   const r = await readEpoch(mint, index);
@@ -160,7 +161,7 @@ export async function claimPost(
           `This wallet has no payout in epoch ${epoch.index}. Use the wallet you verified with the bot.`,
           a.network,
         )
-      : UNREADABLE;
+      : fail(503, UNREADABLE_MESSAGE, a.network);
   }
   const claim = r.data;
   const p = claim.payment;

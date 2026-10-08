@@ -332,6 +332,40 @@ describe("POST failures keep the chain once it is known", () => {
     });
   }
 
+  // The epoch read succeeded, so the chain is known even when the claim read then fails.
+  const claimFailures: { name: string; claim: () => Promise<Response> }[] = [
+    { name: "HTTP 503", claim: async () => new Response("{}", { status: 503 }) },
+    { name: "rejected fetch", claim: async () => Promise.reject(new Error("socket closed")) },
+    {
+      name: "paid without a signature",
+      claim: async () =>
+        Response.json({ ...(await servedClaim()), payment: { status: "paid", claim_tx: null } }),
+    },
+  ];
+
+  for (const c of claimFailures) {
+    it(`claim read ${c.name}: devnet and mainnet keep the epoch's chain`, async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      for (const [epoch, chain] of [
+        [f.settledEpoch, DEVNET],
+        [onMainnet(await servedClaim()).epoch, MAINNET],
+      ] as const) {
+        const fetchMock = vi.fn(async (url: string) =>
+          url === EPOCH_URL ? Response.json(epoch) : c.claim(),
+        );
+        vi.stubGlobal("fetch", fetchMock);
+        const r = await post(account(WALLET));
+        expect(r.status).toBe(503);
+        expect(await r.json()).toEqual({
+          message: "Hyphae can't be read right now. Try again in a minute.",
+        });
+        expectActionHeaders(r);
+        expect(r.headers.get("x-blockchain-ids")).toBe(chain);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      }
+    });
+  }
+
   it("names no chain when none is known", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     api({ ...f.retainedEpoch, index: 2 }, await servedClaim());
