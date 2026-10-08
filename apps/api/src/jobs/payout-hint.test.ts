@@ -5,7 +5,7 @@ import { fakeModel, seedSignedLink } from "../http/demo-seed.js";
 import { beginDispatch, completeDispatch, runEvaluation } from "../rewards/evaluation.js";
 import { markNotified } from "../rewards/recovery.js";
 import { createTestDb, later, seedRewardLane, T0 } from "../rewards/test-db.js";
-import { scoreHint } from "./payout-hint.js";
+import { lockScoreMessages, scoreHint } from "./payout-hint.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -23,6 +23,8 @@ const notYet = {
   reasons: ["no_verified_wallet", "no_rules_test"],
   hold: "at_close",
 };
+const hintOf = async (decisionId: string, now: Date) =>
+  (await scoreHint(t.db, decisionId, now))?.payout ?? null;
 
 // A paid epoch 1; its member has only a pasted wallet and no rules test pass.
 async function paidLane(firstPaidEpoch: number | null = 1) {
@@ -45,15 +47,21 @@ async function paidLane(firstPaidEpoch: number | null = 1) {
 }
 
 describe("scoreHint", () => {
+  it("names the epoch's close, after which its instruction no longer applies", async () => {
+    const lane = await paidLane();
+    const hint = await scoreHint(t.db, await lane.score(), during);
+    expect(hint?.closesAt).toEqual(new Date(T0.getTime() + WEEK));
+  });
+
   it("is the member's payout status on their first scored message of the epoch, and never again", async () => {
     const lane = await paidLane();
     const first = await lane.score();
     const second = await lane.score();
-    expect(await scoreHint(t.db, first, during)).toEqual(notYet);
+    expect(await hintOf(first, during)).toEqual(notYet);
     // Until the first message is out, the second could still be the first one sent.
-    expect(await scoreHint(t.db, second, during)).toEqual(notYet);
+    expect(await hintOf(second, during)).toEqual(notYet);
     await markNotified(t.db, first, during);
-    expect(await scoreHint(t.db, second, during)).toBeNull();
+    expect(await hintOf(second, during)).toBeNull();
   });
 
   it("counts only this member's messages in this epoch", async () => {
@@ -64,7 +72,7 @@ describe("scoreHint", () => {
       .returning();
     if (!other) throw new Error("seed: member");
     await markNotified(t.db, await lane.score(other.id), during);
-    expect(await scoreHint(t.db, await lane.score(), during)).toEqual(notYet);
+    expect(await hintOf(await lane.score(), during)).toEqual(notYet);
   });
 
   it("reports a member with wallet and rules test done as held, which no link can change", async () => {
@@ -94,7 +102,7 @@ describe("scoreHint", () => {
       testId: "mycel-rules-1",
       passedAt: T0,
     });
-    expect(await scoreHint(t.db, await lane.score(ready.id), during)).toEqual({
+    expect(await hintOf(await lane.score(ready.id), during)).toEqual({
       status: "held",
       reasons: ["hold_pending"],
       hold: "at_close",
@@ -104,7 +112,7 @@ describe("scoreHint", () => {
   it("is null once the epoch has closed, for a late decision, and in an epoch that pays no one", async () => {
     const lane = await paidLane();
     const decision = await lane.score();
-    expect(await scoreHint(t.db, decision, new Date(T0.getTime() + WEEK))).toBeNull();
+    expect(await hintOf(decision, new Date(T0.getTime() + WEEK))).toBeNull();
     // Begun before the close, completed after it: accepted late, so it changes nothing.
     const intake = await lane.admitOne();
     const begun = await beginDispatch(
@@ -130,8 +138,19 @@ describe("scoreHint", () => {
       { clock: later(WEEK + MIN) },
     );
     if (late.status !== "completed") throw new Error(late.status);
-    expect(await scoreHint(t.db, late.decision.id, during)).toBeNull();
+    expect(await hintOf(late.decision.id, during)).toBeNull();
     const unpaid = await paidLane(null);
-    expect(await scoreHint(t.db, await unpaid.score(), during)).toBeNull();
+    expect(await hintOf(await unpaid.score(), during)).toBeNull();
+  });
+});
+
+describe("lockScoreMessages", () => {
+  it("takes the lock of the decision's member and epoch, and refuses an unknown decision", async () => {
+    const lane = await paidLane();
+    const decision = await lane.score();
+    await t.db.transaction((tx) => lockScoreMessages(tx, decision));
+    await expect(
+      t.db.transaction((tx) => lockScoreMessages(tx, "00000000-0000-4000-8000-000000000000")),
+    ).rejects.toThrow(/missing/);
   });
 });
