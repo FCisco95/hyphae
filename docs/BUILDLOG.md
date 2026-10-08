@@ -2,6 +2,25 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-08 (evening and night) · The close moved a day, and the five branches went through review
+
+**What changed today, said plainly:** I could not attend the close and the first mainnet payout on the 9th, and a first payout is done attended or not at all. So epoch 2 now closes on 2026-10-10 at 00:00 UTC, one day later than its seven-day window, applied at 17:46 UTC by a guarded one-row update (the close job only fires when the database clock passes the close, so nothing had been scheduled for the 9th). C14 to C18 move to October 9, the close to the 10th, the payout to the 11th. Epoch 2 keeps Claude Haiku 5.5 on `reward-eval/2` to the end; the new filter scorer waits for epoch 3. These changes get said in public: a changelog entry for the moved close, and a "Schedule change" panel on the epoch page that appears whenever an epoch's window differs from its configured duration.
+
+**Reviews (Codex gpt-6-astra, independent of the builders):** all five branches of this afternoon were reviewed overnight. None passed first time:
+- Scorer v3: the SDK's 90-second timeout ended when the headers arrived, so a stalled response body could hold a worker past the job's expiry. Fixed with one abort deadline per call that covers the body; fix check ACCEPT.
+- Payout status: five medium findings. A read taken just before the close could carry a hold verdict from after it and fail its own schema; `/me` could name a wallet linked after the close; a zero-points member got an all-green checklist; two score messages could both carry the once-per-epoch hint; and a failed Telegram username lookup could block a score message. Fixed test-first (the read clock now comes from inside the read's own snapshot; hints are serialized per member and epoch; the lookup is bounded at 3 seconds with a score-only fallback); fix check ACCEPT.
+- Raid stats: a cancellation could land between the recap's claim and its send; a stale claim could bypass a rate-limit delay; retries had no bound. Fixed (the send now runs under the raid's lock, the claim rechecks the deadline, one retry then stop); fix check ACCEPT.
+- Wallet record: the route answered the same 404 for an unknown wallet and for a signed member with no public work, but ran four queries instead of one for the second, a timing signal. Fixed with one joined query; fix check ACCEPT.
+- Claim Blink: the three findings from this afternoon fixed (a byte-bounded body reader, the claim transaction kept on "already claimed", the chain header kept on errors); fix check found one more branch dropping the chain, fixed, recheck ACCEPT.
+
+**Also built:** the production migration script re-pinned to 0018 and 0019 with the post-payout epoch state, rehearsed on Postgres 17 and 18 with refusal cases; its review asked for two tighter guards (detail endpoints compared, expression-index keys refused), fixed and rechecked.
+
+**Numbers:** gate on the merged `next` (`1249fed`): tests 130 core, 26 read-client, 187 web, 1172 API passed (3 skipped); typecheck and lint 0; schema check clean; 84 of 84 on real Postgres (the first run tripped the two known flaky files, which pass alone). Eleven Codex reviews and fix checks in all; every branch needed at least one fix.
+
+**Commits:** `e57d774`, `a857678` on `main` (the operator docs shifted one day), plus this entry and the handoff. On `next` (`1249fed`): fixes `dd1d831` (scorer deadline), `716de93` `b866ee4` `985de70` `014e92a` `cb83142` `b63fc1d` (payout status), `c525c2d` `d5cbc84` (raid recaps, migration 0019 regenerated), `4cca6ca` (wallet record), `138c4d0` `a1981aa` (Blink), `bcba345` `f436df3` `20f3e01` (schedule panel), `2e240eb` `05207fd` `cace96d` (migration script); the merges and the review records in `docs/reviews/`.
+
+**Next:** Cisco's morning answers (the public wording, the scorer's four questions, the release timing); October 9 at home: C14 to C18, the 23:00 UTC pause, attestation and corrections; October 10 00:00 UTC the close; October 11 the payout, then this release.
+
 ## 2026-10-08 (afternoon) · Five features in parallel, nothing shipped before the payout
 
 **The problem:** epoch 2 replies were landing below the 60 floor even when they were honest. A sincere reply scored 42 and two of mine scored 58, so they paid the same as "gm". And the epoch page said "Counted." for every scored row, including members who had no wallet and could not be paid.
