@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { communities, createDb, members, memberWalletLinks, rulesTestPasses } from "@hyphae/db";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { fakeModel, seedSignedLink } from "../../http/demo-seed.js";
@@ -10,11 +10,17 @@ import { later, seedRewardLane, T0 } from "../../rewards/test-db.js";
 import { mePayout } from "./me-summary.js";
 
 // /me's payout read against a relink committed on another connection (scripts/test-pg.sh).
-const url = process.env.HYPHAE_TEST_PG_URL;
-if (!url) throw new Error("HYPHAE_TEST_PG_URL is not set; run `pnpm test:pg`");
-const db = createDb(url);
+const server = process.env.HYPHAE_TEST_PG_URL;
+if (!server) throw new Error("HYPHAE_TEST_PG_URL is not set; run `pnpm test:pg`");
+// A database of its own: seedRewardLane's community mints repeat in every file.
+const NAME = "hyphae_me_relink";
+const db = createDb(server.replace(/\/[^/]*$/, `/${NAME}`));
 
 beforeAll(async () => {
+  const admin = createDb(server);
+  await admin.execute(sql.raw(`drop database if exists ${NAME}`));
+  await admin.execute(sql.raw(`create database ${NAME}`));
+  await admin.$client.end();
   await migrate(db, {
     migrationsFolder: fileURLToPath(new URL("../../../../../packages/db/drizzle", import.meta.url)),
   });
