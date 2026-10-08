@@ -22,7 +22,7 @@ export async function GET(request: Request, context: Context) {
 export async function POST(request: Request, context: Context) {
   const { mint, index } = await context.params;
   // Vercel sets x-real-ip to the caller's address and overwrites whatever the caller sent.
-  return send(await claimPost(mint, index, await request.text(), request.headers.get("x-real-ip")));
+  return send(await claimPost(mint, index, request, request.headers.get("x-real-ip")));
 }
 
 export function OPTIONS() {
