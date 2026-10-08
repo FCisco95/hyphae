@@ -703,19 +703,53 @@ describe("readWalletRecord", () => {
   });
 
   it("has no record for an unknown wallet, a pasted one, or a signed one without contributions", async () => {
-    expect(await readWalletRecord(t.db, randomAddress(), all, NOW)).toBeNull();
-    expect(await readWalletRecord(t.db, demo.pastedWallet, all, NOW)).toBeNull();
-    const lane = await seedRewardLane(t.db);
-    const quiet = randomAddress();
-    await seedSignedLink(t.db, {
-      communityId: lane.community.id,
-      memberId: lane.member.id,
-      telegramUserId: 42n,
-      wallet: quiet,
-      tokenDigest: `quiet-${lane.community.mint}`,
-      linkedAt: T0,
+    // A member of a new lane, signed at T0, who never contributes; `until` ends the link.
+    const quiet = async (wallet: string, until?: Date) => {
+      const lane = await seedRewardLane(t.db);
+      await seedSignedLink(t.db, {
+        communityId: lane.community.id,
+        memberId: lane.member.id,
+        telegramUserId: 42n,
+        wallet,
+        tokenDigest: `quiet-${lane.community.mint}`,
+        linkedAt: T0,
+      });
+      if (until) {
+        await t.db
+          .update(memberWalletLinks)
+          .set({ validTo: until })
+          .where(eq(memberWalletLinks.memberId, lane.member.id));
+      }
+    };
+    const active = randomAddress();
+    await quiet(active);
+    const expired = randomAddress();
+    await quiet(expired, new Date(T0.getTime() + 3_600_000));
+    const several = randomAddress();
+    await quiet(several);
+    await quiet(several);
+    // A contributor's wallet for one hour of epoch 1, replaced before its close.
+    const lane = await seedAuditDemo(t.db, NOW);
+    const close = (await epochClose(1)).getTime();
+    const replaced = randomAddress();
+    await relink(lane, "pasted", replaced, new Date(close - 2 * 3_600_000), 987654321988n);
+    await relink(lane, "pasted", randomAddress(), new Date(close - 3_600_000), 987654321988n);
+
+    // The same statements for each, so the work done cannot tell a signed wallet from an unknown one.
+    const queries: string[] = [];
+    const logged = drizzle(t.db.$client, {
+      schema,
+      logger: { logQuery: (q) => void queries.push(q) },
     });
-    expect(await readWalletRecord(t.db, quiet, all, NOW)).toBeNull();
+    const missing = [randomAddress(), demo.pastedWallet, active, expired, several, replaced];
+    const sequences: string[][] = [];
+    for (const wallet of missing) {
+      queries.length = 0;
+      expect(await readWalletRecord(logged, wallet, all, NOW), wallet).toBeNull();
+      sequences.push([...queries]);
+    }
+    expect(sequences).toEqual(missing.map(() => sequences[0]));
+    expect(sequences[0]?.filter((q) => /^select\b/i.test(q))).toHaveLength(1);
   });
 });
 

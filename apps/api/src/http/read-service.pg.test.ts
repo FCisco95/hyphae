@@ -1,7 +1,8 @@
 import { fileURLToPath } from "node:url";
 import { ReadApiV1 } from "@hyphae/core";
-import { createDb } from "@hyphae/db";
+import { createDb, schema } from "@hyphae/db";
 import { sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { seedAuditDemo } from "./demo-seed.js";
@@ -36,11 +37,23 @@ describe("a wallet's claims", () => {
 });
 
 describe("a wallet's record", () => {
-  // Every request starts from the wallet's links, including a request for an unknown wallet.
-  it("can find a wallet's links through an index led by the wallet", async () => {
-    const plan = await db.transaction(async (tx) => {
-      await tx.execute(sql`set local enable_seqscan = off`);
-      return tx.execute(sql`explain select member_id from member_wallet_links where wallet = 'W'`);
+  // Every request starts with the query that finds the wallet's public intakes, and a request
+  // for an unknown wallet runs it alone.
+  it("finds a wallet's public intakes through an index led by the wallet", async () => {
+    const queries: { query: string; params: unknown[] }[] = [];
+    const logged = drizzle(db.$client, {
+      schema,
+      logger: { logQuery: (query, params) => void queries.push({ query, params }) },
+    });
+    const now = new Date("2026-11-20T12:00:00.000Z");
+    expect(await readWalletRecord(logged, "W", { offset: 0, limit: 50 }, now)).toBeNull();
+    const selects = queries.filter((q) => /^select\b/i.test(q.query));
+    expect(selects).toHaveLength(1);
+    const [first] = selects;
+    if (!first) throw new Error("no query");
+    const plan = await db.$client.begin(async (tx) => {
+      await tx`set local enable_seqscan = off`;
+      return tx.unsafe(`explain ${first.query}`, first.params as string[]);
     });
     const text = JSON.stringify(plan);
     expect(text).toContain("member_wallet_links_wallet");
