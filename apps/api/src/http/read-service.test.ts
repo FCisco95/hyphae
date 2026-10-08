@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
-import { promptTemplateHash, ReadApiV1 } from "@hyphae/core";
+import { promptTemplateHash, ReadApiV1, ReadApiV1Loose } from "@hyphae/core";
 import {
   communities,
   type Db,
@@ -562,6 +562,47 @@ describe("payout status", () => {
       ready: { status: "published" },
       unlinked: { status: "published" },
     });
+  });
+
+  it("a clock taken before the close, read after the hold check: the hold still waits for the close", async () => {
+    const lane = await seedPaidLane(t.db);
+    const after = new Date(lane.epoch.closesAt.getTime() + 60_000);
+    await closeEpoch(
+      t.db,
+      { communityId: lane.communityId, epochId: lane.epoch.id },
+      { clock: at(after) },
+    );
+    await t.db.insert(holdChecks).values({
+      communityId: lane.communityId,
+      epochId: lane.epoch.id,
+      memberId: lane.members.ready,
+      wallet: lane.wallet,
+      mint: lane.mint,
+      thresholdRaw: rubric.minHoldUnits,
+      checkRound: "22222222-2222-4222-8222-222222222222",
+      status: "holder",
+      attempts: 1,
+      rawAmount: "150000000000",
+      decimals: 6,
+      provider: "consensus",
+      slot: "321",
+      observedAt: new Date(after.getTime() + 60_000),
+    });
+    const before = new Date(lane.epoch.closesAt.getTime() - 1);
+    expect(await statusesAt(lane, before)).toEqual({
+      ready: { status: "held", reasons: ["hold_pending"], hold: "at_close" },
+      unlinked: {
+        status: "not_payable",
+        reasons: ["no_verified_wallet", "no_rules_test"],
+        hold: "at_close",
+      },
+    });
+    for (const [schema, body] of [
+      [ReadApiV1Loose.contributions, await readContributions(t.db, lane.mint, 1, page, before)],
+      [ReadApiV1Loose.leaderboard, await readLeaderboard(t.db, lane.mint, 1, page, before)],
+    ] as const) {
+      expect(schema.safeParse(body).success).toBe(true);
+    }
   });
 
   it("an epoch of a community with no paid epoch pays no one", async () => {

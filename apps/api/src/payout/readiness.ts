@@ -18,15 +18,20 @@ export function payoutOf(
   v: Pick<MemberVerdict, "status" | "reasons" | "holdResult">,
   o: { closed: boolean; holdRequired: boolean },
 ): PayoutVerdictV1 {
-  const hold = !o.holdRequired
-    ? "not_required"
-    : !o.closed
-      ? "at_close"
-      : v.holdResult
-        ? v.holdResult.check.status
-        : v.reasons.includes("hold_pending")
-          ? "pending"
-          : "not_checked";
+  if (!o.holdRequired) return { status: v.status, reasons: [...v.reasons], hold: "not_required" };
+  if (!o.closed) {
+    // A read judged as of before the close may still see a hold result recorded since: no result
+    // counts until the close, so a member who meets every other condition waits for it.
+    const reasons = v.reasons.filter((r) => r !== "below_hold" && r !== "hold_pending");
+    return reasons.length === 0
+      ? { status: "held", reasons: ["hold_pending"], hold: "at_close" }
+      : { status: "not_payable", reasons, hold: "at_close" };
+  }
+  const hold = v.holdResult
+    ? v.holdResult.check.status
+    : v.reasons.includes("hold_pending")
+      ? "pending"
+      : "not_checked";
   return { status: v.status, reasons: [...v.reasons], hold };
 }
 
