@@ -1,13 +1,13 @@
 ---
 date: 2026-10-08
-summary: Hyphae on 2026-10-08 afternoon. Cisco ruled that epoch 2 keeps Claude Haiku 5.5 (Jev is never recorded for epoch 2) and that epoch 3 moves to reward-eval/3, Haiku answering Jev's v4 questions, after the hold. Five feature branches were built in parallel through Orca on a second machine and pushed as branches, not merged - scorer v3, payout status, raid stats, wallet record, claim Blink. Live production is unchanged (jev-e5f864b). Tonight - the first-payout sitting on the home machine. After Oct 10 00:00Z - reviews, fixes, merge, release.
+summary: Hyphae on 2026-10-08 afternoon. Cisco ruled that epoch 2 keeps Claude Haiku 5.5 (Jev is never recorded for epoch 2) and that epoch 3 moves to reward-eval/3, Haiku answering Jev's v4 questions, after the hold. Five feature branches were built in parallel through Orca on a second machine and merged into one verified branch, `next` (gate and test:pg green) - scorer v3, payout status, raid stats, wallet record, claim Blink. `main` and live production are unchanged (jev-e5f864b) so tonight's first-payout sitting runs on the deployed source. After Oct 10 00:00Z - `git merge origin/next` on main, reviews and fixes, then release.
 ---
 
 # Hyphae handoff
 
 ## Metadata
 
-Last Updated: 2026-10-08T15:30Z
+Last Updated: 2026-10-08T16:10Z
 Project: Hyphae (Colosseum entry, Organic/MYCEL). Scope: the epoch 2 close and first payout (tonight), and five post-hold feature branches.
 Updated By: Claude Opus 5.5 (`claude-opus-5-5`), coordinator session on a second Windows machine that has no production access (no `.env`, no `flyctl`). Workers ran as Orca sessions; every branch says which model built it.
 Snapshot: [docs/handoffs/2026-10-08-orca-wave.md](handoffs/2026-10-08-orca-wave.md). Previous: [Jev release paused at E6](handoffs/2026-10-07-jev-release-paused-at-e6.md). Where they differ, this file wins.
@@ -16,7 +16,8 @@ Snapshot: [docs/handoffs/2026-10-08-orca-wave.md](handoffs/2026-10-08-orca-wave.
 
 - **Rulings today (Cisco):** epoch 2 keeps scoring on Claude Haiku 5.5 under `reward-eval/2`; the Jev amendment (E7) is not recorded for epoch 2. Epoch 3 moves to a new `reward-eval/3`: Haiku answers Jev's v4 yes/no questions and code computes the score (gates score 0; an own-words reply starts at 65 plus bonuses). It ships after the hold, by deploy and a recorded amendment.
 - **Live production is unchanged:** API and worker on `jev-e5f864b` (`sha256:b3f5617d…`), Neon journal 18, `JEV_SCORING=on` but no epoch pins Jev. Epoch 2 at 13:35Z: 13 contributions from 6 members, all decided, 0 pending, one amendment (`reward-eval/2` from 2026-10-07T18:00Z). Four of the six members have no signed wallet.
-- **Five branches on GitHub, none merged** (table below). Each has a worker note in `docs/handoffs/2026-10-08-*.md` on its branch, with the member-visible strings for Cisco's approval.
+- **All five branches are merged into `next`** (`300eb97`, pushed): conflicts resolved, the raid migration renumbered to 0019 with byte-identical SQL, and the full gate green on the merged code (core 130, read-client 26, web 168, API 1142 passed / 3 skipped, typecheck and lint 0, `drizzle-kit check` fine, test:pg 79/79). `main` stays at the deployed source until the payout is published. **Resume after the hold with `git pull` then `git merge origin/next` on `main`: no checkout.** Do not merge it earlier: tonight's operator scripts run from `main`, and `next` refactors payout-gate and settlement reads that have not been reviewed yet.
+- Each branch's worker note (`docs/handoffs/2026-10-08-*.md`, all present on `next`) lists the member-visible strings for Cisco's approval.
 - **Tonight is unchanged:** C14 to C18 attended and finished by about 21:30Z, 23:00Z pause, corrections and attestation before Oct 9 00:00Z, then close, C19 to C22. No push to `main` and no deploy from Oct 8 22:00Z until Oct 10 00:00Z.
 
 ## Needs Cisco, in order
@@ -27,23 +28,25 @@ Snapshot: [docs/handoffs/2026-10-08-orca-wave.md](handoffs/2026-10-08-orca-wave.
 4. **Revoke the temporary Anthropic key** used for the scorer eval in the Anthropic console; it was pasted into a session. It was never committed (the branch and worktree were scanned).
 5. **After the hold, approvals:** the member-visible strings in each branch note; the privacy calls in the payout-status note (rules-test status becomes public per member, and the one-time line shows in the group); the wallet-record wording calls; the Blink registry (Dialect) and share-text decisions.
 
-## Branches (pushed 2026-10-08, base `2380d59`, not merged, not deployed)
+## Branches (base `2380d59`, all merged into `next`, not on `main`, not deployed)
 
-| Branch | What it does | State | Before merge |
+`next` = `8cae3da` + the five branches below, merged in this order: payout-status, wallet-record (migration 0018), raid-stats (migration 0019), blink, scorer-v3. The scorer adds the dependency `@anthropic-ai/sdk` to `apps/api`. The individual branches stay on GitHub for reference.
+
+| Branch | What it does | State | Before release |
 |---|---|---|---|
 | `FCisco95/scorer-v3` | `reward-eval/3`: Haiku 5.5 answers the v4 questions through structured output; `composeJev` scores; same request-hash, one-call, reconciliation and refusal handling as Jev | Gate green with 2 workers (API 1083, web 123, core 119, test:pg 74). Eval done (`docs/evals/reward-eval-3-calibration-2026-10-08.md` on the branch): 277 calls, USD 0.23, 0 errors or refusals; reward cases 78/78; all 8 injections 0 in 24/24 runs; holdout 171/180 judged runs right, the same as Jev v4; misses H26 and H40 (Jev's accepted misses) and a new H54 (a polished restatement credited 65); about USD 0.0008 per reply, p50 1.2 s | Cisco's yes on the CHANGELOG and announcement drafts and four open questions in the note (receipt wording, refusals to reconciliation, accepting H54, the 65 baseline); Codex review |
 | `FCisco95/payout-status` | Read API `payout` status from the payout gate's own extracted terms; "Counted." becomes "Scored." plus what pay still needs; `/me` checklist with the next step; one line in a member's first score message of an epoch | Gate green (API 1070, web 132, core 124, test:pg 74/74); no migration | Codex review (`2380d59..8f82146`), Cisco's copy and privacy rulings |
-| `FCisco95/raid-stats` | `/raids` stats per raid; one counts-only recap in the group when a raid closes or ends; end time on the length confirmation | Typecheck and lint 0, test:pg 77/77, API unit tests pass (exit code hit the load timeout below) | Codex review (not started), migration `raid_recaps` renumbered to 0019 at merge, Cisco's copy |
+| `FCisco95/raid-stats` | `/raids` stats per raid; one counts-only recap in the group when a raid closes or ends; end time on the length confirmation | Typecheck and lint 0, test:pg 77/77, API unit tests pass (exit code hit the load timeout below) | Codex review (not started), migration `0019_raid_recaps` (renumbered at merge), Cisco's copy |
 | `FCisco95/wallet-record` | `GET /v1/wallets/:wallet/record` and a `/wallet/[wallet]` page linked from the leaderboard and claim page | Gate green with 2 workers (API 1046, web 140, core 125), test:pg 74/76 (2 known concurrency timeouts that pass alone) | Codex review (`2380d59..70e5b3c`), migration 0018 (index on `member_wallet_links.wallet`), wording calls |
 | `FCisco95/blink` | Solana Action for an epoch's claim (GET, POST, OPTIONS), `actions.json`, "Share claim link on X" | Codex review on the branch: CHANGES REQUESTED, 0 high, 1 medium (body byte limit enforced while reading), 2 low (keep the claim tx on "already claimed"; keep `X-Blockchain-Ids` on errors) | Fix test-first, fix review, registry decision |
 
 ## Next agent steps (after 2026-10-10T00:00Z, home machine)
 
-1. Scorer: walk Cisco through the eval report and the four open questions in the `scorer-v3` note; then a Codex review.
-2. Blink: fix the three findings test-first on `FCisco95/blink`, then a Codex fix review.
-3. Codex reviews of `raid-stats`, `wallet-record` and `payout-status` (migrations, public output, payout-adjacent reads).
-4. Merge in this order, rebasing each on `main`: payout-status, wallet-record (migration 0018), raid-stats (regenerate its migration as 0019), blink, scorer-v3. Expect small conflicts in `apps/api/src/http/openapi.ts`, `read-service.ts`, `packages/core/src/read-api.ts`, `apps/web/components/views.tsx`. Full gate after each merge; `drizzle-kit check` and `test:pg` after the two migrations.
-5. Release plan (its own yes): migrations 0018 and 0019 before the API image; `scripts/rollout/db.mjs` pins to the new journal; then the image; Vercel ships the web with the `main` push.
+1. On `main`, after the sitting's records are committed: `git pull`, `git merge origin/next`, `pnpm install`. Commit locally; **do not push `main` yet**, because the push redeploys the web and the new pages need the new API.
+2. Scorer: walk Cisco through the eval report and the four open questions in the scorer note; then a Codex review.
+3. Blink: fix the three findings test-first on `main`, then a Codex fix review.
+4. Codex reviews of the raid-stats, wallet-record and payout-status changes (`8cae3da..next`: migrations, public output, payout-gate and settlement reads); fix test-first.
+5. Release plan (its own yes): migrations 0018 and 0019 before the API image; `scripts/rollout/db.mjs` pins to the new journal; the API and worker image from the reviewed `main`; then push `main` so Vercel ships the web after the API it needs.
 6. Epoch 3 scorer: after the release, Cisco announces T, then `amend-epoch.ts <mint> --epoch 3 --prompt reward-eval/3 --effective-at <T>` from the exact-source worktree.
 
 ## Current State
@@ -80,16 +83,17 @@ Epoch 2 closes Oct 9 00:00Z. Oct 8 pause 23:00Z, final C18b after 23:45Z, correc
 
 ## Resume Checklist
 
-`git pull` and `git fetch origin 'refs/heads/FCisco95/*:refs/remotes/origin/FCisco95/*'`; `git status -sb`; `fly image show --app hyphae-api` (both on `jev-e5f864b`); `GET /v1/communities/<mint>/epochs/2` (one amendment); the clock against the 22:00Z push cutoff and the hold. Every new live effect needs its own yes.
+`git pull` (brings `origin/next` too); `git status -sb`; `fly image show --app hyphae-api` (both on `jev-e5f864b`); `GET /v1/communities/<mint>/epochs/2` (one amendment); the clock against the 22:00Z push cutoff and the hold. Every new live effect needs its own yes.
 
 ## Next-session prompt
 
 ```
-Hyphae, after 2026-10-10T00:00Z, home machine. Read CLAUDE.md, docs/HANDOFF.md and each branch note (docs/handoffs/2026-10-08-*.md on FCisco95/scorer-v3, payout-status, raid-stats, wallet-record, blink).
+Hyphae, after 2026-10-10T00:00Z, home machine, on main. Read CLAUDE.md and docs/HANDOFF.md.
 Model: Claude Opus 5.5 (xhigh) for the scorer and money paths; Sonnet 5.5 for UI fixes; Codex gpt-6-astra xhigh for reviews.
 
-1. Walk Cisco through the reward-eval/3 eval report and the four open questions in the scorer-v3 note.
-2. Fix the Blink review findings test-first; Codex fix review.
-3. Codex reviews of raid-stats, wallet-record, payout-status; fix test-first.
-4. Merge in the HANDOFF order (renumber raid_recaps to 0019), full gate after each, then a release plan for Cisco's yes.
+0. git pull, git merge origin/next, pnpm install, full gate. Do not push main until step 4's release.
+1. Walk Cisco through the reward-eval/3 eval report and the four open questions (docs/handoffs/2026-10-08-reward-eval-3.md).
+2. Fix the Blink review findings test-first (docs/reviews/2026-10-08-blink.md); Codex fix review.
+3. Codex reviews of the raid-stats, wallet-record and payout-status changes (8cae3da..next); fix test-first.
+4. Release plan for Cisco's yes: migrations 0018 and 0019, the API and worker image, then push main for the web.
 ```

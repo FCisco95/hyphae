@@ -19,7 +19,7 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 
 **Numbers:** gate green on payout status (API 1070, web 132, core 124, 74 of 74 on real Postgres) and wallet record (API 1046, web 140, core 125). Raid stats 77 of 77 on real Postgres. Running five agents at once pinned the laptop at 100% CPU; from now on, two at a time.
 
-**Commits:** branches `FCisco95/scorer-v3` (`93810f2`…`cabe201`), `FCisco95/payout-status` (`d008411`…`621c887`), `FCisco95/raid-stats` (`446ea5d`, `0112695`), `FCisco95/wallet-record` (`5c54993`, `8eafc99`, `70e5b3c`), `FCisco95/blink` (`92ccd20`, `5578547`, review `146be88`); this entry and the handoff on `main`.
+**Commits:** branches `FCisco95/scorer-v3` (`93810f2`…`cabe201`), `FCisco95/payout-status` (`d008411`…`621c887`), `FCisco95/raid-stats` (`446ea5d`, `0112695`), `FCisco95/wallet-record` (`5c54993`, `8eafc99`, `70e5b3c`), `FCisco95/blink` (`92ccd20`, `5578547`, review `146be88`). All five merged into one branch, `next` (`300eb97`), with the full gate and 79 of 79 Postgres tests green on the merged code; it joins `main` after the payout and the reviews. This entry and the handoff are on `main`.
 
 **Next:** tonight, the first-payout sitting. After the hold ends on Oct 10: my answers on the scorer's open questions, the Blink fixes, the remaining reviews, merge and release.
 
