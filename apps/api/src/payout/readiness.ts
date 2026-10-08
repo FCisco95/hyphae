@@ -32,6 +32,8 @@ export function payoutOf(
 
 export interface EpochPayouts {
   hold: HoldRequirement;
+  // The pinned rubric's community, which names its token ("MYCEL").
+  token: string;
   members: Map<string, PayoutV1>;
 }
 
@@ -59,11 +61,12 @@ export async function epochPayouts(
   const terms = payTerms(epoch, input.community, rubric, deps.tests);
   const memberIds = [...new Set(input.memberIds)];
   const all = (payout: PayoutV1) => new Map(memberIds.map((m) => [m, payout]));
-  if (terms.published) return { hold: terms.hold, members: all({ status: "published" }) };
+  const base = { hold: terms.hold, token: rubric.community };
+  if (terms.published) return { ...base, members: all({ status: "published" }) };
   if (!terms.paidEpoch || !terms.test) {
-    return { hold: terms.hold, members: all({ status: "unpaid_epoch" }) };
+    return { ...base, members: all({ status: "unpaid_epoch" }) };
   }
-  if (memberIds.length === 0) return { hold: terms.hold, members: new Map() };
+  if (memberIds.length === 0) return { ...base, members: new Map() };
 
   const units = new Map<string, { pointUnits: bigint; wholePoints: bigint }>();
   if (input.snapshotId) {
@@ -101,9 +104,19 @@ export async function epochPayouts(
   });
   const holdRequired = terms.hold.thresholdRaw > 0n;
   return {
-    hold: terms.hold,
+    ...base,
     members: new Map(
       verdicts.map((v) => [v.memberId, payoutOf(v, { closed: input.closed, holdRequired })]),
     ),
   };
+}
+
+export type PayoutStep = "wallet" | "rules";
+
+// The one thing a member can do now towards being paid, in the order setup asks for them.
+export function nextStep(p: PayoutV1 | undefined): PayoutStep | null {
+  if (!p || !("reasons" in p)) return null;
+  if (p.reasons.includes("no_verified_wallet")) return "wallet";
+  if (p.reasons.includes("no_rules_test")) return "rules";
+  return null;
 }

@@ -15,7 +15,7 @@ import { buildRewardConfigPayload } from "../rewards/config.js";
 import { runEvaluation } from "../rewards/evaluation.js";
 import { at, createTestDb, later, rubric, seedRewardLane, T0 } from "../rewards/test-db.js";
 import { evaluatePayoutGate } from "./gate.js";
-import { epochPayouts, payoutOf } from "./readiness.js";
+import { epochPayouts, nextStep, payoutOf } from "./readiness.js";
 import { RULES_TESTS } from "./rules-test.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
@@ -311,5 +311,20 @@ describe("epochPayouts", () => {
       reasons: ["no_points", "no_verified_wallet", "no_rules_test"],
       hold: "not_required",
     });
+  });
+});
+
+describe("nextStep", () => {
+  it("is the wallet first, then the rules test, and nothing a link cannot fix", () => {
+    const at = (reasons: string[]) =>
+      nextStep({ status: "not_payable", reasons: reasons as never[], hold: "at_close" });
+    expect(at(["no_verified_wallet", "no_rules_test"])).toBe("wallet");
+    expect(at(["no_points", "no_verified_wallet"])).toBe("wallet");
+    expect(at(["no_rules_test"])).toBe("rules");
+    expect(at(["no_points"])).toBeNull();
+    expect(nextStep({ status: "held", reasons: ["hold_pending"], hold: "at_close" })).toBeNull();
+    expect(nextStep({ status: "unpaid_epoch" })).toBeNull();
+    expect(nextStep({ status: "published" })).toBeNull();
+    expect(nextStep(undefined)).toBeNull();
   });
 });
