@@ -35,7 +35,7 @@ const PUBLIC_API = "https://hyphae-api.fly.dev";
 const NEW_MIGRATIONS = {
   "0018_member_wallet_links_wallet":
     "79592f957d9b43805e468c97ffce066a091a68cfaebda5944f9d234282812302",
-  "0019_raid_recaps": "6d3f708b25b1fa32218bcd18266723661f9d34f22ebe4252e19702a5a6fe592c",
+  "0019_raid_recaps": "b81d60858828b95e89b7d2be8e0445e231eac6a3c7e43318b983affeeb56864b",
 };
 // 0015 is applied before and after: the three member columns are nullable and the check exists.
 const NULLABLE_COLUMNS = ["wallet", "link_method", "linked_at"];
@@ -69,6 +69,7 @@ const RAID_RECAPS_SHAPE = {
     "community_id pg_catalog.uuid not null",
     "status public.raid_delivery_status not null",
     "next_attempt_at pg_catalog.timestamptz not null",
+    "retry_used pg_catalog.bool not null default",
     "attempted_at pg_catalog.timestamptz not null",
     "sent_at pg_catalog.timestamptz null",
     "telegram_message_id pg_catalog.int4 null",
