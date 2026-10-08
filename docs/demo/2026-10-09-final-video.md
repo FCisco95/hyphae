@@ -1,6 +1,6 @@
-# Final video — script (Fri 2026-10-09)
+# Final video — script (Sun 2026-10-11)
 
-Plan Week 4 #6. Under 3 minutes, recorded in Loom. Built from `docs/BUILDLOG.md` and shipped evidence only.
+Plan Week 4 #6. Under 3 minutes, recorded in Loom. Built from `docs/BUILDLOG.md` and shipped evidence only. Rescheduled 2026-10-08: epoch 2 now closes 2026-10-10T00:00Z, so the recording moved to October 11, after C22.
 
 Every claim carries its evidence in brackets: a commit, a devnet signature (open it at `https://explorer.solana.com/tx/<signature>?cluster=devnet`) or a page. Each beat has one label:
 - **historical:** happened and was recorded at the time;
@@ -12,9 +12,9 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 ## Before recording
 
-**Live state, October 5 (re-read it before recording):** web serves `main` with the runtime of source `774b97e`; the API runs image `sha256:798e1888…` (source `774b97e`, migrations 0013+0014) since 2026-10-05T14:26Z; the worker stays frozen on `sha256:1c2d6dd5…` (source `b3c82c7`, since October 2). C1–C13 are complete: the mainnet program, hash and Ledger authority are recorded in [C13](../handoffs/2026-10-02-c13-mainnet-receipt.md). On October 5 no MYCEL community, vault or epoch account exists on mainnet and no payout has happened. Epoch 2 holds one counted contribution from one member, the founder. The [live receipts](2026-10-08-first-payout-readiness.md#live-receipts-october-5-read-only) are the only source for live claims. Beats 4–6 keep their devnet evidence until their specific October 8–9 receipts exist; beat 7 may use the verified mainnet program, and beat 8 may show the live read API. If the epoch is empty or blocked, show its actual unavailable settlement and say “mainnet program deployed; no contributor payment” instead of implying a first payout. If it pays only the founder, use [the plain wording](2026-10-08-first-payout-readiness.md#when-the-founder-is-the-only-payable-member) (confirmed by Cisco on 2026-10-05).
+**Live state, October 8, 18:00Z (re-read it before recording):** web serves `main` (6425b99, docs only on top of the `jev-e5f864b` source). The API machine and the worker both run image `jev-e5f864b` (`sha256:b3f5617d804a377e8eaae1c6c67641ffe85390e47d88c162f0723206994236c4`) since 2026-10-07 21:36Z; the Neon journal is at 18 (migration `0017_reward_amendment_chain`). C1–C13 are complete: the mainnet program, hash and Ledger authority are recorded in [C13](../handoffs/2026-10-02-c13-mainnet-receipt.md). On October 8 no MYCEL community, vault or epoch account exists on mainnet (Ledger admin 0 lamports; C14 not started) and no payout has happened. Epoch 2 held 13 contributions from 6 members on the 13:35Z read, all decided; four of the six have no signed wallet, so the payable set is recounted at the sitting and no figure here is a payout figure. Epoch 2 keeps Claude Haiku 5.5 on `reward-eval/2` to the close; epoch 3 moves to `reward-eval/3` after the hold. The [live receipts](2026-10-08-first-payout-readiness.md#live-receipts-october-5-read-only) are the October 5 reads, and the packet's current-state paragraph is the October 8 one; read both before making a live claim. Beats 4–6 keep their devnet evidence until their specific October 9–11 receipts exist; beat 7 may use the verified mainnet program, and beat 8 may show the live read API. If the epoch is empty or blocked, show its actual unavailable settlement and say “mainnet program deployed; no contributor payment” instead of implying a first payout. If it pays only the founder, use [the plain wording](2026-10-08-first-payout-readiness.md#when-the-founder-is-the-only-payable-member) (confirmed by Cisco on 2026-10-05).
 
-1. Read the newest build-log entries. Runbook C (`docs/handoffs/2026-09-28-runbook-c.md`) runs in two blocks: Parts 1–2 (C1–C13, the candidate on Fly and Vercel, then the program on mainnet) on Oct 2–3, and Parts 3–4 (C14–C22, MYCEL's community and vault, then the first payout) on Oct 8–9. Use each **mainnet swap-in** below only if the steps it names ran, with the signatures the build log records for them. Otherwise that beat says "devnet" on screen.
+1. Read the newest build-log entries. Runbook C (`docs/handoffs/2026-09-28-runbook-c.md`) runs in two blocks: Parts 1–2 (C1–C13, the candidate on Fly and Vercel, then the program on mainnet) on Oct 2–3, and Parts 3–4 (C14–C22, MYCEL's community and vault, then the first payout) on Oct 9–11: C14–C18 on Oct 9, the close on Oct 10 at 00:00Z, C19–C22 on Oct 11. Use each **mainnet swap-in** below only if the steps it names ran, with the signatures the build log records for them. Otherwise that beat says "devnet" on screen.
 2. `git switch main && git pull --ff-only`. Note the SHA and the latest CI run; say those, not the numbers in this file.
 3. Open the tabs in the order of the recording guide below. The site is https://hyphae-delta.vercel.app, live since the Sep 29 cutover (`docs/handoffs/2026-09-29-cutover-run.md`, step 15).
 4. Fallbacks, if the site can't be reached: `docs/showcase/` has every page in both themes. Its settled-epoch and claim pages show the web tests' fixture data, so don't present them as real numbers. A real devnet settlement panel, in the earlier design, is `git show ffdfac0:docs/screenshots/epoch-1180.png`.
@@ -136,7 +136,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 - the wallet-claims route and rate limits: `d712289`, `6e48b12`; OpenAPI and `/docs`: `135a80f`;
 - the README integration: `1d56e5d`.
 
-Say "deployed" for the community/epoch routes, wallet claims, `/v1/openapi.json` and `/docs`: they have answered 200 from production since October 2 C7 and again on October 5 (receipts in the packet). The API now runs image `sha256:798e1888…` (source `774b97e`) and the worker `sha256:1c2d6dd5…` (source `b3c82c7`); never say "Fly v11" for the API. Cite the packet's newest read-back, not a deployment inferred from current `main`.
+Say "deployed" for the community/epoch routes, wallet claims, `/v1/openapi.json` and `/docs`: they have answered 200 from production since October 2 C7 and again on October 5 (receipts in the packet). The API and the worker now both run image `jev-e5f864b` (`sha256:b3f5617d…`, since 2026-10-07 21:36Z); never say "Fly v11" for the API. Cite the packet's newest read-back, not a deployment inferred from current `main`.
 
 ## Close · ~5 s
 
@@ -152,7 +152,7 @@ These were not built or are not live; the video must not imply them:
 - the web `/admin` page (plan Week 4 #3, dropped by Cisco on 2026-09-27);
 - the fixture data in `docs/showcase/`'s settled-epoch and claim pages, as if it were real;
 - "open source" (both repositories are BUSL 1.1, source available; the application repo is private, and the program and rubrics are public in `FCisco95/hyphae-program`);
-- tester or member counts past what the build log records (on October 5: one member with a counted contribution, the founder);
+- tester or member counts past what the build log records (on October 5: one member with a counted contribution, the founder; on the October 8 read: 13 contributions from 6 members, four without a signed wallet);
 - members using the private raid buttons, receipts, `/issue` or raid alerts: they are deployed on the API since October 5 and the operator view and receipt lookup were exercised by Cisco only; no member has used them, and no alert subscriber or real-phone test exists;
 - X relation or account ownership as verified (the system records an attestation, not proof);
 - any mainnet transaction that Runbook C did not record.
