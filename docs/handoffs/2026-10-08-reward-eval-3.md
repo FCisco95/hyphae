@@ -19,12 +19,23 @@ Worker note for the coordinator (Orca task `task_ab1e90063a74`). Branch `FCisco9
 
 - New tests: `claude-questions.test.ts` 23, `claude-client.test.ts` 8, `claude-registry.test.ts` 7, `evaluation-claude.test.ts` 8 (PGlite, end to end through `runEvaluation`). Existing scorer tests are unchanged and green (`jev*.test.ts`, `scorers.test.ts`, `evaluation-jev.test.ts`, `amendment.test.ts`).
 - Gate on the final tree: `pnpm typecheck` exit 0, `pnpm lint` exit 0, `pnpm test`: core 119 of 119, read-client 26 of 26, web 123 of 123, api 1083 passed and 3 skipped (102 files, 2 skipped). `pnpm --filter @hyphae/api test:pg` (Docker Postgres 17 on a private port): 12 files, 74 tests, exit 0. The api suite exits 0 with `--maxWorkers=3`; at full parallelism on this shared machine (13 node processes from other workers) it passed once and exited 1 three times on load, never on an assertion: see the next section.
-- Live eval ([report](../evals/reward-eval-3-calibration-2026-10-08.md), rubric 1.2.0, 3 runs per reply): 277 calls, USD 0.2255, 0 errors, 0 refusals.
+- Live eval, done on this machine with a temporary key Cisco created for the run ([report](../evals/reward-eval-3-calibration-2026-10-08.md), rubric 1.2.0, 3 runs per reply): 277 calls, USD 0.2255 of the USD 3 budget, 0 errors, 0 refusals.
   - Reward cases: 78 of 78 judged runs right (Jev v4: 78 of 78). All 8 injection cases credited 0 in 24 of 24 runs.
   - Holdout 3 (64 replies, Cisco's blind labels after his reconciliation): 171 of 180 judged runs right, the same as Jev v4. Wrong in every run: H26 and H40 (Jev's misses Cisco accepted on 2026-10-07) and H54 (new: a polished, AI-worded restatement of the post credited 65, because Haiku answered `restates_post` no). H20, which Jev zeroes, passes.
   - Stable: no reply changed between pass and zero across runs; 10 of 92 replies moved by one bonus (10 points).
   - Scores: replies labeled pass credit 65 to 95, mean 74.5 (Jev v4: 70 to 96, mean 81.9).
   - About USD 0.0008 per reply (Jev v4 about 0.0002); latency p50 1.2 s, p95 3.4 s, max 4.5 s.
+
+## Re-running the eval on another machine
+
+The script reads `ANTHROPIC_API_KEY` only; load it from an env file outside the repository. From `apps/api`, one command per set (each about USD 0.07 to 0.16, about 4 minutes; the script has no built-in cost cap and prints the total cost when it ends):
+
+```sh
+node --env-file=<key file> --import tsx scripts/eval-reward-prompt.ts --cases ../../docs/rubrics/eval/reward-eval-cases.json --rubric ../../docs/rubrics/mycel-1.2.0.json --versions reward-eval/3 --runs 3 --out ../../docs/evals/runs/<date>-reward-eval-3/reward-cases.json
+node --env-file=<key file> --import tsx scripts/eval-reward-prompt.ts --cases ../../docs/evals/jev-holdout-3.json --rubric ../../docs/rubrics/mycel-1.2.0.json --versions reward-eval/3 --runs 3 --out ../../docs/evals/runs/<date>-reward-eval-3/holdout.json
+```
+
+Each line printed is one call: case, raw and credited score, flags, the questions answered yes, ok or MISS. The `--out` file holds every run's answers, latency and cost; the 2026-10-08 report was written from those two files. The reward-case run exits 0 when every judged case passes; the holdout run exits 1 because of its known misses.
 
 ## Member-visible strings
 
