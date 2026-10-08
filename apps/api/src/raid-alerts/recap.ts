@@ -41,6 +41,7 @@ export interface RecapClaim {
   communityId: string;
   chatId: bigint;
   text: string;
+  retryUsed: boolean;
 }
 
 const closedAt = sql`(select ${raidLifecycleEvents.createdAt} from ${raidLifecycleEvents} where ${raidLifecycleEvents.taskId} = ${tasks.id} and ${raidLifecycleEvents.action} = 'closed')`;
@@ -86,10 +87,12 @@ export async function claimRaidRecap(
       })
       .onConflictDoUpdate({
         target: raidRecaps.taskId,
-        set: { status: "sending", attemptedAt: due },
-        setWhere: eq(raidRecaps.status, "pending"),
+        // Only a 429 leaves a row pending, so this claim is its one retry. The deadline is
+        // rechecked on the conflicting row: another process may have deferred it after our SELECT.
+        set: { status: "sending", attemptedAt: due, retryUsed: true },
+        setWhere: sql`${raidRecaps.status} = 'pending' and ${raidRecaps.nextAttemptAt} <= ${due}`,
       })
-      .returning({ taskId: raidRecaps.taskId });
+      .returning({ taskId: raidRecaps.taskId, retryUsed: raidRecaps.retryUsed });
     if (!claimed) return;
     const [community] = await tx
       .select({ chatId: communities.telegramChatId, mint: communities.mint })
@@ -110,6 +113,7 @@ export async function claimRaidRecap(
       taskId: task.id,
       communityId: task.communityId,
       chatId: community.chatId,
+      retryUsed: claimed.retryUsed,
       text: recapText({
         closed,
         handle: task.targetAuthor,
@@ -128,33 +132,49 @@ export interface RecapSender {
   send(chatId: bigint, text: string): Promise<{ message_id: number }>;
 }
 export async function deliverRaidRecap(db: Db, claim: RecapClaim, deps: RecapSender) {
-  const finish = async (
-    status: (typeof raidRecaps.$inferSelect)["status"],
-    reason: string | null,
-    extra: Partial<typeof raidRecaps.$inferInsert> = {},
-  ) => {
-    await db
-      .update(raidRecaps)
-      .set({ status, reason, ...extra })
-      .where(eq(raidRecaps.taskId, claim.taskId));
-    return status;
-  };
-  const clock = () => (deps.clock ?? dbClock)(db, claim.communityId);
-  try {
-    const message = await deps.send(claim.chatId, claim.text);
-    return finish("sent", null, { sentAt: await clock(), telegramMessageId: message.message_id });
-  } catch (err) {
-    if (err instanceof GrammyError && err.error_code === 429) {
-      const delay = err.parameters.retry_after;
-      const seconds =
-        typeof delay === "number" && Number.isSafeInteger(delay) && delay > 0 ? delay : 60;
-      return finish("pending", "telegram_rate_limit", {
-        nextAttemptAt: new Date((await clock()).getTime() + seconds * 1000),
-      });
+  return db.transaction(async (tx) => {
+    const finish = async (
+      status: (typeof raidRecaps.$inferSelect)["status"],
+      reason: string | null,
+      extra: Partial<typeof raidRecaps.$inferInsert> = {},
+    ) => {
+      await tx
+        .update(raidRecaps)
+        .set({ status, reason, ...extra })
+        .where(eq(raidRecaps.taskId, claim.taskId));
+      return status;
+    };
+    const clock = () => (deps.clock ?? dbClock)(tx, claim.communityId);
+    // The task lock is held through the bounded send: /cancel_raid waits for it, and once a
+    // cancellation has committed no recap send can start. The community lock is never taken here.
+    await tx.select({ id: tasks.id }).from(tasks).where(eq(tasks.id, claim.taskId)).for("share");
+    const [cancelled] = await tx
+      .select({ taskId: raidLifecycleEvents.taskId })
+      .from(raidLifecycleEvents)
+      .where(
+        and(
+          eq(raidLifecycleEvents.taskId, claim.taskId),
+          eq(raidLifecycleEvents.action, "cancelled"),
+        ),
+      );
+    if (cancelled) return finish("skipped", "raid_cancelled");
+    try {
+      const message = await deps.send(claim.chatId, claim.text);
+      return finish("sent", null, { sentAt: await clock(), telegramMessageId: message.message_id });
+    } catch (err) {
+      if (err instanceof GrammyError && err.error_code === 429) {
+        if (claim.retryUsed) return finish("failed", "rate_limit_retry_exhausted");
+        const delay = err.parameters.retry_after;
+        const seconds =
+          typeof delay === "number" && Number.isSafeInteger(delay) && delay > 0 ? delay : 60;
+        return finish("pending", "telegram_rate_limit", {
+          nextAttemptAt: new Date((await clock()).getTime() + seconds * 1000),
+        });
+      }
+      if (err instanceof GrammyError && (err.error_code === 400 || err.error_code === 403))
+        return finish("failed", "telegram_rejected");
+      // Network errors and 5xx can follow acceptance, so the recap is never sent twice.
+      return finish("uncertain", "send_unknown");
     }
-    if (err instanceof GrammyError && (err.error_code === 400 || err.error_code === 403))
-      return finish("failed", "telegram_rejected");
-    // Network errors and 5xx can follow acceptance, so the recap is never sent twice.
-    return finish("uncertain", "send_unknown");
-  }
+  });
 }
