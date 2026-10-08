@@ -2,6 +2,27 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-08 (afternoon) · Five features in parallel, nothing shipped before the payout
+
+**The problem:** epoch 2 replies were landing below the 60 floor even when they were honest. A sincere reply scored 42 and two of mine scored 58, so they paid the same as "gm". And the epoch page said "Counted." for every scored row, including members who had no wallet and could not be paid.
+
+**Decisions and why:** epoch 2 keeps the current judge, Claude Haiku 5.5, until it closes tonight. Swapping judges in the last hours of the first payout epoch adds a moving part to the one step this week that cannot be undone, so unfair zeros get public corrections instead. From epoch 3, Haiku stops ranking and starts filtering: it answers the same fixed yes/no questions Jev was calibrated on, and code turns the answers into the score. Greetings, hype, restating the post, plugs and instructions to the judge score 0; a reply in your own words starts at 65 and earns more for a question, a suggestion, your own detail or your reasoning.
+
+**Built (pushed as branches, not merged, not deployed):** five sessions ran in parallel, each on its own branch:
+- **Scorer v3:** the filter judge. On the 28 reward cases it got 78 of 78 judged runs right, every one of the 8 attempts to instruct the judge scored 0 in all 24 runs, and on the 64 replies I labeled blind it matched Jev v4: 171 of 180 judged runs right. One new miss: a polished restatement of the post passed at 65. About USD 0.0008 per reply, 1.2 seconds typical, USD 0.23 for the whole eval.
+- **Honest payout status:** "Counted." becomes "Scored." plus what pay still needs. `/me` shows a wallet, quiz and hold checklist with the next step, and a member's first score message in an epoch says what is missing, once.
+- **Raid stats:** `/raids` shows submitted, credited and average score per raid, and the bot posts one counts-only recap when a raid ends.
+- **Wallet record:** a public page and API per wallet: contributions, average score, epochs paid.
+- **Claim Blink:** claim your payout from a link shared on X, using the claim page's own transaction byte for byte.
+
+**Review:** Codex reviewed the Blink and asked for three changes: one medium (enforce the request size limit while reading the body) and two low (keep the claim transaction when it says "already claimed", keep the network header on errors). The transaction itself matched. The other four branches get the same review after the hold.
+
+**Numbers:** gate green on payout status (API 1070, web 132, core 124, 74 of 74 on real Postgres) and wallet record (API 1046, web 140, core 125). Raid stats 77 of 77 on real Postgres. Running five agents at once pinned the laptop at 100% CPU; from now on, two at a time.
+
+**Commits:** branches `FCisco95/scorer-v3` (`93810f2`…`cabe201`), `FCisco95/payout-status` (`d008411`…`621c887`), `FCisco95/raid-stats` (`446ea5d`, `0112695`), `FCisco95/wallet-record` (`5c54993`, `8eafc99`, `70e5b3c`), `FCisco95/blink` (`92ccd20`, `5578547`, review `146be88`); this entry and the handoff on `main`.
+
+**Next:** tonight, the first-payout sitting. After the hold ends on Oct 10: my answers on the scorer's open questions, the Blink fixes, the remaining reviews, merge and release.
+
 ## 2026-10-07 (night) · A cheaper judge that filters instead of ranks
 
 **The goal:** I want Jev, TypeSafe's small judgment model, to score rewards instead of a large language model. The job is a filter: remove "gm", hype, AI rewrites of the post, shills and plugs, give organic replies a fair mid score, and not try to rank the best ones finely.
