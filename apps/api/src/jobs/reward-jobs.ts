@@ -12,6 +12,8 @@ import { closeEpoch, dueCloses } from "../rewards/close.js";
 import { type EvaluationTarget, type RunResult, runEvaluation } from "../rewards/evaluation.js";
 import { decisionNotified, markNotified, strandedWork } from "../rewards/recovery.js";
 import { recordRetrieval } from "../rewards/slots.js";
+import { claudeDepsFromEnv } from "../scoring/claude-client.js";
+import { CLAUDE_REGISTRY } from "../scoring/claude-registry.js";
 import { defaultModel } from "../scoring/default-model.js";
 import { jevDepsFromEnv } from "../scoring/jev-config.js";
 import { JEV_REGISTRY } from "../scoring/jev-registry.js";
@@ -48,6 +50,7 @@ export interface RewardNotifyJob {
 
 // Built once at boot: a bad Jev configuration stops the worker instead of stranding dispatches.
 const jev = jevDepsFromEnv(env, JEV_REGISTRY);
+const claude = claudeDepsFromEnv(env, CLAUDE_REGISTRY);
 
 // Longer than one provider call can take, so an older dispatch cannot be a live call.
 const RECONCILIATION_HORIZON_MS = REWARD_CALL_TIMEOUT_MS + 3.5 * 60_000;
@@ -87,6 +90,7 @@ export async function evaluateReward(job: RewardEvaluationJob): Promise<void> {
     horizonMs: RECONCILIATION_HORIZON_MS,
     call: (prompt, purpose) => callRewardModel(prompt, purpose, defaultModel),
     ...(jev && { jev }),
+    ...(claude && { claude }),
   });
   console.log(JSON.stringify({ job: "reward-evaluation", ...job, status: result.status }));
   if (result.status === "in_flight") {
