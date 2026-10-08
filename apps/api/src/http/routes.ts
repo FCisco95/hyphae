@@ -7,6 +7,7 @@ import { openApiDocument } from "./openapi.js";
 import { budgets, type RateLimit, rateLimit } from "./rate-limit.js";
 import {
   type Page,
+  type ReadClock,
   readClaim,
   readCommunity,
   readContribution,
@@ -62,7 +63,8 @@ function page(c: Context): Page {
   return { ...paging(c), member: member === undefined ? undefined : uuid(member) };
 }
 
-// Database time, so `closed` and the current epoch agree with the reward writers' clock.
+// Database time, so `closed` and the current epoch agree with the reward writers' clock. Each read
+// takes it inside its own transaction.
 async function databaseNow(db: Db): Promise<Date> {
   const result = await db.execute(
     sql`select floor(extract(epoch from clock_timestamp()) * 1000)::double precision as ms`,
@@ -93,7 +95,7 @@ export function readRoutes(deps: {
   webToken?: string | undefined;
 }) {
   const { db } = deps;
-  const now = deps.clock ?? (() => databaseNow(db));
+  const clock: ReadClock = deps.clock ?? databaseNow;
   const app = new Hono();
 
   app.use("*", async (c, next) => {
@@ -111,14 +113,14 @@ export function readRoutes(deps: {
   };
 
   app.get("/communities/:mint", async (c) =>
-    send(c, await readCommunity(db, mint(c.req.param("mint")), await now(), deps.chain)),
+    send(c, await readCommunity(db, mint(c.req.param("mint")), clock, deps.chain)),
   );
   app.get("/communities/:mint/epochs/:index", async (c) => {
     const body = await readEpoch(
       db,
       mint(c.req.param("mint")),
       index(c.req.param("index")),
-      await now(),
+      clock,
       deps.chain,
     );
     return send(c, body, body?.final && !readsChain(body));
@@ -129,7 +131,7 @@ export function readRoutes(deps: {
       mint(c.req.param("mint")),
       index(c.req.param("index")),
       wallet(c.req.param("wallet")),
-      await now(),
+      clock,
       deps.chain,
     );
     if (body === null) return c.json({ error: "not_found" }, 404);
@@ -140,19 +142,13 @@ export function readRoutes(deps: {
   app.get("/wallets/:wallet/claims", async (c) =>
     send(
       c,
-      await readWalletClaims(db, wallet(c.req.param("wallet")), paging(c), await now(), deps.chain),
+      await readWalletClaims(db, wallet(c.req.param("wallet")), paging(c), clock, deps.chain),
     ),
   );
   app.get("/wallets/:wallet/record", async (c) =>
     send(
       c,
-      await readWalletRecord(
-        db,
-        address(c.req.param("wallet")),
-        paging(c),
-        await now(),
-        deps.chain,
-      ),
+      await readWalletRecord(db, address(c.req.param("wallet")), paging(c), clock, deps.chain),
     ),
   );
   app.get("/communities/:mint/epochs/:index/contributions", async (c) => {
@@ -161,7 +157,7 @@ export function readRoutes(deps: {
       mint(c.req.param("mint")),
       index(c.req.param("index")),
       page(c),
-      await now(),
+      clock,
     );
     return send(c, body, body?.epoch.final);
   });
@@ -171,12 +167,12 @@ export function readRoutes(deps: {
       mint(c.req.param("mint")),
       index(c.req.query("epoch")),
       page(c),
-      await now(),
+      clock,
     );
     return send(c, body, body?.final);
   });
   app.get("/contributions/:id", async (c) => {
-    const body = await readContribution(db, uuid(c.req.param("id")), await now());
+    const body = await readContribution(db, uuid(c.req.param("id")), clock);
     return send(c, body, body?.epoch.final);
   });
 

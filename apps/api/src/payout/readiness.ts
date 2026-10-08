@@ -18,15 +18,20 @@ export function payoutOf(
   v: Pick<MemberVerdict, "status" | "reasons" | "holdResult">,
   o: { closed: boolean; holdRequired: boolean },
 ): PayoutVerdictV1 {
-  const hold = !o.holdRequired
-    ? "not_required"
-    : !o.closed
-      ? "at_close"
-      : v.holdResult
-        ? v.holdResult.check.status
-        : v.reasons.includes("hold_pending")
-          ? "pending"
-          : "not_checked";
+  if (!o.holdRequired) return { status: v.status, reasons: [...v.reasons], hold: "not_required" };
+  if (!o.closed) {
+    // A read judged as of before the close may still see a hold result recorded since: no result
+    // counts until the close, so a member who meets every other condition waits for it.
+    const reasons = v.reasons.filter((r) => r !== "below_hold" && r !== "hold_pending");
+    return reasons.length === 0
+      ? { status: "held", reasons: ["hold_pending"], hold: "at_close" }
+      : { status: "not_payable", reasons, hold: "at_close" };
+  }
+  const hold = v.holdResult
+    ? v.holdResult.check.status
+    : v.reasons.includes("hold_pending")
+      ? "pending"
+      : "not_checked";
   return { status: v.status, reasons: [...v.reasons], hold };
 }
 
@@ -35,6 +40,9 @@ export interface EpochPayouts {
   // The pinned rubric's community, which names its token ("MYCEL").
   token: string;
   members: Map<string, PayoutV1>;
+  // The signed wallet each member's verdict used: walletAt(closes_at), the current link while the
+  // epoch is open. Empty when the epoch pays no one or is published.
+  wallets: Map<string, string | null>;
 }
 
 // The payout status of each named member in one epoch, judged by the gate's own terms and member
@@ -61,7 +69,11 @@ export async function epochPayouts(
   const terms = payTerms(epoch, input.community, rubric, deps.tests);
   const memberIds = [...new Set(input.memberIds)];
   const all = (payout: PayoutV1) => new Map(memberIds.map((m) => [m, payout]));
-  const base = { hold: terms.hold, token: rubric.community };
+  const base = {
+    hold: terms.hold,
+    token: rubric.community,
+    wallets: new Map<string, string | null>(),
+  };
   if (terms.published) return { ...base, members: all({ status: "published" }) };
   if (!terms.paidEpoch || !terms.test) {
     return { ...base, members: all({ status: "unpaid_epoch" }) };
@@ -108,6 +120,7 @@ export async function epochPayouts(
     members: new Map(
       verdicts.map((v) => [v.memberId, payoutOf(v, { closed: input.closed, holdRequired })]),
     ),
+    wallets: new Map(verdicts.map((v) => [v.memberId, v.wallet])),
   };
 }
 

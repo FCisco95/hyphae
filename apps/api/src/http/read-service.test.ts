@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
-import { promptTemplateHash, ReadApiV1 } from "@hyphae/core";
+import { promptTemplateHash, ReadApiV1, ReadApiV1Loose } from "@hyphae/core";
 import {
   communities,
   type Db,
@@ -11,7 +11,7 @@ import {
   rulesTestPasses,
   schema,
 } from "@hyphae/db";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -23,11 +23,13 @@ import { beginDispatch, completeDispatch, runEvaluation } from "../rewards/evalu
 import { at, createTestDb, later, rubric, seedRewardLane, T0 } from "../rewards/test-db.js";
 import { type AuditDemo, fakeModel, seedAuditDemo, seedSignedLink } from "./demo-seed.js";
 import {
+  readClaim,
   readCommunity,
   readContribution,
   readContributions,
   readEpoch,
   readLeaderboard,
+  readWalletClaims,
   readWalletRecord,
 } from "./read-service.js";
 
@@ -564,6 +566,47 @@ describe("payout status", () => {
     });
   });
 
+  it("a clock taken before the close, read after the hold check: the hold still waits for the close", async () => {
+    const lane = await seedPaidLane(t.db);
+    const after = new Date(lane.epoch.closesAt.getTime() + 60_000);
+    await closeEpoch(
+      t.db,
+      { communityId: lane.communityId, epochId: lane.epoch.id },
+      { clock: at(after) },
+    );
+    await t.db.insert(holdChecks).values({
+      communityId: lane.communityId,
+      epochId: lane.epoch.id,
+      memberId: lane.members.ready,
+      wallet: lane.wallet,
+      mint: lane.mint,
+      thresholdRaw: rubric.minHoldUnits,
+      checkRound: "22222222-2222-4222-8222-222222222222",
+      status: "holder",
+      attempts: 1,
+      rawAmount: "150000000000",
+      decimals: 6,
+      provider: "consensus",
+      slot: "321",
+      observedAt: new Date(after.getTime() + 60_000),
+    });
+    const before = new Date(lane.epoch.closesAt.getTime() - 1);
+    expect(await statusesAt(lane, before)).toEqual({
+      ready: { status: "held", reasons: ["hold_pending"], hold: "at_close" },
+      unlinked: {
+        status: "not_payable",
+        reasons: ["no_verified_wallet", "no_rules_test"],
+        hold: "at_close",
+      },
+    });
+    for (const [schema, body] of [
+      [ReadApiV1Loose.contributions, await readContributions(t.db, lane.mint, 1, page, before)],
+      [ReadApiV1Loose.leaderboard, await readLeaderboard(t.db, lane.mint, 1, page, before)],
+    ] as const) {
+      expect(schema.safeParse(body).success).toBe(true);
+    }
+  });
+
   it("an epoch of a community with no paid epoch pays no one", async () => {
     const rows = strict(
       ReadApiV1.contributions,
@@ -750,6 +793,37 @@ describe("readWalletRecord", () => {
     }
     expect(sequences).toEqual(missing.map(() => sequences[0]));
     expect(sequences[0]?.filter((q) => /^select\b/i.test(q))).toHaveLength(1);
+  });
+});
+
+describe("a read's clock", () => {
+  it("is read inside the read's own snapshot, and the read is as of it", async () => {
+    const seen: string[] = [];
+    const clock = async (tx: Db) => {
+      const result = await tx.execute(
+        sql`select current_setting('transaction_isolation') as iso, current_setting('transaction_read_only') as ro`,
+      );
+      const rows = (Array.isArray(result) ? result : (result as { rows: unknown[] }).rows) as {
+        iso: string;
+        ro: string;
+      }[];
+      seen.push(`${rows[0]?.iso}/${rows[0]?.ro}`);
+      return NOW;
+    };
+    const all = { offset: 0, limit: 50 };
+    const asOf = [
+      (await readCommunity(t.db, demo.mint, clock))?.as_of,
+      (await readEpoch(t.db, demo.mint, 2, clock))?.as_of,
+      (await readContributions(t.db, demo.mint, 2, all, clock))?.as_of,
+      (await readLeaderboard(t.db, demo.mint, 2, all, clock))?.as_of,
+      (await readWalletRecord(t.db, demo.signedWallet, all, clock))?.as_of,
+      (await readWalletClaims(t.db, demo.signedWallet, all, clock)).as_of,
+    ];
+    // A contribution names no as_of; nothing is published, so there is no claim.
+    expect(await readContribution(t.db, demo.contributions.openCounted, clock)).not.toBeNull();
+    expect(await readClaim(t.db, demo.mint, 1, demo.signedWallet, clock)).toBeNull();
+    expect(asOf).toEqual(asOf.map(() => "2026-11-20T12:00:00.000000Z"));
+    expect(seen).toEqual(Array.from({ length: 8 }, () => "repeatable read/on"));
   });
 });
 

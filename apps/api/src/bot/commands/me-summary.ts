@@ -4,11 +4,13 @@ import {
   contributions,
   type Db,
   epochs,
+  members,
   rewardEpochSnapshots,
   scoringRuns,
 } from "@hyphae/db";
 import { and, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
 import { epochPayouts, nextStep, type PayoutStep } from "../../payout/readiness.js";
+import { readOnly } from "../../pg.js";
 import { dbClock, type RewardDeps } from "../../rewards/config.js";
 import { effectiveResults } from "../../rewards/effective.js";
 import { formatTokens } from "./setup-content.js";
@@ -31,12 +33,23 @@ export function walletLines(member: {
 
 const short = (wallet: string) => `${wallet.slice(0, 4)}…${wallet.slice(-4)}`;
 
+type Reason = Extract<PayoutV1, { reasons: unknown }>["reasons"][number];
+const MISSED: [Reason, string][] = [
+  ["no_verified_wallet", "no wallet was signed by the close"],
+  ["no_rules_test", "the rules test was not passed by the close"],
+  ["no_points", "no points"],
+];
+
 // The /me payout checklist: the payout gate's status for this member, three checks and the one
-// next step. Before the close the hold is never shown as met: it is read once after the close.
+// next step, or after the close why it does not pay. Before the close the hold is never shown as
+// met: it is read once after the close.
 export function payoutChecklist(c: {
   epochIndex: number;
   closed: boolean;
   payout: PayoutV1;
+  // The signed wallet the verdict used: the link valid at the close, the current one while open.
+  wallet: string | null;
+  // The member's link now, read with the verdict.
   member: { wallet: string | null; linkMethod: "paste" | "signature" | null };
   // The pinned minimum with its unit ("100,000 MYCEL"), or null when it cannot be read.
   holdMin: string | null;
@@ -53,12 +66,21 @@ export function payoutChecklist(c: {
       step: null,
     };
   }
-  const has = (r: (typeof p.reasons)[number]) => p.reasons.includes(r);
+  const has = (r: Reason) => p.reasons.includes(r);
+  const link = c.member.wallet;
+  const pasted = !c.closed && c.member.linkMethod === "paste" ? link : null;
   const wallet = !has("no_verified_wallet")
-    ? `✅ Wallet: ${c.member.wallet ? `${short(c.member.wallet)}, ` : ""}signed`
-    : c.member.wallet && c.member.linkMethod === "paste" && !c.closed
-      ? `❌ Wallet: ${short(c.member.wallet)} is pasted, not signed`
+    ? `✅ Wallet: ${c.wallet ? `${short(c.wallet)}, ` : ""}signed`
+    : pasted
+      ? `❌ Wallet: ${short(pasted)} is pasted, not signed`
       : `❌ Wallet: none signed ${c.closed ? "by the close" : "yet"}`;
+  // A wallet linked after the close is not the one this epoch pays.
+  const current =
+    link && link !== c.wallet && !pasted
+      ? [
+          `Current link: ${short(link)}, ${c.member.linkMethod === "signature" ? "signed" : "pasted"}`,
+        ]
+      : [];
   const rules = has("no_rules_test")
     ? `❌ Rules test: not passed ${c.closed ? "by the close" : "yet"}`
     : "✅ Rules test: passed";
@@ -69,7 +91,10 @@ export function payoutChecklist(c: {
     pending: "⏳ Hold: being checked",
     holder: "✅ Hold: confirmed",
     below: `❌ Hold: under ${c.holdMin ?? "the minimum"} after the close`,
-    not_checked: "➖ Hold: not checked, since the wallet or rules test was missing",
+    not_checked:
+      has("no_verified_wallet") || has("no_rules_test")
+        ? "➖ Hold: not checked, since the wallet or rules test was missing"
+        : "➖ Hold: not checked, since there were no points",
   }[p.hold];
   const step = c.closed ? null : nextStep(p);
   const next = c.closed
@@ -81,13 +106,25 @@ export function payoutChecklist(c: {
         : has("no_points")
           ? ["Next: earn points by replying to a raid."]
           : ["Nothing else to do now."];
+  const verdict =
+    !c.closed || p.status !== "not_payable"
+      ? []
+      : has("below_hold")
+        ? ["Not payable: the wallet held less than the minimum after the close."]
+        : [
+            `Not payable: ${MISSED.filter(([r]) => has(r))
+              .map(([, why]) => why)
+              .join("; ")}.`,
+          ];
   return {
     lines: [
       `To be paid for epoch ${c.epochIndex}${c.closed ? " (closed)" : ""}:`,
       wallet,
+      ...current,
       rules,
       hold,
       ...next,
+      ...verdict,
     ],
     step,
   };
@@ -118,33 +155,44 @@ export async function mePayout(
   db: Db,
   input: { communityId: string; memberId: string },
   deps: RewardDeps & { decimals: (mint: string) => Promise<number | undefined> },
-): Promise<Omit<Parameters<typeof payoutChecklist>[0], "member"> | null> {
-  const now = await (deps.clock ?? dbClock)(db, input.communityId);
-  const epoch = await openedEpoch(db, input.communityId, now);
-  const [community] = await db
-    .select({ mint: communities.mint, firstPaidEpoch: communities.firstPaidEpoch })
-    .from(communities)
-    .where(eq(communities.id, input.communityId));
-  if (!epoch || !community) return null;
-  const [snapshot] = await db
-    .select({ id: rewardEpochSnapshots.id })
-    .from(rewardEpochSnapshots)
-    .where(eq(rewardEpochSnapshots.epochId, epoch.id));
-  const closed = now.getTime() >= epoch.closesAt.getTime();
-  const r = await epochPayouts(db, {
-    community,
-    epoch,
-    snapshotId: snapshot?.id ?? null,
-    closed,
-    memberIds: [input.memberId],
+): Promise<Parameters<typeof payoutChecklist>[0] | null> {
+  // One snapshot, its clock read first: a relink committing meanwhile cannot pair the verdict on
+  // one link with another link.
+  const read = await readOnly(db, async (tx) => {
+    const now = await (deps.clock ?? dbClock)(tx, input.communityId);
+    const epoch = await openedEpoch(tx, input.communityId, now);
+    const [community] = await tx
+      .select({ mint: communities.mint, firstPaidEpoch: communities.firstPaidEpoch })
+      .from(communities)
+      .where(eq(communities.id, input.communityId));
+    if (!epoch || !community) return null;
+    const [member] = await tx
+      .select({ wallet: members.wallet, linkMethod: members.linkMethod })
+      .from(members)
+      .where(eq(members.id, input.memberId));
+    if (!member) throw new Error(`me: member ${input.memberId} missing`);
+    const [snapshot] = await tx
+      .select({ id: rewardEpochSnapshots.id })
+      .from(rewardEpochSnapshots)
+      .where(eq(rewardEpochSnapshots.epochId, epoch.id));
+    const closed = now.getTime() >= epoch.closesAt.getTime();
+    const r = await epochPayouts(tx, {
+      community,
+      epoch,
+      snapshotId: snapshot?.id ?? null,
+      closed,
+      memberIds: [input.memberId],
+    });
+    const payout = r.members.get(input.memberId);
+    if (!payout) throw new Error(`me: member ${input.memberId} has no payout status`);
+    const wallet = r.wallets.get(input.memberId) ?? null;
+    return { epochIndex: epoch.index, mint: community.mint, closed, payout, wallet, member, r };
   });
-  const payout = r.members.get(input.memberId);
-  if (!payout) throw new Error(`me: member ${input.memberId} has no payout status`);
-  const decimals = r.hold.thresholdRaw > 0n ? await deps.decimals(community.mint) : undefined;
+  if (!read) return null;
+  const { mint, r, ...status } = read;
+  const decimals = r.hold.thresholdRaw > 0n ? await deps.decimals(mint) : undefined;
   return {
-    epochIndex: epoch.index,
-    closed,
-    payout,
+    ...status,
     holdMin:
       decimals === undefined ? null : `${formatTokens(r.hold.thresholdRaw, decimals)} ${r.token}`,
   };

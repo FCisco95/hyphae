@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { type PayoutV1, ReadApiV1, ReadApiV1Loose } from "@hyphae/core";
 import {
   communities,
   epochs,
@@ -187,7 +188,54 @@ describe("payoutOf", () => {
       );
     }
   });
+
+  it("before the close, ignores a hold result already recorded by the time of the read", () => {
+    const open = { closed: false, holdRequired: true };
+    const result = (status: "holder" | "below") => ({ check: { status } }) as never;
+    const holder = payoutOf({ ...verdict("payable", []), holdResult: result("holder") }, open);
+    const below = payoutOf(
+      { ...verdict("not_payable", ["below_hold"]), holdResult: result("below") },
+      open,
+    );
+    for (const p of [holder, below]) {
+      expect(p).toEqual({ status: "held", reasons: ["hold_pending"], hold: "at_close" });
+      expect(schemasAccept(false, p)).toEqual([true, true]);
+    }
+  });
 });
+
+// Whether the strict schema (this API's output) and the loose one (a consumer's) accept `payout`
+// on a leaderboard entry of an epoch read as `closed`.
+function schemasAccept(closed: boolean, payout: PayoutV1) {
+  const ts = "2026-10-09T00:00:00.000000Z";
+  const board = {
+    community: { mint: "Mint1" },
+    epoch: { index: 1, opens_at: ts, closes_at: ts },
+    closed,
+    final: false,
+    as_of: ts,
+    total_entries: 1,
+    total_contributions: 1,
+    offset: 0,
+    limit: 50,
+    entries: [
+      {
+        rank: 1,
+        member_id: "00000000-0000-4000-8000-000000000001",
+        wallet: null,
+        wallet_status: "none",
+        point_units: "0",
+        points: "0",
+        whole_points: "0",
+        contributions: 1,
+        counted: 1,
+        pending: 0,
+        payout,
+      },
+    ],
+  };
+  return [ReadApiV1.leaderboard, ReadApiV1Loose.leaderboard].map((s) => s.safeParse(board).success);
+}
 
 describe("epochPayouts", () => {
   it("before the close: every combination, with the hold left to the close", async () => {
@@ -257,6 +305,36 @@ describe("epochPayouts", () => {
         verdict?.status,
         verdict?.reasons,
       ]);
+    }
+  });
+
+  it("read as open after the hold check committed: every member still waits for the close", async () => {
+    const s = await seedCombos({ extra: 2 });
+    const { epoch, snapshotId } = await s.close();
+    const [holder, below] = s.seeded
+      .filter((m) => missing(m.combo).length === 0)
+      .map((c) => c.memberId);
+    await s.hold(holder ?? "", "holder");
+    await s.hold(below ?? "", "below");
+    // A read whose clock was taken before the close and whose snapshot came after the check.
+    for (const snapshot of [snapshotId, null]) {
+      const { members: got } = await epochPayouts(t.db, {
+        community: s.community,
+        epoch,
+        snapshotId: snapshot,
+        closed: false,
+        memberIds: s.memberIds,
+      });
+      for (const { combo, memberId } of s.seeded) {
+        const reasons = missing(combo);
+        const p = got.get(memberId);
+        expect(p, JSON.stringify(combo)).toEqual(
+          reasons.length === 0
+            ? { status: "held", reasons: ["hold_pending"], hold: "at_close" }
+            : { status: "not_payable", reasons, hold: "at_close" },
+        );
+        expect(p && schemasAccept(false, p)).toEqual([true, true]);
+      }
     }
   });
 

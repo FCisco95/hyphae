@@ -143,6 +143,12 @@ async function findEpochs(tx: Db, communityId: string, index?: number): Promise<
 
 const isClosed = (e: EpochRow, now: Date) => now.getTime() >= e.closesAt.getTime();
 
+// The time a read is as of: a fixed time, or the database's clock read as the first statement of
+// the read's transaction, so `closed` and `as_of` agree with the snapshot the read sees.
+export type ReadClock = Date | ((tx: Db) => Promise<Date>);
+const timeIn = (tx: Db, clock: ReadClock) =>
+  clock instanceof Date ? Promise.resolve(clock) : clock(tx);
+
 function epochStatus(e: EpochView, now: Date): EpochV1["status"] {
   if (e.snapshot) return "closed";
   if (isClosed(e.row, now)) return "closing";
@@ -463,11 +469,12 @@ function payoutOf(payouts: Map<string, PayoutV1>, memberId: string): PayoutV1 {
 export async function readCommunity(
   db: Db,
   mint: string,
-  now: Date,
+  clock: ReadClock,
   chain?: SettlementReader,
 ): Promise<CommunityV1 | null> {
   const until = Date.now() + CHAIN_DEADLINE_MS;
   const read = await readOnly(db, async (tx) => {
+    const now = await timeIn(tx, clock);
     const community = await findCommunity(tx, mint);
     if (!community) return null;
     const list = await findEpochs(tx, community.id);
@@ -486,10 +493,11 @@ export async function readCommunity(
         status: epochStatus(e, now),
       })),
       chainAddress: community.chainAddress,
+      now,
     };
   });
   if (!read) return null;
-  const { chainAddress, ...body } = read;
+  const { chainAddress, now, ...body } = read;
   const vault = await readVault({ mint: body.mint, chainAddress }, chain, until);
   return { ...body, vault, as_of: dateUs(now) };
 }
@@ -521,11 +529,12 @@ export async function readEpoch(
   db: Db,
   mint: string,
   index: number,
-  now: Date,
+  clock: ReadClock,
   chain?: SettlementReader,
   deadlineMs = CHAIN_DEADLINE_MS,
 ): Promise<EpochV1 | null> {
   const read = await readOnly(db, async (tx) => {
+    const now = await timeIn(tx, clock);
     const found = await findEpoch(tx, mint, index);
     if (!found) return null;
     const { community, epoch } = found;
@@ -614,13 +623,19 @@ export async function readClaim(
   mint: string,
   index: number,
   wallet: string,
-  now: Date,
+  clock: ReadClock,
   chain?: SettlementReader,
   deadlineMs = CHAIN_DEADLINE_MS,
 ): Promise<ClaimV1 | null> {
-  const facts = await readOnly(db, async (tx) => {
+  const { now, facts } = await readOnly(db, async (tx) => {
+    const now = await timeIn(tx, clock);
     const found = await findEpoch(tx, mint, index);
-    return found ? publicationFacts(tx, found.epoch.row, found.community.firstPaidEpoch) : null;
+    return {
+      now,
+      facts: found
+        ? await publicationFacts(tx, found.epoch.row, found.community.firstPaidEpoch)
+        : null,
+    };
   });
   const claim = facts && (await claimOf(facts, chain, wallet, deadlineMs));
   return claim ? { community: { mint }, ...claim, as_of: dateUs(now) } : null;
@@ -632,11 +647,12 @@ export async function readWalletClaims(
   db: Db,
   wallet: string,
   page: { offset: number; limit: number },
-  now: Date,
+  clock: ReadClock,
   chain?: SettlementReader,
   deadlineMs = CHAIN_DEADLINE_MS,
 ): Promise<WalletClaimsV1> {
-  const { total, rows } = await readOnly(db, async (tx) => {
+  const { now, total, rows } = await readOnly(db, async (tx) => {
+    const now = await timeIn(tx, clock);
     const published = and(
       eq(leaves.wallet, wallet),
       isNotNull(epochs.publishTx),
@@ -664,7 +680,7 @@ export async function readWalletClaims(
     for (const r of found) {
       rows.push({ mint: r.mint, facts: await publicationFacts(tx, r.epoch, r.firstPaidEpoch) });
     }
-    return { total: counted?.total ?? 0, rows };
+    return { now, total: counted?.total ?? 0, rows };
   });
   const until = Date.now() + deadlineMs;
   const claims = await mapLimit(rows, LOOKUPS_AT_ONCE, async ({ mint, facts }) => {
@@ -708,11 +724,12 @@ export async function readWalletRecord(
   db: Db,
   wallet: string,
   page: { offset: number; limit: number },
-  now: Date,
+  clock: ReadClock,
   chain?: SettlementReader,
   deadlineMs = CHAIN_DEADLINE_MS,
 ): Promise<WalletRecordV1 | null> {
   const read = await readOnly(db, async (tx) => {
+    const now = await timeIn(tx, clock);
     // One statement finds the public intakes. A wallet with none, signed or not, costs this query
     // alone, so the route's timing cannot reveal a private link. The link must be valid at
     // walletTime, least(closes_at, now), spelled out so `now` stays a typed parameter.
@@ -837,9 +854,10 @@ export async function readWalletRecord(
       const facts = await publicationFacts(tx, source.epoch.row, source.community.firstPaidEpoch);
       slice.push({ epoch, facts });
     }
-    return { all: taken.map((e) => e.epoch), slice };
+    return { now, all: taken.map((e) => e.epoch), slice };
   });
   if (!read) return null;
+  const { now } = read;
 
   const until = Date.now() + deadlineMs;
   const shownEpochs = await mapLimit(read.slice, LOOKUPS_AT_ONCE, async ({ epoch, facts }) => ({
@@ -876,9 +894,10 @@ export async function readContributions(
   mint: string,
   index: number,
   page: Page,
-  now: Date,
+  clock: ReadClock,
 ): Promise<ContributionsV1 | null> {
   return readOnly(db, async (tx) => {
+    const now = await timeIn(tx, clock);
     const found = await findEpoch(tx, mint, index);
     if (!found) return null;
     const { community, epoch } = found;
@@ -904,9 +923,10 @@ export async function readLeaderboard(
   mint: string,
   index: number,
   page: Page,
-  now: Date,
+  clock: ReadClock,
 ): Promise<LeaderboardV1 | null> {
   return readOnly(db, async (tx) => {
+    const now = await timeIn(tx, clock);
     const found = await findEpoch(tx, mint, index);
     if (!found) return null;
     const { community, epoch } = found;
@@ -989,9 +1009,10 @@ export async function readLeaderboard(
 export async function readContribution(
   db: Db,
   contributionId: string,
-  now: Date,
+  clock: ReadClock,
 ): Promise<ContributionV1 | null> {
   return readOnly(db, async (tx) => {
+    const now = await timeIn(tx, clock);
     const [intake] = await tx
       .select({
         id: rewardIntakes.id,

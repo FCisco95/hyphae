@@ -54,10 +54,12 @@ async function send(update: Update): Promise<Sent[]> {
 }
 
 type Status = NonNullable<Awaited<ReturnType<typeof mePayout>>>;
-const open = (payout: Status["payout"]): Status => ({
+const open = (payout: Status["payout"], member = found.member as Status["member"]): Status => ({
   epochIndex: 3,
   closed: false,
   payout,
+  wallet: member.linkMethod === "signature" ? member.wallet : null,
+  member,
   holdMin: "100,000 MYCEL",
 });
 
@@ -124,6 +126,33 @@ describe("/me", () => {
     const [done] = await send(meIn({ id: -100, type: "group" }));
     expect(done?.text).toContain("Nothing else to do now.");
     expect(done?.reply_markup).toBeUndefined();
+  });
+
+  it("names the wallets read with the status, never a member row read apart from it", async () => {
+    const A = "AAAA1111111111111111111111111111AAAA";
+    const B = "BBBB2222222222222222222222222222BBBB";
+    found.community = { id: "c1", mint: "MintAbc" };
+    // The row /me looked up first; the member relinked to B before the status was read.
+    found.member = {
+      id: "m1",
+      wallet: "Stale333333333333333333333333333Stal",
+      linkMethod: "paste",
+    };
+    found.payout = {
+      ...open(
+        { status: "payable", reasons: [], hold: "holder" },
+        { wallet: B, linkMethod: "signature" },
+      ),
+      closed: true,
+      wallet: A,
+    };
+    const [sent] = await send(meIn({ id: -100, type: "group" }));
+    expect(sent?.text.split("\n").slice(1, 4)).toEqual([
+      "To be paid for epoch 3 (closed):",
+      "✅ Wallet: AAAA…AAAA, signed",
+      "Current link: BBBB…BBBB, signed",
+    ]);
+    expect(sent?.text).not.toContain("Stal");
   });
 
   it("without a reward epoch, keeps the wallet lines", async () => {

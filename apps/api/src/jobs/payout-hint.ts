@@ -7,17 +7,34 @@ import {
   rewardEpochSnapshots,
   rewardIntakes,
 } from "@hyphae/db";
-import { and, eq, isNotNull, ne } from "drizzle-orm";
+import { and, eq, isNotNull, ne, sql } from "drizzle-orm";
 import { epochPayouts } from "../payout/readiness.js";
+
+// Score messages of one member in one epoch go out one at a time, from the hint's read to the
+// send's mark, so each sees whether another was sent and the hint rides on one of them only. The
+// lock lasts until the caller's transaction ends; that transaction stays read committed, so its
+// reads after the wait see the mark.
+export async function lockScoreMessages(tx: Db, decisionId: string): Promise<void> {
+  const [owner] = await tx
+    .select({ memberId: rewardIntakes.memberId, epochId: rewardDecisions.epochId })
+    .from(rewardDecisions)
+    .innerJoin(rewardIntakes, eq(rewardIntakes.contributionId, rewardDecisions.contributionId))
+    .where(eq(rewardDecisions.id, decisionId));
+  if (!owner) throw new Error(`reward: decision ${decisionId} missing`);
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtext(${`score-hint:${owner.memberId}:${owner.epochId}`}))`,
+  );
+}
 
 // The payout status to show under a decision's score message: only while its epoch is open and
 // pays, and only on the member's first scored message of that epoch, so no one is told twice. A
-// message is first until another of the member's messages in the epoch has been sent.
+// message is first until another of the member's messages in the epoch has been sent. closesAt:
+// after it, the status's instruction no longer applies.
 export async function scoreHint(
   db: Db,
   decisionId: string,
   now: Date,
-): Promise<PayoutVerdictV1 | null> {
+): Promise<{ payout: PayoutVerdictV1; closesAt: Date } | null> {
   const [found] = await db
     .select({
       affectsAllocation: rewardDecisions.affectsAllocation,
@@ -61,5 +78,5 @@ export async function scoreHint(
     memberIds: [memberId],
   });
   const payout = members.get(memberId);
-  return payout && "reasons" in payout ? payout : null;
+  return payout && "reasons" in payout ? { payout, closesAt: epoch.closesAt } : null;
 }
