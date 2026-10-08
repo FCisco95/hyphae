@@ -58,6 +58,9 @@ const WALLET_INDEX_SHAPE = {
   table: "member_wallet_links",
   method: "btree",
   columns: "wallet",
+  attributes: 1,
+  key_attributes: 1,
+  expressions: false,
   unique: false,
   partial: false,
   valid: true,
@@ -284,6 +287,8 @@ async function readShape(client) {
         await client.query(
           `select t.relname as table, am.amname as method,
                   ${columnList("x.indkey", "x.indrelid")} as columns,
+                  x.indnatts as attributes, x.indnkeyatts as key_attributes,
+                  x.indexprs is not null as expressions,
                   x.indisunique as unique, x.indpred is not null as partial, x.indisvalid as valid
              from pg_index x join pg_class c on c.oid = x.indexrelid
              join pg_class t on t.oid = x.indrelid join pg_am am on am.oid = c.relam
@@ -336,11 +341,13 @@ async function readShape(client) {
   };
 }
 
-// The key columns of an index or constraint, by name and in key order.
+// The columns of an index or constraint, by name and in key order. An expression key has
+// attribute number 0 and no pg_attribute row, so it is named "(expression)", not dropped.
 const columnList = (keys, rel) =>
-  `(select string_agg(col_att.attname, ',' order by col_key.ord)
+  `(select string_agg(coalesce(col_att.attname, '(expression)'), ',' order by col_key.ord)
       from unnest(${keys}) with ordinality as col_key(attnum, ord)
-      join pg_attribute col_att on col_att.attrelid = ${rel} and col_att.attnum = col_key.attnum)`;
+      left join pg_attribute col_att
+        on col_att.attrelid = ${rel} and col_att.attnum = col_key.attnum)`;
 
 // Before: 0015 and 0017 applied, 0019's enum present, nothing of 0018 or 0019. After: exactly
 // 0018's index and 0019's table as well.
@@ -444,6 +451,19 @@ async function publicReads(target) {
 
 const ms = (v) => new Date(v).getTime();
 
+// The read API derives an epoch's status from its snapshot, so a published epoch reads as closed.
+const publicStatus = (e) => (e.status === "open" ? "open" : "closed");
+
+// Where a public epoch, from the community list or a detail read, differs from its database row.
+function epochDifferences(de, pe) {
+  const differs = [];
+  if (pe?.index !== de.index) differs.push("index");
+  if (ms(pe?.opens_at) !== ms(de.opens_at)) differs.push("opens_at");
+  if (ms(pe?.closes_at) !== ms(de.closes_at)) differs.push("closes_at");
+  if (pe?.status !== publicStatus(de)) differs.push("status");
+  return differs;
+}
+
 function checkState(s, live, journalExpected, phase) {
   const problems = [];
   const fail = (msg) => problems.push(msg);
@@ -494,25 +514,25 @@ function checkState(s, live, journalExpected, phase) {
   if (live.community.name !== lab?.name) fail("public name differs");
   const intake = lab?.reward_intake_paused_at === null ? "open" : "paused";
   if (live.community.reward_intake !== intake) fail("public intake state differs");
-  // The API calls an epoch with a snapshot closed, published or not.
-  const publicStatus = (e) => (e.status === "open" ? "open" : "closed");
   for (const pe of live.community.epochs) {
     const de = s.epochs.find((e) => e.index === pe.index);
-    if (
-      !de ||
-      publicStatus(de) !== pe.status ||
-      ms(de.opens_at) !== ms(pe.opens_at) ||
-      ms(de.closes_at) !== ms(pe.closes_at)
-    )
-      fail(`public epoch ${pe.index} differs`);
+    const differs = de ? epochDifferences(de, pe) : ["not in the database"];
+    if (differs.length) fail(`public epoch ${pe.index} differs: ${differs.join(", ")}`);
   }
   if (live.community.epochs.length !== s.epochs.length) fail("public epoch count differs");
-  if (live.epoch2?.index !== 2 || live.epoch2.closed !== true) fail("public epoch 2 is not closed");
-  if (live.epoch2?.config?.id !== e2?.reward_config_id)
-    fail("public epoch 2 reward config differs");
-  if (live.epoch3?.index !== 3 || live.epoch3.status !== "open") fail("public epoch 3 is not open");
-  if (live.epoch3?.config?.id !== e3?.reward_config_id)
-    fail("public epoch 3 reward config differs");
+  // Each detail read against its database epoch. The API's `closed` is its clock past closes_at
+  // and `final` is the snapshot: an epoch it shows as open has neither, a closed one has both.
+  for (const [de, pe] of [
+    [e2, live.epoch2],
+    [e3, live.epoch3],
+  ]) {
+    if (!de) continue; // its database state has already failed above
+    const differs = epochDifferences(de, pe);
+    if (pe?.closed !== (publicStatus(de) === "closed")) differs.push("closed");
+    if (pe?.final !== de.snapshots > 0) differs.push("final");
+    if (pe?.config?.id !== de.reward_config_id) differs.push("reward config");
+    if (differs.length) fail(`public epoch ${de.index} detail differs: ${differs.join(", ")}`);
+  }
   // The API shows a publication only from the stored publish_tx, after verifying it on chain. A
   // stored one it shows as unavailable can be a failed chain read, so only this direction fails.
   const allocation = live.epoch2?.settlement?.allocation;
