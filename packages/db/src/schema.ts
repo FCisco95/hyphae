@@ -175,6 +175,7 @@ export const raidDeliveries = pgTable(
 
 // One group recap per ended raid (closed, or its window over; never cancelled). The claim is
 // committed before the send, so a row left in "sending" may have been posted and is never retried.
+// A Telegram 429 is retried once: the retry's claim sets retry_used, and a second 429 is final.
 export const raidRecaps = pgTable("raid_recaps", {
   taskId: uuid("task_id")
     .primaryKey()
@@ -184,6 +185,7 @@ export const raidRecaps = pgTable("raid_recaps", {
     .references(() => communities.id),
   status: raidDeliveryStatus("status").notNull(),
   nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull(),
+  retryUsed: boolean("retry_used").notNull().default(false),
   attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull(),
   sentAt: timestamp("sent_at", { withTimezone: true }),
   telegramMessageId: integer("telegram_message_id"),

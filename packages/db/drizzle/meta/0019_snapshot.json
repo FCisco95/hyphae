@@ -1,5 +1,5 @@
 {
-  "id": "699ef4cc-853c-42ab-96df-0f86bfd31246",
+  "id": "ef9e56fd-b140-4fd8-9f0c-dbee0a9acb68",
   "prevId": "e68468a4-b962-4285-ab70-09eddfacfa38",
   "version": "7",
   "dialect": "postgresql",
@@ -1627,6 +1627,13 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
+        },
+        "retry_used": {
+          "name": "retry_used",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "attempted_at": {
           "name": "attempted_at",
