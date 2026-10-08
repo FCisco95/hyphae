@@ -200,7 +200,10 @@ async function botUsername(): Promise<string | null> {
   const deadline = new AbortController();
   const timer = setTimeout(() => deadline.abort(), USERNAME_DEADLINE_MS);
   try {
-    await telegramCall(bot.token, () => bot.init(deadline.signal));
+    await telegramCall(bot.token, () =>
+      // grammY types a polyfill signal; installed node-fetch also accepts the native Node signal.
+      bot.init(deadline.signal as unknown as Parameters<typeof bot.init>[0]),
+    );
     return bot.botInfo.username;
   } catch (err) {
     // telegramCall's error names no token.
