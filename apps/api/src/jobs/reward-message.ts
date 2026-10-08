@@ -1,4 +1,4 @@
-import { POINT_UNITS_PER_POINT } from "@hyphae/core";
+import { type PayoutV1, POINT_UNITS_PER_POINT } from "@hyphae/core";
 
 export type RewardOutcome =
   | {
@@ -50,4 +50,14 @@ export function rewardMessage(outcome: RewardOutcome, url: string): string {
   ]
     .filter((line): line is string => line !== null)
     .join("\n");
+}
+
+// One line under a scored reply whose member cannot be paid yet, naming the steps a link fixes.
+export function payoutHintLine(p: PayoutV1): string | null {
+  if (!("reasons" in p) || p.status !== "not_payable") return null;
+  const steps = [
+    ...(p.reasons.includes("no_verified_wallet") ? ["link a wallet by signing"] : []),
+    ...(p.reasons.includes("no_rules_test") ? ["pass the rules test"] : []),
+  ];
+  return steps.length ? `Not payable yet: ${steps.join(" and ")} before the epoch closes.` : null;
 }

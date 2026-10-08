@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPoints, rewardMessage } from "./reward-message.js";
+import { formatPoints, payoutHintLine, rewardMessage } from "./reward-message.js";
 
 const decision = {
   rawQuality: 85,
@@ -51,5 +51,30 @@ describe("rewardMessage", () => {
       rewardMessage({ status: "pending_evidence", reason: "media_not_captured" }, "u"),
     ).toContain("media_not_captured");
     expect(rewardMessage({ status: "pending_reconciliation" }, "u")).toMatch(/not be sent again/);
+  });
+});
+
+describe("payoutHintLine", () => {
+  const notYet = (reasons: string[]) =>
+    payoutHintLine({ status: "not_payable", reasons: reasons as never[], hold: "at_close" });
+
+  it("names what is missing to be paid, before the close", () => {
+    expect(notYet(["no_verified_wallet"])).toBe(
+      "Not payable yet: link a wallet by signing before the epoch closes.",
+    );
+    expect(notYet(["no_rules_test"])).toBe(
+      "Not payable yet: pass the rules test before the epoch closes.",
+    );
+    expect(notYet(["no_points", "no_verified_wallet", "no_rules_test"])).toBe(
+      "Not payable yet: link a wallet by signing and pass the rules test before the epoch closes.",
+    );
+  });
+
+  it("adds nothing a link cannot fix, and nothing for a member already set", () => {
+    expect(notYet(["no_points"])).toBeNull();
+    expect(
+      payoutHintLine({ status: "held", reasons: ["hold_pending"], hold: "at_close" }),
+    ).toBeNull();
+    expect(payoutHintLine({ status: "unpaid_epoch" })).toBeNull();
   });
 });
