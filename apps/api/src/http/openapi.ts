@@ -114,7 +114,7 @@ export function openApiDocument() {
       ),
       "/v1/communities/{mint}/epochs/{index}/contributions": get(
         "An epoch's contributions",
-        "Audit rows in intake order, each with its selected judgement.",
+        "Audit rows in intake order, each with its selected judgement and its member's payout status: what the payout gate would decide as of the read (the hold is read only after the close).",
         "Contributions",
         [
           mint,
@@ -126,7 +126,7 @@ export function openApiDocument() {
       ),
       "/v1/communities/{mint}/leaderboard": get(
         "An epoch's leaderboard",
-        "Members ranked by point units; ties share a rank.",
+        "Members ranked by point units; ties share a rank. Each with its payout status.",
         "Leaderboard",
         [
           mint,
@@ -137,7 +137,7 @@ export function openApiDocument() {
       ),
       "/v1/contributions/{id}": get(
         "A contribution",
-        "One contribution with every judgement revision, correction and provenance.",
+        "One contribution with every judgement revision, correction and provenance, and its member's payout status.",
         "Contribution",
         [path("id", "The contribution id.", { type: "string", format: "uuid" })],
         "No such served contribution.",

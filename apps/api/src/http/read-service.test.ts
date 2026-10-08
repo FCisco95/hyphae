@@ -1,16 +1,25 @@
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { promptTemplateHash, ReadApiV1 } from "@hyphae/core";
-import { epochs, members, schema } from "@hyphae/db";
+import {
+  communities,
+  type Db,
+  epochs,
+  holdChecks,
+  members,
+  rulesTestPasses,
+  schema,
+} from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { amendEpochPrompt } from "../rewards/amendment.js";
+import { closeEpoch } from "../rewards/close.js";
 import { buildRewardConfigPayload } from "../rewards/config.js";
 import { beginDispatch, completeDispatch, runEvaluation } from "../rewards/evaluation.js";
-import { createTestDb, later, rubric, seedRewardLane, T0 } from "../rewards/test-db.js";
-import { type AuditDemo, seedAuditDemo } from "./demo-seed.js";
+import { at, createTestDb, later, rubric, seedRewardLane, T0 } from "../rewards/test-db.js";
+import { type AuditDemo, fakeModel, seedAuditDemo, seedSignedLink } from "./demo-seed.js";
 import {
   readCommunity,
   readContribution,
@@ -412,6 +421,155 @@ describe("readContribution", () => {
   });
 });
 
+// A paid epoch 1 under the MYCEL rubric: `ready` signed a wallet and passed the rules test,
+// `unlinked` has only a pasted wallet and no pass. Both have 85-point replies.
+async function seedPaidLane(db: Db) {
+  const lane = await seedRewardLane(db);
+  const communityId = lane.community.id;
+  await db.update(communities).set({ firstPaidEpoch: 1 }).where(eq(communities.id, communityId));
+  const [epoch] = await db
+    .select()
+    .from(epochs)
+    .where(and(eq(epochs.communityId, communityId), eq(epochs.index, 1)));
+  if (!epoch) throw new Error("no epoch 1");
+  const wallet = `ReadyWallet${communityId.slice(0, 8)}`;
+  const [ready] = await db
+    .insert(members)
+    .values({ communityId, telegramUserId: 77n, wallet, linkMethod: "signature" })
+    .returning();
+  if (!ready) throw new Error("seed: member");
+  await seedSignedLink(db, {
+    communityId,
+    memberId: ready.id,
+    telegramUserId: 77n,
+    wallet,
+    tokenDigest: `paid-${communityId}`,
+    linkedAt: T0,
+  });
+  await db.insert(rulesTestPasses).values({
+    communityId,
+    memberId: ready.id,
+    testId: "mycel-rules-1",
+    passedAt: new Date(T0.getTime() + 60_000),
+  });
+  const contributions: Record<"ready" | "unlinked", string> = { ready: "", unlinked: "" };
+  for (const [label, memberId] of [
+    ["ready", ready.id],
+    ["unlinked", lane.member.id],
+  ] as const) {
+    const intake = await lane.admitOne(undefined, memberId);
+    await runEvaluation(
+      db,
+      { communityId, target: { contributionId: intake.contributionId } },
+      { model: "test:fake", call: fakeModel(85), horizonMs: 300_000, clock: later(120_000) },
+    );
+    contributions[label] = intake.contributionId;
+  }
+  return {
+    communityId,
+    mint: lane.community.mint,
+    epoch,
+    members: { ready: ready.id, unlinked: lane.member.id },
+    wallet,
+    contributions,
+  };
+}
+
+describe("payout status", () => {
+  const page = { offset: 0, limit: 50 };
+
+  // Every read names the same status for a member: rows, leaderboard entries, the contribution.
+  const statusesAt = async (lane: Awaited<ReturnType<typeof seedPaidLane>>, now: Date) => {
+    const list = strict(
+      ReadApiV1.contributions,
+      await readContributions(t.db, lane.mint, 1, page, now),
+    );
+    const board = strict(
+      ReadApiV1.leaderboard,
+      await readLeaderboard(t.db, lane.mint, 1, page, now),
+    );
+    const out: Record<string, unknown> = {};
+    for (const label of ["ready", "unlinked"] as const) {
+      const memberId = lane.members[label];
+      const one = strict(
+        ReadApiV1.contribution,
+        await readContribution(t.db, lane.contributions[label], now),
+      );
+      const row = list.contributions.find((r) => r.member_id === memberId);
+      const entry = board.entries.find((e) => e.member_id === memberId);
+      expect(row?.payout).toEqual(one.payout);
+      expect(entry?.payout).toEqual(one.payout);
+      out[label] = one.payout;
+    }
+    return out;
+  };
+
+  it("an open paid epoch: what each member still needs, with the hold left to the close", async () => {
+    const lane = await seedPaidLane(t.db);
+    expect(await statusesAt(lane, new Date(T0.getTime() + 3_600_000))).toEqual({
+      ready: { status: "held", reasons: ["hold_pending"], hold: "at_close" },
+      unlinked: {
+        status: "not_payable",
+        reasons: ["no_verified_wallet", "no_rules_test"],
+        hold: "at_close",
+      },
+    });
+  });
+
+  it("after the close: the hold check, then its result, and the settlement once published", async () => {
+    const lane = await seedPaidLane(t.db);
+    const after = new Date(lane.epoch.closesAt.getTime() + 60_000);
+    const closing = {
+      ready: { status: "held", reasons: ["hold_pending"], hold: "pending" },
+      unlinked: {
+        status: "not_payable",
+        reasons: ["no_verified_wallet", "no_rules_test"],
+        hold: "not_checked",
+      },
+    };
+    expect(await statusesAt(lane, after)).toEqual(closing);
+    await closeEpoch(
+      t.db,
+      { communityId: lane.communityId, epochId: lane.epoch.id },
+      { clock: at(after) },
+    );
+    expect(await statusesAt(lane, after)).toEqual(closing);
+    await t.db.insert(holdChecks).values({
+      communityId: lane.communityId,
+      epochId: lane.epoch.id,
+      memberId: lane.members.ready,
+      wallet: lane.wallet,
+      mint: lane.mint,
+      thresholdRaw: rubric.minHoldUnits,
+      checkRound: "11111111-1111-4111-8111-111111111111",
+      status: "holder",
+      attempts: 1,
+      rawAmount: "150000000000",
+      decimals: 6,
+      provider: "consensus",
+      slot: "321",
+      observedAt: new Date(after.getTime() + 60_000),
+    });
+    expect(await statusesAt(lane, after)).toEqual({
+      ...closing,
+      ready: { status: "payable", reasons: [], hold: "holder" },
+    });
+    await t.db.update(epochs).set({ status: "published" }).where(eq(epochs.id, lane.epoch.id));
+    expect(await statusesAt(lane, after)).toEqual({
+      ready: { status: "published" },
+      unlinked: { status: "published" },
+    });
+  });
+
+  it("an epoch of a community with no paid epoch pays no one", async () => {
+    const rows = strict(
+      ReadApiV1.contributions,
+      await readContributions(t.db, demo.mint, 2, page, NOW),
+    ).contributions;
+    expect(rows.map((r) => r.payout)).toEqual(rows.map(() => ({ status: "unpaid_epoch" })));
+  });
+});
+
 describe("public reads and the community lock", () => {
   // Migrates a fresh database inside the test, so it gets the 0008 backfill test's timeout.
   it("never lock a row", async () => {
@@ -425,7 +583,10 @@ describe("public reads and the community lock", () => {
       migrationsFolder: fileURLToPath(new URL("../../../../packages/db/drizzle", import.meta.url)),
     });
     const d = await seedAuditDemo(db, NOW);
+    const paid = await seedPaidLane(db);
     queries.length = 0;
+    await readContributions(db, paid.mint, 1, { offset: 0, limit: 50 }, T0);
+    await readLeaderboard(db, paid.mint, 1, { offset: 0, limit: 50 }, T0);
     await readCommunity(db, d.mint, NOW);
     await readEpoch(db, d.mint, 2, NOW);
     await readContributions(db, d.mint, 2, { offset: 0, limit: 50 }, NOW);

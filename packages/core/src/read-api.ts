@@ -173,6 +173,48 @@ function readApiSchemas(strict: boolean) {
     corrected: z.boolean(),
   });
 
+  // The payout gate's verdict on a member (P9, P16) as of `as_of`, added inside v1 (A4). Before the
+  // close it is the verdict on today's points, signed wallet and rules test, and the hold, read only
+  // after the close, is `at_close`. unpaid_epoch: the epoch pays no one (before the community's
+  // first paid epoch, or no rules test covers its rubric). published: the settlement is the record.
+  const reasons = [
+    "no_points",
+    "no_verified_wallet",
+    "no_rules_test",
+    "below_hold",
+    "hold_pending",
+  ] as const;
+  const verdict = obj({
+    status: z.enum(["payable", "held", "not_payable"]),
+    // Each at most once, in the gate's order.
+    reasons: z.array(z.enum(reasons)),
+    hold: z.enum(["at_close", "pending", "holder", "below", "not_checked", "not_required"]),
+  }).refine((p) => {
+    const has = (r: (typeof reasons)[number]) => p.reasons.includes(r);
+    const order = p.reasons.map((r) => reasons.indexOf(r));
+    return (
+      order.every((o, i) => i === 0 || o > (order[i - 1] ?? -1)) &&
+      // The gate reads the hold only for a member who meets every other condition.
+      (!(has("below_hold") || has("hold_pending")) || p.reasons.length === 1) &&
+      (p.status === "payable") === (p.reasons.length === 0) &&
+      (p.status === "held") === has("hold_pending") &&
+      has("below_hold") === (p.hold === "below") &&
+      (p.hold !== "pending" || has("hold_pending")) &&
+      (!has("hold_pending") || p.hold === "pending" || p.hold === "at_close") &&
+      (p.status !== "payable" || p.hold === "holder" || p.hold === "not_required") &&
+      (p.hold !== "holder" || p.status === "payable")
+    );
+  });
+  const payout = z.union([obj({ status: z.enum(["unpaid_epoch", "published"]) }), verdict]);
+  // Nothing about the hold is decided before the close, and nothing is published before it.
+  const payoutTimeRule = (closed: boolean, p: z.infer<typeof payout> | undefined) =>
+    p === undefined ||
+    (closed
+      ? !("hold" in p) || p.hold !== "at_close"
+      : "hold" in p
+        ? p.hold === "at_close" || p.hold === "not_required"
+        : p.status === "unpaid_epoch");
+
   const rowShape = {
     id: uuid,
     epoch: obj({ index: count, closes_at: iso, closed: z.boolean(), final: z.boolean() }),
@@ -184,9 +226,18 @@ function readApiSchemas(strict: boolean) {
     accepted_at: iso,
     state,
     selected: selected.nullable(),
+    // Required of this api; optional for a consumer reading an older one.
+    payout: payout.optional(),
   };
-  const rowRule = (o: { state: string; selected: unknown }) =>
-    (o.state === "counted") === (o.selected !== null);
+  const rowRule = (o: {
+    state: string;
+    selected: unknown;
+    epoch: { closed: boolean };
+    payout?: z.infer<typeof payout> | undefined;
+  }) =>
+    (o.state === "counted") === (o.selected !== null) &&
+    payoutTimeRule(o.epoch.closed, o.payout) &&
+    (!strict || o.payout !== undefined);
   const row = obj(rowShape).refine(walletRule).refine(rowRule);
 
   const criterion = obj({ met: z.boolean(), note: z.string() });
@@ -340,9 +391,13 @@ function readApiSchemas(strict: boolean) {
           contributions: count,
           counted: count,
           pending: count,
-        }).refine(walletRule),
+          // Required of this api; optional for a consumer reading an older one.
+          payout: payout.optional(),
+        })
+          .refine(walletRule)
+          .refine((e) => !strict || e.payout !== undefined),
       ),
-    }),
+    }).refine((b) => b.entries.every((e) => payoutTimeRule(b.closed, e.payout))),
     contribution: obj({
       ...rowShape,
       community: obj({ mint: z.string().min(1) }),
@@ -416,5 +471,7 @@ export type WalletClaimV1 = WalletClaimsV1["claims"][number];
 export type SettlementV1 = NonNullable<EpochV1["settlement"]>;
 export type AllocationV1 = SettlementV1["allocation"];
 export type PaymentV1 = SettlementV1["payment"];
+export type PayoutV1 = NonNullable<ContributionRowV1["payout"]>;
+export type PayoutVerdictV1 = Extract<PayoutV1, { reasons: unknown }>;
 // What a consumer parses: fields added later inside v1 may be absent from an older api.
 export type LooseEpochV1 = z.infer<typeof ReadApiV1Loose.epoch>;

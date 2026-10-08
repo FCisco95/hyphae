@@ -32,6 +32,7 @@ const row = {
   accepted_at: ts,
   state: "counted",
   selected,
+  payout: { status: "not_payable", reasons: ["no_rules_test"], hold: "at_close" },
 };
 
 const revision = {
@@ -144,6 +145,11 @@ const leaderboard = {
       contributions: 1,
       counted: 1,
       pending: 0,
+      payout: {
+        status: "not_payable",
+        reasons: ["no_verified_wallet", "no_rules_test"],
+        hold: "at_close",
+      },
     },
   ],
 };
@@ -465,6 +471,119 @@ describe("pilot amendments", () => {
     const { amendment: _, ...before } = contribution;
     expect(ok(ReadApiV1.contribution, before)).toBe(false);
     expect(ok(ReadApiV1Loose.contribution, before)).toBe(true);
+  });
+});
+
+describe("payout status", () => {
+  type Payout = { status: string; reasons?: string[]; hold?: string };
+  const v = (status: string, reasons: string[], hold: string): Payout => ({
+    status,
+    reasons,
+    hold,
+  });
+  const rowAt = (closed: boolean, payout: Payout) => ({
+    ...row,
+    epoch: { ...row.epoch, closed },
+    payout,
+  });
+  const listOf = (closed: boolean, payout: Payout) => ({
+    ...contributions,
+    contributions: [rowAt(closed, payout)],
+  });
+  const entry = leaderboard.entries[0];
+  const boardOf = (closed: boolean, payout: Payout) => ({
+    ...leaderboard,
+    closed,
+    entries: [{ ...entry, payout }],
+  });
+  const accepted = (closed: boolean, payout: Payout) =>
+    ok(ReadApiV1.contributions, listOf(closed, payout)) &&
+    ok(ReadApiV1.contribution, { ...contribution, ...rowAt(closed, payout) }) &&
+    ok(ReadApiV1.leaderboard, boardOf(closed, payout));
+  const refused = (closed: boolean, payout: Payout) =>
+    !ok(ReadApiV1.contributions, listOf(closed, payout)) &&
+    !ok(ReadApiV1.contribution, { ...contribution, ...rowAt(closed, payout) }) &&
+    !ok(ReadApiV1.leaderboard, boardOf(closed, payout));
+
+  it("is required of this api on rows, contributions and leaderboard entries, and optional for a consumer", () => {
+    const { payout: _r, ...bareRow } = row;
+    const { payout: _e, ...bareEntry } = entry ?? { payout: null };
+    const bare = {
+      list: { ...contributions, contributions: [bareRow] },
+      one: { ...contribution, payout: undefined },
+      board: { ...leaderboard, entries: [bareEntry] },
+    };
+    expect(ok(ReadApiV1.contributions, bare.list)).toBe(false);
+    expect(ok(ReadApiV1.contribution, bare.one)).toBe(false);
+    expect(ok(ReadApiV1.leaderboard, bare.board)).toBe(false);
+    expect(ok(ReadApiV1Loose.contributions, bare.list)).toBe(true);
+    expect(ok(ReadApiV1Loose.contribution, bare.one)).toBe(true);
+    expect(ok(ReadApiV1Loose.leaderboard, bare.board)).toBe(true);
+  });
+
+  it("before the close: every verdict the gate can reach, with the hold only ever checked at the close", () => {
+    for (const p of [
+      v("held", ["hold_pending"], "at_close"),
+      v("payable", [], "not_required"),
+      v("not_payable", ["no_points"], "at_close"),
+      v("not_payable", ["no_verified_wallet"], "at_close"),
+      v("not_payable", ["no_rules_test"], "at_close"),
+      v("not_payable", ["no_verified_wallet", "no_rules_test"], "at_close"),
+      v("not_payable", ["no_points", "no_verified_wallet", "no_rules_test"], "at_close"),
+      v("not_payable", ["no_verified_wallet"], "not_required"),
+      { status: "unpaid_epoch" },
+    ]) {
+      expect(accepted(false, p), JSON.stringify(p)).toBe(true);
+    }
+  });
+
+  it("before the close: refuses a hold result, a pass, or a payable verdict that needs one", () => {
+    for (const p of [
+      v("payable", [], "holder"),
+      v("payable", [], "at_close"),
+      v("not_payable", ["below_hold"], "below"),
+      v("held", ["hold_pending"], "pending"),
+      v("not_payable", ["no_rules_test"], "not_checked"),
+      { status: "published" },
+    ]) {
+      expect(refused(false, p), JSON.stringify(p)).toBe(true);
+    }
+  });
+
+  it("after the close: the decided hold result, a pending check, or no check for a member who misses another condition", () => {
+    for (const p of [
+      v("payable", [], "holder"),
+      v("payable", [], "not_required"),
+      v("held", ["hold_pending"], "pending"),
+      v("not_payable", ["below_hold"], "below"),
+      v("not_payable", ["no_verified_wallet"], "not_checked"),
+      v("not_payable", ["no_points", "no_rules_test"], "not_checked"),
+      v("not_payable", ["no_rules_test"], "not_required"),
+      { status: "unpaid_epoch" },
+      { status: "published" },
+    ]) {
+      expect(accepted(true, p), JSON.stringify(p)).toBe(true);
+    }
+  });
+
+  it("refuses a verdict whose status, reasons and hold disagree", () => {
+    for (const p of [
+      v("payable", ["no_rules_test"], "not_checked"),
+      v("not_payable", [], "holder"),
+      v("held", ["hold_pending", "no_rules_test"], "pending"),
+      v("not_payable", ["hold_pending"], "pending"),
+      v("not_payable", ["below_hold"], "holder"),
+      v("payable", [], "below"),
+      v("not_payable", ["no_verified_wallet"], "holder"),
+      v("not_payable", ["no_verified_wallet"], "pending"),
+      v("not_payable", ["no_verified_wallet"], "at_close"),
+      v("held", ["hold_pending"], "not_required"),
+      v("not_payable", ["no_verified_wallet", "no_verified_wallet"], "not_checked"),
+      v("not_payable", ["telegram_user"], "not_checked"),
+      { status: "unpaid_epoch", reasons: [], hold: "at_close" },
+    ]) {
+      expect(refused(true, p), JSON.stringify(p)).toBe(true);
+    }
   });
 });
 
