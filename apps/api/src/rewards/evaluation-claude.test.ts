@@ -2,6 +2,7 @@ import { canonicalJson, sha256Hex } from "@hyphae/core";
 import { rewardDecisions, rewardDispatches } from "@hyphae/db";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { claudeTransport } from "../scoring/claude-client.js";
 import { CLAUDE_MODEL } from "../scoring/claude-questions.js";
 import { CLAUDE_REGISTRY } from "../scoring/claude-registry.js";
 import { QUESTIONS_V4 } from "../scoring/jev-questions.js";
@@ -168,6 +169,49 @@ describe("an epoch pinned to reward-eval/3", () => {
         reason: "operator: provider dashboard shows no request",
       }),
     ).rejects.toThrow(/a response is on record/);
+  });
+
+  it("parks a call whose response body outlives the deadline, and never calls again", async () => {
+    const l = await lane();
+    const intake = await l.admitOne();
+    let requests = 0;
+    // Headers at once, the answer only after the deadline. As fetch does, an abort ends the body.
+    const fetch = async (_url: string | URL | Request, init?: RequestInit) => {
+      requests += 1;
+      const signal = init?.signal;
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const late = setTimeout(() => {
+            controller.enqueue(new TextEncoder().encode(JSON.stringify(message(answers([])))));
+            controller.close();
+          }, 1_000);
+          signal?.addEventListener(
+            "abort",
+            () => {
+              clearTimeout(late);
+              controller.error(signal.reason);
+            },
+            { once: true },
+          );
+        },
+      });
+      return new Response(body, { headers: { "content-type": "application/json" } });
+    };
+    const transport = claudeTransport({ apiKey: "sk-ant-test", fetch, timeoutMs: 40 });
+    const run = () =>
+      runEvaluation(
+        t.db,
+        { communityId: l.community.id, target: { contributionId: intake.contributionId } },
+        deps(transport),
+      );
+
+    expect(await run()).toEqual({ status: "pending_reconciliation" });
+    expect(await run()).toEqual({ status: "pending_reconciliation" });
+    expect(requests).toBe(1);
+    const [d] = await dispatchesOf(intake.contributionId);
+    expect(d).toMatchObject({ state: "pending_reconciliation", output: null });
+    expect(d?.error).toContain("claude: no complete response within 40 ms");
+    expect(await decisionsOf(intake.contributionId)).toHaveLength(0);
   });
 
   it("parks a response with an answer missing, never retrying it", async () => {
