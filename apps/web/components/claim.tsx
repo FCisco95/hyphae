@@ -1,5 +1,6 @@
 import type { ClaimV1, LooseEpochV1 } from "@hyphae/core";
 import { networkName, shortWallet, sol } from "../lib/format.js";
+import { SITE } from "../lib/links.js";
 import { walletPath } from "../lib/record.js";
 import { settlementOf } from "../lib/settlement.js";
 import { ClaimPanel } from "./claim-panel.js";
@@ -55,6 +56,23 @@ export function ClaimSummary({ claim }: { claim: ClaimV1 }) {
   );
 }
 
+// A published epoch's claim page, shared on X. A blink-aware client shows it as the claim itself
+// (actions.json maps it to the epoch's claim Action); anywhere else it opens this page.
+export function ShareClaim({ epoch }: { epoch: LooseEpochV1 }) {
+  if (settlementOf(epoch).allocation.status !== "published") return null;
+  const page = `${SITE}/c/${epoch.community.mint}/e/${epoch.index}/claim`;
+  return (
+    <p>
+      <a
+        href={`https://x.com/intent/tweet?url=${encodeURIComponent(page)}`}
+        rel="noopener noreferrer"
+      >
+        Share claim link on X
+      </a>
+    </p>
+  );
+}
+
 export function ClaimView({ epoch }: { epoch: LooseEpochV1 }) {
   const a = settlementOf(epoch).allocation;
   const epochPage = `/c/${epoch.community.mint}/e/${epoch.index}`;
@@ -75,7 +93,10 @@ export function ClaimView({ epoch }: { epoch: LooseEpochV1 }) {
         )}
       </header>
       {a.status === "published" ? (
-        <ClaimPanel mint={epoch.community.mint} index={epoch.index} />
+        <>
+          <ClaimPanel mint={epoch.community.mint} index={epoch.index} />
+          <ShareClaim epoch={epoch} />
+        </>
       ) : (
         <p className="banner">{unavailableSentence(a.reason)}</p>
       )}
