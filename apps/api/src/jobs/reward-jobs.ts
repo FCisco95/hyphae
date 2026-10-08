@@ -1,10 +1,13 @@
 import { communities, contributions, rewardNominations } from "@hyphae/db";
 import { eq } from "drizzle-orm";
+import { InlineKeyboard } from "grammy";
+import { stepButton } from "../bot/commands/payout-step.js";
 import { telegramCall } from "../bot/errors.js";
 import { bot } from "../bot/index.js";
 import { db } from "../db.js";
 import { env } from "../env.js";
 import { dueHoldChecks, holdCheckerFromEnv, runHoldChecks } from "../payout/hold-gate.js";
+import { nextStep } from "../payout/readiness.js";
 import { closeEpoch, dueCloses } from "../rewards/close.js";
 import { type EvaluationTarget, type RunResult, runEvaluation } from "../rewards/evaluation.js";
 import { decisionNotified, markNotified, strandedWork } from "../rewards/recovery.js";
@@ -14,8 +17,9 @@ import { jevDepsFromEnv } from "../scoring/jev-config.js";
 import { JEV_REGISTRY } from "../scoring/jev-registry.js";
 import { callRewardModel, REWARD_CALL_TIMEOUT_MS } from "../scoring/run.js";
 import { captureLimitations, fetchPost } from "../x/oembed.js";
+import { scoreHint } from "./payout-hint.js";
 import { boss, QUEUES } from "./queue.js";
-import { type RewardOutcome, rewardMessage } from "./reward-message.js";
+import { payoutHintLine, type RewardOutcome, rewardMessage } from "./reward-message.js";
 
 export interface RewardEvaluationJob {
   communityId: string;
@@ -183,6 +187,28 @@ export async function checkEpochHolds(job: HoldCheckJob): Promise<void> {
   console.log(JSON.stringify({ job: "hold-check", ...job, ...result }));
 }
 
+// The worker handles no updates, so it asks Telegram for the bot's username once.
+async function botUsername(): Promise<string> {
+  if (!bot.isInited()) await telegramCall(bot.token, () => bot.init());
+  return bot.botInfo.username;
+}
+
+// What a member still needs to be paid, under their first scored message of the epoch. It is
+// read when the message is sent, so a queued or recovered message carries the current status.
+async function payoutHint(job: RewardNotifyJob) {
+  if (!job.decisionId) return null;
+  const payout = await scoreHint(db, job.decisionId, new Date()).catch((err: unknown) => {
+    // The score is the message; a status that cannot be read is left out, not waited for.
+    console.error("reward: payout hint failed", { decisionId: job.decisionId, err });
+    return null;
+  });
+  const line = payout && payoutHintLine(payout);
+  const step = line ? nextStep(payout) : null;
+  return line && step
+    ? { line, button: stepButton(step, await botUsername(), job.communityId) }
+    : null;
+}
+
 // At least once: a crash between Telegram's accept and the mark sends the message again.
 export async function notifyReward(job: RewardNotifyJob): Promise<void> {
   if (job.decisionId && (await decisionNotified(db, job.decisionId))) return;
@@ -195,10 +221,14 @@ export async function notifyReward(job: RewardNotifyJob): Promise<void> {
     .innerJoin(communities, eq(communities.id, contributions.communityId))
     .where(eq(contributions.id, job.contributionId));
   if (!row) throw new Error(`reward: contribution ${job.contributionId} missing`);
+  const hint = await payoutHint(job);
   await telegramCall(bot.token, () =>
-    bot.api.sendMessage(Number(row.chatId), job.text, {
+    bot.api.sendMessage(Number(row.chatId), hint ? `${job.text}\n${hint.line}` : job.text, {
       reply_parameters: { message_id: row.messageId, allow_sending_without_reply: true },
       link_preview_options: { is_disabled: true },
+      ...(hint && {
+        reply_markup: new InlineKeyboard().url(hint.button.label, hint.button.url),
+      }),
     }),
   );
   if (job.decisionId) await markNotified(db, job.decisionId, new Date());

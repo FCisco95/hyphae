@@ -1,9 +1,10 @@
-import type { RewardPurpose } from "@hyphae/core";
-import { contributions, epochs, scoringRuns } from "@hyphae/db";
+import type { PayoutV1, RewardPurpose } from "@hyphae/core";
+import { communities, contributions, epochs, scoringRuns } from "@hyphae/db";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { beginDispatch, completeDispatch, runEvaluation } from "../../rewards/evaluation.js";
 import { createTestDb, later, seedCommunity, seedRewardLane, T0 } from "../../rewards/test-db.js";
-import { meSummary, walletLines } from "./me-summary.js";
+import { mePayout, meSummary, payoutChecklist, walletLines } from "./me-summary.js";
 
 const MIN = 60_000;
 const WEEK_MS = 7 * 86_400_000;
@@ -204,5 +205,200 @@ describe("walletLines", () => {
     expect(walletLines({ wallet, linkMethod: "signature" })).toEqual([
       "Wallet AbCd…WxYz (verified)",
     ]);
+  });
+});
+
+describe("payoutChecklist", () => {
+  const wallet = "AbCd1111111111111111111111111111WxYz";
+  const signed = { wallet, linkMethod: "signature" as const };
+  const none = { wallet: null, linkMethod: null };
+  const pasted = { wallet, linkMethod: "paste" as const };
+  const open = { epochIndex: 3, closed: false, holdMin: "100,000 MYCEL" };
+  const v = (status: "payable" | "held" | "not_payable", reasons: string[], hold: string) =>
+    ({ status, reasons, hold }) as PayoutV1;
+
+  it("before the close: three checks, the hold left to after the close, and the one next step", () => {
+    expect(
+      payoutChecklist({
+        ...open,
+        member: none,
+        payout: v("not_payable", ["no_verified_wallet", "no_rules_test"], "at_close"),
+      }),
+    ).toEqual({
+      lines: [
+        "To be paid for epoch 3:",
+        "❌ Wallet: none signed yet",
+        "❌ Rules test: not passed yet",
+        "⏳ Hold: read once after the close; needs at least 100,000 MYCEL in that wallet",
+        "Next: link a wallet by signing. It is free and moves no funds.",
+      ],
+      step: "wallet",
+    });
+    expect(
+      payoutChecklist({
+        ...open,
+        member: signed,
+        payout: v("not_payable", ["no_rules_test"], "at_close"),
+      }),
+    ).toEqual({
+      lines: [
+        "To be paid for epoch 3:",
+        "✅ Wallet: AbCd…WxYz, signed",
+        "❌ Rules test: not passed yet",
+        "⏳ Hold: read once after the close; needs at least 100,000 MYCEL in that wallet",
+        "Next: take the rules test. Every answer must be right.",
+      ],
+      step: "rules",
+    });
+  });
+
+  it("names a pasted wallet as not signed", () => {
+    const { lines } = payoutChecklist({
+      ...open,
+      member: pasted,
+      payout: v("not_payable", ["no_verified_wallet"], "at_close"),
+    });
+    expect(lines[1]).toBe("❌ Wallet: AbCd…WxYz is pasted, not signed");
+  });
+
+  it("with wallet and rules test done, nothing to do before the close, and never says the hold is met", () => {
+    const { lines, step } = payoutChecklist({
+      ...open,
+      member: signed,
+      payout: v("held", ["hold_pending"], "at_close"),
+    });
+    expect(step).toBeNull();
+    expect(lines.slice(1)).toEqual([
+      "✅ Wallet: AbCd…WxYz, signed",
+      "✅ Rules test: passed",
+      "⏳ Hold: read once after the close; needs at least 100,000 MYCEL in that wallet",
+      "Nothing else to do now.",
+    ]);
+    expect(lines.join("\n")).not.toMatch(/✅ Hold/);
+  });
+
+  it("asks for points when they are all that is missing", () => {
+    const { lines, step } = payoutChecklist({
+      ...open,
+      member: signed,
+      payout: v("not_payable", ["no_points"], "at_close"),
+    });
+    expect(step).toBeNull();
+    expect(lines.at(-1)).toBe("Next: earn points by replying to a raid.");
+  });
+
+  it("names the minimum without an amount when it cannot be read, and none when the rules set none", () => {
+    const unknown = payoutChecklist({
+      ...open,
+      holdMin: null,
+      member: signed,
+      payout: v("held", ["hold_pending"], "at_close"),
+    });
+    expect(unknown.lines[3]).toBe(
+      "⏳ Hold: read once after the close; needs the minimum balance set in the rules in that wallet",
+    );
+    const free = payoutChecklist({
+      ...open,
+      member: signed,
+      payout: v("payable", [], "not_required"),
+    });
+    expect(free.lines[3]).toBe("✅ Hold: none required");
+  });
+
+  it("after the close: the gate's result and no next step", () => {
+    const closed = { ...open, closed: true };
+    const at = (member: typeof signed | typeof none, p: PayoutV1) =>
+      payoutChecklist({ ...closed, member, payout: p });
+    expect(at(signed, v("payable", [], "holder"))).toEqual({
+      lines: [
+        "To be paid for epoch 3 (closed):",
+        "✅ Wallet: AbCd…WxYz, signed",
+        "✅ Rules test: passed",
+        "✅ Hold: confirmed",
+      ],
+      step: null,
+    });
+    expect(at(signed, v("held", ["hold_pending"], "pending")).lines[3]).toBe(
+      "⏳ Hold: being checked",
+    );
+    expect(at(signed, v("not_payable", ["below_hold"], "below")).lines[3]).toBe(
+      "❌ Hold: under 100,000 MYCEL after the close",
+    );
+    expect(at(none, v("not_payable", ["no_verified_wallet"], "not_checked"))).toEqual({
+      lines: [
+        "To be paid for epoch 3 (closed):",
+        "❌ Wallet: none signed by the close",
+        "✅ Rules test: passed",
+        "➖ Hold: not checked, since the wallet or rules test was missing",
+      ],
+      step: null,
+    });
+  });
+
+  it("an epoch that pays no one, or is published, says so instead of a checklist", () => {
+    expect(
+      payoutChecklist({ ...open, member: signed, payout: { status: "unpaid_epoch" } }),
+    ).toEqual({ lines: ["Wallet AbCd…WxYz (verified)", "Epoch 3 has no payout."], step: null });
+    expect(
+      payoutChecklist({ ...open, closed: true, member: none, payout: { status: "published" } }),
+    ).toEqual({
+      lines: [
+        "No wallet yet. Your replies still earn points; to be paid, link a wallet by signing before the epoch closes: send /link.",
+        "Epoch 3 is published. Its settlement on the site shows each payout.",
+      ],
+      step: null,
+    });
+  });
+});
+
+describe("mePayout", () => {
+  it("reads the gate's status for the epoch /me shows, with the minimum in whole tokens", async () => {
+    const l = await seedRewardLane(t.db);
+    const scored = await l.admitOne();
+    await runEvaluation(
+      t.db,
+      { communityId: l.community.id, target: { contributionId: scored.contributionId } },
+      { model: "test:fake", call: answer(85), horizonMs: 5 * MIN, clock: later(2 * MIN) },
+    );
+    const input = { communityId: l.community.id, memberId: l.member.id };
+    const deps = { clock: later(10 * MIN), decimals: async () => 6 };
+    expect(await mePayout(t.db, input, deps)).toEqual({
+      epochIndex: 1,
+      closed: false,
+      payout: { status: "unpaid_epoch" },
+      holdMin: "100,000 MYCEL",
+    });
+    await t.db
+      .update(communities)
+      .set({ firstPaidEpoch: 1 })
+      .where(eq(communities.id, l.community.id));
+    expect(await mePayout(t.db, input, deps)).toEqual({
+      epochIndex: 1,
+      closed: false,
+      // The lane's member has only a pasted wallet.
+      payout: {
+        status: "not_payable",
+        reasons: ["no_verified_wallet", "no_rules_test"],
+        hold: "at_close",
+      },
+      holdMin: "100,000 MYCEL",
+    });
+    expect(
+      (await mePayout(t.db, input, { ...deps, decimals: async () => undefined }))?.holdMin,
+    ).toBeNull();
+    expect((await mePayout(t.db, input, { ...deps, clock: later(WEEK_MS) }))?.payout).toMatchObject(
+      { hold: "not_checked" },
+    );
+  });
+
+  it("is null before any reward epoch has opened", async () => {
+    const l = await seedRewardLane(t.db);
+    expect(
+      await mePayout(
+        t.db,
+        { communityId: l.community.id, memberId: l.member.id },
+        { clock: later(-60 * MIN), decimals: async () => 6 },
+      ),
+    ).toBeNull();
   });
 });

@@ -1,4 +1,4 @@
-import type { ContributionRowV1, SelectedV1 } from "@hyphae/core";
+import type { ContributionRowV1, PayoutV1, SelectedV1 } from "@hyphae/core";
 
 // "2026-10-02T00:00:00.000000Z" -> "2026-10-02 00:00 UTC". Every time on the site is UTC.
 export const utc = (iso: string) => `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
@@ -36,8 +36,51 @@ export function creditSentence(d: Credit): string {
   }
 }
 
+type Reason = Extract<PayoutV1, { reasons: unknown }>["reasons"][number];
+
+const list = (items: string[]) =>
+  items.length < 2 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+
+const TO_DO: [Reason, string][] = [
+  ["no_verified_wallet", "link a wallet by signing"],
+  ["no_rules_test", "pass the rules test"],
+  ["no_points", "earn points"],
+];
+const MISSED: [Reason, string][] = [
+  ["no_verified_wallet", "no wallet was signed by the close"],
+  ["no_rules_test", "the rules test was not passed by the close"],
+  ["no_points", "no points"],
+];
+
+// Whether a member can be paid, as the payout gate sees it as of the read. The hold is read only
+// after the close, so before it the hold is never presented as met.
+export function payoutSentence(p: PayoutV1, closed: boolean): string {
+  if (!("reasons" in p)) {
+    return p.status === "unpaid_epoch"
+      ? "This epoch has no payout."
+      : "See the epoch's settlement for this payout.";
+  }
+  const has = (r: Reason) => p.reasons.includes(r);
+  const named = (phrases: [Reason, string][]) => phrases.filter(([r]) => has(r)).map(([, s]) => s);
+  if (!closed) {
+    if (p.status === "not_payable") return `Not payable yet: ${list(named(TO_DO))}.`;
+    return p.hold === "at_close"
+      ? "Wallet and rules test done. The hold is checked after the close."
+      : "Wallet and rules test done.";
+  }
+  if (p.status === "payable") {
+    return p.hold === "holder"
+      ? "Payable: wallet, rules test and hold confirmed."
+      : "Payable: wallet and rules test confirmed.";
+  }
+  if (p.status === "held") return "Waiting for the hold check.";
+  if (has("below_hold"))
+    return "Not payable: the wallet held less than the minimum after the close.";
+  return `Not payable: ${named(MISSED).join("; ")}.`;
+}
+
 export const STATE: Record<ContributionRowV1["state"], string> = {
-  counted: "Counted.",
+  counted: "Scored.",
   pending: "Not scored yet.",
   pending_at_close: "Not scored before the epoch closed; it earns nothing in this epoch.",
   pending_reconciliation:
@@ -63,3 +106,11 @@ export const explorerTx = (signature: string, network: "solana:devnet" | "solana
 
 export const explorerAddress = (account: string, network: "solana:devnet" | "solana:mainnet") =>
   `https://explorer.solana.com/address/${account}${network === "solana:devnet" ? "?cluster=devnet" : ""}`;
+
+// A row's state; a scored one also says whether its member can be paid.
+export function rowState(
+  r: Pick<ContributionRowV1, "state" | "payout"> & { epoch: { closed: boolean } },
+): string {
+  if (r.state !== "counted" || !r.payout) return STATE[r.state];
+  return `${STATE.counted} ${payoutSentence(r.payout, r.epoch.closed)}`;
+}

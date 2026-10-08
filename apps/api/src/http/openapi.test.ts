@@ -43,6 +43,23 @@ describe("the OpenAPI document", () => {
     }
   });
 
+  it("documents each member's payout status on rows, leaderboard entries and the contribution", () => {
+    type Props = { properties: Record<string, Props & { items?: Props }> };
+    const schemas = doc.components.schemas as Record<string, Props>;
+    const statuses = (payout: unknown) =>
+      (payout as { anyOf: { properties: { status: { enum: string[] } } }[] }).anyOf.flatMap(
+        (o) => o.properties.status.enum,
+      );
+    const all = ["unpaid_epoch", "published", "payable", "held", "not_payable"];
+    expect(
+      statuses(schemas.Contributions?.properties.contributions?.items?.properties.payout),
+    ).toEqual(all);
+    expect(statuses(schemas.Leaderboard?.properties.entries?.items?.properties.payout)).toEqual(
+      all,
+    );
+    expect(statuses(schemas.Contribution?.properties.payout)).toEqual(all);
+  });
+
   it("is served as JSON under /v1", async () => {
     const r = await app.request("/openapi.json");
     expect(r.status).toBe(200);

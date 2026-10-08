@@ -34,6 +34,7 @@ This repository CLI runs with `tsx` and the built SDK as a dev-only dependency. 
 | Contributions and selected judgements | `GET /v1/communities/{mint}/epochs/{index}/contributions` | Paginate using `offset`/`limit`; preserve pending and excluded states. |
 | Leaderboard | `GET /v1/communities/{mint}/leaderboard?epoch={index}` | Points are not payments. |
 | Full contribution audit | `GET /v1/contributions/{id}` | Retain revisions, provenance and correction timing. |
+| Whether a member can be paid | `payout` on each contribution row, leaderboard entry and contribution | The payout gate's status as of the read. Before the close the hold is only ever `at_close`, never met; once published, `settlement` is the record. |
 | A wallet's published leaves | `GET /v1/wallets/{wallet}/claims` | Empty results are valid; payment may be unavailable. |
 | One fresh claim | `GET /v1/communities/{mint}/epochs/{index}/claims/{wallet}` | Transaction preparation/signing is outside this reader. Re-read immediately before a separately authorized claim. |
 | Register a real new community | Reviewed operator `plan` → `check` → authorized `apply` | See [setup integration](SETUP-INTEGRATION.md); exact private authority, manifest, target and hash, paused pinned bootstrap. |
