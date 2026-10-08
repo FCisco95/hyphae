@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { Bot } from "grammy";
 import type { Update, UserFromGetMe } from "grammy/types";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { claimRaidRecap, deliverRaidRecap } from "../../raid-alerts/recap.js";
 import { createTestDb, seedCommunity, seedTask } from "../../rewards/test-db.js";
 
 const state = vi.hoisted(() => ({ db: null as unknown }));
@@ -33,10 +34,23 @@ const update = (
     entities: [{ type: "bot_command", offset: 0, length: text.split(" ")[0]?.length ?? 0 }],
   },
 });
-async function fixture() {
+async function fixture(opensAt = new Date()) {
   const { community } = await seedCommunity(t.db);
-  const task = await seedTask(t.db, community.id, new Date());
+  const task = await seedTask(t.db, community.id, opensAt);
   return { community, task, chatId: Number(community.telegramChatId) };
+}
+// Runs the notifier's recap step until nothing is due; returns what reached this group.
+async function recapsTo(chatId: number) {
+  const posted: string[] = [];
+  const claim = () => claimRaidRecap(t.db, "https://hyphae.test");
+  for (let c = await claim(); c; c = await claim())
+    await deliverRaidRecap(t.db, c, {
+      send: async (chat, text) => {
+        if (chat === BigInt(chatId)) posted.push(text);
+        return { message_id: 1 };
+      },
+    });
+  return posted;
 }
 beforeAll(async () => {
   t = await createTestDb();
@@ -144,5 +158,45 @@ describe("raid close/cancel commands", () => {
     expect(
       await t.db.select().from(raidLifecycleEvents).where(eq(raidLifecycleEvents.taskId, task.id)),
     ).toHaveLength(1);
+  });
+});
+
+describe("raid recap in the group", () => {
+  it("/close_raid posts one recap, even when Telegram redelivers the command", async () => {
+    const { task, chatId } = await fixture();
+    const close = update(`/close_raid ${task.id} Done early`, chatId);
+    await bot.handleUpdate(close);
+    const recaps = await recapsTo(chatId);
+    expect(recaps).toHaveLength(1);
+    expect(recaps[0]?.split("\n").slice(0, 2)).toEqual(["Raid closed — @?:", task.targetUrl]);
+    await bot.handleUpdate(close);
+    expect(sent.at(-1)).toContain("Raid closed (already recorded)");
+    expect(await recapsTo(chatId)).toEqual([]);
+  });
+  it("/cancel_raid posts no recap", async () => {
+    const { task, chatId } = await fixture();
+    await bot.handleUpdate(update(`/cancel_raid ${task.id} Wrong post`, chatId));
+    expect(sent.at(-1)).toContain("Raid cancelled.");
+    expect(await recapsTo(chatId)).toEqual([]);
+  });
+  it("an ended window posts one recap, and a later close adds none", async () => {
+    const { task, chatId } = await fixture(new Date(Date.now() - 48 * 3_600_000 - 300_000));
+    const recaps = await recapsTo(chatId);
+    expect(recaps).toHaveLength(1);
+    expect(recaps[0]?.split("\n").slice(0, 3)).toEqual([
+      "Raid ended — @?:",
+      task.targetUrl,
+      "Ran for 48h.",
+    ]);
+    expect(await recapsTo(chatId)).toEqual([]);
+    await bot.handleUpdate(update(`/close_raid ${task.id} Tidy up`, chatId));
+    expect(sent.at(-1)).toContain("Raid closed.");
+    expect(await recapsTo(chatId)).toEqual([]);
+  });
+  it("a closed brief gets no recap", async () => {
+    const { task, chatId } = await fixture();
+    await t.db.update(tasks).set({ kind: "open" }).where(eq(tasks.id, task.id));
+    await bot.handleUpdate(update(`/close_raid ${task.id} Brief finished`, chatId));
+    expect(await recapsTo(chatId)).toEqual([]);
   });
 });

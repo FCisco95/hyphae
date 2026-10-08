@@ -4,6 +4,7 @@ import { Bot } from "grammy";
 import type { Update, UserFromGetMe } from "grammy/types";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_OPEN_RAIDS } from "../../raid-alerts/alerts.js";
+import { claimRaidRecap, deliverRaidRecap } from "../../raid-alerts/recap.js";
 import { createTestDb, seedCommunity } from "../../rewards/test-db.js";
 
 const state = vi.hoisted(() => ({ db: null as unknown }));
@@ -57,6 +58,19 @@ const tap = (data: string, chatId: number, messageId: number, from = 7): Update 
 const tasksOf = (communityId: string) =>
   t.db.select().from(tasks).where(eq(tasks.communityId, communityId));
 const post = (n: number) => `https://x.com/owner/status/${100 + n}`;
+// Runs the notifier's recap step until nothing is due; returns what reached this group.
+async function recapsTo(chatId: number) {
+  const posted: string[] = [];
+  const claim = () => claimRaidRecap(t.db, "https://hyphae.test");
+  for (let c = await claim(); c; c = await claim())
+    await deliverRaidRecap(t.db, c, {
+      send: async (chat, text) => {
+        if (chat === BigInt(chatId)) posted.push(text);
+        return { message_id: 1 };
+      },
+    });
+  return posted;
+}
 
 beforeAll(async () => {
   t = await createTestDb();
@@ -112,7 +126,11 @@ describe("raid buttons", () => {
     expect((task?.closesAt.getTime() ?? 0) - (task?.opensAt.getTime() ?? 0)).toBe(24 * 3_600_000);
     expect(sent().at(-1)).toContain("Raid open for 24h");
     expect(sent().at(-1)).toContain(`Raid ID: ${task?.id}`);
-    expect(calls.some((c) => c.method === "editMessageReplyMarkup")).toBe(true);
+    const edit = calls.find((c) => c.method === "editMessageText")?.payload;
+    expect(edit?.text).toBe(
+      `Raid set for 24h. Ends ${task?.closesAt.toISOString().slice(0, 16).replace("T", " ")} UTC.`,
+    );
+    expect(edit?.reply_markup).toEqual({ inline_keyboard: [] });
     await bot.handleUpdate(tap("rn:48:owner:102", chatId, 900));
     expect(sent().at(-1)).toContain("already opened");
     expect(await tasksOf(community.id)).toHaveLength(1);
@@ -164,6 +182,11 @@ describe("/raids menu", () => {
     const rows = await tasksOf(community.id);
     const target = rows[0];
     expect(JSON.stringify(menu?.payload.reply_markup)).toContain(`cr:${target?.id}`);
+    expect(String(menu?.payload.text)).toMatch(
+      /ends \d{4}-\d\d-\d\d \d\d:\d\d UTC \(11h 59m left\)/,
+    );
+    expect(String(menu?.payload.text)).toContain("Replies 0 · Quotes 0 · Credited 0");
+    expect(await recapsTo(chatId)).toEqual([]);
 
     calls = [];
     await bot.handleUpdate(tap(`cr:${target?.id}`, chatId, 970));
@@ -179,10 +202,18 @@ describe("/raids menu", () => {
       .from(raidLifecycleEvents)
       .where(eq(raidLifecycleEvents.taskId, target?.id ?? ""));
     expect(events.map((e) => e.action).sort()).toEqual(["closed", "opened"]);
+    const [recap] = await recapsTo(chatId);
+    expect(recap?.split("\n").slice(0, 4)).toEqual([
+      "Raid closed — @owner:",
+      target?.targetUrl,
+      "Ran for under a minute.",
+      "No submissions.",
+    ]);
 
     calls = [];
     await bot.handleUpdate(tap(`cr:${target?.id}`, chatId, 970));
     expect(toasts()).toEqual(["Raid closed."]);
+    expect(await recapsTo(chatId)).toEqual([]);
     await bot.handleUpdate(command("/raids", chatId));
     expect(sent().at(-1)).toContain("Open raids (1 of 3)");
   });

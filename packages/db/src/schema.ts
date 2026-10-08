@@ -173,6 +173,23 @@ export const raidDeliveries = pgTable(
   ],
 );
 
+// One group recap per ended raid (closed, or its window over; never cancelled). The claim is
+// committed before the send, so a row left in "sending" may have been posted and is never retried.
+export const raidRecaps = pgTable("raid_recaps", {
+  taskId: uuid("task_id")
+    .primaryKey()
+    .references(() => tasks.id),
+  communityId: uuid("community_id")
+    .notNull()
+    .references(() => communities.id),
+  status: raidDeliveryStatus("status").notNull(),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull(),
+  attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull(),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  telegramMessageId: integer("telegram_message_id"),
+  reason: text("reason"),
+});
+
 export const contributionKind = pgEnum("contribution_kind", ["reply", "quote", "post", "text"]);
 
 // Append-only. Never UPDATE; a correction is a new row.
