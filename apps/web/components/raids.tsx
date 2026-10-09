@@ -17,7 +17,11 @@ function RaidCard({
     <article className="raid-card">
       <div className="raid-card-heading">
         <h3 className="raid-title">
-          {raid.post ? `Post by @${raid.post.handle}` : "Community raid"}
+          {raid.post?.handle
+            ? `Post by @${raid.post.handle}`
+            : raid.post
+              ? "X post"
+              : "Community raid"}
         </h3>
         <span className={`raid-status raid-status-${raid.status}`}>
           {raid.status === "open"
@@ -50,9 +54,7 @@ function RaidCard({
             Open original post
           </a>
           {raid.post.text ? (
-            <p className="small muted">
-              Recorded when the raid opened; the original may have changed.
-            </p>
+            <p className="small muted">Recorded post text; the original may have changed.</p>
           ) : null}
         </div>
       ) : (
@@ -75,16 +77,24 @@ function RaidCard({
 export function RaidsView({
   community,
   result,
+  loginEnabled = false,
 }: {
   community: CommunityV1;
   result: Result<PublicRaids>;
+  loginEnabled?: boolean;
 }) {
   const base = `/c/${encodeURIComponent(community.mint)}`;
   const epoch = community.epochs.find(
     (item) => item.index === community.current_epoch && item.status === "open",
   );
   const data = result.ok && result.data.community.mint === community.mint ? result.data : null;
-  const accepting = !!epoch && community.reward_intake === "open" && data?.reward_intake === "open";
+  const readTime = Math.max(Date.parse(community.as_of), data ? Date.parse(data.as_of) : 0);
+  const epochExpired = !!epoch && Date.parse(epoch.closes_at) <= readTime;
+  const accepting =
+    !!epoch &&
+    !epochExpired &&
+    community.reward_intake === "open" &&
+    data?.reward_intake === "open";
   const active =
     data?.raids.filter((raid) => raid.status === "open" || raid.status === "scheduled") ?? [];
   const recent =
@@ -139,8 +149,14 @@ export function RaidsView({
         </div>
         <aside className="community-account-entry" aria-labelledby="account-entry-title">
           <h2 id="account-entry-title">Your community account</h2>
-          <p>Sign in with email or your existing Solana wallet through Privy.</p>
-          <ButtonLink href={`${base}/me`}>Open your account</ButtonLink>
+          <p>
+            {loginEnabled
+              ? "Sign in with email or your existing Solana wallet through Privy."
+              : "Email and Solana wallet sign-in (via Privy) is not available yet."}
+          </p>
+          <ButtonLink href={`${base}/me`} secondary={!loginEnabled}>
+            Open your account
+          </ButtonLink>
           <p className="small muted">
             No wallet is created for you. Sign-in availability is shown on the account page.
           </p>
@@ -148,6 +164,12 @@ export function RaidsView({
             <h3 className="raid-note-title">Before you contribute</h3>
             {community.reward_intake === "paused" || data?.reward_intake === "paused" ? (
               <p>Reward intake is paused. Read the briefs and check back before submitting.</p>
+            ) : epochExpired && epoch ? (
+              <p>
+                Reward intake for epoch {epoch.index} closed at{" "}
+                <time dateTime={epoch.closes_at}>{utc(epoch.closes_at)}</time>. Check the next epoch
+                before submitting reward work.
+              </p>
             ) : epoch ? (
               <p>
                 Reward intake closes <time dateTime={epoch.closes_at}>{utc(epoch.closes_at)}</time>.

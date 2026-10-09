@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publicXPost } from "./public-raids.js";
+import { clipRaidText, publicXPost } from "./public-raids.js";
 
 describe("public post links", () => {
   it("normalizes X and Twitter links and strips tracking parameters", () => {
@@ -21,4 +21,16 @@ describe("public post links", () => {
     ])
       expect(publicXPost(url)).toBeNull();
   });
+});
+it("does not invent an author for an ID-only link", () => {
+  expect(publicXPost("https://x.com/i/status/123")).toEqual({
+    url: "https://x.com/i/status/123",
+    handle: null,
+  });
+});
+it("marks clipped text without splitting an emoji or exceeding the schema's UTF-16 bound", () => {
+  const clipped = clipRaidText("🙂".repeat(10), 10);
+  expect(clipped).toBe("🙂🙂🙂🙂…");
+  expect(clipped.length).toBeLessThanOrEqual(10);
+  expect(clipRaidText("Short", 10)).toBe("Short");
 });

@@ -6,9 +6,15 @@ const enc = encodeURIComponent;
 export const readCommunity = (mint: string) =>
   getJson(`/v1/communities/${enc(mint)}`, ReadApiV1Loose.community);
 export async function readRaids(mint: string) {
+  // Explicit local production-build preview; Vercel never uses the loopback override.
+  const preview =
+    process.env.HYPHAE_LOCAL_PREVIEW === "on" &&
+    !process.env.VERCEL &&
+    process.env.HYPHAE_RAID_API_URL === "http://127.0.0.1:3011";
   const result = await getJson(`/v1/communities/${enc(mint)}/raids`, PublicRaidsSchema, fetch, {
-    fresh: true,
-    ...(process.env.HYPHAE_RAID_API_URL ? { baseUrl: process.env.HYPHAE_RAID_API_URL } : {}),
+    anonymous: true,
+    visitor: null,
+    ...(preview ? { baseUrl: "http://127.0.0.1:3011" } : {}),
   });
   if (result.ok && result.data.community.mint !== mint)
     return { ok: false, reason: "unavailable" } as const;

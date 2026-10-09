@@ -39,7 +39,7 @@ describe("raid workspace", () => {
     expect(html).not.toContain("platform.twitter.com");
     expect(html).toContain("does not extend reward intake");
     expect(html).toContain(`/c/${community.mint}/me`);
-    expect(html).toContain("through Privy");
+    expect(html).toContain("via Privy) is not available yet");
   });
   it("does not turn an unavailable or wrong-community feed into no open raids", () => {
     for (const result of [
@@ -72,4 +72,16 @@ describe("raid workspace", () => {
       if (input.reward_intake === "paused") expect(html).toContain("Reward intake is paused");
     }
   });
+});
+it("does not offer reward submissions after a cutoff even when the community read still says open", () => {
+  const current = community.epochs.find((epoch) => epoch.index === community.current_epoch);
+  if (!current) throw new Error("Missing fixture epoch");
+  const html = renderToStaticMarkup(
+    <RaidsView
+      community={community}
+      result={{ ok: true, data: { ...feed, as_of: current.closes_at } }}
+    />,
+  );
+  expect(html).not.toContain("How to submit your work");
+  expect(html).toContain("closed at");
 });

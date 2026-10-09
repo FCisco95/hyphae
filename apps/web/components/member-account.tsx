@@ -61,10 +61,8 @@ export function MemberAccountView({
               Email and existing Solana wallet sign-in use Privy. Sign-in will open when this
               community's account setup is ready.
             </p>
-            <fieldset
-              className="member-actions member-login-options"
-              aria-label="Privy sign-in options"
-            >
+            <fieldset className="member-actions member-login-options">
+              <legend className="visually-hidden">Privy sign-in options</legend>
               <button className="button" type="button" disabled>
                 Sign in with email
               </button>

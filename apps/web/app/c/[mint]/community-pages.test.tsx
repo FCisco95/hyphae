@@ -57,5 +57,6 @@ it("keeps the member page disabled before verified provider activation", async (
   );
   expect(html).toContain("Sign-in is not available yet");
   expect(html).toContain("Sign in with email");
-  expect(html.match(/disabled=""/g)).toHaveLength(2);
+  expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Sign in with email<\/button>/);
+  expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Use an existing Solana wallet<\/button>/);
 });

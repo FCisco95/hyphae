@@ -34,7 +34,13 @@ beforeAll(async () => {
       { ...base, status: "open" },
       { ...base, status: "open", opensAt: new Date("2026-10-09T19:00:00Z") },
       { ...base, status: "open", closesAt: now },
-      { ...base, status: "closed" },
+      {
+        ...base,
+        status: "closed",
+        targetUrl: "https://x.com/removed/status/999",
+        targetText: "Removed content",
+        brief: "Removed instructions",
+      },
       { ...base, status: "proposed" },
       { ...base, status: "rejected" },
       { ...base, status: "open", kind: "open" },
@@ -65,12 +71,15 @@ it("serves only this community's approved raids with safe post URLs and no priva
     "scheduled",
   ]);
   expect(body.raids.find((raid) => raid.id === cancelledId)?.status).toBe("cancelled");
+  expect(body.raids.find((raid) => raid.id === cancelledId)?.post).toBeNull();
+  expect(body.raids.find((raid) => raid.id === cancelledId)?.brief).toBe("");
+  expect(body.raids.find((raid) => raid.status === "scheduled")?.post).toBeNull();
   expect(
     body.raids
       .filter((raid) => raid.post !== null)
       .every((raid) => raid.post?.url === "https://x.com/owner/status/123"),
   ).toBe(true);
-  expect(body.raids.filter((raid) => raid.post === null)).toHaveLength(1);
+  expect(body.raids.filter((raid) => raid.post === null)).toHaveLength(3);
   const serialized = JSON.stringify(body);
   for (const privateValue of [
     "telegram",
@@ -81,8 +90,24 @@ it("serves only this community's approved raids with safe post URLs and no priva
     "private cancellation",
     "12345",
     "javascript:",
+    "Removed content",
+    "Removed instructions",
+    "removed/status/999",
   ])
     expect(serialized).not.toContain(privateValue);
+});
+it("applies the normal anonymous per-IP rate limit to the raid route", async () => {
+  const app = readRoutes({
+    db: t.db,
+    clock: async () => now,
+    limit: { limit: 1, windowMs: 60_000, now: () => 0 },
+  });
+  const request = () =>
+    app.request(`/communities/${mint}/raids`, { headers: { "fly-client-ip": "192.0.2.1" } });
+  expect((await request()).status).toBe(200);
+  const limited = await request();
+  expect(limited.status).toBe(429);
+  expect(limited.headers.get("retry-after")).toBe("60");
 });
 it("marks expiry at the exact deadline and respects early close/cancellation without writing records", async () => {
   const body = PublicRaidsSchema.parse(

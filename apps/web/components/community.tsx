@@ -10,6 +10,7 @@ type CommunityProps = {
   community: CommunityV1;
   presentation?: CommunityPresentation;
   raids?: Result<PublicRaids>;
+  loginEnabled?: boolean;
 };
 
 function openEpoch(community: CommunityV1) {
@@ -83,14 +84,23 @@ function CommunityIntro({
   );
 }
 
-export function CommunityOverview({ community, presentation, raids }: CommunityProps) {
+export function CommunityOverview({
+  community,
+  presentation,
+  raids,
+  loginEnabled,
+}: CommunityProps) {
   const base = `/c/${encodeURIComponent(community.mint)}`;
   const current = openEpoch(community);
   const accepting = current && community.reward_intake === "open";
   return (
     <>
       <CommunityIntro community={community} presentation={presentation} page="overview" />
-      <RaidsView community={community} result={raids ?? { ok: false, reason: "unavailable" }} />
+      <RaidsView
+        community={community}
+        result={raids ?? { ok: false, reason: "unavailable" }}
+        loginEnabled={loginEnabled}
+      />
       <section className="community-path" aria-labelledby="community-path-title">
         <div className="community-section-head">
           <p className="eyebrow">Your next step</p>

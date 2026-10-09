@@ -12,8 +12,9 @@ describe("member account presentation", () => {
     );
     expect(html).toContain("Sign-in is not available yet");
     expect(html).toContain("/c/MintA/join");
-    expect(html).toContain('aria-label="Privy sign-in options"');
-    expect(html.match(/disabled=""/g)).toHaveLength(2);
+    expect(html).toContain("Privy sign-in options</legend>");
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Sign in with email<\/button>/);
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Use an existing Solana wallet<\/button>/);
     expect(html).toContain("Use an existing Solana wallet");
   });
   it("offers email and existing Solana wallet login without reward-wallet authority", () => {

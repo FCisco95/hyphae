@@ -1,8 +1,7 @@
-import { headers } from "next/headers.js";
 import { notFound } from "next/navigation.js";
 import { MemberAccountView } from "../../../../components/member-account.js";
 import { UnavailableView } from "../../../../components/views.js";
-import { memberLoginConfig } from "../../../../lib/member-login-config.js";
+import { readMemberLoginConfig } from "../../../../lib/member-login-server.js";
 import { readCommunity } from "../../../../lib/reads.js";
 
 export const dynamic = "force-dynamic";
@@ -13,14 +12,7 @@ export default async function MemberPage(props: { params: Promise<{ mint: string
   if (!result.ok) return result.reason === "not_found" ? notFound() : <UnavailableView />;
   const community = { mint: result.data.mint, name: result.data.name };
   const base = `/c/${encodeURIComponent(community.mint)}`;
-  const config = memberLoginConfig(
-    {
-      appId: process.env.PRIVY_APP_ID,
-      cookieDomain: process.env.PRIVY_LOGIN_HOST,
-      enabled: process.env.PRIVY_LOGIN_ENABLED,
-    },
-    (await headers()).get("host") ?? "",
-  );
+  const config = await readMemberLoginConfig();
   // Keep provider imports out of public pages and the disabled member response.
   const Provider = config
     ? (await import("../../../../components/member-provider.js")).MemberProvider

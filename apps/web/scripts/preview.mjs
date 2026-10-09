@@ -7,7 +7,9 @@ import { parseEnv } from "node:util";
 const root = new URL("../../../", import.meta.url);
 const web = fileURLToPath(new URL("../", import.meta.url));
 const local = new URL(".env", root);
-const values = existsSync(local) ? parseEnv(readFileSync(local, "utf8")) : {};
+const values = existsSync(local)
+  ? parseEnv(readFileSync(local, "utf8").replace(/^\uFEFF/, ""))
+  : {};
 // Recorded MYCEL pilot mint in the first-payout packet; local preview only.
 const mint =
   process.argv[2] ||
@@ -33,27 +35,42 @@ const api = fileURLToPath(new URL("../../../apps/api/", import.meta.url));
 const tsx = createRequire(new URL("../../../apps/api/package.json", import.meta.url)).resolve(
   "tsx",
 );
+let readerReady = false;
+let readerFailed = false;
+let stopping = false;
 // Run just the new read-only feed locally; all existing public reads stay on deployed source.
 const reader = spawn(
   process.execPath,
   ["--import", pathToFileURL(tsx).href, "scripts/preview-raids.ts"],
   {
     cwd: api,
-    env: process.env,
+    env: {
+      PATH: process.env.PATH,
+      SystemRoot: process.env.SystemRoot,
+      DATABASE_URL: process.env.DATABASE_URL || values.DATABASE_URL,
+    },
     stdio: "inherit",
   },
 );
 reader.on("error", () => {
+  readerFailed = true;
   console.error("Raid preview could not start.");
 });
-let readerReady = false;
+reader.on("exit", () => {
+  if (readerReady && !stopping)
+    console.error("The raid reader stopped. Restart pnpm preview to restore the feed.");
+});
 for (let attempt = 0; attempt < 30; attempt += 1) {
-  if (reader.exitCode !== null) break;
+  if (readerFailed || reader.exitCode !== null) break;
   try {
     const response = await fetch("http://127.0.0.1:3011/health", {
       signal: AbortSignal.timeout(1000),
     });
-    if (response.ok && (await response.json()).pid === reader.pid) {
+    if (response.ok) {
+      if ((await response.json()).pid !== reader.pid) {
+        console.error("Port 3011 is in use by another process.");
+        break;
+      }
       readerReady = true;
       break;
     }
@@ -68,6 +85,7 @@ if (!readerReady) {
   process.exit(1);
 }
 env.HYPHAE_RAID_API_URL = "http://127.0.0.1:3011";
+env.HYPHAE_LOCAL_PREVIEW = "on";
 const build = spawnSync(process.execPath, [next, "build"], { cwd: web, env, stdio: "inherit" });
 if (build.error) {
   reader.kill();
@@ -90,16 +108,19 @@ const server = spawn(
   },
 );
 server.on("error", () => {
+  stopping = true;
   reader.kill();
   console.error("Preview could not start.");
   process.exitCode = 1;
 });
 server.on("exit", (code) => {
+  stopping = true;
   reader.kill();
   process.exitCode = code ?? 1;
 });
 for (const signal of ["SIGINT", "SIGTERM"])
   process.on(signal, () => {
+    stopping = true;
     server.kill(signal);
     reader.kill(signal);
   });

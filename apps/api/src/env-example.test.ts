@@ -23,7 +23,8 @@ function namesRead(): Set<string> {
   const names = new Set<string>();
   for (const file of ["apps", "packages"].flatMap((d) => sources(join(root, d)))) {
     const text = readFileSync(file, "utf8");
-    for (const m of text.matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)) names.add(m[1] as string);
+    for (const m of text.matchAll(/process\.env\.([A-Za-z_][A-Za-z0-9_]*)/g))
+      names.add(m[1] as string);
     if (/\benv = process\.env;/.test(text))
       for (const m of text.matchAll(/\benv\.([A-Z][A-Z0-9_]*)/g)) names.add(m[1] as string);
     if (/Env\.parse\(process\.env\)/.test(text))
@@ -35,7 +36,9 @@ function namesRead(): Set<string> {
 describe(".env.example", () => {
   it("names every environment variable the code reads", () => {
     const example = readFileSync(join(root, ".env.example"), "utf8");
-    const listed = new Set([...example.matchAll(/^#? ?([A-Z][A-Z0-9_]*)=/gm)].map((m) => m[1]));
+    const listed = new Set(
+      [...example.matchAll(/^#? ?([A-Za-z_][A-Za-z0-9_]*)=/gm)].map((m) => m[1]),
+    );
     const read = namesRead();
     expect(read.size).toBeGreaterThan(20);
     expect([...read].filter((name) => !listed.has(name)).sort()).toEqual([]);

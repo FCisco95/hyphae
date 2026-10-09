@@ -79,14 +79,21 @@ export function CommunityView({
   community,
   presentation,
   raids,
+  loginEnabled,
 }: {
   community: CommunityV1;
   presentation?: CommunityPresentation;
   raids?: Result<PublicRaids>;
+  loginEnabled?: boolean;
 }) {
   return (
     <>
-      <CommunityOverview community={community} presentation={presentation} raids={raids} />
+      <CommunityOverview
+        community={community}
+        presentation={presentation}
+        raids={raids}
+        loginEnabled={loginEnabled}
+      />
       <section id="epochs" className="community-history" aria-labelledby="epoch-history-title">
         <div className="community-section-head">
           <p className="eyebrow">Public record</p>

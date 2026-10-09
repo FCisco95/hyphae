@@ -32,7 +32,8 @@ export async function getJson<T>(
     fresh = false,
     visitor,
     baseUrl,
-  }: { fresh?: boolean; visitor?: string | null; baseUrl?: string } = {},
+    anonymous = false,
+  }: { fresh?: boolean; visitor?: string | null; baseUrl?: string; anonymous?: boolean } = {},
 ): Promise<Result<T>> {
   const base = baseUrl ?? process.env.HYPHAE_API_URL;
   if (!base) {
@@ -41,7 +42,7 @@ export async function getJson<T>(
   }
   try {
     // Server-side only: the token never reaches a browser.
-    const token = process.env.HYPHAE_API_TOKEN;
+    const token = anonymous ? undefined : process.env.HYPHAE_API_TOKEN;
     const headers: Record<string, string> = { accept: "application/json" };
     if (token) {
       headers.authorization = `Bearer ${token}`;

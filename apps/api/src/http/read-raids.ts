@@ -1,4 +1,4 @@
-import { type PublicRaids, PublicRaidsSchema, publicXPost } from "@hyphae/core";
+import { clipRaidText, type PublicRaids, PublicRaidsSchema, publicXPost } from "@hyphae/core";
 import { communities, type Db, raidLifecycleEvents, tasks } from "@hyphae/db";
 import { and, asc, desc, eq, gt, inArray, lte, or } from "drizzle-orm";
 import { isoUs, readOnly } from "../pg.js";
@@ -63,20 +63,25 @@ export function readRaids(db: Db, mint: string, now: Date): Promise<PublicRaids 
       community: { mint },
       reward_intake: community.pausedAt ? "paused" : "open",
       raids: rows.map((row) => {
+        const status = cancelledIds.has(row.id)
+          ? "cancelled"
+          : row.status === "closed" || Date.parse(row.closes_at) <= now.getTime()
+            ? "closed"
+            : Date.parse(row.opens_at) > now.getTime()
+              ? "scheduled"
+              : "open";
+        const hidden = status === "cancelled" || status === "scheduled";
         const post = publicXPost(row.targetUrl);
         return {
           id: row.id,
-          status: cancelledIds.has(row.id)
-            ? "cancelled"
-            : row.status === "closed" || Date.parse(row.closes_at) <= now.getTime()
-              ? "closed"
-              : Date.parse(row.opens_at) > now.getTime()
-                ? "scheduled"
-                : "open",
+          status,
           opens_at: row.opens_at,
           closes_at: row.closes_at,
-          brief: row.brief.slice(0, 2000),
-          post: post ? { ...post, text: row.targetText?.slice(0, 1500) ?? null } : null,
+          brief: hidden ? "" : clipRaidText(row.brief, 2000),
+          post:
+            !hidden && post
+              ? { ...post, text: row.targetText ? clipRaidText(row.targetText, 1500) : null }
+              : null,
         };
       }),
       as_of: now.toISOString(),

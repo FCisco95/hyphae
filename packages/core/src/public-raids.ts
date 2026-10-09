@@ -1,21 +1,31 @@
 import { z } from "zod";
 
 // A linked public post, never an arbitrary URL or provider-supplied HTML.
-export function publicXPost(value: string | null): { url: string; handle: string } | null {
+export function publicXPost(value: string | null): { url: string; handle: string | null } | null {
   if (!value) return null;
   try {
     const url = new URL(value);
     const match = /^\/([A-Za-z0-9_]{1,15})\/status\/([0-9]{1,19})\/?$/.exec(url.pathname);
     if (
       url.protocol !== "https:" ||
-      !["x.com", "www.x.com", "twitter.com", "www.twitter.com"].includes(url.hostname) ||
+      ![
+        "x.com",
+        "www.x.com",
+        "mobile.x.com",
+        "twitter.com",
+        "www.twitter.com",
+        "mobile.twitter.com",
+      ].includes(url.hostname) ||
       url.username ||
       url.password ||
       url.port ||
       !match
     )
       return null;
-    return { url: `https://x.com/${match[1]}/status/${match[2]}`, handle: match[1] as string };
+    return {
+      url: `https://x.com/${match[1]}/status/${match[2]}`,
+      handle: match[1]?.toLowerCase() === "i" ? null : (match[1] as string),
+    };
   } catch {
     return null;
   }
@@ -31,7 +41,10 @@ export const PublicRaidSchema = z.strictObject({
   post: z
     .strictObject({
       url: z.string().refine((value) => publicXPost(value)?.url === value),
-      handle: z.string().regex(/^[A-Za-z0-9_]{1,15}$/),
+      handle: z
+        .string()
+        .regex(/^[A-Za-z0-9_]{1,15}$/)
+        .nullable(),
       text: z.string().max(1500).nullable(),
     })
     .nullable(),
@@ -44,3 +57,13 @@ export const PublicRaidsSchema = z.strictObject({
 });
 export type PublicRaid = z.infer<typeof PublicRaidSchema>;
 export type PublicRaids = z.infer<typeof PublicRaidsSchema>;
+
+export function clipRaidText(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  let result = "";
+  for (const character of text) {
+    if (result.length + character.length > limit - 1) break;
+    result += character;
+  }
+  return `${result}…`;
+}
