@@ -7,6 +7,8 @@ summary: Owner email sign-in and sign-out confirmed; fresh code after explicit l
 
 ## TL;DR
 
+**Cisco is stopping for sleep, confirmed22:21Z.** No further attendance tonight; stop agent/operator work after saving this handoff. Exact stop: no Ledger connection/address read, no C14–C22/C18b completed, no pause/author attestation/correction/funding/publication/claim executed. Keep money/publication holds. Tomorrow begin with read-only actual close/snapshot/jobs/gate inspection; missing pre-close author/correction evidence remains a blocker under the current runbook. No retroactive frozen-allocation changes or inferred payout authority. [Morning boundary](handoffs/2026-10-09-tomorrow-session-boundary.md).
+
 **Funding and payouts are explicitly PAUSED by Cisco.** He said he does not want to pay already, then redirected work to a clearer, scalable community website with possible community domains/subdomains and email/wallet login. Do not act on the earlier Ledger-readiness question or resume C14–C22 without his explicit instruction.
 
 Cisco approved the complete website direction and **email + existing Solana wallet login through Privy, explicit Telegram linking and no automatically created wallet**, then authorized local implementation. Public overview/context/join and the private account API/proxy/UI now exist locally. Private member login is **disabled** until a dedicated owned app/domain is configured and real HttpOnly/login/link/logout receipts pass. Fresh final other-family auth review **ACCEPT** at3ffd0f5 (claude-opus-5-5, requested high effort). Initial findings and browser follow-ups fixed/tested. The separate local provider-only test has owner-confirmed email sign-in/sign-out; Phantom failed and refresh persistence remains untested. Production/member smoke remains open. Web quiz, task feed and Telegram-independent membership remain future work. [Implementation checkpoint](handoffs/2026-10-09-privy-login-implementation.md).
@@ -43,12 +45,14 @@ Coordination patch checked/applied once, local commit **c64624519e9091c0a00d8963
 
 ## Metadata
 
-Last Updated: 2026-10-09T21:23Z
+Last Updated: 2026-10-09T22:21Z
 Project: Hyphae; local Privy member-login implementation and website foundation. Existing payout arc parked by Cisco.
 Updated By: Codex (GPT-6). Exact runtime model ID/configured effort are not exposed in this session; do not substitute the prior operator's model/effort.
 Checkpoint: [October 9 read-only receipt](handoffs/2026-10-09-payout-preflight.md). Previous feature/review details: [overnight architect](handoffs/2026-10-08-overnight-architect.md).
 
 ## Current Objective
+
+Cisco says “I want to go to sleep.” Save the stop and end the session. He asks what his audit role was: confirming that each X author is the actual submitting member, with unresolved/borrowed work corrected under the existing attended pre-close ruling. The agent handles technical inventories/duplicates/revisions/eligibility reads, but cannot invent human ownership attestation. This request is not attendance or a completed audit. Do not prompt for Ledger tonight or wait for a scheduled signing/audit action.
 
 Cisco requested final correctness checks before moving focus to XTUF while epoch2 closes. That audit is complete locally; no XTUF files were touched. Leave Hyphae preview running at http://127.0.0.1:3010/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg and park human auth checks until Cisco returns. No attended payout/close/signing step was performed.
 
@@ -157,9 +161,9 @@ Check status/both refs and clock before any later publication. Preserve held nex
 ## Next-session prompt
 
 ```text
-Funding/payouts PAUSED. Final local website audit source1510ebc:1521passed/3existing skipped, typecheck/lint464files/web build pass; fresh other-family ACCEPT. Public overview/raids/join use consistent reward cutoff, pause and unavailable states. One open raid/six recent closed at21:22Z, reward cutoff Oct10 00:00Z; no close/final snapshot/payment yet. Owner email sign-in/logout confirmed on isolated /dev/privy; Phantom failed after approved message, refresh persistence untested. Private member gate remains off. Cisco's next focus is XTUF, not another Hyphae feature or payout step.
-Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-10-09-website-final-audit.md, docs/handoffs/2026-10-09-privy-development-setup.md, apps/web/lib/community-intake.ts, apps/web/scripts/preview.mjs
-Model: available coding model at high effort for concrete fixes; record actual runtime identity/effort rather than an invented model ID.
-Skills: handoff-memory, the-analyst, superpowers:systematic-debugging for proven wallet failure, superpowers:verification-before-completion, handoff.
-Preserve both histories/held next0018+0019/verify0.1.0/publication hold and freeze. Do not push/deploy, alter accounts/keys/DNS or send messages. No money/signing/live close action without Cisco's renewed exact row-specific scope/attendance. When returning to login, check refresh without logout then obtain only failing wallet request status/error code; no raw OTP/request/headers/signature/token, no repeated answered setup/signing questions. Do not infer production HttpOnly/server/Telegram proof from development cookies or public receipts. XTUF work belongs in its own workspace after reading its handoff.
+Cisco stopped for sleep22:21Z Oct9. No overnight attendance or agent action authorized. Ledger preparation never started; all C14–C22/C18b incomplete. No author attestation/correction/pause/transfer/publish/claim/P14. Epoch2 scheduled close Oct10 00:00Z (01:00 Lisbon); actual close/snapshot not yet read. Missing pre-close evidence blocks epoch2 publication under current runbook. Funding/payouts and reviewed feature release held.
+Files: CLAUDE.md, docs/HANDOFF.md, docs/demo/2026-10-08-first-payout-readiness.md, docs/handoffs/2026-09-28-runbook-c.md, docs/handoffs/2026-10-09-tomorrow-session-boundary.md, docs/handoffs/2026-10-09-payment-orientation.md
+Model: recorded project recommendation Opus5/xhigh for payout reasoning; record actual runtime model/effort, never invent it.
+Skills: handoff-memory, the-analyst, superpowers:verification-before-completion, handoff.
+Begin tomorrow with clock/ref/writer checks and read-only actual close/snapshot/jobs/gate inspection. Do not assume scheduled close succeeded or silently waive missing author evidence. Explain one human step at a time only with renewed attendance. Source1510ebc website gate1521passed/3skipped/type/lint/build/other-family ACCEPT remains historical; email login/logout confirmed, Phantom/refresh unresolved. Money orientation21:57Z: admin0SOL, community/vault absent; original funding-source balance stays in ignored receipt. Treasury-source change not approved. Preserve both histories/origin-main d3b8c6c/next1249fed, next0018+0019/verify0.1.0, freeze through Oct11 00:00Z and publication hold. No funds, signing, retroactive frozen correction, new scoring/keys/messages, deployment or Organic/vault edit.
 ```

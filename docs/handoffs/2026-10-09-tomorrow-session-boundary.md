@@ -4,6 +4,8 @@ Date: 2026-10-09, checked22:18Z. Operator: Codex (GPT-6); exact runtime model ID
 
 Cisco asks whether this preparation session can wait until tomorrow morning. This is a deferral question, not funding approval, a recorded close extension or proof of tonight's attendance. Ledger setup can be deferred; no device command/signing step has begun. Original Oct9 C14–C18 target remains unfulfilled. No work is scheduled to run unattended.
 
+**Confirmed stop22:21Z:** Cisco asks what he must audit and says “I want to go to sleep.” Stop after handoff; do not wait for tonight's attended actions. His human role was confirmation of X-account ownership for each submitting member; agent prepares inventories and technical checks. No blanket author attestation follows from this question. No author mapping, pause, final audit or correction was completed. Tomorrow inspect actual close/snapshot/gate read-only, preserve missing evidence as blocker and keep payouts held; do not retrospectively approve frozen allocations. Normal deployed worker/schedule was not stopped or altered. No money/signing/publication scheduled by the agent.
+
 The canonical operator packet retains close Oct10 00:00Z, one day hold through Oct11 00:00Z and required attended pre-close C18b. Europe/Lisbon conversion checked through Windows timezone data:
 
 | Required checkpoint | UTC | Lisbon |
@@ -32,7 +34,7 @@ handoff-memory, the-analyst, superpowers:verification-before-completion, handoff
 ## Next-session prompt
 
 ```text
-Cisco asked to defer preparation until morning; no resumed money authority or close extension. Ledger attendance/address check never started. Tonight's C18b author/correction/final audit is incomplete; close Oct10 00:00Z (01:00 Lisbon). If no pre-close clean evidence was recorded, epoch2 publication remains blocked under current runbook. Payment is never before Oct11 00:00Z and ready/attended publish/claim/P14. Funding/payouts paused; all C14–C22 open.
+Cisco confirmed stop for sleep22:21Z; no overnight attendance/agent work, resumed money authority or close extension. Ledger attendance/address check never started. Tonight's C18b author/correction/final audit is incomplete; close Oct10 00:00Z (01:00 Lisbon). If no pre-close clean evidence was recorded, epoch2 publication remains blocked under current runbook. Payment is never before Oct11 00:00Z and ready/attended publish/claim/P14. Funding/payouts paused; all C14–C22 open.
 Files: CLAUDE.md, docs/HANDOFF.md, docs/demo/2026-10-08-first-payout-readiness.md, docs/handoffs/2026-09-28-runbook-c.md, docs/handoffs/2026-10-09-tomorrow-session-boundary.md, docs/handoffs/2026-10-09-payment-orientation.md
 Model: project recommendation Opus5/xhigh for attended payout reasoning; record actual runtime identity/effort, do not invent it.
 Skills: handoff-memory, the-analyst, superpowers:verification-before-completion, handoff.
