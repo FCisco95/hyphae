@@ -2,6 +2,12 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-09 · Participation minimum proposed, no policy change
+
+**Intent:** Cisco wants a small amount for zero-point participants and the remainder distributed by points, to demonstrate rewards. Amount/population/budget/effective epoch not defined. Recommend a shared baseline for legitimate eligible participants plus a points bonus, avoiding a zero-score advantage over low-positive work. This recommendation is not a recorded new reward ruling.
+
+**Validation/stage:** source allocation.ts rejects payable members with non-positive points and applies existing fee/caps; packet requires signature/rules/holder/author/safety evidence. Read-only examination, no allocator/policy/config/scoring/DB/manifest change and no transfer. Do not silently retrofit epoch2 or manufacture points. Existing source tests/reviews unchanged, no new runtime gate run for docs. Funding/payout/feature-release/freeze holds remain, all C14–C22/C18b incomplete. Population question remains: genuine zero-point work versus everyone who joined. Proposal commit resolves with `git log -1 --format=%H -- docs/handoffs/2026-10-09-participation-minimum-proposal.md`; local only, no push/deploy or Organic/vault edits.
+
 ## 2026-10-09 · Morning deferral boundary, no live action
 
 **Confirmed session end22:21Z:** Cisco says he wants to sleep and asks what the human audit entails. Explain X-account ownership attestation for submitting participants; technical inventory/duplicate/revision checks belong to the agent. No blanket approval or attendance inferred. Save exact stop: Ledger unopened/unverified, C14–C22/C18b incomplete, no pause/attestation/correction/transfer/publication/claim. Return tomorrow for read-only close/snapshot/gate inspection; missing pre-close evidence remains a payment blocker. No live schedule/worker change, unattended agent task or push/deploy. Existing source checks unchanged; documentation only.
