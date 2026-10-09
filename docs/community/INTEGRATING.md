@@ -2,6 +2,18 @@
 
 Hyphae already has a public read API and reviewed operator-assisted community setup. Start with those interfaces. The reusable reader below is a **local repository example**, not a published SDK or a self-service registration API. It requires no production credentials and performs only public GET requests.
 
+## October 9 integration checkpoint
+
+Organic’s reviewed held main 9c2b6d1d documents the settlement GET in docs/contracts/2026-10-08-public-consumers.md. Hyphae has no runtime Organic HTTP caller today. Future adoption must be server-side (Organic sends no CORS), respect Cache-Control and Retry-After, keep exact decimal lamport strings and distinguish unavailable/error from zero. The held JSON privacy fix removes sheet inputs; never consume eligibility worksets or platform amounts from those internal fields. Collection/sweep rows are not Hyphae funding or payment proof. Organic’s upgrade/proof does not authorize a transfer or create a community.
+
+Hyphae production now exposes vault and settlement states; earn-first permits nullable wallet/link fields, and epochs expose immutable base config plus amendments. The base prompt is not necessarily the effective prompt at admission. Oct 9 live epoch 2 closes Oct 10 00:00Z, with reward-eval/2 effective since Oct 7 18:00Z. Jev is deployed but not selected by an epoch.
+
+Reviewed next 1249fed adds payout verdicts, wallet record/history, recap and Blink; these are not deployed. A payable/published label is not a payment receipt; wallet history is not Organic authorization. Organic’s existing adapter only reads current epoch/close and rubric version and remains compatible. API/schema changes need the same producer-to-consumer acceptance after release.
+
+Cisco’s Oct 7 direction makes Organic the authority for Organic communities and Hyphae the called engine; other communities retain the operator path. The proposed provisioning POST and unsigned initialize endpoint are not shipped. Publisher-key custody is distinct from the permanent fee-recipient treasury; authentication, replay handling, exact mint/group scope and public identity must be agreed before a write API.
+
+Payout and release hold: C14–C18 Oct 9, close Oct 10 00:00Z, C19–C22 Oct 11; no main push/deploy Oct 9 22:00Z–Oct 11 00:00Z. Release next only after payout and its exact approval. The verify dependency remains 0.1.0 through Oct 12; the read SDK is still privately packed, not publicly released.
+
 ## Run the example
 
 From the repository root with its frozen-lockfile dependencies installed, first build the packaged SDK:
@@ -64,7 +76,7 @@ Validation: **26 focused SDK tests and 14 starter tests**, full **891 passed/1 o
 
 The private package guard prevents accidental npm publication. Existing BUSL 1.1 license is copied unchanged into the tarball. SDK/operator/publication scope contains no new backend/provisioning interface or site redesign. Initial SDK code has an exact other-family ACCEPT; subsequent fixes/demo need a focused review before a later source/package publication. It is distinct from **@organichub/verify**, which remains exactly 0.1.0 through Oct 12.
 
-The approved phone release remains frozen at **a646abc883131ff411d5dd7bbba536176364fe38**. SDK/core-import/lockfile changes are later local work and must not be substituted into that release.
+Historical Oct 4 phone candidate: a646abc883131ff411d5dd7bbba536176364fe38. Subsequent approved web/API releases superseded that release pin; current source/image and attended payout gates live in docs/HANDOFF.md. This does not prove a real phone test or SDK publication.
 
 ## Reference adopter app
 
@@ -82,6 +94,6 @@ Initial exact post-a646 SDK review is [ACCEPT](../reviews/2026-10-04-sdk-initial
 
 Producer: Hyphae. Contract: existing public read API **v1**, unchanged. New artifacts: local standalone read-only SDK/tarball with isolated Node/browser install proof, executable reader and this adoption guide. Consumer: Organic's existing task 3.6/DEP-09 owner, or another launchpad's equivalent integration owner.
 
-The next sync should carry these concrete changes into existing plans: adopt the locally packed read SDK where permitted, reuse the reader and reviewed setup; record Windows operator access unavailable; retain the exact conditional P1+D2 approval; stop scheduling completed onboarding/setup or another release-preparation pass. Owner authority/provisioning stays unimplemented, and no live dependency is closed by local SDK or fixture evidence.
+The next sync should carry these concrete changes into existing plans: adopt the locally packed read SDK where permitted, reuse the reader and reviewed setup; use current Windows operator receipts and completed publication evidence; stop scheduling completed onboarding/setup or another release-preparation pass. Owner authority/provisioning stays unimplemented, and no live dependency is closed by local SDK or fixture evidence.
 
 The Organic-sync portable loader resolves to its canonical skill on this Mac. Only that loader, canonical instructions and handoff requirements were checked here. A full multi-repository/vault sync was **not run**; those write targets remain outside this Hyphae-only session. This guide and `docs/HANDOFF.md` are the normal producer handoff to that owning sync.

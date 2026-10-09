@@ -7,6 +7,14 @@ summary: Hyphae roadmap from the 2026-10-06 review. Five ranked next steps befor
 
 Written 2026-10-06 (Claude Sonnet 5.5, effort high) from Cisco's question "what is this protocol missing, how do we make it effortless, useful for Solana, scalable and professional". Items 1 to 5 were accepted by Cisco on 2026-10-06. This file lists engineering and product work only; judging strategy stays in the private vault.
 
+## Current checkpoint — October 9
+
+The original Oct 6 timetable below is historical. Cisco moved epoch 2 close to Oct 10 00:00Z; C14–C18 is Oct 9 and C19–C22 is Oct 11. Freeze: Oct 9 22:00Z–Oct 11 00:00Z. Epoch 3 runs Oct 10–17. Contact/retention and public-repo decisions are recorded; trust page and injection cases are complete. Earn-first, raid buttons and vault visibility are live. Jev code is deployed but epoch 2 stays Haiku reward-eval/2.
+
+The five requested features plus schedule/rollout work are reviewed and fixed on next 1249fed, not deployed. Do not re-build them or cut the completed Blink. Main d3b8c6c has five unique documentation commits; preserve both histories at release. Existing release plan is DRAFT for after C22 on Oct 11 and needs the exact yes, founder wording/scorer/privacy decisions and the normal combined gate. Do not open an epoch-3 raid before the effective scorer amendment while that hold remains.
+
+This page’s date windows and pending-contact questions below are historical, not execution instructions. Follow docs/HANDOFF.md and docs/demo/2026-10-11-release-plan.md. Owner-recorded submission deadline: Oct 12 23:59 PDT (Oct 13 06:59Z).
+
 ## Direction from 2026-10-07: easy to adopt, easy to engage (no date limit)
 
 Cisco, 2026-10-07: keep improving until he calls a stop; setup should be buttons and an API, Organic should spawn a community and its payments with a script, and engaging must be easy because "no one is doing it". The payout safeguards below (the sitting and its deploy hold) still apply unless Cisco lifts them. Full reasoning, the Organic contract and the founder decisions: [organic-sync brief](handoffs/2026-10-07-organic-sync-brief.md).
@@ -39,7 +47,7 @@ Earlier items 2a to 2d (domain, deep link to wallets, Sign-In With Solana, funne
 | Oct 10 | Submission checklist; after 00:00, Neon password rotation (Cisco) |
 | Oct 16 | Epoch 3 closes (after the hackathon) |
 
-## Before the deploy hold (items 1 to 5, in this order)
+## Historical Oct 6 queue (completion status superseded above)
 
 ### 1. Real members scored in epoch 3
 
@@ -81,7 +89,7 @@ Evidence: 5 link sessions, 2 completed; the first real tester believed his succe
 - **Needs:** a Codex review (wallet and transaction code), a deploy before Oct 8 22:00Z, no new custody and no new signing path.
 - **Cut rule:** if it is not reviewed and accepted by Oct 8 12:00Z, cut it and keep it on this list for after Oct 10. It never delays the sitting.
 
-## After Oct 10 (scale, track record, professionalism)
+## Follow-on scope (use current release gates above)
 
 **Track record per wallet**
 - Public wallet record: `GET /v1/wallets/:wallet/record` and a wallet page with verified contributions, average score, communities and epochs paid. The data mostly exists (`/v1/wallets/:wallet/claims` is live).

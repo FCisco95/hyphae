@@ -19,10 +19,10 @@ What that costs: epoch 3 replies admitted between 2026-10-10T00:00Z and the amen
 
 | # | Blocker | State (2026-10-08 night) |
 |---|---|---|
-| 1 | Codex reviews of the five branches, findings fixed test-first, fix checks ACCEPT | scorer-v3, raid-stats, wallet-record, Blink: **ACCEPT** after fixes ([records](../reviews/)). payout-status: five findings fixed, fix check running |
+| 1 | Codex reviews of the five branches, findings fixed test-first, fix checks ACCEPT | scorer-v3, raid-stats, wallet-record, Blink: **ACCEPT** after fixes ([records](../reviews/)). payout-status: five findings fixed, fix-check ACCEPT at next 1249fed (next:docs/reviews/2026-10-09-payout-fix.md; current HANDOFF) |
 | 2 | Schedule notice on the epoch page (ruling 3) | merged into `next` |
 | 3 | `scripts/rollout/db.mjs` re-pinned to 0018+0019 with the post-payout epoch state, rehearsed on Postgres 17 and 18 | **done and reviewed, ACCEPT** (`docs/handoffs/2026-10-09-rollout.md`, `docs/reviews/2026-10-09-rollout.md`) |
-| 4 | Full gate on the merged `next`: `pnpm test`, `pnpm typecheck`, `pnpm lint`, `drizzle-kit check`, `test:pg`; numbers in the handoff | after 1 |
+| 4 | Full gate on merged next: tests/typecheck/lint/Drizzle/test:pg | DONE at 1249fed; exact CI success. Re-run once after integrating main-only docs and any later authorized change |
 | 5 | Cisco's answers: the scorer's four questions, the member-visible strings in each branch note (payout-status, wallet-record, raid-stats, Blink, the notice panel, the `/me` lines added by the payout fix), the privacy call (rules-test status public per member id), the CHANGELOG and announcement wording | morning of Oct 9 |
 | 6 | C19 to C22 done and recorded: the payout published and claimed, P14 read. **Precondition the script does not certify:** `db.mjs` accepts epoch 2 closed-and-unpublished as well as published; the plan requires `published` before E2 | Oct 11 |
 
@@ -44,7 +44,7 @@ What that costs: epoch 3 replies admitted between 2026-10-10T00:00Z and the amen
 
 | # | Effect | Target and bound |
 |---|---|---|
-| E0 | Merge `next` into `main` locally, full gate green, **no push yet** | home machine, `main` |
+| E0 | Merge reviewed next with then-current main locally, preserve BOTH histories, full combined gate green, **no push yet** | Reviewed bases d3b8c6c main / 1249fed next diverge by 5 main-only docs and 62 next-only commits; no reset or fast-forward assumption |
 | E1 | Build and push one image from the exact source | detached clean worktree at `main`'s SHA, `apps/api/Dockerfile`, `--frozen-lockfile`, tag `next-<sha7>` (must read 404 first) |
 | E2 | Apply 0018 then 0019 | production Neon only, through `db.mjs` from the exact-source worktree's `packages/db` (`precheck` → wait for a newer `reward-recovery` → `migrate` → `postcheck`, direct host, `lock_timeout` 3 s, liveness proof). It refuses unless epoch 2 is closed at 2026-10-10T00:00Z with one snapshot, epoch 3 is open to 2026-10-17T00:00Z, the public reads agree, and `raid_recaps` has no rows. 0018 is a `CREATE INDEX` on a tiny table; 0019 creates an empty table. No data change. The old image never reads either |
 | E3 | Update the API machine `6839d31b317318` | only after E2 passes; `/health`, `/v1/communities/<mint>/epochs/3`, `/v1/wallets/<signed wallet>/record` answer 200 |
