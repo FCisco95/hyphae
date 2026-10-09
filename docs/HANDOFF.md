@@ -1,6 +1,6 @@
 ---
 date: 2026-10-09
-summary: Payouts paused. Local account implementation fe6800f +1577b80 +3ffd0f5 passes1485tests/type/lint/build and fresh Claude ACCEPT. Login off pending owned Privy app/domain and actual HttpOnly/login smoke; next held.
+summary: Payouts paused. Preview entry repaired locally at67e1bfb; Cisco rejected the visible website experience. Professional visual journey and web quiz unfinished. Auth reviewed but login off; publication and next held.
 ---
 
 # Hyphae handoff
@@ -13,6 +13,8 @@ Cisco approved the complete website direction and **email + existing Solana wall
 
 ## Recent Changes
 
+Cisco could not see the promised community experience and rejected the website quality. The restarted preview omitted `DEFAULT_MINT`, so the homepage Community link reached "No community is configured." Fixed the local launcher at **67e1bfbbb8ef11d8539a95deb3dd5f441a0373d8**: `pnpm preview` builds with the recorded pilot mint and existing server-side read configuration, serves loopback3010, and forces login off. Actual homepage link and `/community` now reach the community overview. Desktop/mobile context, join and disabled account navigation checked. This fixes visibility only: the old homepage design remains, the join guide still points to the bot, and the in-page quiz/task/progress experience is unfinished. Do not ask Cisco to configure Privy as the answer to this UX complaint. [Repair checkpoint](handoffs/2026-10-09-preview-visibility-repair.md).
+
 Built the approved read-only member login slice at **fe6800f2f7ee9c66b217d59388d434994e7407a7**. Real SDK app-bound token verification, fresh provider Telegram identity and current group checks, scoped existing-member DB reads; strict private/no-store responses and cookie-only same-origin proxy. Scoped member UI has explicit email/existing Solana login and Telegram linking controls with wallet auto-creation off. Logout/subject-change races clear private data before passive effects. Missing configuration leaves the existing API and public website working. Provider logging is explicitly off. No DB/schema/wallet/reward write or migration. SDK/dependencies installed; no provider account/configuration, keys, DNS or live login.
 
 Built community-scoped overview/context/join pages with the existing public reads. Unknown communities fail not-found, unreadable data shows unavailable, and a pause prevents submission encouragement while preserving audit access. Reused existing join instructions; no invented invite, private link session, quiz pass or personal progress. Mobile/desktop walkthrough passed. Full test/typecheck/lint/build passed at `a717c17`; the text-only follow-up passed 34 view tests and focused lint. Restored one missing locked SDK dependency without changing manifests/lockfile. Backend, DB, wallet proofs and payout logic unchanged.
@@ -21,12 +23,14 @@ Coordination patch checked/applied once, local commit **c64624519e9091c0a00d8963
 
 ## Metadata
 
-Last Updated: 2026-10-09T16:16Z
+Last Updated: 2026-10-09T17:01Z
 Project: Hyphae; local Privy member-login implementation and website foundation. Existing payout arc parked by Cisco.
 Updated By: Codex (GPT-6). Exact runtime model ID/configured effort are not exposed in this session; do not substitute the prior operator's model/effort.
 Checkpoint: [October 9 read-only receipt](handoffs/2026-10-09-payout-preflight.md). Previous feature/review details: [overnight architect](handoffs/2026-10-08-overnight-architect.md).
 
 ## Current Objective
+
+Address Cisco's rejected website experience with visible product improvements. The direct working preview is http://127.0.0.1:3010/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg. No owner setup is required to see the current public pages. The launcher repair is not a visual redesign or acceptance of the website. Existing local build authorization remains; do not re-ask the provider choice. Keep provider activation as a separate pending human step.
 
 Complete and review the approved local read-only account slice: `/c/[mint]/me`, cookie-only `/api/member/[mint]` and separate `/member/v1/communities/:mint/me`. Official production HttpOnly support is documented, but owned-domain/provider setup and actual cookie/login receipts are still absent. `PRIVY_LOGIN_ENABLED=off` plus exact-host gating prevents localhost/preview activation. Final code review is ACCEPT; complete owned-provider/domain setup and real smoke before activation. Then guide Cisco through one provider setup action at a time. Do not infer provider/DNS/key/publication authority. No migration; original member and close evidence untouched. Public overview/context/join remain available. Web quiz/task feed/progress follow separately. Reviewed next and publication conditions remain held.
 
@@ -47,6 +51,8 @@ Complete and review the approved local read-only account slice: `/c/[mint]/me`, 
 
 ## Next Actions
 
+0. Open the direct community preview above. Prioritize a coherent visual entry and member journey following Cisco's feedback; current overview/context/join are a foundation, not the requested finished professional website. No visual redesign was made in the preview repair. Leave funding/payouts, real login and publication held.
+
 1. Fresh final review **ACCEPT**: `36e2e531ffce151e71e6364c08f40aa877a63007..3ffd0f57750d570a3594617bac7ee5fd3f9ae2e6`; actual returned model **claude-opus-5-5**, requested effort **high**,172266ms, one fresh turn. Initial CHANGES_REQUESTED and subsequent ACCEPT receipts retained under ignored `docs/plans/2026-10-09-privy-*-review*`. No blocking code defect with activation off. Review is static diff analysis, not a provider smoke. Final docs bookkeeping is outside reviewed auth-code range.
 
 2. Pending Cisco question: does a dedicated Hyphae Privy app already exist? Do not request secrets in chat. Dedicated app/domain, allowed origins, HttpOnly production-cookie mode, Telegram linking and operator-owned test accounts require owner actions. No activation before actual cookie/login/refresh/logout proof. Official recipe: https://docs.privy.io/recipes/react/cookies.
@@ -63,6 +69,8 @@ Complete and review the approved local read-only account slice: `/c/[mint]/me`, 
 4. Oct 11 after hold and **ready**, renewed attendance: C19 production intent, C20 publish, C21 genuine claim, C22/P14. Empty/no-payable or failed evidence means no payment; no fabricated leaf/override.
 
 ## Validation
+
+Preview repair at67e1bfb: actual `pnpm preview` production build/start passed; lint **447 files**, **2 environment-coverage tests passed**. Homepage button and `/community` redirect reach the correct community; context/join/account checked at1440×1000 and390×844, no horizontal overflow, zero browser console warnings/errors. Login displays unavailable. These are rendering/read-only receipts, not real login or payout evidence. No TypeScript/auth/schema/reward change, so the historical full gate below was not repeated for this local launcher.
 
 **Freeze: no main push or deploy Oct 9 22:00Z–Oct 11 00:00Z.** Work is local-only under existing publication/release holds; no push attempted. Final local gate at `3ffd0f5`: **135 core / 26 read-client / 205 web / 1119 API passed, 3 existing API skipped** (1485 passed total); test/typecheck/lint exit 0, lint **446 files**. API production bundle/link-page build exit 0. Web production build exit 0 with the installed final dependencies; final changes thereafter were review fixes with full gate and both builds repeated. Real SDK ES256 verifier and HTTP fixture tests; PGLite existing-member queries; mounted React callback/logout/subject-change tests. Browser actual public reads/disabled account: desktop and390×844, no overflow/offscreen links,0 console errors/warnings. Enabled provider flows and actual HttpOnly cookies are **not tested live**. No schema/reward change, so no new Drizzle/PG gate. Fresh auth review ACCEPT covers36e2e531..3ffd0f5; next's existing ACCEPTs remain separate. Before any permitted publication run combined gate and satisfy release/clock/review/configuration conditions.
 
@@ -84,6 +92,8 @@ Both private decision files present/read; no guessed restoration or vault writes
 
 ## Publication ledger and organic-sync
 
+Additional pending local commits: auth checkpoint **8db061c2b8d866a885c6071e3fd632710fbfabdb**, preview repair **67e1bfbbb8ef11d8539a95deb3dd5f441a0373d8**. Resolve this repair's documentation commit with `git log -1 --format=%H -- docs/handoffs/2026-10-09-preview-visibility-repair.md`. No push. Organic-sync should carry the corrected preview launcher and Cisco's UX rejection/unfinished stage, not a completed website claim. No vault/Organic edit.
+
 Pending local commits: **c64624519e9091c0a00d8963db0761b5aefd9ff2**, **6abf23a4e23ef2e2ba41cba2d9acb92fb66f2984**, **b1385404823f620ef0ba3bd9bb773e0b99f12053**, **a717c17d25b1f450e34a5d3c1276f976c9bdd104**, **b750dd98aa8b9b1ca629779172d05d19b3132ebe**, **acd56168b68d596e0ae9c86e06e2c2e870d99581**, **36e2e531ffce151e71e6364c08f40aa877a63007**, **fe6800f2f7ee9c66b217d59388d434994e7407a7**, **1577b8075ab317634337d4407f5b0555e838a720**, **3ffd0f57750d570a3594617bac7ee5fd3f9ae2e6**. Resolve the latest checkpoint bookkeeping commit with `git log -1 --format=%H -- docs/handoffs/2026-10-09-privy-login-implementation.md`. Origin/main stays **d3b8c6c**; next/origin-next stays **1249fed**. No push: publication/release conditions remain held, including the freeze. New private member API and community account route; existing public API/settlement contracts unchanged. Organic may link to community/account routes after authorized publication; no SSO/data integration yet. Propagate login setup, private/no-store contract and activation-blocked stage through organic-sync only. Organic-sync owns vault/Organic propagation; neither was edited here.
 
 ## Generated artifacts this session
@@ -98,7 +108,8 @@ Pending local commits: **c64624519e9091c0a00d8963db0761b5aefd9ff2**, **6abf23a4e
 | Auth review input/result | docs/plans/2026-10-09-privy-review* | Ignored local, initial CHANGES_REQUESTED then final ACCEPT; exact metadata retained |
 | Auth logs/mobile screenshot | docs/plans/2026-10-09-member-*.log, 2026-10-09-member-disabled-mobile.png | Ignored; fixture/disabled-page evidence only |
 | Screenshots/gate logs | docs/plans/2026-10-09-community-*.png and 2026-10-09-website-*.log | Ignored local artifacts; website rendering, not payment evidence |
-| Developer preview | Loopback127.0.0.1:3010 | Production preview running; existing read configuration server-side only; login forced off |
+| Developer preview | Loopback127.0.0.1:3010; apps/web/scripts/preview.mjs | Restarted via pnpm preview with recorded community mint; reads server-side, login forced off |
+| Preview repair evidence | docs/plans/2026-10-09-preview-*.log and preview-before-repair/repaired-community screenshots | Ignored local; desktop/mobile navigation and build, not completed visual design |
 | Keys/resources/jobs | None | None created/changed |
 
 ## Suggested skills
@@ -118,9 +129,9 @@ Check status/both refs and clock before any later publication. Preserve held nex
 ## Resume Prompt
 
 ```text
-Funding/payouts explicitly PAUSED. Email/existing Solana wallet Privy account API/proxy/UI built locally at fe6800f +1577b80 +3ffd0f5, with explicit Telegram linking and no auto-created wallet. Full test/typecheck/lint/build pass; real provider/HttpOnly cookie smoke absent, activation off. Fresh other-family auth review ACCEPT at3ffd0f5. Main-only commits and next1249fed held; no publication.
-Files: CLAUDE.md, docs/HANDOFF.md, docs/superpowers/specs/2026-10-09-privy-member-login-design.md, docs/superpowers/plans/2026-10-09-privy-member-login.md, docs/handoffs/2026-10-09-privy-login-implementation.md, apps/api/src/member-auth/routes.ts, apps/web/components/member-provider.tsx, apps/web/lib/member-api.ts
+Funding/payouts explicitly PAUSED. Cisco rejected the preview and website quality. Missing DEFAULT_MINT repaired locally at67e1bfb; pnpm preview now shows the actual community. Visual redesign, in-page quiz/tasks/progress unfinished. Privy account code reviewed ACCEPT at3ffd0f5, login off and actual provider smoke absent. Main and next1249fed histories/publication held.
+Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-10-09-preview-visibility-repair.md, apps/web/scripts/preview.mjs, apps/web/app/page.tsx, apps/web/app/community/page.tsx, apps/web/components/member-provider.tsx
 Model: use the available coding model at high effort for review fixes; record the actual runtime identity, not an invented model ID.
 Skills: handoff-memory, the-analyst, superpowers:executing-plans, test-driven-development, verification-before-completion, handoff.
-Read final Claude ACCEPT/checkpoint and pending Cisco Privy-app reply; do not repeat completed reviews/gates unless new changes justify them. Guide one owner setup action at a time without requesting secrets in chat. Real configured HttpOnly/login/refresh/logout receipts are required before activation. Keep web quiz/task/progress as the next separately bounded product slice. Preserve next0018+0019, verify0.1.0 through Oct12, both histories and publication holds/freeze. No payouts, merge/deploy, DNS/key/account mutation or messages.
+Open the direct community preview in the repair checkpoint and address the visible member journey first. Do not present the launcher repair as a professional redesign or demand provider setup to review public pages. Reuse approved local website direction and auth ACCEPT; real configured HttpOnly/login/refresh/logout receipts remain required before activation. Preserve next0018+0019, verify0.1.0 through Oct12, both histories and publication holds/freeze. No payouts, merge/deploy, DNS/key/account mutation or messages.
 ```

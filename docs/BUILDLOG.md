@@ -2,6 +2,18 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-09 · Broken community preview repaired; website quality still open
+
+**Changed:** repeatable `pnpm preview` launcher supplies the recorded pilot mint, existing server-side read configuration and disabled login. The omitted mint caused the old homepage's Community link to show "No community is configured." Homepage entry and redirect now open the actual community overview.
+
+**Decision and why:** repair the preview before asking Cisco to review pages he could not see. This is a local configuration fix, not a visual redesign; Cisco rejected the visible website quality. Old homepage, bot-based join and unfinished web quiz/tasks/progress remain product work.
+
+**Validation:** actual production build/start passed; lint447 files,2 environment-coverage tests passed. Desktop1440×1000/mobile390×844 overview/context/join/disabled-account navigation, no overflow, zero browser warnings/errors. Prior full auth gate/review remain historical and separate.
+
+**Commit/stage:** **67e1bfbbb8ef11d8539a95deb3dd5f441a0373d8**, local only. No push/deploy, auth/backend/DB/reward change, provider/key/domain change or Organic/vault edit. Both histories and release/freeze holds preserved. All C14–C22 still incomplete; actual payout receipts/payees/amounts none.
+
+**Next:** improve the visible member journey from the working community preview. Provider setup remains separately pending; do not ask it as the remedy for Cisco's UX complaint. [Checkpoint](handoffs/2026-10-09-preview-visibility-repair.md).
+
 ## 2026-10-09 · Private member account built locally; activation held
 
 **Built:** dedicated app-bound token verifier, fresh provider/Telegram group proof, existing-member read, private/no-store cookie-only proxy and scoped account UI. Email/existing Solana login and explicit Telegram linking controls; no automatically created wallet. Login wallet never replaces the current reward wallet. Logout/account-change races discard private data before it can flash. Missing configuration leaves public pages/API running.
