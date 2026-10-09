@@ -2,6 +2,18 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-09 · Owner development app setup; member login still held
+
+**Changed:** Cisco created Hyphae Development in Privy, enabled Solana and added loopback3010 as an allowed origin. Saved the owner-supplied public App ID in ignored local `.env`; no secret/key/activation change. EVM-off/save and automatic-wallet dashboard settings still unconfirmed.
+
+**Decision and why:** preserve the original verified-domain HttpOnly requirement for private member access. A development app alone cannot meet it. Correct the earlier setup expectation; recommend a separate provider-only local sign-in test as an additional bounded slice before any domain purchase. That page is proposed, not approved or built.
+
+**Validation:**3 focused member-login gate tests pass; current public registration URL returned HTTP200. No actual email/wallet/member/Telegram/cookie/login/logout proof. Prior1502-test/full gate and source ACCEPT are historical, unchanged.
+
+**Stage/commits:** source0dfab10bab28d0ae421b5747434ed82887f49a8a unchanged. Resolve this docs-only commit with `git log -1 --format=%H -- docs/handoffs/2026-10-09-privy-development-setup.md`. Local only, no push/deploy because publication/release hold remains; upcoming freeze preserved. Payouts paused, C14–C22 incomplete, no actual payout/payees/amounts. Owner-created provider resource only; no agent-created account/key or Organic/vault writes.
+
+**Next:** approval of isolated provider-only test design, or owned-domain production setup for the existing private member page. [Checkpoint](handoffs/2026-10-09-privy-development-setup.md).
+
 ## 2026-10-09 · Live raid workspace, local only; real login still blocked
 
 **Built:** live raid cards on the community overview: approved records, actual closing times, captured X text/source links, recent closed raids, separate reward cutoff and visible account entry. Privy email/existing-Solana options now visible but disabled. Cancelled/scheduled raids omit their content and briefs. A shared15second public read cache supports visible-page30second refresh without forwarding web tokens or visitor addresses.
