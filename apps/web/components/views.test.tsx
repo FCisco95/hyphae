@@ -77,6 +77,8 @@ describe("CommunityView", () => {
       expect(renderToStaticMarkup(<CommunityView community={community} />)).not.toContain(
         ">Find a raid<",
       );
+      expect(text(<CommunityView community={community} />)).toContain("Reward intake is open.");
+      expect(text(<CommunityView community={community} />)).not.toContain("intake is closed");
     }
   });
 

@@ -121,7 +121,11 @@ export function CommunityOverview({ community, presentation }: CommunityProps) {
         <div>
           <p className="eyebrow">Participate</p>
           <h2 id="community-next-title">
-            {accepting ? "Ready to contribute?" : "Prepare while intake is closed."}
+            {accepting
+              ? "Ready to contribute?"
+              : community.reward_intake === "paused"
+                ? "Reward intake is paused."
+                : "Prepare for the next epoch."}
           </h2>
           <p>
             {accepting
