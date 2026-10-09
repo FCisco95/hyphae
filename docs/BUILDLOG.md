@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-09 · Morning deferral boundary, no live action
+
+**Decision boundary:** Cisco asks whether Ledger/payment preparation can wait until morning. Device preparation can wait; actual publication/payment still requires Oct11 00:00Z hold completion and readiness. Required C18b author/correction evidence remains absent and has a strict pre-close deadline tonight. If no attended clean audit occurs before Oct10 00:00Z, keep epoch2 payment blocked; never repair frozen amounts with retroactive corrections or silently move the close.
+
+**Validation/stage:** reread the recorded operator packet and current handoff; Windows Europe/Lisbon conversion confirms pause00:00, final audit00:45 and close01:00 local on Oct10. No fresh DB/chain audit, pause, signature, transfer, schedule mutation or provider action. No runtime changes/tests rerun; source1510ebc and its prior full gate remain historical proof. All C14–C22/C18b open, actual payees/amounts/receipts none. Freeze active; local docs only, no push/deploy. This checkpoint SHA resolves with `git log -1 --format=%H -- docs/handoffs/2026-10-09-tomorrow-session-boundary.md`.
+
+**Next:** founder attendance/scheduling answer remains open. If stopping tonight, save exact stop and return tomorrow for read-only close/snapshot/gate inspection; payment stays held. Do not treat the question as resumed funding or an exception to the missing pre-close evidence. Organic-sync owns downstream propagation; no Organic/vault edits. [Checkpoint](handoffs/2026-10-09-tomorrow-session-boundary.md).
+
 ## 2026-10-09 · Payment preparation explained; funding still paused
 
 **Guidance follow-up22:09Z:** Cisco asks whether MYCEL Treasury should fund rewards and wants one-step guidance. Recommend retaining recorded founder-funded first test; Treasury is the fixed3% fee recipient, distinct from the rewards vault. No Treasury spending or funding-source change approved. Verified recorded Windows keygen executable exists; no USB/signing command run. Next human action: Ledger connected/unlocked, Ledger Live quit, Solana app open, then read-only admin match. Freeze active; no push/deploy or new runtime tests/on-chain receipts.
