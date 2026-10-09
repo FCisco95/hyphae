@@ -2,6 +2,16 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-09 · Payout paused; website experience discovery
+
+**Changed:** Cisco explicitly paused funding/payouts and redirected work toward clearer community pages, scalable domain organization and possible email/wallet login. Recorded the [discovery checkpoint](handoffs/2026-10-09-web-experience-discovery.md); no product implementation or approved architecture.
+
+**Decision and why:** first define the member journey and account linking. The existing website sends linking/rules/submissions/progress to Telegram, and membership requires a Telegram ID; adding a login button alone cannot safely replace that identity. Recommend shared community workspaces with readable paths and later verified domain aliases. Privy email/Solana login capability checked in official docs; provider choice and embedded-wallet creation remain open.
+
+**Validation/stage:** focused route/schema/link-flow inspection, zero runtime changes. Documentation only, local-only; no tests/provider/DNS/deploy/funding/signing/message actions. Prior pending commits `c64624519e9091c0a00d8963db0761b5aefd9ff2` and `6abf23a4e23ef2e2ba41cba2d9acb92fb66f2984`; discovery bookkeeping SHA is `git log -1 --format=%H -- docs/handoffs/2026-10-09-web-experience-discovery.md`. Push remains deferred under existing publication/release conditions; full main push gate not run. Next `1249fed` held and both histories preserved.
+
+**Next:** resolve complete website journey with Telegram optional versus dashboard alongside the bot, then design the member workspace and identity linking. All payout rows stay paused/incomplete until Cisco explicitly resumes them.
+
 ## 2026-10-09 (10:30–10:34 UTC) · Payout preflight, local only; Ledger attendance needed
 
 **Changed:** applied the checked four-file coordination patch once: public visibility, current timetable/consumer notes and completed next reviews/gate. Preserved both divergent histories; no feature release. Saved the [read-only receipt](handoffs/2026-10-09-payout-preflight.md) and exact stop.

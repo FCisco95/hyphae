@@ -1,28 +1,32 @@
 ---
 date: 2026-10-09
-summary: Local coordination patch and read-only payout checkpoint. Epoch 2 open to Oct 10 00:00Z, 26 contributions from 9 members, gate not_final. No C14–C22 row complete; Ledger attendance/address read is the exact stop. Reviewed next remains held.
+summary: Cisco explicitly paused all funding/payout actions, then requested a clearer scalable community website and email/wallet login. Product discovery is active; no product implementation or provider/domain changes. Prior preflight receipts remain historical; reviewed next held.
 ---
 
 # Hyphae handoff
 
 ## TL;DR
 
-**Needs Cisco:** connect/unlock the Ledger, quit Ledger Live and open the Solana app; confirm presence. Then read `44'/501'/2'/0'` and require admin `2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR` before any signing. The attendance question remained unanswered at this checkpoint. No Ledger command was started.
+**Funding and payouts are explicitly PAUSED by Cisco.** He said he does not want to pay already, then redirected work to a clearer, scalable community website with possible community domains/subdomains and email/wallet login. Do not act on the earlier Ledger-readiness question or resume C14–C22 without his explicit instruction.
+
+Active next question: should the website offer the complete member journey with Telegram optional, or remain a dashboard alongside the bot? Recommended direction: complete member workspace, delivered in stages. This is discovery, not an approved auth/domain architecture. [Discovery checkpoint](handoffs/2026-10-09-web-experience-discovery.md).
 
 ## Recent Changes
+
+Cisco explicitly paused funding/payouts and redirected work to website discovery. No product code changed. The pending product question and account-linking findings are saved in the discovery checkpoint.
 
 Coordination patch checked/applied once, local commit **c64624519e9091c0a00d8963db0761b5aefd9ff2**. No push, merge, deploy, production write, transfer, message or model evaluation. **No payout exists yet; this is neither a ready verdict nor a final no-payable outcome.**
 
 ## Metadata
 
-Last Updated: 2026-10-09T10:34Z
-Project: Hyphae; existing attended C14–C22 payout arc only.
+Last Updated: 2026-10-09T11:07Z
+Project: Hyphae; community website discovery. Existing payout arc parked by Cisco.
 Updated By: Codex (GPT-6). Exact runtime model ID/configured effort are not exposed in this session; do not substitute the prior operator's model/effort.
 Checkpoint: [October 9 read-only receipt](handoffs/2026-10-09-payout-preflight.md). Previous feature/review details: [overnight architect](handoffs/2026-10-08-overnight-architect.md).
 
 ## Current Objective
 
-Advance the [existing payout packet](demo/2026-10-08-first-payout-readiness.md) on deployed source with Cisco, exact row read-backs and actual payees/amounts. Dates/human steps stay open until performed. Payment claims require publish/claim/P14 evidence. Feature release remains held and outside this arc.
+Clarify and design a website where members understand their community, available work and their own progress, with a scalable community structure and possible email/wallet login. Assumption: "Pryv" means Privy, not yet confirmed. No provider account, keys, domain/DNS, migration or product implementation authorized by a finished design. Reviewed next and all release conditions remain held. Prior payout receipts below are dated evidence, not instructions to resume.
 
 ## Current State
 
@@ -40,6 +44,12 @@ Advance the [existing payout packet](demo/2026-10-08-first-payout-readiness.md) 
 | Epoch 3 | Not materialized yet. Expected **Oct 10 00:00Z–Oct 17 00:00Z**; read back after close. No new epoch-3 raid until scorer amendment effective while that hold applies. |
 
 ## Next Actions
+
+1. Resolve the pending product question: complete website journey with Telegram optional, or dashboard alongside the required bot. Explore screens/account mapping in that direction; present a concrete design before implementation.
+2. Recommend one shared app with communities keyed by existing immutable IDs/mints; readable paths and verified domain aliases can map to the same workspace. No separate deployment per community.
+3. Design account-to-member linking before auth implementation. Current members require Telegram IDs; email login alone cannot safely infer an existing member, wallet ownership or payout authority. Preserve wallet-link history and close-time eligibility.
+
+### Historical payout queue — PAUSED, dates are not authority
 
 **No C14–C22 row completed this session. Actual funding/publish/claim signatures, payees and payout amounts: none.** See checkpoint for each row's missing read-back. C1–C13 remain accepted historical receipts; never repeat their deploy/funding or fund retired keys.
 
@@ -89,16 +99,16 @@ Canonical procedure: docs/demo/2026-10-08-first-payout-readiness.md and docs/han
 
 ## Resume Checklist
 
-Fetch/status/both refs; check writers and clock; re-read epoch/images if resuming later. Confirm Cisco's attendance, read USB admin without signing, then C14 exact action/read-back. Never use publish-epoch plan as read-only preflight.
+Fetch/status/both refs; preserve local documentation and held next; check writers and clock before any later publication. Continue website discovery. All funding/payout actions are paused; do not prompt for Ledger readiness or run publish-epoch plan. Full main gate required before any authorized push.
 
 ## Next-session prompt
 
 ## Resume Prompt
 
 ```text
-Resume existing C14–C22 payout arc from this handoff. Oct 9 10:30–10:34Z production matched jev-e5f864b/journal 18: epoch 2 closes Oct 10 00:00Z, 26 contributions/9 members, gate not_final. No C14–C22 row complete, no payout. Patch c646245 local; next 1249fed held; preserve BOTH histories.
-Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-10-09-payout-preflight.md, docs/demo/2026-10-08-first-payout-readiness.md, docs/handoffs/2026-09-28-runbook-c.md, docs/demo/2026-10-11-release-plan.md, docs/plans/transparency-note.md, docs/plans/scorer-v3-questions.md
-Model: recorded project recommendation Opus 5 at xhigh for attended payout; do not invent runtime model ID/effort.
-Skills: handoff-memory, the-analyst, superpowers:verification-before-completion, handoff.
-Confirm Cisco is present with Ledger connected/unlocked, Ledger Live closed, Solana app open. Read 44'/501'/2'/0' and match 2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR before signing. Continue existing order with exact receipts; save stop if attendance ends. Public wording is separate, one item at a time. Freeze Oct 9 22:00Z–Oct 11 00:00Z. Do not merge/deploy next or publish messages.
+Cisco explicitly PAUSED funding/payouts and requested clearer community website organization, scalable community domains/subdomains and possible email/wallet login. No product implementation yet. Prior production preflight is historical; next 1249fed held; preserve both histories and local docs commits.
+Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-10-09-web-experience-discovery.md, docs/handoffs/2026-10-09-payout-preflight.md, docs/ROADMAP.md, apps/web/components/views.tsx, apps/web/components/site.tsx, packages/db/src/schema.ts
+Model: use the available architecture/reasoning model at high effort; do not invent runtime ID/effort.
+Skills: handoff-memory, the-analyst, superpowers:brainstorming, handoff.
+Resolve whether members should complete the journey on the website with Telegram optional or use a dashboard alongside the bot. Recommend reusable community workspaces and email/existing-wallet login with explicit member/wallet linking. Treat domain aliases and embedded-wallet creation as separate design choices. Present design before implementation. Do not resume C14–C22, merge/deploy next, alter DNS/provider keys or send messages. Preserve freeze Oct 9 22:00Z–Oct 11 00:00Z.
 ```
