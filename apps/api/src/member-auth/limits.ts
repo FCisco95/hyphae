@@ -10,11 +10,14 @@ export function tokenBucket({
   const buckets = new Map<string, { tokens: number; last: number }>();
   // Integer credits avoid losing a replenished token at an exact boundary through rounding.
   const maxCredits = capacity * 60000;
+  let nextSweep = 0;
   return (key) => {
     const time = now();
     let bucket = buckets.get(key);
     if (!bucket) {
       if (buckets.size >= 10000) {
+        if (time < nextSweep) return false;
+        nextSweep = time + 1000;
         for (const [id, entry] of buckets) {
           if (entry.tokens + Math.max(0, time - entry.last) * refillPerMinute >= maxCredits)
             buckets.delete(id);

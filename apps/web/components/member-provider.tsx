@@ -34,14 +34,27 @@ export function MemberSession({ community }: { community: Community }) {
   });
   const [notice, setNotice] = useState("");
   const [revision, setRevision] = useState(0);
+  const [logoutPhase, setLogoutPhase] = useState<"idle" | "pending" | "failed" | "done">("idle");
   const generation = useRef(requestGeneration());
   const suppressed = useRef(false);
+  const logoutSubject = useRef<string | undefined>(undefined);
   const subject = useRef(user?.id);
   subject.current = user?.id;
   const telegram = user?.telegram?.telegramUserId;
-  const requestKey = user?.id ? JSON.stringify([user.id, telegram ?? null, revision]) : null;
+  const requestKey = user?.id
+    ? JSON.stringify([community.mint, user.id, telegram ?? null, revision])
+    : null;
   // Mask the previous identity during render, before the next effect can clear its response.
-  const state: MemberViewState = resolved.key === requestKey ? resolved.state : { kind: "loading" };
+  const state: MemberViewState =
+    logoutPhase === "pending"
+      ? { kind: "signing_out" }
+      : logoutPhase === "failed"
+        ? { kind: "signout_failed" }
+        : logoutPhase === "done" || (!authenticated && ready)
+          ? { kind: "logged_out" }
+          : resolved.key === requestKey
+            ? resolved.state
+            : { kind: "loading" };
   const setState = useCallback(
     (next: MemberViewState) => setResolved({ key: requestKey, state: next }),
     [requestKey],
@@ -67,17 +80,21 @@ export function MemberSession({ community }: { community: Community }) {
   useEffect(() => {
     const reads = generation.current;
     reads.invalidate();
+    if (suppressed.current && logoutSubject.current !== subject.current) {
+      suppressed.current = false;
+      setLogoutPhase("idle");
+    }
     if (!ready) {
       setState({ kind: "loading" });
       return;
     }
     if (!authenticated) {
       suppressed.current = false;
+      setLogoutPhase("idle");
       setState({ kind: "logged_out" });
       return;
     }
     if (suppressed.current) {
-      setState({ kind: "logged_out" });
       return;
     }
     if (!requestKey) {
@@ -91,7 +108,13 @@ export function MemberSession({ community }: { community: Community }) {
           // Let the provider renew its session; the access credential is never forwarded by JS.
           await getAccessToken();
           signal.throwIfAborted();
-          return await readMemberState(community.mint, signal);
+          let result = await readMemberState(community.mint, signal);
+          if (result.kind === "logged_out") {
+            await getAccessToken();
+            signal.throwIfAborted();
+            result = await readMemberState(community.mint, signal);
+          }
+          return result.kind === "logged_out" ? ({ kind: "session_expired" } as const) : result;
         } catch {
           return { kind: "unavailable" } as MemberViewState;
         }
@@ -102,16 +125,24 @@ export function MemberSession({ community }: { community: Community }) {
 
   const signOut = () => {
     suppressed.current = true;
+    logoutSubject.current = subject.current;
+    setLogoutPhase("pending");
     generation.current.invalidate();
-    setState({ kind: "logged_out" });
+    setState({ kind: "signing_out" });
     setNotice("");
-    void logout().catch(() => {
-      setState({ kind: "unavailable" });
-      setNotice("Sign-out did not finish. Try signing out again.");
-    });
+    const signingOutSubject = subject.current;
+    void logout().then(
+      () => {
+        if (signingOutSubject === subject.current) setLogoutPhase("done");
+      },
+      () => {
+        if (signingOutSubject === subject.current) setLogoutPhase("failed");
+      },
+    );
   };
   const beginLogin = (method: "email" | "wallet") => {
     suppressed.current = false;
+    setLogoutPhase("idle");
     generation.current.invalidate();
     setState({ kind: "logged_out" });
     setNotice("");

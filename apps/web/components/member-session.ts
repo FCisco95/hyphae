@@ -1,3 +1,6 @@
+import { MemberAccountSchema } from "@hyphae/core";
+import type { MemberViewState } from "./member-account.js";
+
 export function requestGeneration(): {
   invalidate(): void;
   run<T>(operation: (signal: AbortSignal) => Promise<T>, apply: (value: T) => void): Promise<void>;
@@ -21,8 +24,6 @@ export function requestGeneration(): {
   };
 }
 
-import type { MemberViewState } from "./member-account.js";
-
 export async function readMemberState(mint: string, signal: AbortSignal): Promise<MemberViewState> {
   try {
     const response = await fetch(`/api/member/${encodeURIComponent(mint)}`, {
@@ -40,5 +41,3 @@ export async function readMemberState(mint: string, signal: AbortSignal): Promis
     return { kind: "unavailable" };
   }
 }
-
-import { MemberAccountSchema } from "@hyphae/core";

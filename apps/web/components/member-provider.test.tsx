@@ -94,6 +94,67 @@ const signedIn = () => {
 };
 
 describe("mounted member login flow with provider fixtures", () => {
+  it("recovers after one renewed cookie read without another login", async () => {
+    signedIn();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ error: "unauthorized" }, { status: 401 }))
+      .mockResolvedValueOnce(Response.json(account));
+    vi.stubGlobal("fetch", fetch);
+    await render();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(container.textContent).toContain(wallet);
+    expect(sdk.login).not.toHaveBeenCalled();
+  });
+  it("renews once after a cookie401 and keeps persistent failure recoverable", async () => {
+    signedIn();
+    const fetch = vi.fn(async () => Response.json({ error: "unauthorized" }, { status: 401 }));
+    vi.stubGlobal("fetch", fetch);
+    await render();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(sdk.token).toHaveBeenCalledTimes(2);
+    expect(container.textContent).toContain("Sign out to reconnect");
+    expect(container.textContent).not.toContain("Sign in with email");
+    expect(button("Sign out")).toBeDefined();
+  });
+  it("keeps a failed logout explicit and retryable without membership refresh", async () => {
+    signedIn();
+    sdk.logout.mockRejectedValueOnce(new Error("fixture failure"));
+    await render();
+    await act(async () => button("Sign out").click());
+    expect(container.textContent).not.toContain(wallet);
+    expect(container.textContent).toContain("Sign-out did not finish");
+    expect(container.textContent).not.toContain("Try again");
+    expect(container.textContent).not.toContain("Sign in with email");
+    await act(async () => button("Sign out").click());
+    expect(sdk.logout).toHaveBeenCalledTimes(2);
+    expect(container.textContent).toContain("Sign in with email");
+  });
+  it("does not paint another community's wallet before passive effects run", async () => {
+    signedIn();
+    let selected = community;
+    const frames: string[] = [];
+    function ObserveFrame() {
+      useLayoutEffect(() => {
+        frames.push(container.textContent ?? "");
+      });
+      return <MemberSession community={selected} />;
+    }
+    await act(async () => root.render(<ObserveFrame />));
+    expect(container.textContent).toContain(wallet);
+    frames.length = 0;
+    selected = { mint: "MintB", name: "Other community" };
+    vi.stubGlobal("fetch", async () =>
+      Response.json({
+        ...account,
+        community: selected,
+        state: "telegram_required",
+        wallet: undefined,
+      }),
+    );
+    await act(async () => root.render(<ObserveFrame />));
+    expect(frames[0]).not.toContain(wallet);
+  });
   it("limits login to email or an existing Solana wallet and disables both embedded chains", async () => {
     await act(async () =>
       root.render(<MemberProvider appId="fixture-only" community={community} />),
@@ -157,7 +218,7 @@ describe("mounted member login flow with provider fixtures", () => {
     expect(container.textContent).toContain(wallet);
     await act(async () => button("Sign out").click());
     expect(container.textContent).not.toContain(wallet);
-    expect(container.textContent).toContain("Sign in with email");
+    expect(container.textContent).toContain("Signing out");
   });
   it("discards a late private response after logout", async () => {
     signedIn();

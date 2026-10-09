@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { MemberAccountSchema } from "@hyphae/core";
 import { communities, type Db, members } from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
@@ -7,6 +8,7 @@ import { isMemberStatus } from "../bot/membership.js";
 import { telegramIdentity } from "./identity.js";
 import { tokenBucket } from "./limits.js";
 import type { MemberIdentityProvider } from "./privy.js";
+import { ipBucketKey } from "./visitor.js";
 
 const GroupMembership = z
   .object({
@@ -19,10 +21,12 @@ export function memberRoutes({
   db,
   identity,
   chatMember,
+  webToken,
   now = () => new Date(),
 }: {
   db: Db;
   identity?: MemberIdentityProvider;
+  webToken?: string;
   chatMember?: (
     chatId: bigint,
     userId: bigint,
@@ -33,6 +37,7 @@ export function memberRoutes({
   const app = new Hono();
   const ipAllowed = tokenBucket({ capacity: 30, refillPerMinute: 60 });
   const subjectAllowed = tokenBucket({ capacity: 5, refillPerMinute: 20 });
+  const expectedWeb = webToken ? Buffer.from(webToken) : null;
   const headers = { "Cache-Control": "private, no-store", Vary: "Authorization" };
   app.use("*", async (c, next) => {
     c.header("Cache-Control", headers["Cache-Control"]);
@@ -46,8 +51,16 @@ export function memberRoutes({
     if (!/^[A-Za-z0-9]{1,64}$/.test(mint) || new URL(c.req.url).search !== "")
       return c.json({ error: "invalid_request" }, 400);
     // Fly overwrites this header at its edge. Off Fly all callers share the local budget.
-    const ip = c.req.header("fly-client-ip");
-    const key = ip && /^[0-9A-Fa-f:.]{1,45}$/.test(ip) ? ip : "local";
+    const credential = c.req.header("x-hyphae-web-token");
+    const receivedWeb = credential && credential.length <= 4096 ? Buffer.from(credential) : null;
+    const trustedWeb =
+      expectedWeb &&
+      receivedWeb &&
+      expectedWeb.length === receivedWeb.length &&
+      timingSafeEqual(expectedWeb, receivedWeb);
+    // This credential attests only the proxy visitor; the user's app-bound token is still required.
+    const ip = trustedWeb ? c.req.header("x-hyphae-visitor") : c.req.header("fly-client-ip");
+    const key = ipBucketKey(ip);
     if (!ipAllowed(key)) return c.json({ error: "unavailable" }, 429, { "Retry-After": "3" });
     if (!identity || !chatMember) return c.json({ error: "unavailable" }, 503);
     const authorization = c.req.header("authorization");

@@ -100,6 +100,23 @@ async function expectPrivate(response: Response, status: number) {
 }
 
 describe("private member reads", () => {
+  it("keeps trusted proxy visitors separate behind one Fly address", async () => {
+    const app = memberRoutes({ db: testDb.db, webToken: "fixture-web-only" });
+    const call = (visitor: string, webToken = "fixture-web-only") =>
+      app.request("/communities/MintA/me", {
+        headers: {
+          "fly-client-ip": "192.0.2.1",
+          "x-hyphae-visitor": visitor,
+          "x-hyphae-web-token": webToken,
+        },
+      });
+    for (let i = 0; i < 30; i++) await expectPrivate(await call("198.51.100.1"), 503);
+    await expectPrivate(await call("198.51.100.1"), 429);
+    await expectPrivate(await call("198.51.100.2"), 503);
+    for (let i = 0; i < 30; i++)
+      await expectPrivate(await call(`198.51.100.${i + 3}`, "forged"), 503);
+    await expectPrivate(await call("198.51.100.200", "forged"), 429);
+  });
   it("stays unavailable with missing configuration", async () => {
     await expectPrivate(await read(memberRoutes({ db: testDb.db })), 503);
   });

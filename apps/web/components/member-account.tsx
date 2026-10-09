@@ -3,7 +3,17 @@ import { utc } from "../lib/format.js";
 import { ButtonLink } from "./ui.js";
 
 export type MemberViewState =
-  | { kind: "disabled" | "logged_out" | "loading" | "unavailable" | "rate_limited" }
+  | {
+      kind:
+        | "disabled"
+        | "logged_out"
+        | "loading"
+        | "unavailable"
+        | "rate_limited"
+        | "signing_out"
+        | "signout_failed"
+        | "session_expired";
+    }
   | { kind: "account"; account: MemberAccount };
 export function MemberAccountView({
   community,
@@ -33,7 +43,10 @@ export function MemberAccountView({
           <p className="muted">{community.name}</p>
           <h1 id="member-account-title">Your account</h1>
         </div>
-        {logout && state.kind !== "disabled" && state.kind !== "logged_out" ? (
+        {logout &&
+        state.kind !== "disabled" &&
+        state.kind !== "logged_out" &&
+        state.kind !== "signing_out" ? (
           <button className="button button-secondary" type="button" onClick={logout}>
             Sign out
           </button>
@@ -77,6 +90,20 @@ export function MemberAccountView({
           </>
         ) : null}
         {state.kind === "loading" ? <p role="status">Checking your account…</p> : null}
+        {state.kind === "signing_out" ? <p role="status">Signing out…</p> : null}
+        {state.kind === "signout_failed" ? (
+          <p>
+            Sign-out did not finish. Your session may still be active. Use Sign out to try again.
+          </p>
+        ) : null}
+        {state.kind === "session_expired" ? (
+          <>
+            <h2>Sign out to reconnect</h2>
+            <p>
+              We could not verify your sign-in after refreshing it. Sign out, then sign in again.
+            </p>
+          </>
+        ) : null}
         {state.kind === "unavailable" || state.kind === "rate_limited" ? (
           <>
             <h2>We could not check your membership</h2>

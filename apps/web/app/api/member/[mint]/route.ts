@@ -1,4 +1,5 @@
 import { readPrivateMember } from "../../../../lib/member-api.js";
+import { memberLoginConfig } from "../../../../lib/member-login-config.js";
 
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "private, no-store", Vary: "Cookie" };
@@ -8,6 +9,15 @@ export async function GET(
   context: { params: Promise<{ mint: string }> },
 ): Promise<Response> {
   try {
+    const config = memberLoginConfig(
+      {
+        appId: process.env.PRIVY_APP_ID,
+        enabled: process.env.PRIVY_LOGIN_ENABLED,
+        cookieDomain: process.env.PRIVY_LOGIN_HOST,
+      },
+      request.headers.get("host") ?? new URL(request.url).host,
+    );
+    if (!config) return Response.json({ error: "not_found" }, { status: 404, headers });
     const { mint } = await context.params;
     if (!/^[A-Za-z0-9]{1,64}$/.test(mint) || new URL(request.url).search !== "")
       return Response.json({ error: "invalid_request" }, { status: 400, headers });
@@ -29,7 +39,15 @@ export async function GET(
       return Response.json({ error: "unauthorized" }, { status: 401, headers });
     const apiUrl = process.env.HYPHAE_API_URL;
     if (!apiUrl) return Response.json({ error: "unavailable" }, { status: 503, headers });
-    const result = await readPrivateMember({ mint, token, apiUrl, signal: request.signal });
+    const webToken = process.env.HYPHAE_API_TOKEN;
+    const visitor = process.env.VERCEL === "1" ? request.headers.get("x-real-ip") : null;
+    const result = await readPrivateMember({
+      mint,
+      token,
+      apiUrl,
+      signal: request.signal,
+      ...(webToken && visitor ? { webToken, visitor } : {}),
+    });
     return Response.json(result.body, { status: result.status, headers });
   } catch {
     return Response.json({ error: "unavailable" }, { status: 503, headers });

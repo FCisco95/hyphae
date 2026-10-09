@@ -13,6 +13,9 @@ const request = (cookie?: string, query = "") =>
     headers: cookie === undefined ? {} : { cookie },
   });
 beforeEach(() => {
+  vi.stubEnv("PRIVY_LOGIN_ENABLED", "on");
+  vi.stubEnv("PRIVY_LOGIN_HOST", "web.test");
+  vi.stubEnv("PRIVY_APP_ID", "fixture-only");
   vi.stubEnv("HYPHAE_API_URL", "https://fixture.test");
   vi.stubGlobal("fetch", async () => Response.json(valid));
 });
@@ -31,6 +34,52 @@ async function privateResponse(response: Response, status: number) {
   return body;
 }
 describe("same-origin private member route", () => {
+  it.each(["off", ""])("keeps the proxy off when activation is %s", async (enabled) => {
+    vi.stubEnv("PRIVY_LOGIN_ENABLED", enabled);
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
+    await privateResponse(await GET(request(`privy-token=${token}`), context), 404);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it("keeps the proxy off on a preview host", async () => {
+    await privateResponse(
+      await GET(
+        new Request("https://preview.test/api/member/MintA", {
+          headers: { cookie: `privy-token=${token}` },
+        }),
+        context,
+      ),
+      404,
+    );
+  });
+  it("forwards a trusted visitor only with the server web credential", async () => {
+    vi.stubEnv("VERCEL", "1");
+    vi.stubEnv("HYPHAE_API_TOKEN", "fixture-web-only");
+    let headers: unknown;
+    vi.stubGlobal("fetch", async (_input: unknown, init: RequestInit) => {
+      headers = init.headers;
+      return Response.json(valid);
+    });
+    await privateResponse(
+      await GET(
+        new Request("https://web.test/api/member/MintA", {
+          headers: {
+            cookie: `privy-token=${token}`,
+            "x-real-ip": "198.51.100.1",
+            "x-hyphae-web-token": "forged",
+            "x-hyphae-visitor": "198.51.100.2",
+          },
+        }),
+        context,
+      ),
+      200,
+    );
+    expect(headers).toEqual({
+      Authorization: `Bearer ${token}`,
+      "x-hyphae-web-token": "fixture-web-only",
+      "x-hyphae-visitor": "198.51.100.1",
+    });
+  });
   it("reads only the intended access cookie", async () => {
     let headers: unknown;
     vi.stubGlobal("fetch", async (_input: unknown, init: RequestInit) => {

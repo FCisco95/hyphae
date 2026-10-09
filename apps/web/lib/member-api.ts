@@ -14,11 +14,15 @@ export async function readPrivateMember({
   token,
   apiUrl,
   signal,
+  webToken,
+  visitor,
 }: {
   mint: string;
   token: string;
   apiUrl: string;
   signal?: AbortSignal;
+  webToken?: string;
+  visitor?: string;
 }): Promise<{ status: number; body: unknown }> {
   const abort = new AbortController();
   const cancel = () => abort.abort();
@@ -42,10 +46,15 @@ export async function readPrivateMember({
       !/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)
     )
       return unavailable();
+    const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+    if (webToken && visitor && /^[0-9A-Fa-f:.]{1,45}$/.test(visitor)) {
+      headers["x-hyphae-web-token"] = webToken;
+      headers["x-hyphae-visitor"] = visitor;
+    }
     const upstream = await fetch(
       `${url.origin}/member/v1/communities/${encodeURIComponent(mint)}/me`,
       {
-        headers: { Authorization: `Bearer ${token}` },
+        headers,
         cache: "no-store",
         redirect: "error",
         signal: abort.signal,

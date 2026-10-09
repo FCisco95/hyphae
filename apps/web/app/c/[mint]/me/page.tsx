@@ -16,7 +16,7 @@ export default async function MemberPage(props: { params: Promise<{ mint: string
   const config = memberLoginConfig(
     {
       appId: process.env.PRIVY_APP_ID,
-      cookieDomain: process.env.PRIVY_COOKIE_DOMAIN,
+      cookieDomain: process.env.PRIVY_LOGIN_HOST,
       enabled: process.env.PRIVY_LOGIN_ENABLED,
     },
     (await headers()).get("host") ?? "",

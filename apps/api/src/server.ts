@@ -43,6 +43,7 @@ app.route(
     db,
     ...(memberConfig ? { identity: privyIdentity(memberConfig) } : {}),
     chatMember: telegramMembership(notifyApi),
+    ...(env.READ_API_WEB_TOKEN ? { webToken: env.READ_API_WEB_TOKEN } : {}),
   }),
 );
 app.route(
