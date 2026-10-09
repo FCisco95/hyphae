@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-09 · Payment preparation explained; funding still paused
+
+**Observed:** Cisco asked where payout funds are and what preparation requires. Fresh error-checked finalized mainnet read21:57:02Z/slot455015673: original funding source has capacity for the recorded budget; Ledger admin0lamports, community/reward vault absent, fixed Treasury recipient895,047,823lamports. Detailed source balance stays in ignored operator receipt. No transfer or Ledger command.
+
+**Decision/stage:** this question does not resume paused money actions. Explain separate source/admin/reward-vault/fee-recipient roles, original0.02SOL admin budget and0.5SOL gross pot (fresh exact top-up required), close/audit/24-hour hold/publication/member claim/receipt sequence. Funding into the vault has no withdrawal rollback. All C14–C22 open; no payees, actual payouts or final no-payable outcome.
+
+**Validation/next:** configured RPC mainnet genesis, successful finalized getMultipleAccounts and integer balances checked. No runtime change; prior1521-test/type/lint/build/ACCEPT remains historical source proof, not rerun for read-only docs. No push/deploy under publication/freeze holds; reviewed next unchanged. Checkpoint SHA resolves with `git log -1 --format=%H -- docs/handoffs/2026-10-09-payment-orientation.md`. On renewed preparation scope, first verify Ledger admin with Cisco present; funding remains paused until explicitly resumed. Organic-sync carries this orientation/exact stop; no Organic/vault writes. [Checkpoint](handoffs/2026-10-09-payment-orientation.md).
+
 ## 2026-10-09 · Final local website audit before XTUF
 
 **Changed:** shared intake decision keeps overview, raid sidebar and join instructions consistent at the recorded epoch cutoff. Closed intake takes precedence over pause; unavailable/wrong-community feed is explicit and suppresses participation encouragement. Scheduled/cancelled post details are described as deliberately hidden. Cleaned stale handoff statements: owner email login/logout confirmed; Phantom and refresh remain open.
