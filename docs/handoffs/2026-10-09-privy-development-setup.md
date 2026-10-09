@@ -1,6 +1,6 @@
 # Privy development setup checkpoint
 
-Date: 2026-10-09T20:50Z. Operator: Codex (GPT-6); exact runtime model ID/effort not exposed.
+Date: 2026-10-09T21:21Z. Operator: Codex (GPT-6); exact runtime model ID/effort not exposed.
 
 Cisco created a Privy account and **Hyphae Development** app, shown in development mode. Owner screenshots show email/external wallets and Solana enabled, preview origin listed. Subsequent public config read confirms saved EVM-off/Solana-on/signup/origin settings. Automatic embedded-wallet dashboard settings remain unverified; client creation is off. Actual partial owner smoke is recorded below.
 
@@ -16,9 +16,9 @@ Exact-host/local flag/no-Vercel/distinct-ID gate; wrong Host reveals no test tit
 
 Final full **1513 passed** (139core/26read-client/224web/1124API),3existing skipped; typecheck/lint462files/web production build pass.11focused tests, including Medium logout regression, failed before implementation/fix then passed. Initial parallel test/typecheck hit Windows EPERM in shared read-client dist; rerun separately passed, no source workaround. API/schema/reward/DB code unchanged, no new DB gate or migration.
 
-Fresh review **CHANGES_REQUESTED** at534f807, claude-opus-5-5/requested-high,82917ms/1turn: premature sign-out success. Fixed test-first, along with distinct prod/dev ID guards and honest test naming. Fresh final full-range **ACCEPT** f5b3118..60ec29a, claude-opus-5-5/requested-high,70509ms/1turn, tools/hooks/MCP off. Static code review, not real provider authentication. Remaining Low/Info queue: late SDK-clear and env/route-wiring coverage, cross-tab wording, whitespace-only ID diagnostic; code fails safely, no required defect. Production cookie proof and allowed origin/embedded dashboard confirmation remain owner tasks. Prior raid/auth ACCEPTs preserved separately.
+Fresh review **CHANGES_REQUESTED** at534f807, claude-opus-5-5/requested-high,82917ms/1turn: premature sign-out success. Fixed test-first, along with distinct prod/dev ID guards and honest test naming. Fresh final full-range **ACCEPT** f5b3118..60ec29a, claude-opus-5-5/requested-high,70509ms/1turn, tools/hooks/MCP off. Static code review, not real provider authentication. Remaining Low/Info queue: late SDK-clear and env/route-wiring coverage, cross-tab wording, whitespace-only ID diagnostic; code fails safely, no required defect. Production cookie proof and embedded-wallet dashboard confirmation remain owner tasks; exact saved development origin was verified by public config read. Prior raid/auth ACCEPTs preserved separately.
 
-**Actual owner smoke:** Cisco supplied the signed-in development UI screenshot and said **“with email worked.”** This confirms attended email sign-in/UI success, not production cookies or private member authority. Phantom previously showed **“Could not log in with wallet”** and Cisco answered **“I approved the login message.”** Failure cause unresolved; don't assume cancellation or claim wallet success. Sign-out, refresh persistence, successful wallet login and private/production proof remain open. The operator did not enter OTPs, sign or inspect tokens/signatures.
+**Actual owner smoke:** Cisco supplied the signed-in development UI screenshot and said **“with email worked.”** This confirms attended email sign-in/UI success, not production cookies or private member authority. Phantom previously showed **“Could not log in with wallet”** and Cisco answered **“I approved the login message.”** Failure cause unresolved; don't assume cancellation or claim wallet success. Email sign-out was subsequently confirmed by Cisco. Refresh persistence, successful wallet login and private/production proof remain open. The operator did not enter OTPs, sign or inspect tokens/signatures.
 
 Read-only public app config GET at20:49Z returned200: exact `http://127.0.0.1:3010` allowed origin; email/Solana true; EVM false; external-wallet signup true; allowlist/captcha false; no custom API. Pinned SDK confirms Solana SIWS flow and callback error contract; those reads do not identify the failure. No provider config/source changes or speculative fix. Use systematic debugging to obtain only the failing wallet request status/error code next. Keep raw request/headers/tokens/signatures out of chat and logs.
 
@@ -32,9 +32,9 @@ Cisco subsequently confirms **“It does sign out”**; email login and logout U
 
 | Artifact | Home | Stage |
 |---|---|---|
-| Owner-created development app | Privy Dashboard / Hyphae Development | Development; no login receipts |
+| Owner-created development app | Privy Dashboard / Hyphae Development | Development; owner email login/logout confirmed, Phantom failed |
 | Public development App ID | Ignored root `.env`, `PRIVY_DEV_APP_ID` | Distinct from unconfigured production ID; no secret/key |
-| Provider-only test | apps/web/app/dev/privy/page.tsx, apps/web/components/privy-development.tsx | Local534f807/fixed60ec29a; code ACCEPT, owner smoke pending |
+| Provider-only test | apps/web/app/dev/privy/page.tsx, apps/web/components/privy-development.tsx | Local534f807/fixed60ec29a; code ACCEPT, email login/logout confirmed; wallet/refresh open |
 | Review/gate logs | Ignored docs/plans/2026-10-09-privy-development-*.json/log/diff | Actual reviews and final checks; no secret/OTP capture |
 | Operator screenshots | Conversation | Owner setup evidence; not auth proof |
 | Owner email/wallet screenshots | Ignored docs/plans/2026-10-09-privy-owner-email-success.png and docs/plans/2026-10-09-privy-owner-wallet-failure.png | Email UI success; wallet failure after approved message; no private identity/OTP/token capture |
@@ -47,9 +47,9 @@ the-analyst, superpowers:verification-before-completion for owner receipts, supe
 ## Next-session prompt
 
 ```text
-Provider-only test534f807/fixed60ec29a ACCEPT,1513tests/type/lint/build pass. Owner email sign-in UI succeeded; Phantom failed after approved message. Public app settings verified correct. Sign-out/wallet root cause/private cookie/Telegram proof open. Private member gate off; no payout/publication.
+Provider-only test534f807/fixed60ec29a ACCEPT,1513tests/type/lint/build pass. Owner email sign-in UI succeeded; Phantom failed after approved message. Public app settings verified correct. Email sign-out confirmed; refresh/wallet root cause/private cookie/Telegram proof open. Private member gate off; no payout/publication.
 Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-10-09-privy-development-setup.md, apps/web/lib/member-login-config.ts, apps/web/components/member-provider.tsx, apps/web/scripts/preview.mjs
 Model: available coding model at high effort for concrete integration fixes; record actual runtime identity/effort.
 Skills: the-analyst, superpowers:systematic-debugging, superpowers:verification-before-completion, superpowers:test-driven-development for a proven defect, handoff.
-Confirm owner Sign out on http://127.0.0.1:3010/dev/privy. Then investigate exact failing wallet request status/error code; Cisco already approved its message. Do not guess a fix or request raw headers/requests/OTPs/tokens/signatures. Keep private member cookie gates unchanged/off; dev cookies aren't production proof. Do not repeat app/provider/approval questions. Preserve both histories/held next/verify0.1.0/publication freeze; no push/deploy/money/Organic/vault effects.
+Owner email sign-out is confirmed. Refresh persistence without logout is untested. Park these checks while Cisco works on XTUF; when returning, investigate exact failing wallet request status/error code; Cisco already approved its message. Do not guess a fix or request raw headers/requests/OTPs/tokens/signatures. Keep private member cookie gates unchanged/off; dev cookies aren't production proof. Do not repeat app/provider/approval questions. Preserve both histories/held next/verify0.1.0/publication freeze; no push/deploy/money/Organic/vault effects.
 ```
