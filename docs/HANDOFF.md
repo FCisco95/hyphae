@@ -1,6 +1,6 @@
 ---
 date: 2026-10-09
-summary: Payouts paused. Preview entry repaired locally at67e1bfb; Cisco rejected the visible website experience. Professional visual journey and web quiz unfinished. Auth reviewed but login off; publication and next held.
+summary: Local live raid cards and visible disabled Privy options at77a15f7 +0c79cd4;1502 tests/type/lint/both builds pass. Real login needs owned app/domain proof. Payouts/publication/next held.
 ---
 
 # Hyphae handoff
@@ -13,6 +13,10 @@ Cisco approved the complete website direction and **email + existing Solana wall
 
 ## Recent Changes
 
+Cisco accepted the repaired visual baseline, then requested visible Privy login and live raids with deadlines/X post cards. Built **77a15f76b261da1705eb8b8ed6af31894b2d4925**, review fixes **0c79cd4ae73a8541f6fab221a97604fa0db8a036**. Community overview now has a bounded live raid feed, safe linked post snapshots, closing times, recent closed records, separate epoch cutoff and account entry. Refresh30seconds while visible, debounced on focus; shared15second public fetch cache without web tokens or visitor addresses. Cancelled/scheduled records hide their content/briefs. Privy email/existing-wallet buttons are visible but disabled; sidebar availability shares the member page's exact host/config decision. No provider config exists locally. [Raid checkpoint](handoffs/2026-10-09-live-raids-preview.md).
+
+Production API has no raid route yet. `pnpm preview` starts a loopback-only raid reader at3011 against the recorded database, with every proof/clock/data query in a read-only transaction; actual postgres-js read-only mode verified before serving. Existing public reads still use deployed API, only raid reads use the explicit local override. No worker, bot, job, migration or private auth route starts. New GET API/OpenAPI/schema code is committed locally and **not deployed**. Post cards contain recorded text with source links, not X widgets or media scraping.
+
 Cisco could not see the promised community experience and rejected the website quality. The restarted preview omitted `DEFAULT_MINT`, so the homepage Community link reached "No community is configured." Fixed the local launcher at **67e1bfbbb8ef11d8539a95deb3dd5f441a0373d8**: `pnpm preview` builds with the recorded pilot mint and existing server-side read configuration, serves loopback3010, and forces login off. Actual homepage link and `/community` now reach the community overview. Desktop/mobile context, join and disabled account navigation checked. This fixes visibility only: the old homepage design remains, the join guide still points to the bot, and the in-page quiz/task/progress experience is unfinished. Do not ask Cisco to configure Privy as the answer to this UX complaint. [Repair checkpoint](handoffs/2026-10-09-preview-visibility-repair.md).
 
 Built the approved read-only member login slice at **fe6800f2f7ee9c66b217d59388d434994e7407a7**. Real SDK app-bound token verification, fresh provider Telegram identity and current group checks, scoped existing-member DB reads; strict private/no-store responses and cookie-only same-origin proxy. Scoped member UI has explicit email/existing Solana login and Telegram linking controls with wallet auto-creation off. Logout/subject-change races clear private data before passive effects. Missing configuration leaves the existing API and public website working. Provider logging is explicitly off. No DB/schema/wallet/reward write or migration. SDK/dependencies installed; no provider account/configuration, keys, DNS or live login.
@@ -23,12 +27,14 @@ Coordination patch checked/applied once, local commit **c64624519e9091c0a00d8963
 
 ## Metadata
 
-Last Updated: 2026-10-09T17:01Z
+Last Updated: 2026-10-09T18:29Z
 Project: Hyphae; local Privy member-login implementation and website foundation. Existing payout arc parked by Cisco.
 Updated By: Codex (GPT-6). Exact runtime model ID/configured effort are not exposed in this session; do not substitute the prior operator's model/effort.
 Checkpoint: [October 9 read-only receipt](handoffs/2026-10-09-payout-preflight.md). Previous feature/review details: [overnight architect](handoffs/2026-10-08-overnight-architect.md).
 
 ## Current Objective
+
+Requested raid visibility is working in the local preview. New feature review **ACCEPT** forab87b9e..0c79cd4; its required route-callsite check passed (only the community route renders the view, supplying raids and login state). Guide Cisco through the missing owner step for actual Privy login: open the Privy Dashboard and select the dedicated Hyphae app. App ID, server config, owned domain/HttpOnly setup and real login/link/logout proof remain absent. Do not ask for secrets in chat or repeat the provider choice. No owner action is needed to view raid cards; actual sign-in cannot be claimed from disabled controls. Web quiz and native submission remain unfinished. Publication and payouts remain held.
 
 Address Cisco's rejected website experience with visible product improvements. The direct working preview is http://127.0.0.1:3010/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg. No owner setup is required to see the current public pages. The launcher repair is not a visual redesign or acceptance of the website. Existing local build authorization remains; do not re-ask the provider choice. Keep provider activation as a separate pending human step.
 
@@ -51,7 +57,7 @@ Complete and review the approved local read-only account slice: `/c/[mint]/me`, 
 
 ## Next Actions
 
-0. Open the direct community preview above. Prioritize a coherent visual entry and member journey following Cisco's feedback; current overview/context/join are a foundation, not the requested finished professional website. No visual redesign was made in the preview repair. Leave funding/payouts, real login and publication held.
+0. Open the working overview's Live raids section. The recorded raid window can exceed the epoch cutoff; both are shown. At18:26Z two open raids close Oct9 20:52:41.992Z and Oct10 03:52:21.688Z; epoch2 reward cutoff remains Oct10 00:00Z. Activity/deadlines are not payability evidence. New full-range public-feed/login-presentation review **ACCEPT**, actual claude-opus-5-5, requested high effort,157458ms,1fresh turn; tools/hooks/MCP off. Required route check passed. Preserve the earlier auth ACCEPT separately. Remaining non-blocking wording/stale CTA/legacy-cancellation/preview ergonomics queue is in the checkpoint; finish before an authorized release.
 
 1. Fresh final review **ACCEPT**: `36e2e531ffce151e71e6364c08f40aa877a63007..3ffd0f57750d570a3594617bac7ee5fd3f9ae2e6`; actual returned model **claude-opus-5-5**, requested effort **high**,172266ms, one fresh turn. Initial CHANGES_REQUESTED and subsequent ACCEPT receipts retained under ignored `docs/plans/2026-10-09-privy-*-review*`. No blocking code defect with activation off. Review is static diff analysis, not a provider smoke. Final docs bookkeeping is outside reviewed auth-code range.
 
@@ -69,6 +75,8 @@ Complete and review the approved local read-only account slice: `/c/[mint]/me`, 
 4. Oct 11 after hold and **ready**, renewed attendance: C19 production intent, C20 publish, C21 genuine claim, C22/P14. Empty/no-payable or failed evidence means no payment; no fabricated leaf/override.
 
 ## Validation
+
+Final raid gate at0c79cd4: **139 core /26 read-client /213 web /1124 API =1502 passed,3 existing API skipped**, typecheck/lint exit0 (**457 files**), API and web production builds exit0. Initial review regression tests failed then passed. Environment scanner now handles OS mixed-case names; final full suite passes. Actual postgres-js read-only transaction proof and real feed read pass. Desktop1440×1000/mobile390×844 cards and disabled-account layout checked, no overflow; no X iframes/scripts. Browser warnings/errors0 on final navigation. No schema/reward/DB-package change; no new Drizzle/migration/PG test gate. Existing no-live-provider limitation remains.
 
 Preview repair at67e1bfb: actual `pnpm preview` production build/start passed; lint **447 files**, **2 environment-coverage tests passed**. Homepage button and `/community` redirect reach the correct community; context/join/account checked at1440×1000 and390×844, no horizontal overflow, zero browser console warnings/errors. Login displays unavailable. These are rendering/read-only receipts, not real login or payout evidence. No TypeScript/auth/schema/reward change, so the historical full gate below was not repeated for this local launcher.
 
@@ -92,6 +100,8 @@ Both private decision files present/read; no guessed restoration or vault writes
 
 ## Publication ledger and organic-sync
 
+New pending source commits **77a15f76b261da1705eb8b8ed6af31894b2d4925** and **0c79cd4ae73a8541f6fab221a97604fa0db8a036**; preview documentation checkpoint **ab87b9e53b5dd927f2e2cfb606d762aa6c79a478**. Resolve this session's documentation SHA with `git log -1 --format=%H -- docs/handoffs/2026-10-09-live-raids-preview.md`. Production public API is unchanged. Organic-sync should carry the local-only raid route `/v1/communities/:mint/raids`, bounded/anonymous/cache contract, and disabled login stage; Organic may link after authorized publication. No Organic/vault edit, new package version, accounts, keys, DNS, job or payment.
+
 Additional pending local commits: auth checkpoint **8db061c2b8d866a885c6071e3fd632710fbfabdb**, preview repair **67e1bfbbb8ef11d8539a95deb3dd5f441a0373d8**. Resolve this repair's documentation commit with `git log -1 --format=%H -- docs/handoffs/2026-10-09-preview-visibility-repair.md`. No push. Organic-sync should carry the corrected preview launcher and Cisco's UX rejection/unfinished stage, not a completed website claim. No vault/Organic edit.
 
 Pending local commits: **c64624519e9091c0a00d8963db0761b5aefd9ff2**, **6abf23a4e23ef2e2ba41cba2d9acb92fb66f2984**, **b1385404823f620ef0ba3bd9bb773e0b99f12053**, **a717c17d25b1f450e34a5d3c1276f976c9bdd104**, **b750dd98aa8b9b1ca629779172d05d19b3132ebe**, **acd56168b68d596e0ae9c86e06e2c2e870d99581**, **36e2e531ffce151e71e6364c08f40aa877a63007**, **fe6800f2f7ee9c66b217d59388d434994e7407a7**, **1577b8075ab317634337d4407f5b0555e838a720**, **3ffd0f57750d570a3594617bac7ee5fd3f9ae2e6**. Resolve the latest checkpoint bookkeeping commit with `git log -1 --format=%H -- docs/handoffs/2026-10-09-privy-login-implementation.md`. Origin/main stays **d3b8c6c**; next/origin-next stays **1249fed**. No push: publication/release conditions remain held, including the freeze. New private member API and community account route; existing public API/settlement contracts unchanged. Organic may link to community/account routes after authorized publication; no SSO/data integration yet. Propagate login setup, private/no-store contract and activation-blocked stage through organic-sync only. Organic-sync owns vault/Organic propagation; neither was edited here.
@@ -111,6 +121,9 @@ Pending local commits: **c64624519e9091c0a00d8963db0761b5aefd9ff2**, **6abf23a4e
 | Developer preview | Loopback127.0.0.1:3010; apps/web/scripts/preview.mjs | Restarted via pnpm preview with recorded community mint; reads server-side, login forced off |
 | Preview repair evidence | docs/plans/2026-10-09-preview-*.log and preview-before-repair/repaired-community screenshots | Ignored local; desktop/mobile navigation and build, not completed visual design |
 | Keys/resources/jobs | None | None created/changed |
+| Raid API/schema/UI | packages/core/src/public-raids.ts; apps/api/src/http/read-raids.ts; apps/web/components/raids.tsx | Local77a15f7 +0c79cd4; no deploy |
+| Local reader | apps/api/scripts/preview-raids.ts; loopback3011 | Actual transaction_read_only=on; no production session/role defaults changed |
+| Raid review/gate evidence | docs/plans/2026-10-09-raids-*.log/json/diff and live-raids screenshots | Ignored local; initial CHANGES_REQUESTED, final ACCEPT and required route check passed |
 
 ## Suggested skills
 
@@ -129,9 +142,9 @@ Check status/both refs and clock before any later publication. Preserve held nex
 ## Resume Prompt
 
 ```text
-Funding/payouts explicitly PAUSED. Cisco rejected the preview and website quality. Missing DEFAULT_MINT repaired locally at67e1bfb; pnpm preview now shows the actual community. Visual redesign, in-page quiz/tasks/progress unfinished. Privy account code reviewed ACCEPT at3ffd0f5, login off and actual provider smoke absent. Main and next1249fed histories/publication held.
-Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-10-09-preview-visibility-repair.md, apps/web/scripts/preview.mjs, apps/web/app/page.tsx, apps/web/app/community/page.tsx, apps/web/components/member-provider.tsx
+Funding/payouts PAUSED. Local live raid/X snapshot cards and visible disabled Privy options built77a15f7, fixed0c79cd4. Full1502 tests/type/lint/both builds pass. Production raid endpoint absent; pnpm preview uses a verified read-only loopback reader while other reads stay deployed. Login has no owned app/domain/cookie proof and stays off. New feature review ACCEPT at0c79cd4 and required route check passed; original auth ACCEPT preserved. Both histories/publication/next1249fed held.
+Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-10-09-live-raids-preview.md, apps/api/src/http/read-raids.ts, apps/api/scripts/preview-raids.ts, apps/web/components/raids.tsx, apps/web/lib/member-login-server.ts, apps/web/scripts/preview.mjs
 Model: use the available coding model at high effort for review fixes; record the actual runtime identity, not an invented model ID.
 Skills: handoff-memory, the-analyst, superpowers:executing-plans, test-driven-development, verification-before-completion, handoff.
-Open the direct community preview in the repair checkpoint and address the visible member journey first. Do not present the launcher repair as a professional redesign or demand provider setup to review public pages. Reuse approved local website direction and auth ACCEPT; real configured HttpOnly/login/refresh/logout receipts remain required before activation. Preserve next0018+0019, verify0.1.0 through Oct12, both histories and publication holds/freeze. No payouts, merge/deploy, DNS/key/account mutation or messages.
+Read the raid checkpoint/review verdict. Show the working Live raids section; guide Cisco through selecting the owned dedicated Hyphae app in Privy's dashboard, one owner action at a time. Do not request secrets in chat or repeat provider choice. No real login claim until configured HttpOnly/login/refresh/logout proof; web quiz/native submission remain open. Preserve next0018+0019, verify0.1.0 through Oct12, both histories and publication holds/freeze. No payouts, merge/deploy, DNS/key/account mutation or messages.
 ```

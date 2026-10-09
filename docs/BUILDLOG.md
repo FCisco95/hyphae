@@ -2,6 +2,18 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-09 · Live raid workspace, local only; real login still blocked
+
+**Built:** live raid cards on the community overview: approved records, actual closing times, captured X text/source links, recent closed raids, separate reward cutoff and visible account entry. Privy email/existing-Solana options now visible but disabled. Cancelled/scheduled raids omit their content and briefs. A shared15second public read cache supports visible-page30second refresh without forwarding web tokens or visitor addresses.
+
+**Decision and why:** deployed public API has no raid feed, and no Privy configuration exists locally. Build the additive GET route/schema/OpenAPI and show real data through a loopback-only read-only preview reader; keep deployment and login held. The reader starts no bot/worker/jobs/migrations/auth surface. Actual postgres-js transaction_read_only=on verified; pooler refused startup session-default options (08P01), so preserve the DSN and use read-only transactions for every proof/clock/data query. No production defaults/roles changed. Linked snapshots avoid X widget tracking; no invented post media.
+
+**Validation:**139core/26read-client/213web/1124API passed (1502total),3 existing skipped; typecheck/lint457files and both production builds pass. Initial four Medium review findings fixed/test-first; fresh final claude-opus-5-5/requested-high review **ACCEPT**, ab87b9e..0c79cd4,157458ms/1turn, required route-callsite check passed. Actual desktop1440×1000/mobile390×844 cards and disabled account checked without overflow; zero browser errors/warnings after final navigation. Read time advanced18:22→18:26 while the raid page remained visible, confirming periodic refresh. One raid expired during testing: effective open list3→2, no lifecycle write. The two remaining actual deadlines are separate from epoch2's Oct10 00:00Z cutoff. No payable/payout forecast from these reads.
+
+**Commits/stage:** **77a15f76b261da1705eb8b8ed6af31894b2d4925**, fixes **0c79cd4ae73a8541f6fab221a97604fa0db8a036**. Local only, no push/deploy or provider/account/key/DNS/payment change. Earlier13 pending source/docs commits stay in HANDOFF; origin-main d3b8c6c and next1249fed held. Publication/freeze conditions preserved. All C14–C22 incomplete; actual payees/amounts/receipts none. Organic-sync owns downstream route/status propagation; no vault/Organic edit.
+
+**Next:** owner selects the dedicated Hyphae app in Privy's dashboard for real login setup/proof. Existing provider choice/build authorization answered. Non-blocking pre-release follow-ups are recorded; web quiz and native raid submissions remain separate unfinished steps. [Checkpoint](handoffs/2026-10-09-live-raids-preview.md).
+
 ## 2026-10-09 · Broken community preview repaired; website quality still open
 
 **Changed:** repeatable `pnpm preview` launcher supplies the recorded pilot mint, existing server-side read configuration and disabled login. The omitted mint caused the old homepage's Community link to show "No community is configured." Homepage entry and redirect now open the actual community overview.
