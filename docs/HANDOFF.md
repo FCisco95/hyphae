@@ -7,7 +7,7 @@ summary: Hyphae on 2026-10-08 night. Cisco moved epoch 2's close to 2026-10-10T0
 
 ## Metadata
 
-Last Updated: 2026-10-08T20:30Z
+Last Updated: 2026-10-09T00:20Z
 Project: Hyphae (Colosseum entry; first community MYCEL). Scope: the first payout sitting (Oct 9 to 11) and the post-payout release of `next`.
 Updated By: Claude Fable 5.1 (`claude-fable-5-1`, xhigh), architect session on the home machine, driving Codex (gpt-6-astra, xhigh) reviewers and Claude Opus 5.5 / Sonnet 5.5 workers through Orca. Every branch note says which model built it.
 Snapshot: [docs/handoffs/2026-10-08-overnight-architect.md](handoffs/2026-10-08-overnight-architect.md). Previous: [parallel build wave](handoffs/2026-10-08-orca-wave.md). Where they differ, this file wins.
@@ -88,14 +88,33 @@ Epoch 2 closes Oct 10 00:00Z. Oct 9 pause 23:00Z, final C18b after 23:45Z, corre
 
 `git pull` (brings `origin/next`); `git status -sb`; `fly image show --app hyphae-api`; `GET /v1/communities/<mint>/epochs/2`; the clock against the Oct 9 22:00Z freeze and the Oct 11 00:00Z hold end. Every new live effect needs its own yes.
 
+## Suggested skills
+
+- `handoff-memory` to resume from this file; `the-analyst` for the morning decisions (wording, scorer answers, release timing); `superpowers:verification-before-completion` before any live read-back is called done.
+- For the sitting: the operator scripts in `apps/api/scripts` and the readiness packet, no new code; `solana-dev` only for an on-chain lookup.
+- For the release on Oct 11: `orca-cli` and `orchestration` if work is delegated; a Codex review (the other model family) of anything that changes on the money path after `next` `1249fed`.
+
+## Generated artifacts this session
+
+| What | Where it lives | Notes |
+|---|---|---|
+| Branch `next` 1249fed and docs on `main` a067f5b | GitHub `FCisco95/hyphae` | CI success on both (runs 37837065474, 37836952246) |
+| Review records and worker notes | `docs/reviews/2026-10-08-*.md`, `docs/reviews/2026-10-09-*.md`, `docs/handoffs/2026-10-09-*.md` | on `next` |
+| Private drafts for Cisco | `docs/plans/transparency-note.md`, `docs/plans/scorer-v3-questions.md`, `docs/plans/judge-assessment.md`, `docs/plans/architect-state.md`, `docs/plans/architect-session-template.md` | gitignored; not approved wording |
+| Worker briefs and one report | `C:/hy/briefs/*.md`, `C:/hy/reports/dates.md` on the home machine | outside the repo; disposable |
+| Local worktree `C:/hy/next` | home machine | branch `next`, in sync with origin |
+| Docker image `postgres:18` | home machine | pulled for the migration rehearsal; keep |
+| Orca run `run_ab8efb0ad4cb` | Orca on the home machine | all dispatches settled and released |
+| Keys, secrets, deployed resources | none | nothing live changed except the ruled close move (17:46:49Z) |
+
 ## Next-session prompt
 
 ```
-Hyphae, 2026-10-09, home machine, on main. Read CLAUDE.md and docs/HANDOFF.md.
-Models: Claude Opus 5.5 (xhigh) for anything on the payout path; Sonnet 5.5 for docs and UI; Codex gpt-6-astra xhigh for reviews.
+Hyphae on 2026-10-09, home machine, on main (a067f5b = origin/main). Epoch 2 closes 2026-10-10T00:00Z; production is jev-e5f864b; `next` 1249fed is reviewed, fixed, gate-green and pushed, waiting for the release after C22 on Oct 11.
 
-0. Verify: git status -sb, fly image show (jev-e5f864b on both), epochs/2 closes_at 2026-10-10T00:00:00Z.
-1. Morning batch with Cisco, one item at a time: docs/plans/transparency-note.md, docs/plans/scorer-v3-questions.md, the release timing, the strings in the branch notes.
-2. The sitting: docs/demo/2026-10-08-first-payout-readiness.md (dates shifted to Oct 9 to 11), C14 to C18, then the 23:00Z pause and corrections. Freeze from 22:00Z.
-3. Oct 11: C19 to C22, then docs/demo/2026-10-11-release-plan.md with Cisco's yes.
+Files: CLAUDE.md, docs/HANDOFF.md, docs/plans/transparency-note.md, docs/plans/scorer-v3-questions.md, docs/demo/2026-10-08-first-payout-readiness.md, docs/demo/2026-10-11-release-plan.md
+Model: Claude Opus 5.5 (xhigh) — the payout path and a founder-attended sitting; Fable 5.1 only if delegating a new wave
+Skills: handoff-memory, the-analyst, superpowers:verification-before-completion
+
+Run the morning batch with Cisco one item at a time (public wording, the scorer's four answers, release timing, the member-visible strings), commit the approved changelog and README lines, then prepare the Oct 9 sitting from the readiness packet: verify the live state, then C14 to C18 with the Ledger, the 23:00Z pause, attestation and corrections before 2026-10-10T00:00Z. Freeze from 22:00Z.
 ```
