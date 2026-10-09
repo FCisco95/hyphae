@@ -26,7 +26,7 @@ Funding/payouts remain paused. All C14–C22 incomplete; actual payees/amounts/p
 
 ## Next action
 
-Guide owner **Sign out** now and confirm signed-out UI. Then diagnose Phantom's failed post-signature authentication from its exact request status/error code; don't repeat whether he approved signing. No speculative connector/config changes. Full private activation still requires separate production app/domain/cookie/server/Telegram proof. No OTP/token/signature capture, simulated attendance or repeated provider/app choice.
+Cisco subsequently confirms **“It does sign out”**; email login and logout UI checks are complete. New email code/link request after explicit logout is expected passwordless authentication, not evidence of a session bug. Next sign in once and refresh without signing out to validate persistence. Phantom's post-signature failure remains unresolved; obtain only exact failing request status/error code, not raw requests/headers/signatures/tokens. No speculative fix or repeated signing/setup question. Private member/production cookie proof remains absent.
 
 ## Generated artifacts
 

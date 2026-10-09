@@ -1,6 +1,6 @@
 ---
 date: 2026-10-09
-summary: Owner email sign-in UI succeeded; Phantom sign-in failed after approved message. Live public app settings verified; cause unresolved. Logout still open. Reviewed local test/private member/publication/payout holds preserved.
+summary: Owner email sign-in and sign-out confirmed; fresh code after explicit logout is expected. Refresh persistence untested, Phantom failure unresolved. Private member/publication/payout holds preserved.
 ---
 
 # Hyphae handoff
@@ -12,6 +12,8 @@ summary: Owner email sign-in UI succeeded; Phantom sign-in failed after approved
 Cisco approved the complete website direction and **email + existing Solana wallet login through Privy, explicit Telegram linking and no automatically created wallet**, then authorized local implementation. Public overview/context/join and the private account API/proxy/UI now exist locally. Login is **disabled** until a dedicated owned app/domain is configured and real HttpOnly/login/link/logout receipts pass. Fresh final other-family auth review **ACCEPT** at3ffd0f5 (claude-opus-5-5, requested high effort). Initial findings and browser follow-ups fixed/tested. Real-provider smoke remains open. Web quiz, task feed and Telegram-independent membership remain future work. [Implementation checkpoint](handoffs/2026-10-09-privy-login-implementation.md).
 
 ## Recent Changes
+
+Cisco confirms **“It does sign out”** and reports a new email code/link request on subsequent sign-in. Email sign-in and sign-out are now owner-observed UI receipts. Fresh passwordless authentication after explicit logout is expected; persistence across refresh without logout remains untested. Phantom failure remains unresolved. No source/provider change or new test run.
 
 Owner-attended provider smoke, **20:49Z**: Cisco reports **email worked** and supplies the actual development signed-in UI screenshot. Earlier Phantom attempt showed **Could not log in with wallet**; Cisco confirms he approved its login message. This rules out owner cancellation for that attempt, not other causes. Public app config GET200 verifies email/Solana on, EVM off, external-wallet signups on, allowlist/captcha off, exact preview origin; no provider setting changed. Wallet root cause remains unresolved; sign-out, refresh persistence, successful wallet login and production/private member proof stay open. No speculative code fix; original reviewed code/gate unchanged. Ignored screenshot receipts recorded in [checkpoint](handoffs/2026-10-09-privy-development-setup.md).
 
@@ -40,7 +42,7 @@ Checkpoint: [October 9 read-only receipt](handoffs/2026-10-09-payout-preflight.m
 
 ## Current Objective
 
-Local provider-only test is reviewed at60ec29a. Owner email sign-in UI succeeded; nearest human step is **Sign out** and confirm signed-out UI. Phantom login failed after an owner-approved message; live public app configuration verified correct. Investigate the exact failing wallet request/status/error code next; do not guess a fix, request raw headers/tokens/signatures or repeat wallet-signing attendance already answered. Production/private member proof remains absent; member gate off. Live raid preview remains available, web quiz/native submission unfinished; publication/payouts held.
+Local provider-only test reviewed at60ec29a. Owner email sign-in and sign-out confirmed; a fresh code after explicit logout is expected. Next validate refresh persistence without signing out. Phantom failed after an approved message; app settings verified correct, failure unresolved. Obtain only exact wallet request status/error code next, not raw credentials/signatures. Private gate off; production/member proof absent. Live raids remain available, web quiz/native submission unfinished; publication/payouts held.
 
 Address Cisco's rejected website experience with visible product improvements. The direct working preview is http://127.0.0.1:3010/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg. No owner setup is required to see the current public pages. The launcher repair is not a visual redesign or acceptance of the website. Existing local build authorization remains; do not re-ask the provider choice. Keep provider activation as a separate pending human step.
 

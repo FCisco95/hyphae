@@ -10,7 +10,7 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 
 **Validation/stage:** actual email UI receipt, wallet failure receipt; screenshots ignored under docs/plans. Existing1513-test/type/lint/build/ACCEPT at60ec29a unchanged; no tests rerun for docs-only operator evidence. Source commits534f807/60ec29a, previous docs89a26ba. Current receipt commit resolves via `git log -1 --format=%H -- docs/handoffs/2026-10-09-privy-development-setup.md`. Local only, no push/deploy/payment/private-access effects; funding paused and C14–C22 incomplete. Organic-sync carries partial real-email stage and unresolved wallet failure, never a completed login release claim.
 
-**Next:** owner confirms Sign out, then capture only failing wallet request status/error code for diagnosis. [Checkpoint](handoffs/2026-10-09-privy-development-setup.md).
+**Owner follow-up:** Cisco confirms sign-out; new code requested on subsequent sign-in is expected after explicit logout. Email login/logout UI checks complete, refresh persistence still open. **Next:** sign in and refresh without signing out, then obtain only failing wallet request status/error code. [Checkpoint](handoffs/2026-10-09-privy-development-setup.md).
 
 ## 2026-10-09 · Separate local Privy test built and reviewed
 
