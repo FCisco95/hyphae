@@ -1,6 +1,6 @@
 ---
 date: 2026-10-09
-summary: Funding/payouts paused. Cisco selected email/existing Solana wallet login through Privy, with explicit Telegram linking and no auto-created wallet. Written member-login spec awaits review; no auth code/dependencies/configuration yet. Website foundation local at b750dd9; reviewed next held.
+summary: Payouts paused. Local account implementation fe6800f +1577b80 +3ffd0f5 passes1485tests/type/lint/build and fresh Claude ACCEPT. Login off pending owned Privy app/domain and actual HttpOnly/login smoke; next held.
 ---
 
 # Hyphae handoff
@@ -9,11 +9,11 @@ summary: Funding/payouts paused. Cisco selected email/existing Solana wallet log
 
 **Funding and payouts are explicitly PAUSED by Cisco.** He said he does not want to pay already, then redirected work to a clearer, scalable community website with possible community domains/subdomains and email/wallet login. Do not act on the earlier Ledger-readiness question or resume C14–C22 without his explicit instruction.
 
-Cisco approved the complete website direction and then **selected email + existing Solana wallet login through Privy, explicit Telegram linking and no automatically created wallet**. **Community home, context and dedicated join guide work locally** at `a717c17` + `b750dd9`. Next human step: review the [written member-login spec](superpowers/specs/2026-10-09-privy-member-login-design.md); then write the implementation plan. Actual login, web quiz, task feed and private progress are not implemented. [Auth decision checkpoint](handoffs/2026-10-09-privy-login-design.md).
+Cisco approved the complete website direction and **email + existing Solana wallet login through Privy, explicit Telegram linking and no automatically created wallet**, then authorized local implementation. Public overview/context/join and the private account API/proxy/UI now exist locally. Login is **disabled** until a dedicated owned app/domain is configured and real HttpOnly/login/link/logout receipts pass. Fresh final other-family auth review **ACCEPT** at3ffd0f5 (claude-opus-5-5, requested high effort). Initial findings and browser follow-ups fixed/tested. Real-provider smoke remains open. Web quiz, task feed and Telegram-independent membership remain future work. [Implementation checkpoint](handoffs/2026-10-09-privy-login-implementation.md).
 
 ## Recent Changes
 
-Recorded the provider choice and wrote a self-reviewed auth spec. Recommend native Privy Telegram linking, a fresh server provider/group check and lookup of the existing member; no new DB migration for this first read-only member screen. Checked current official docs/package metadata; no SDK installation, auth implementation, provider account/configuration, keys or publication. Provider choice is answered; written-spec review is still pending.
+Built the approved read-only member login slice at **fe6800f2f7ee9c66b217d59388d434994e7407a7**. Real SDK app-bound token verification, fresh provider Telegram identity and current group checks, scoped existing-member DB reads; strict private/no-store responses and cookie-only same-origin proxy. Scoped member UI has explicit email/existing Solana login and Telegram linking controls with wallet auto-creation off. Logout/subject-change races clear private data before passive effects. Missing configuration leaves the existing API and public website working. Provider logging is explicitly off. No DB/schema/wallet/reward write or migration. SDK/dependencies installed; no provider account/configuration, keys, DNS or live login.
 
 Built community-scoped overview/context/join pages with the existing public reads. Unknown communities fail not-found, unreadable data shows unavailable, and a pause prevents submission encouragement while preserving audit access. Reused existing join instructions; no invented invite, private link session, quiz pass or personal progress. Mobile/desktop walkthrough passed. Full test/typecheck/lint/build passed at `a717c17`; the text-only follow-up passed 34 view tests and focused lint. Restored one missing locked SDK dependency without changing manifests/lockfile. Backend, DB, wallet proofs and payout logic unchanged.
 
@@ -21,14 +21,14 @@ Coordination patch checked/applied once, local commit **c64624519e9091c0a00d8963
 
 ## Metadata
 
-Last Updated: 2026-10-09T13:10Z
-Project: Hyphae; Privy member-login design and local website foundation. Existing payout arc parked by Cisco.
+Last Updated: 2026-10-09T16:16Z
+Project: Hyphae; local Privy member-login implementation and website foundation. Existing payout arc parked by Cisco.
 Updated By: Codex (GPT-6). Exact runtime model ID/configured effort are not exposed in this session; do not substitute the prior operator's model/effort.
 Checkpoint: [October 9 read-only receipt](handoffs/2026-10-09-payout-preflight.md). Previous feature/review details: [overnight architect](handoffs/2026-10-08-overnight-architect.md).
 
 ## Current Objective
 
-Build toward a complete website member journey. The public-read slice works locally: `/c/[mint]`, `/c/[mint]/about`, `/c/[mint]/join`. Provider choice is approved: email/existing Solana wallet through Privy, explicit Telegram linking, no auto-created wallet. The written spec proposes a read-only `/c/[mint]/me` using the existing member UUID with fresh provider/group proof and no migration. Native provider linking replaces the prior draft custom linking-table proposal for this first stage. Telegram-independent membership, the web quiz and progress follow separately. No provider account/keys, domain/DNS, SDK installation or auth/schema/proof change yet. Reviewed next and release conditions remain held. Prior payout receipts are dated evidence, not instructions to resume.
+Complete and review the approved local read-only account slice: `/c/[mint]/me`, cookie-only `/api/member/[mint]` and separate `/member/v1/communities/:mint/me`. Official production HttpOnly support is documented, but owned-domain/provider setup and actual cookie/login receipts are still absent. `PRIVY_LOGIN_ENABLED=off` plus exact-host gating prevents localhost/preview activation. Final code review is ACCEPT; complete owned-provider/domain setup and real smoke before activation. Then guide Cisco through one provider setup action at a time. Do not infer provider/DNS/key/publication authority. No migration; original member and close evidence untouched. Public overview/context/join remain available. Web quiz/task feed/progress follow separately. Reviewed next and publication conditions remain held.
 
 ## Current State
 
@@ -47,10 +47,11 @@ Build toward a complete website member journey. The public-read slice works loca
 
 ## Next Actions
 
-1. Use the local preview on port 3010 to inspect overview → project context → join. The complete website direction is answered; do not re-ask it.
-2. Cisco reviews the [member-login written spec](superpowers/specs/2026-10-09-privy-member-login-design.md). Do not re-ask the chosen provider/login methods. The brainstorming skill requires written-spec approval, then writing-plans and implementation-plan review; no product code/dependency installation before those stages. Provider app configuration remains a later human action.
-3. Preserve existing member IDs, close snapshots, wallet evidence and quiz timestamps. Current member/proof protocols require Telegram identity; email login cannot safely infer it. Telegram-independent membership needs a reviewed design, no invented IDs or silent eligibility changes. Preserve `@organichub/verify` 0.1.0 through Oct 12.
-4. Prioritize a real identity-bound web quiz, approved task cards and private progress after identity. Reuse held next's accepted wallet/status work when release is permitted; plan new migrations after its 0018+0019, never collide with them. Community-specific founder context, verified invites and domain aliases remain owner inputs.
+1. Fresh final review **ACCEPT**: `36e2e531ffce151e71e6364c08f40aa877a63007..3ffd0f57750d570a3594617bac7ee5fd3f9ae2e6`; actual returned model **claude-opus-5-5**, requested effort **high**,172266ms, one fresh turn. Initial CHANGES_REQUESTED and subsequent ACCEPT receipts retained under ignored `docs/plans/2026-10-09-privy-*-review*`. No blocking code defect with activation off. Review is static diff analysis, not a provider smoke. Final docs bookkeeping is outside reviewed auth-code range.
+
+2. Pending Cisco question: does a dedicated Hyphae Privy app already exist? Do not request secrets in chat. Dedicated app/domain, allowed origins, HttpOnly production-cookie mode, Telegram linking and operator-owned test accounts require owner actions. No activation before actual cookie/login/refresh/logout proof. Official recipe: https://docs.privy.io/recipes/react/cookies.
+3. Preserve member IDs, close snapshots, wallet evidence and quiz timestamps. Email/login wallet never infers membership or replaces the recorded reward wallet. No Telegram-independent member creation; that needs a reviewed design. Preserve `@organichub/verify` 0.1.0 through Oct 12.
+4. Next product slice: identity-bound web quiz, approved task cards and private progress. Reuse held next's accepted wallet/status work when release is permitted; no migration collision with 0018+0019. Community-specific founder context, verified invites and domain aliases remain owner inputs. Native implementation is approved; do not re-ask the provider choice/spec/execution method.
 
 ### Historical payout queue — PAUSED, dates are not authority
 
@@ -63,9 +64,11 @@ Build toward a complete website member journey. The public-read slice works loca
 
 ## Validation
 
-**Freeze: no main push or deploy Oct 9 22:00Z–Oct 11 00:00Z.** Website work is local-only; no publication authority inferred and no push attempted. Full gate at `a717c17`: **119 core / 26 read-client / 135 web / 1037 API passed, 3 API skipped**, test/typecheck/lint exit 0; web production build exit 0. After text-only `b750dd9`: 34 view tests and focused Biome/whitespace clean; full gate/build not repeated. Browser: actual public reads, desktop and 390×844 mobile, overview/context/join navigation and FAQ, no overflow or console errors. Before any authorized push run the full gate on the final combined tree, check clock/release conditions and verify Vercel READY. No DB/reward/auth code change, so no new Drizzle/PG gate or sensitive-code review. Prior preflight production reads remain historical.
+**Freeze: no main push or deploy Oct 9 22:00Z–Oct 11 00:00Z.** Work is local-only under existing publication/release holds; no push attempted. Final local gate at `3ffd0f5`: **135 core / 26 read-client / 205 web / 1119 API passed, 3 existing API skipped** (1485 passed total); test/typecheck/lint exit 0, lint **446 files**. API production bundle/link-page build exit 0. Web production build exit 0 with the installed final dependencies; final changes thereafter were review fixes with full gate and both builds repeated. Real SDK ES256 verifier and HTTP fixture tests; PGLite existing-member queries; mounted React callback/logout/subject-change tests. Browser actual public reads/disabled account: desktop and390×844, no overflow/offscreen links,0 console errors/warnings. Enabled provider flows and actual HttpOnly cookies are **not tested live**. No schema/reward change, so no new Drizzle/PG gate. Fresh auth review ACCEPT covers36e2e531..3ffd0f5; next's existing ACCEPTs remain separate. Before any permitted publication run combined gate and satisfy release/clock/review/configuration conditions.
 
 ## Known Issues / Watch List
+
+Privy login is activation-blocked, not live. Non-blocking review Info queue before activation: show Sign out only to an authenticated initialized user; optionally apply disabled404 to unsupported method handlers (currently private405). Neither calls upstream or exposes private data. Sec-Fetch-Site hardening decision follows actual cookie SameSite read-back; no cookie-policy change inferred. Peer warnings remain: server Privy Kit5 vs project8 (auth-only APIs used); transitive React18 vs19, Zod3 vs4 and sysvars5 vs8. Kit8-compatible memo/system/token peers were pinned to resolve connector bundling. Ignored native build scripts were not approved/bypassed. Build passes, but this is not live provider compatibility proof. Details in implementation checkpoint. Existing metadataBase build warning remains.
 
 Next **1249fed** untouched. Five branches plus rollout fixed/ACCEPTed; records live on next, not necessarily main. Historical next gate: **130 core, 26 read-client, 187 web, 1172 API passed / 3 skipped**, typecheck/lint 0, Drizzle clean, **84/84 Postgres** after known flaky rerun. This is not a fresh combined-main gate. Keep long send-bound/score-only hint limits in prior review notes.
 
@@ -81,7 +84,7 @@ Both private decision files present/read; no guessed restoration or vault writes
 
 ## Publication ledger and organic-sync
 
-Pending local commits: **c64624519e9091c0a00d8963db0761b5aefd9ff2**, **6abf23a4e23ef2e2ba41cba2d9acb92fb66f2984**, **b1385404823f620ef0ba3bd9bb773e0b99f12053**, **a717c17d25b1f450e34a5d3c1276f976c9bdd104**, **b750dd98aa8b9b1ca629779172d05d19b3132ebe**, **acd56168b68d596e0ae9c86e06e2c2e870d99581**. Resolve this design checkpoint's commit with `git log -1 --format=%H -- docs/superpowers/specs/2026-10-09-privy-member-login-design.md`. Origin/main stays **d3b8c6c**; next/origin-next stays **1249fed**. No push: publication/release conditions remain held, including the freeze. New website routes only; no API/settlement contract change. Organic may use those routes after publication. Organic-sync owns vault/Organic propagation; neither was edited here.
+Pending local commits: **c64624519e9091c0a00d8963db0761b5aefd9ff2**, **6abf23a4e23ef2e2ba41cba2d9acb92fb66f2984**, **b1385404823f620ef0ba3bd9bb773e0b99f12053**, **a717c17d25b1f450e34a5d3c1276f976c9bdd104**, **b750dd98aa8b9b1ca629779172d05d19b3132ebe**, **acd56168b68d596e0ae9c86e06e2c2e870d99581**, **36e2e531ffce151e71e6364c08f40aa877a63007**, **fe6800f2f7ee9c66b217d59388d434994e7407a7**, **1577b8075ab317634337d4407f5b0555e838a720**, **3ffd0f57750d570a3594617bac7ee5fd3f9ae2e6**. Resolve the latest checkpoint bookkeeping commit with `git log -1 --format=%H -- docs/handoffs/2026-10-09-privy-login-implementation.md`. Origin/main stays **d3b8c6c**; next/origin-next stays **1249fed**. No push: publication/release conditions remain held, including the freeze. New private member API and community account route; existing public API/settlement contracts unchanged. Organic may link to community/account routes after authorized publication; no SSO/data integration yet. Propagate login setup, private/no-store contract and activation-blocked stage through organic-sync only. Organic-sync owns vault/Organic propagation; neither was edited here.
 
 ## Generated artifacts this session
 
@@ -91,14 +94,16 @@ Pending local commits: **c64624519e9091c0a00d8963db0761b5aefd9ff2**, **6abf23a4e
 | Public-safe checkpoint | docs/handoffs/2026-10-09-payout-preflight.md, this handoff, docs/BUILDLOG.md | Read-only evidence/exact stop |
 | Private read-backs | docs/plans/operator-receipts/2026-10-09-*.json and audit stderr | Gitignored; do not publish |
 | Community pages/views/tests | apps/web/, a717c17 + b750dd9 | Local, committed; no backend/auth change |
-| Member-login spec | docs/superpowers/specs/2026-10-09-privy-member-login-design.md | DRAFT awaiting written review; no implementation |
+| Member-login spec/plan/code | docs/superpowers/, apps/api/src/member-auth/, apps/web/, packages/core/src/member-account.ts; fe6800f | Local code/gate passed; code review ACCEPT; configured-provider proof open |
+| Auth review input/result | docs/plans/2026-10-09-privy-review* | Ignored local, initial CHANGES_REQUESTED then final ACCEPT; exact metadata retained |
+| Auth logs/mobile screenshot | docs/plans/2026-10-09-member-*.log, 2026-10-09-member-disabled-mobile.png | Ignored; fixture/disabled-page evidence only |
 | Screenshots/gate logs | docs/plans/2026-10-09-community-*.png and 2026-10-09-website-*.log | Ignored local artifacts; website rendering, not payment evidence |
-| Developer preview | Local port 3010 | Running locally; existing read token server-side only |
+| Developer preview | Loopback127.0.0.1:3010 | Production preview running; existing read configuration server-side only; login forced off |
 | Keys/resources/jobs | None | None created/changed |
 
 ## Suggested skills
 
-handoff-memory, the-analyst, superpowers:brainstorming for account/member design, frontend-design, test-driven-development for new behavior, verification-before-completion, handoff. Reuse next's ACCEPTs; any new sensitive-code change requires fresh other-family review. Existing operator scripts/runbook only if Cisco explicitly resumes payouts.
+handoff-memory, the-analyst, superpowers:executing-plans for remaining auth proof/review tasks, test-driven-development for findings, frontend-design, verification-before-completion, handoff. Reuse next's ACCEPTs only for its existing code; this new auth requires fresh other-family review. Existing operator scripts/runbook only if Cisco explicitly resumes payouts.
 
 ## Quick Reference
 
@@ -106,16 +111,16 @@ Canonical procedure: docs/demo/2026-10-08-first-payout-readiness.md and docs/han
 
 ## Resume Checklist
 
-Fetch/status/both refs; preserve local website/docs and held next; check writers and clock before any later publication. Privy/email/existing-wallet choice is answered. Read the member-login spec and any written-spec review reply. Do not repeat product/provider discovery or overwrite next's accepted web additions. All funding/payout actions are paused; do not prompt for Ledger readiness or run publish-epoch plan. Full main gate on the final combined tree required before any authorized push.
+Check status/both refs and clock before any later publication. Preserve held next and local auth/website/docs. Read current review result/checkpoint, not the stale design-stage handoff. Provider choice and local build authorization are answered. Finish actual configured-provider proof and recorded cosmetic pre-activation queue; no public login claim from fixtures. Payouts remain paused. Do not prompt for Ledger, merge/deploy next, alter keys/DNS/accounts or send messages. Full final combined gate required before any authorized push.
 
 ## Next-session prompt
 
 ## Resume Prompt
 
 ```text
-Cisco explicitly PAUSED funding/payouts and approved the complete website direction, then selected email/existing Solana wallet login through Privy with explicit Telegram linking and no auto-created wallet. Community home/context/join work locally at b750dd9; no auth/web quiz/task feed/private progress implemented. Written member-login spec awaits review. Next 1249fed held; preserve both histories, verify 0.1.0 and local commits.
-Files: CLAUDE.md, docs/HANDOFF.md, docs/superpowers/specs/2026-10-09-privy-member-login-design.md, docs/handoffs/2026-10-09-privy-login-design.md, apps/web/components/community.tsx, apps/api/src/server.ts, packages/db/src/schema.ts, apps/api/src/payout/rules-test.ts
-Model: use the available architecture/reasoning model at high effort; do not invent runtime ID/effort.
-Skills: handoff-memory, the-analyst, superpowers:brainstorming, handoff.
-Read any written-spec review reply. Once the spec is approved, invoke writing-plans for the explicit native Telegram linking, private member-read and frontend login plan; obtain its required review/execution choice. No new migration for this first auth stage. Do not re-ask Privy/email/existing-wallet selection or equate provider login with reward-wallet proof. Preserve existing evidence, 0018+0019 on next and verify 0.1.0 through Oct 12. Do not resume C14–C22, merge/deploy next, alter DNS/provider keys or send messages. Preserve publication holds and freeze Oct 9 22:00Z–Oct 11 00:00Z.
+Funding/payouts explicitly PAUSED. Email/existing Solana wallet Privy account API/proxy/UI built locally at fe6800f +1577b80 +3ffd0f5, with explicit Telegram linking and no auto-created wallet. Full test/typecheck/lint/build pass; real provider/HttpOnly cookie smoke absent, activation off. Fresh other-family auth review ACCEPT at3ffd0f5. Main-only commits and next1249fed held; no publication.
+Files: CLAUDE.md, docs/HANDOFF.md, docs/superpowers/specs/2026-10-09-privy-member-login-design.md, docs/superpowers/plans/2026-10-09-privy-member-login.md, docs/handoffs/2026-10-09-privy-login-implementation.md, apps/api/src/member-auth/routes.ts, apps/web/components/member-provider.tsx, apps/web/lib/member-api.ts
+Model: use the available coding model at high effort for review fixes; record the actual runtime identity, not an invented model ID.
+Skills: handoff-memory, the-analyst, superpowers:executing-plans, test-driven-development, verification-before-completion, handoff.
+Read final Claude ACCEPT/checkpoint and pending Cisco Privy-app reply; do not repeat completed reviews/gates unless new changes justify them. Guide one owner setup action at a time without requesting secrets in chat. Real configured HttpOnly/login/refresh/logout receipts are required before activation. Keep web quiz/task/progress as the next separately bounded product slice. Preserve next0018+0019, verify0.1.0 through Oct12, both histories and publication holds/freeze. No payouts, merge/deploy, DNS/key/account mutation or messages.
 ```

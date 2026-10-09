@@ -2,6 +2,18 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-09 · Private member account built locally; activation held
+
+**Built:** dedicated app-bound token verifier, fresh provider/Telegram group proof, existing-member read, private/no-store cookie-only proxy and scoped account UI. Email/existing Solana login and explicit Telegram linking controls; no automatically created wallet. Login wallet never replaces the current reward wallet. Logout/account-change races discard private data before it can flash. Missing configuration leaves public pages/API running.
+
+**Decision and why:** production HttpOnly support is documented, but actual owned-domain/provider receipts are absent. Keep activation off until configured-cookie/email/wallet/link/logout proof, rather than presenting fixtures as working login. No DB/migration/reward/wallet mutation. Cisco's build instruction authorized local implementation of the saved spec.
+
+**Validation:**135 core/26 read-client/205 web/1119 API passed;3 existing API skipped (1485 passed). Full typecheck/lint exit0,446 files; web and API production builds exit0. Real SDK verifier/HTTP and mounted React fixtures; disabled account desktop/mobile390×844 no overflow or console warnings/errors. Provider logging envdebug regression failed then passed. Remaining dependency peer warnings/ignored scripts are recorded in the [checkpoint](handoffs/2026-10-09-privy-login-implementation.md); real provider smoke remains open. Initial Claude CHANGES_REQUESTED fixed/tested; final fresh claude-opus-5-5/high review **ACCEPT** for36e2e531..3ffd0f5 (activation off).
+
+**Commits/stage:** **fe6800f2f7ee9c66b217d59388d434994e7407a7**, review fixes **1577b8075ab317634337d4407f5b0555e838a720** and browser hardening **3ffd0f57750d570a3594617bac7ee5fd3f9ae2e6**, baseline36e2e531. Local-only, no push/deploy/provider/key/domain change. Prior pending commits c646245/6abf23a/b138540/a717c17/b750dd9/acd5616/36e2e531, exact IDs in HANDOFF. Origin-main d3b8c6c, next1249fed held. Publication/release conditions and Oct9 22:00Z–Oct11 00:00Z freeze remain. Payouts paused; all C14–C22 incomplete, actual receipts/payees/amounts none. No vault/Organic edits; organic-sync owns downstream login/route/status propagation.
+
+**Next:** owner Privy app/domain proof and attended live smoke; software review complete. Two cosmetic Info items are recorded for pre-activation cleanup. Pending question: dedicated Hyphae Privy app already exists? Do not request secrets in chat. Web quiz/tasks/progress follow the established identity boundary.
+
 ## 2026-10-09 · Privy selected; member-login design ready for review
 
 **Decision:** Cisco selected email plus an existing Solana wallet through Privy, explicit linking to existing Telegram membership, and no automatically created wallet. Provider choice is answered. Prepared the [written login spec](superpowers/specs/2026-10-09-privy-member-login-design.md), awaiting written review before the implementation plan.
