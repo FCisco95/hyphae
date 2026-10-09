@@ -1,5 +1,6 @@
 import type { CommunityV1, PublicRaid, PublicRaids } from "@hyphae/core";
 import type { Result } from "../lib/api.js";
+import { communityIntake } from "../lib/community-intake.js";
 import { utc } from "../lib/format.js";
 import { ButtonLink } from "./ui.js";
 
@@ -58,7 +59,13 @@ function RaidCard({
           ) : null}
         </div>
       ) : (
-        <p className="muted">The original post link is unavailable.</p>
+        <p className="muted">
+          {raid.status === "scheduled"
+            ? "Post details appear when this raid opens."
+            : raid.status === "cancelled"
+              ? "Post details are hidden for cancelled raids."
+              : "The original post link is unavailable."}
+        </p>
       )}
       {raid.brief ? (
         <p className="raid-brief">
@@ -84,17 +91,13 @@ export function RaidsView({
   loginEnabled?: boolean;
 }) {
   const base = `/c/${encodeURIComponent(community.mint)}`;
-  const epoch = community.epochs.find(
-    (item) => item.index === community.current_epoch && item.status === "open",
-  );
-  const data = result.ok && result.data.community.mint === community.mint ? result.data : null;
-  const readTime = Math.max(Date.parse(community.as_of), data ? Date.parse(data.as_of) : 0);
-  const epochExpired = !!epoch && Date.parse(epoch.closes_at) <= readTime;
-  const accepting =
-    !!epoch &&
-    !epochExpired &&
-    community.reward_intake === "open" &&
-    data?.reward_intake === "open";
+  const {
+    epoch,
+    feed: data,
+    expired: epochExpired,
+    accepting,
+    state,
+  } = communityIntake(community, result);
   const active =
     data?.raids.filter((raid) => raid.status === "open" || raid.status === "scheduled") ?? [];
   const recent =
@@ -162,14 +165,16 @@ export function RaidsView({
           </p>
           <div className="raid-intake-note">
             <h3 className="raid-note-title">Before you contribute</h3>
-            {community.reward_intake === "paused" || data?.reward_intake === "paused" ? (
-              <p>Reward intake is paused. Read the briefs and check back before submitting.</p>
-            ) : epochExpired && epoch ? (
+            {epochExpired && epoch ? (
               <p>
                 Reward intake for epoch {epoch.index} closed at{" "}
                 <time dateTime={epoch.closes_at}>{utc(epoch.closes_at)}</time>. Check the next epoch
                 before submitting reward work.
               </p>
+            ) : state === "paused" ? (
+              <p>Reward intake is paused. Read the briefs and check back before submitting.</p>
+            ) : state === "unconfirmed" ? (
+              <p>Reward intake cannot be confirmed right now. Check back before submitting.</p>
             ) : epoch ? (
               <p>
                 Reward intake closes <time dateTime={epoch.closes_at}>{utc(epoch.closes_at)}</time>.

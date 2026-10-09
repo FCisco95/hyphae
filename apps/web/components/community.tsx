@@ -1,5 +1,6 @@
 import type { CommunityV1, PublicRaids } from "@hyphae/core";
 import type { Result } from "../lib/api.js";
+import { communityIntake } from "../lib/community-intake.js";
 import type { CommunityPresentation } from "../lib/community-presentation.js";
 import { utc } from "../lib/format.js";
 import { BOT, RUBRICS } from "../lib/links.js";
@@ -13,19 +14,15 @@ type CommunityProps = {
   loginEnabled?: boolean;
 };
 
-function openEpoch(community: CommunityV1) {
-  return community.epochs.find(
-    (epoch) => epoch.index === community.current_epoch && epoch.status === "open",
-  );
-}
-
 function CommunityIntro({
   community,
   presentation,
   page,
+  raids,
 }: CommunityProps & { page: "overview" | "about" | "join" }) {
   const base = `/c/${encodeURIComponent(community.mint)}`;
-  const current = openEpoch(community);
+  const intake = communityIntake(community, raids);
+  const current = intake.epoch;
   const tabs = [
     { key: "overview", label: "Overview", href: base },
     { key: "raids", label: "Live raids", href: `${base}#raids` },
@@ -67,9 +64,25 @@ function CommunityIntro({
         </div>
         <aside className="community-round" aria-label="Current reward epoch">
           <p className="eyebrow">Right now</p>
-          <h2>{current ? `Epoch ${current.index} is open.` : "No open epoch"}</h2>
-          <p>Reward intake is {community.reward_intake}.</p>
-          {current ? <p className="small muted">Closes {utc(current.closes_at)}.</p> : null}
+          <h2>
+            {current
+              ? intake.expired
+                ? `Epoch ${current.index} reward intake has closed.`
+                : intake.state === "unconfirmed"
+                  ? `Epoch ${current.index}`
+                  : `Epoch ${current.index} is open.`
+              : "No open epoch"}
+          </h2>
+          <p>
+            {intake.state === "unconfirmed"
+              ? "Reward intake cannot be confirmed right now."
+              : `Reward intake is ${intake.state === "closed" ? "closed" : intake.state === "paused" ? "paused" : community.reward_intake}.`}
+          </p>
+          {current ? (
+            <p className="small muted">
+              {intake.expired ? "Closed" : "Closes"} {utc(current.closes_at)}.
+            </p>
+          ) : null}
           {current ? (
             <a href={`${base}/e/${current.index}`}>Read this epoch&apos;s rules and audit →</a>
           ) : (
@@ -77,7 +90,7 @@ function CommunityIntro({
               No epoch is open right now. <a href={`${base}#epochs`}>Check the epoch history.</a>
             </p>
           )}
-          <p className="small muted">Data as of {utc(community.as_of)}.</p>
+          <p className="small muted">Data as of {utc(intake.asOf)}.</p>
         </aside>
       </header>
     </>
@@ -91,16 +104,17 @@ export function CommunityOverview({
   loginEnabled,
 }: CommunityProps) {
   const base = `/c/${encodeURIComponent(community.mint)}`;
-  const current = openEpoch(community);
-  const accepting = current && community.reward_intake === "open";
+  const result = raids ?? { ok: false as const, reason: "unavailable" as const };
+  const { epoch: current, accepting, state } = communityIntake(community, result);
   return (
     <>
-      <CommunityIntro community={community} presentation={presentation} page="overview" />
-      <RaidsView
+      <CommunityIntro
         community={community}
-        result={raids ?? { ok: false, reason: "unavailable" }}
-        loginEnabled={loginEnabled}
+        presentation={presentation}
+        page="overview"
+        raids={result}
       />
+      <RaidsView community={community} result={result} loginEnabled={loginEnabled} />
       <section className="community-path" aria-labelledby="community-path-title">
         <div className="community-section-head">
           <p className="eyebrow">Your next step</p>
@@ -139,9 +153,11 @@ export function CommunityOverview({
           <h2 id="community-next-title">
             {accepting
               ? "Ready to contribute?"
-              : community.reward_intake === "paused"
+              : state === "paused"
                 ? "Reward intake is paused."
-                : "Prepare for the next epoch."}
+                : state === "unconfirmed"
+                  ? "Live raid status is unavailable right now."
+                  : "Prepare for the next epoch."}
           </h2>
           <p>
             {accepting
@@ -159,7 +175,7 @@ export function CommunityOverview({
 
 export function AboutView({ community, presentation }: CommunityProps) {
   const base = `/c/${encodeURIComponent(community.mint)}`;
-  const current = openEpoch(community);
+  const { epoch: current } = communityIntake(community);
   return (
     <>
       <CommunityIntro community={community} presentation={presentation} page="about" />
@@ -239,7 +255,7 @@ export function AboutView({ community, presentation }: CommunityProps) {
 }
 
 export function JoinView({ community, presentation }: CommunityProps) {
-  const current = openEpoch(community);
+  const { epoch: current, accepting } = communityIntake(community);
   const base = `/c/${encodeURIComponent(community.mint)}`;
   return (
     <>
@@ -297,7 +313,7 @@ export function JoinView({ community, presentation }: CommunityProps) {
             </li>
             <li id="submit">
               <h3>Submit your own work</h3>
-              {current && community.reward_intake === "open" ? (
+              {accepting ? (
                 <p>
                   Use <code>/help brief</code> in the group to see the open raids. For a reply or
                   quote, use that raid&apos;s own Submit button; <code>/submit</code> is for

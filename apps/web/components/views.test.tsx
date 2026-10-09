@@ -64,7 +64,16 @@ describe("CommunityView", () => {
   });
 
   it("only offers raid setup for an open selected epoch with open intake", () => {
-    expect(renderToStaticMarkup(<CommunityView community={f.community} />)).toContain(
+    const raids = {
+      ok: true as const,
+      data: {
+        community: { mint: f.community.mint },
+        reward_intake: "open" as const,
+        as_of: f.community.as_of,
+        raids: [],
+      },
+    };
+    expect(renderToStaticMarkup(<CommunityView community={f.community} raids={raids} />)).toContain(
       'href="#raids"',
     );
     for (const community of [
@@ -74,9 +83,9 @@ describe("CommunityView", () => {
         epochs: f.community.epochs.map((e) => ({ ...e, status: "closed" as const })),
       },
     ]) {
-      expect(renderToStaticMarkup(<CommunityView community={community} />)).not.toContain(
-        ">Find a raid<",
-      );
+      expect(
+        renderToStaticMarkup(<CommunityView community={community} raids={raids} />),
+      ).not.toContain(">Find a raid<");
       expect(text(<CommunityView community={community} />)).toContain("Reward intake is open.");
       expect(text(<CommunityView community={community} />)).not.toContain("intake is closed");
     }

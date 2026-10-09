@@ -1,6 +1,7 @@
 import type { PublicRaids } from "@hyphae/core";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+import { CommunityOverview, JoinView } from "./community.js";
 import { community } from "./fixtures.js";
 import { RaidsView } from "./raids.js";
 
@@ -24,6 +25,8 @@ const feed: PublicRaids = {
     },
   ],
 };
+const fixtureEpoch = community.epochs[0];
+if (!fixtureEpoch) throw new Error("Missing fixture epoch");
 
 describe("raid workspace", () => {
   it("shows real post text and deadlines safely, with a distinct epoch cutoff and account entry", () => {
@@ -84,4 +87,96 @@ it("does not offer reward submissions after a cutoff even when the community rea
   );
   expect(html).not.toContain("How to submit your work");
   expect(html).toContain("closed at");
+});
+
+it("keeps overview prompts and heading consistent with a newer feed at the epoch cutoff", () => {
+  const html = renderToStaticMarkup(
+    <CommunityOverview
+      community={community}
+      raids={{ ok: true, data: { ...feed, as_of: fixtureEpoch.closes_at } }}
+    />,
+  );
+  expect(html).not.toContain("Ready to contribute?");
+  expect(html).not.toContain("Find a raid");
+  expect(html).not.toContain("Epoch 2 is open.");
+  expect(html).toContain("Epoch 2 reward intake has closed.");
+  expect(html).toContain("Prepare for the next epoch.");
+  expect(html).toContain(`/c/${community.mint}/e/2`);
+});
+
+it("does not advertise participation when the overview feed is paused, unavailable or for another community", () => {
+  for (const raids of [
+    { ok: true as const, data: { ...feed, reward_intake: "paused" as const } },
+    { ok: false as const, reason: "unavailable" as const },
+    { ok: true as const, data: { ...feed, community: { mint: "OtherMint" } } },
+  ]) {
+    const html = renderToStaticMarkup(<CommunityOverview community={community} raids={raids} />);
+    expect(html).not.toContain("Ready to contribute?");
+    expect(html).not.toContain("Find a raid");
+    if (raids.ok && raids.data.reward_intake === "paused")
+      expect(html).toContain("Reward intake is paused.");
+    else {
+      expect(html).toContain("Live raid status is unavailable right now.");
+      expect(html).toContain("Reward intake cannot be confirmed right now.");
+      expect(html).not.toContain("Prepare for the next epoch.");
+      expect(html).not.toContain("Reward intake is open.");
+    }
+  }
+});
+
+it("keeps the join guide available but stops submission instructions at the recorded cutoff", () => {
+  const html = renderToStaticMarkup(
+    <JoinView community={{ ...community, as_of: fixtureEpoch.closes_at }} />,
+  );
+  expect(html).not.toContain("Epoch 2 is open.");
+  expect(html).not.toContain("use that raid");
+  expect(html).toContain("Reward submissions are not open right now");
+  expect(html).toContain("/link");
+  expect(html).toContain("/rules");
+});
+
+it("uses closed intake wording throughout after cutoff even if either read is paused", () => {
+  for (const input of [
+    { community: { ...community, reward_intake: "paused" as const }, data: feed },
+    { community, data: { ...feed, reward_intake: "paused" as const } },
+  ]) {
+    const html = renderToStaticMarkup(
+      <CommunityOverview
+        community={input.community}
+        raids={{
+          ok: true,
+          data: { ...input.data, as_of: fixtureEpoch.closes_at },
+        }}
+      />,
+    );
+    expect(html).toContain("Epoch 2 reward intake has closed.");
+    expect(html).toContain("Reward intake is closed.");
+    expect(html).toContain("Prepare for the next epoch.");
+    expect(html).not.toContain("Reward intake is paused.");
+    expect(html).not.toContain('class="small muted">Closes ');
+    expect(html).toContain("Closed ");
+  }
+});
+
+it("explains deliberately withheld scheduled and cancelled post details", () => {
+  for (const status of ["scheduled", "cancelled"] as const) {
+    const html = renderToStaticMarkup(
+      <RaidsView
+        community={community}
+        result={{
+          ok: true,
+          data: {
+            ...feed,
+            raids: feed.raids.map((raid) => ({ ...raid, status, post: null, brief: "" })),
+          },
+        }}
+      />,
+    );
+    expect(html).not.toContain("The original post link is unavailable.");
+    expect(html).toContain(
+      status === "scheduled"
+        ? "Post details appear when this raid opens."
+        : "Post details are hidden for cancelled raids.",
+    );
+  }
 });
