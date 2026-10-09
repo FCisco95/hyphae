@@ -1,5 +1,9 @@
 # Privy member login — approved local design
 
+## Approved development-only provider test, October 9
+
+Cisco's later **“Let's continue”** approves the explicitly proposed separate local email/existing-Solana sign-in test before a domain purchase. This does not revise the private member HttpOnly transport requirement. The test at `/dev/privy` uses a separate public `PRIVY_DEV_APP_ID`, explicit local-preview mode, exact loopback host `127.0.0.1:3010` and no Vercel environment. It does not call any private member endpoint, obtain Telegram proof, display member records, change reward wallets or create embedded wallets. Provider SDK authentication is only a development sign-in status, never membership or payout authority. Its code must remain unavailable on deployed origins; production-cookie/login/link/logout proof remains open. Actual owner sign-in may create a provider development user, as part of this attended test only.
+
 Status: **Approved for local implementation** by Cisco's October 9 “Okay, let's put it to work.” Provider choice: email plus an existing Solana wallet through Privy, explicit linking to existing Telegram membership, no automatically created wallet. This approval does not create a provider account, approve publication or resume payouts. [Implementation plan](../plans/2026-10-09-privy-member-login.md); verified HttpOnly transport and an attended configured-provider smoke remain open.
 
 ## Intended result and scope

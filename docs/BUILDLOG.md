@@ -2,6 +2,18 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-09 · Separate local Privy test built and reviewed
+
+**Built:** approved provider-only development sign-in page at `/dev/privy`, gated to exact loopback3010, explicit launcher mode, no Vercel and distinct public dev App ID. Email/existing Solana controls, embedded creation/auto-connect off, no member/token/identity reads. Logout success requires SDK-ready/unauthenticated confirmation; unresolved sign-out offers retry. Production App ID remains unconfigured; private member login remains off.
+
+**Decision and why:** test the owner's new development app before buying a domain without weakening the private HttpOnly/member boundary. Cisco approved this extra test via “Let's continue.” It is a provider smoke, not member access or production-cookie proof.
+
+**Validation:**11 focused tests pass, regressions observed failing before fixes. Final full **139core/26read-client/224web/1124API =1513 passed,3existing skipped**; typecheck/lint462files/web build pass. Initial parallel test/typecheck caused Windows shared-dist EPERM; separate rerun passed, no source workaround. HTTP200 test rendering; wrong Host reveals no test/ID (Next streamed not-found can be200), private proxy404; community return route exists. Launcher explicitly sets preview flag; root env/shell do not. Fresh other-family **ACCEPT** forf5b3118..60ec29a, actual claude-opus-5-5/requested-high,70509ms/1turn, after Medium logout fix. Remaining Low/Info owner/runtime observations in checkpoint. No actual owner email/wallet/logout receipt yet.
+
+**Commits/stage:** **534f8079908b42ef60b331a70cb491ed6e82d040**, fixes **60ec29a8bbe893cfb46597ddf0a5d8d2e3aba493**; prior setup docs **f5b311867165a5f4d521390ad8888bd46032b295**. Local only. No push/deploy under held publication/release/freeze conditions; no secrets/DNS/production writes/payment effects. Funding/payouts paused; C14–C22 incomplete, no actual payees/amounts/receipts. Organic-sync owns downstream status propagation, no Organic/vault edit.
+
+**Next:** owner email login/sign-out on local test, then existing Solana login/sign-out. Full private login still needs production-domain/cookie/server/Telegram setup. [Checkpoint](handoffs/2026-10-09-privy-development-setup.md).
+
 ## 2026-10-09 · Owner development app setup; member login still held
 
 **Changed:** Cisco created Hyphae Development in Privy, enabled Solana and added loopback3010 as an allowed origin. Saved the owner-supplied public App ID in ignored local `.env`; no secret/key/activation change. EVM-off/save and automatic-wallet dashboard settings still unconfirmed.
