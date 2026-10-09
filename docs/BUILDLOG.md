@@ -2,6 +2,18 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-09 (10:30–10:34 UTC) · Payout preflight, local only; Ledger attendance needed
+
+**Changed:** applied the checked four-file coordination patch once: public visibility, current timetable/consumer notes and completed next reviews/gate. Preserved both divergent histories; no feature release. Saved the [read-only receipt](handoffs/2026-10-09-payout-preflight.md) and exact stop.
+
+**Decision and why:** use deployed source for the existing attended payout; keep reviewed next held. Cisco must confirm Ledger readiness and its address must match the recorded admin before signing. Scored points and a signed wallet are not payment receipts.
+
+**Validation:** origin fetched; starting divergence **5 main-only / 62 next-only**; clean worktrees; patch/whitespace/source checks passed. Both Fly machines match `jev-e5f864b`/digest `b3f5617d…`; all **18** journal hashes match, recovery current. Epoch close **Oct 10 00:00Z**, one amendment. Read-only audit **26 contributions / 9 members, 0 pending decisions, 0 duplicate groups**; **6** signed wallets, **5** rules passes, **4** members with points plus both prerequisites; gate **not_final**. Admin **0 lamports**, community/vault/epoch absent, authority exact. Six checked current balance reads are orientation only. Historical scorer includes one Sonnet `/2` before Haiku's Oct 7 20:01Z rollout; all 21 later `/2` calls use Haiku. **No C14–C22 row/author attestation completed; actual payees/amounts/publish/claim/P14 receipts none.** No final no-payable verdict.
+
+**Commits/stage:** **c64624519e9091c0a00d8963db0761b5aefd9ff2**, local-only, not pushed. Checkpoint bookkeeping SHA: `git log -1 --format=%H -- docs/handoffs/2026-10-09-payout-preflight.md`. Origin/main stays `d3b8c6c`, next/origin-next `1249fed`. No Vercel-triggering publication authority inferred from local-docs scope; no push attempted, full main push gate not run. Authorized docs pushes still require test/typecheck/lint and clock/release conditions. Freeze **Oct 9 22:00Z–Oct 11 00:00Z**.
+
+**Next bounded action:** Cisco connects/unlocks Ledger, closes Ledger Live, opens Solana app and confirms attendance. Read `44'/501'/2'/0'`, match admin, then C14's approved 0.02-SOL funding and finalized read-back. C18b remains Oct 9 23:00Z/final after 23:45Z; C19–C22 remain Oct 11 after close/hold/ready. Founder wording is separate, one item at a time. No live writes, signing, transfers or posts here.
+
 ## 2026-10-08 (evening and night) · The close moved a day, and the five branches went through review
 
 **What changed today, said plainly:** I could not attend the close and the first mainnet payout on the 9th, and a first payout is done attended or not at all. So epoch 2 now closes on 2026-10-10 at 00:00 UTC, one day later than its seven-day window, applied at 17:46 UTC by a guarded one-row update (the close job only fires when the database clock passes the close, so nothing had been scheduled for the 9th). C14 to C18 move to October 9, the close to the 10th, the payout to the 11th. Epoch 2 keeps Claude Haiku 5.5 on `reward-eval/2` to the end; the new filter scorer waits for epoch 3. These changes get said in public: a changelog entry for the moved close, and a "Schedule change" panel on the epoch page that appears whenever an epoch's window differs from its configured duration.
