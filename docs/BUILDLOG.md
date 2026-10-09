@@ -4,6 +4,8 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 
 ## 2026-10-09 · Payment preparation explained; funding still paused
 
+**Guidance follow-up22:09Z:** Cisco asks whether MYCEL Treasury should fund rewards and wants one-step guidance. Recommend retaining recorded founder-funded first test; Treasury is the fixed3% fee recipient, distinct from the rewards vault. No Treasury spending or funding-source change approved. Verified recorded Windows keygen executable exists; no USB/signing command run. Next human action: Ledger connected/unlocked, Ledger Live quit, Solana app open, then read-only admin match. Freeze active; no push/deploy or new runtime tests/on-chain receipts.
+
 **Observed:** Cisco asked where payout funds are and what preparation requires. Fresh error-checked finalized mainnet read21:57:02Z/slot455015673: original funding source has capacity for the recorded budget; Ledger admin0lamports, community/reward vault absent, fixed Treasury recipient895,047,823lamports. Detailed source balance stays in ignored operator receipt. No transfer or Ledger command.
 
 **Decision/stage:** this question does not resume paused money actions. Explain separate source/admin/reward-vault/fee-recipient roles, original0.02SOL admin budget and0.5SOL gross pot (fresh exact top-up required), close/audit/24-hour hold/publication/member claim/receipt sequence. Funding into the vault has no withdrawal rollback. All C14–C22 open; no payees, actual payouts or final no-payable outcome.

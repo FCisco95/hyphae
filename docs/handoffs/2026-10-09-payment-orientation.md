@@ -20,6 +20,8 @@ All C14–C22 remain OPEN; actual payees/amounts/publish/claim/P14 receipts none
 
 ## Suggested skills
 
+Follow-up22:09Z: Cisco asks for guided preparation and whether Treasury should fund rewards. Recommend keeping the recorded founder-funded first test, with Treasury continuing as3% fee recipient. This is a recommendation, not an approved Treasury budget/source change. Future Treasury funding requires explicit source/amount and its required approvals; funds still go into the program rewards vault rather than bypassing publication/claims. Windows recorded solana-keygen executable exists, but no device command was started. Next: Cisco connects/unlocks Ledger, quits Ledger Live, opens Solana app and reports readiness; agent then performs the read-only address check. Funding/payment still paused, freeze active, all C14–C22 open. No new on-chain read;21:57 balances remain dated receipts.
+
 handoff-memory, the-analyst, superpowers:verification-before-completion, handoff. Existing Runbook C only for any later expressly resumed attended money actions.
 
 ## Next-session prompt
