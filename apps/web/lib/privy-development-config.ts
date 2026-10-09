@@ -1,6 +1,7 @@
 export function privyDevelopmentConfig(
   values: {
     appId?: string | undefined;
+    productionAppId?: string | undefined;
     localPreview?: string | undefined;
     vercel?: string | undefined;
   },
@@ -13,5 +14,6 @@ export function privyDevelopmentConfig(
     !values.appId?.trim()
   )
     return null;
+  if (values.productionAppId?.trim() === values.appId.trim()) return null;
   return { appId: values.appId.trim() };
 }

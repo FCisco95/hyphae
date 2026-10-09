@@ -26,12 +26,17 @@ describe("isolated Privy development test", () => {
     ])
       expect(privyDevelopmentConfig(config, "127.0.0.1:3010")).toBeNull();
   });
-  it("does not enable private member login with a development app", () => {
+  it("keeps loopback outside the private member cookie gate", () => {
     expect(
       memberLoginConfig(
         { appId: "fixture-dev", enabled: "on", cookieDomain: "127.0.0.1:3010" },
         "127.0.0.1:3010",
       ),
+    ).toBeNull();
+  });
+  it("refuses a development ID that is also configured for production", () => {
+    expect(
+      privyDevelopmentConfig({ ...values, productionAppId: "fixture-dev" }, "127.0.0.1:3010"),
     ).toBeNull();
   });
 });

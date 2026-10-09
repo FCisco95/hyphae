@@ -31,6 +31,11 @@ const env = {
 // The preview needs public reads only. Never copy the API's secret configuration into it.
 delete env.PRIVY_APP_SECRET;
 delete env.PRIVY_VERIFICATION_KEY;
+if (
+  env.PRIVY_DEV_APP_ID &&
+  env.PRIVY_DEV_APP_ID.trim() === (process.env.PRIVY_APP_ID || values.PRIVY_APP_ID || "").trim()
+)
+  throw new Error("Use a separate development Privy App ID for the local sign-in test.");
 const next = createRequire(import.meta.url).resolve("next/dist/bin/next");
 const api = fileURLToPath(new URL("../../../apps/api/", import.meta.url));
 const tsx = createRequire(new URL("../../../apps/api/package.json", import.meta.url)).resolve(

@@ -9,6 +9,7 @@ export default async function PrivyDevelopmentPage() {
   const config = privyDevelopmentConfig(
     {
       appId: process.env.PRIVY_DEV_APP_ID,
+      productionAppId: process.env.PRIVY_APP_ID,
       localPreview: process.env.HYPHAE_LOCAL_PREVIEW,
       vercel: process.env.VERCEL,
     },

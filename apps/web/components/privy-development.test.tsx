@@ -39,7 +39,9 @@ beforeEach(() => {
   sdk.ready = true;
   sdk.authenticated = false;
   sdk.config = undefined;
-  sdk.logout.mockImplementation(async () => {});
+  sdk.logout.mockImplementation(async () => {
+    sdk.authenticated = false;
+  });
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal(
     "fetch",
@@ -71,6 +73,15 @@ function button(label: string) {
   return found;
 }
 describe("provider-only development session", () => {
+  it("does not claim sign-out while the SDK still reports an authenticated session", async () => {
+    sdk.authenticated = true;
+    sdk.logout.mockImplementationOnce(async () => {});
+    await render();
+    await act(async () => button("Sign out").click());
+    expect(container.textContent).not.toContain("Signed out of this test");
+    expect(container.textContent).toContain("Sign-out is not confirmed yet");
+    expect(button("Retry sign out").disabled).toBe(false);
+  });
   it("offers explicit email and existing Solana login without creating wallets", async () => {
     await render(true);
     await act(async () => button("Sign in with email").click());

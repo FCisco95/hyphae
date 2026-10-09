@@ -42,6 +42,8 @@ export function PrivyDevelopmentSession() {
     login({ loginMethods: [method] });
   };
   const signedIn = ready && authenticated && phase === "idle";
+  const signedOut = phase === "done" && ready && !authenticated;
+  const unconfirmedLogout = phase === "done" && !signedOut;
   return (
     <section className="member-account" aria-labelledby="privy-test-title">
       <p className="muted">Hyphae · Local development</p>
@@ -59,10 +61,13 @@ export function PrivyDevelopmentSession() {
         {phase === "failed" ? (
           <p>Sign-out did not finish. Retry before leaving this test.</p>
         ) : null}
-        {phase === "done" ? <p>Signed out of this test.</p> : null}
+        {signedOut ? <p>Signed out of this test.</p> : null}
+        {unconfirmedLogout ? (
+          <p>Sign-out is not confirmed yet. Retry before leaving this test.</p>
+        ) : null}
       </div>
       <div className="member-actions">
-        {signedIn || phase === "pending" || phase === "failed" ? (
+        {signedIn || phase === "pending" || phase === "failed" || unconfirmedLogout ? (
           <button
             className="button button-secondary"
             type="button"
@@ -73,7 +78,7 @@ export function PrivyDevelopmentSession() {
           >
             {phase === "pending"
               ? "Signing out…"
-              : phase === "failed"
+              : phase === "failed" || unconfirmedLogout
                 ? "Retry sign out"
                 : "Sign out"}
           </button>
