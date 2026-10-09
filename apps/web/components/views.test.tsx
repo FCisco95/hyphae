@@ -1,6 +1,7 @@
 import { CUSTODY_POLICY_URL, CUSTODY_SUMMARY, ReadApiV1, ReadApiV1Loose } from "@hyphae/core";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+import { AboutView, JoinView } from "./community.js";
 import * as f from "./fixtures.js";
 import {
   CommunityView,
@@ -43,6 +44,42 @@ describe("fixtures", () => {
 });
 
 describe("CommunityView", () => {
+  it("offers community-scoped context and joining, with the selected epoch audit", () => {
+    const community = { ...f.community, mint: "AnotherMint", name: "Another community" };
+    const html = renderToStaticMarkup(<CommunityView community={community} />);
+    expect(html).toContain('href="/c/AnotherMint/about"');
+    expect(html).toContain('href="/c/AnotherMint/join"');
+    expect(html).toContain('href="/c/AnotherMint/e/2"');
+    expect(html).toContain('aria-current="page"');
+    expect(html).not.toMatch(/Hyphae Lab|MYCEL|start=link_|\/link#/);
+  });
+
+  it("keeps the audit accessible during a pause without inviting new submissions", () => {
+    const html = renderToStaticMarkup(
+      <CommunityView community={{ ...f.community, reward_intake: "paused" }} />,
+    );
+    expect(html).toContain(`href="/c/${f.community.mint}/e/2"`);
+    expect(html).toContain("Reward intake is paused");
+    expect(html).not.toContain(">Find a raid<");
+  });
+
+  it("only offers raid setup for an open selected epoch with open intake", () => {
+    expect(renderToStaticMarkup(<CommunityView community={f.community} />)).toContain(
+      `href="/c/${f.community.mint}/join#submit"`,
+    );
+    for (const community of [
+      { ...f.community, current_epoch: null },
+      {
+        ...f.community,
+        epochs: f.community.epochs.map((e) => ({ ...e, status: "closed" as const })),
+      },
+    ]) {
+      expect(renderToStaticMarkup(<CommunityView community={community} />)).not.toContain(
+        ">Find a raid<",
+      );
+    }
+  });
+
   it("lists epochs with their window and status", () => {
     const t = text(<CommunityView community={f.community} />);
     expect(t).toContain("Hyphae Lab");
@@ -282,9 +319,16 @@ describe("tables on a phone", () => {
 });
 
 describe("community participant onboarding", () => {
+  it("does not tell members to submit new reward work during a pause", () => {
+    const t = text(<JoinView community={{ ...f.community, reward_intake: "paused" }} />);
+    expect(t).toContain("Reward submissions are not open right now");
+    expect(t).not.toContain("use that raid's own Submit button");
+    expect(t).toContain("/link");
+    expect(t).toContain("/rules");
+  });
   it("renders stored identity, attribution and clear group commands without a join placeholder", () => {
-    const html = renderToStaticMarkup(<CommunityView community={f.community} />);
-    const t = text(<CommunityView community={f.community} />);
+    const html = renderToStaticMarkup(<JoinView community={f.community} />);
+    const t = text(<JoinView community={f.community} />);
     expect(t).toContain("Start here");
     expect(t).toContain("Hyphae Lab");
     expect(t).toContain("Powered by Hyphae");
@@ -307,10 +351,10 @@ describe("community participant onboarding", () => {
       reward_intake: "paused" as const,
       epochs: [{ ...firstEpoch, index: 7, status: "open" as const }],
     };
-    const html = renderToStaticMarkup(<CommunityView community={community} />);
+    const html = renderToStaticMarkup(<JoinView community={community} />);
     expect(html).toContain(`href="/c/${community.mint}/e/7"`);
-    expect(text(<CommunityView community={community} />)).toContain("Reward intake is paused");
-    expect(text(<CommunityView community={community} />)).toContain("Data as of");
+    expect(text(<JoinView community={community} />)).toContain("Reward intake is paused");
+    expect(text(<JoinView community={community} />)).toContain("Data as of");
     expect(html).not.toContain("/e/2");
   });
 
@@ -322,8 +366,8 @@ describe("community participant onboarding", () => {
         epochs: f.community.epochs.map((e) => ({ ...e, status: "closed" as const })),
       },
     ]) {
-      const html = renderToStaticMarkup(<CommunityView community={community} />);
-      expect(text(<CommunityView community={community} />)).not.toContain("Epoch 2 is open");
+      const html = renderToStaticMarkup(<JoinView community={community} />);
+      expect(text(<JoinView community={community} />)).not.toContain("Epoch 2 is open");
       expect(html).not.toContain(">Read this epoch's rules<");
       expect(html).not.toContain(">Open this week's contributions<");
     }
@@ -336,27 +380,27 @@ describe("community participant onboarding", () => {
       supportUrl: "https://support.test/help",
     };
     const html = renderToStaticMarkup(
-      <CommunityView community={f.community} presentation={presentation} />,
+      <JoinView community={f.community} presentation={presentation} />,
     );
     expect(html).toContain("Pilot");
     expect(html).toContain('href="https://t.me/+FixtureInvite"');
     expect(html).toContain('href="https://support.test/help"');
     expect(html).toContain(">Join community<");
-    expect(text(<CommunityView community={f.community} presentation={presentation} />)).toContain(
+    expect(text(<JoinView community={f.community} presentation={presentation} />)).toContain(
       "Hyphae Lab",
     );
   });
 
   it("never substitutes MYCEL identity or links for another community", () => {
     const community = { ...f.community, mint: "OtherMint", name: "Another community" };
-    const html = renderToStaticMarkup(<CommunityView community={community} />);
+    const html = renderToStaticMarkup(<JoinView community={community} />);
     expect(html).toContain("Another community");
     expect(html).toContain('href="/c/OtherMint/e/2"');
     expect(html).not.toMatch(/Hyphae Lab|MYCEL|Pilot/);
   });
 
   it("explains quality and eligibility without claiming an allocation or payment exists", () => {
-    const t = text(<CommunityView community={f.community} />);
+    const t = text(<JoinView community={f.community} />);
     expect(t).toContain("Raw quality");
     expect(t).toContain("credited quality");
     expect(t).toContain("Points do not promise payment");
@@ -364,5 +408,25 @@ describe("community participant onboarding", () => {
     expect(t).toContain("/link signs a free readable message");
     expect(t).toContain("/claim later signs a transaction");
     expect(t).not.toMatch(/you are eligible|payment sent|you have passed/i);
+  });
+});
+
+describe("community project context", () => {
+  it("keeps joining and audit scoped to the community without asserting personal progress", () => {
+    const community = { ...f.community, mint: "OtherMint", name: "Another community" };
+    const html = renderToStaticMarkup(<AboutView community={community} />);
+    expect(html).toContain('href="/c/OtherMint/join"');
+    expect(html).toContain('href="/c/OtherMint/e/2"');
+    expect(html).toContain("Another community");
+    expect(html).toContain("Data as of");
+    expect(html).not.toMatch(/MYCEL|Hyphae Lab|you have passed|you are eligible|payment sent/i);
+  });
+
+  it("links to history instead of inventing current work when no epoch is open", () => {
+    const html = renderToStaticMarkup(
+      <AboutView community={{ ...f.community, current_epoch: null, epochs: [] }} />,
+    );
+    expect(html).toContain(`href="/c/${f.community.mint}#epochs"`);
+    expect(html).not.toContain("/e/2");
   });
 });

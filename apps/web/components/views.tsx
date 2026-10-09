@@ -22,8 +22,8 @@ import {
   utc,
   utcExact,
 } from "../lib/format.js";
-import { BOT } from "../lib/links.js";
 import { settlementOf } from "../lib/settlement.js";
+import { CommunityOverview } from "./community.js";
 import { FundPanel } from "./fund.js";
 import { ButtonLink, EvidenceLink, Panel, Stat, Stats, StatusPill, type Tone } from "./ui.js";
 
@@ -80,159 +80,47 @@ export function CommunityView({
   community: CommunityV1;
   presentation?: CommunityPresentation;
 }) {
-  const current = community.epochs.find(
-    (epoch) => epoch.index === community.current_epoch && epoch.status === "open",
-  );
-  const base = `/c/${encodeURIComponent(community.mint)}`;
   return (
     <>
-      <header className="page-head">
-        <p className="eyebrow">Community</p>
-        <div className="community-identity">
-          <h1>{community.name}</h1>
-          {presentation?.pilot ? <StatusPill tone="open">Pilot</StatusPill> : null}
+      <CommunityOverview community={community} presentation={presentation} />
+      <section id="epochs" className="community-history" aria-labelledby="epoch-history-title">
+        <div className="community-section-head">
+          <p className="eyebrow">Public record</p>
+          <h2 id="epoch-history-title">Epoch history</h2>
+          <p className="muted">
+            Follow each period from contributions to its actual settlement state.
+          </p>
         </div>
-        <p className="muted small">Powered by Hyphae</p>
-        <p className="muted">
-          Reward intake is {community.reward_intake}.{" "}
-          {current ? `Epoch ${current.index} is open.` : "No epoch is open right now."}
-        </p>
-        <AsOf at={community.as_of} />
-      </header>
-      <div className="community-onboarding">
-        <Panel title="Start here">
-          <p>
-            Use your own Telegram account and wallet. Your work, evidence and verified wallet may
-            appear in the public audit.
-          </p>
-          <ol className="onboarding-steps">
-            <li>
-              <h3>Join the registered group</h3>
-              {presentation?.telegramInvite ? (
-                <ButtonLink href={presentation.telegramInvite} secondary>
-                  Join community
-                </ButtonLink>
-              ) : (
-                <p>Already a member? Begin there; otherwise ask its owner for an invite.</p>
-              )}
-              <p className="small muted">
-                Joining the wider community does not register you for this group's rewards.
-              </p>
-            </li>
-            <li>
-              <h3>Link your own wallet to be paid</h3>
-              <p>
-                Send <code>/link</code> in that group and follow its private bot link. The website
-                cannot start this session for you. You can reply to raids and earn points before you
-                link; only a wallet signed before the epoch closes is paid.
-              </p>
-              <p className="small muted">
-                On a phone, use your wallet app's browser with the ORIGINAL bot URL, including its
-                fragment. Never forward the link or send it to support.
-              </p>
-              <ButtonLink href={BOT} secondary>
-                Open official bot
-              </ButtonLink>
-            </li>
-            <li>
-              <h3>Read this epoch's rules</h3>
-              <p>
-                Send <code>/rules</code> in the group to take its pinned private test. A pass is one
-                eligibility condition, not a payment guarantee.
-              </p>
-              {current ? (
-                <ButtonLink href={`${base}/e/${current.index}`} secondary>
-                  Review pinned epoch
-                </ButtonLink>
-              ) : (
-                <p className="small muted">
-                  No reward epoch is open. Ask the owner which rules apply before participating.
-                </p>
-              )}
-            </li>
-            <li>
-              <h3>Submit your own work</h3>
-              <p>
-                Use <code>/help brief</code> in the group to see the open raids. For a reply or
-                quote, use that raid&apos;s own Submit button; <code>/submit</code> is for separate
-                text work.
-              </p>
-              <p className="small muted">
-                Use <code>/me</code> for your own wallet and progress. Open-epoch points are
-                provisional.
-              </p>
-              {current ? (
-                <ButtonLink href={`${base}/e/${current.index}`} secondary>
-                  Open this week's contributions
-                </ButtonLink>
-              ) : null}
-            </li>
-          </ol>
-          {presentation?.supportUrl ? (
-            <div className="actions">
-              <ButtonLink href={presentation.supportUrl} secondary>
-                Contact community support
-              </ButtonLink>
-            </div>
-          ) : (
-            <p className="small muted">
-              Need help? Ask the registered group's owner. Never share a seed phrase, signature or
-              private wallet link.
-            </p>
-          )}
-        </Panel>
-        <Panel title="Understand your score">
-          <p>
-            Raw quality is the model's assessment; credited quality applies the pinned rules.
-            Reasons and correction history explain the difference. Timing and accepted effort
-            determine exact points, combined before whole-point rounding.
-          </p>
-          <p>
-            <strong>Points do not promise payment.</strong> Eligibility also needs a wallet verified
-            at close, the pinned rules pass and the existing holder, author/duplicate and safety
-            gates.
-          </p>
-          <p>
-            Allocation states what was assigned. Publication makes an eligible allocation claimable;
-            paid requires a confirmed claim receipt. The epoch audit shows the actual state,
-            including unavailable or no payout.
-          </p>
-          <p className="small muted">
-            <code>/link</code> signs a free readable message and moves no funds; <code>/claim</code>{" "}
-            later signs a transaction on the claim page. Check your own <code>/me</code> after
-            linking.
-          </p>
-        </Panel>
-      </div>
-      {community.vault ? <FundPanel vault={community.vault} /> : null}
-      {community.epochs.length === 0 ? (
-        <p className="empty">No reward epoch yet.</p>
-      ) : (
-        <table className="stack">
-          <thead>
-            <tr>
-              <th>Epoch</th>
-              <th>Opens</th>
-              <th>Closes</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {community.epochs.map((e) => (
-              <tr key={e.index}>
-                <td data-label="Epoch">
-                  <a href={`/c/${community.mint}/e/${e.index}`}>Epoch {e.index}</a>
-                </td>
-                <td data-label="Opens">{utc(e.opens_at)}</td>
-                <td data-label="Closes">{utc(e.closes_at)}</td>
-                <td data-label="Status">
-                  <StatusBadge epoch={{ status: e.status, final: e.status === "closed" }} />
-                </td>
+        {community.vault ? <FundPanel vault={community.vault} /> : null}
+        {community.epochs.length === 0 ? (
+          <p className="empty">No reward epoch yet.</p>
+        ) : (
+          <table className="stack">
+            <thead>
+              <tr>
+                <th>Epoch</th>
+                <th>Opens</th>
+                <th>Closes</th>
+                <th>Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody>
+              {community.epochs.map((e) => (
+                <tr key={e.index}>
+                  <td data-label="Epoch">
+                    <a href={`/c/${community.mint}/e/${e.index}`}>Epoch {e.index}</a>
+                  </td>
+                  <td data-label="Opens">{utc(e.opens_at)}</td>
+                  <td data-label="Closes">{utc(e.closes_at)}</td>
+                  <td data-label="Status">
+                    <StatusBadge epoch={{ status: e.status, final: e.status === "closed" }} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
     </>
   );
 }

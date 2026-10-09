@@ -697,6 +697,208 @@ td:first-child {
 
 /* ---------- participant onboarding ---------- */
 
+.community-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 28px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.community-nav :where(a) {
+  padding: 8px 0;
+  color: var(--ink-3);
+  text-decoration: none;
+}
+
+.community-nav :where(a[aria-current="page"]) {
+  color: var(--ink);
+  box-shadow: 0 2px var(--ink);
+}
+
+.community-nav :where(a:hover) {
+  color: var(--ink);
+}
+
+.community-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr);
+  gap: 40px 64px;
+  align-items: center;
+  padding: 56px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.community-head :where(h1) {
+  max-width: 18ch;
+  font-size: clamp(2.25rem, 5vw, 4rem);
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+
+.community-lead {
+  max-width: 42ch;
+  font-size: var(--step-1);
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.community-round {
+  padding: 24px;
+  border-left: 2px solid var(--ink);
+  background: var(--wash);
+}
+
+.community-round :where(h2) {
+  margin: 12px 0;
+  font-size: var(--step-2);
+}
+
+.community-round :where(p:last-child) {
+  margin-bottom: 0;
+}
+
+.community-round :where(a),
+.community-path-cards :where(a) {
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.community-path,
+.community-history,
+.community-faq {
+  margin: 48px 0;
+}
+
+.community-section-head :where(h2) {
+  margin: 8px 0 24px;
+  letter-spacing: -0.025em;
+}
+
+.community-path-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.community-path-cards :where(li) {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 24px 0 12px;
+  border-top: 1px solid var(--ink);
+}
+
+.path-number {
+  color: var(--ink-3);
+  font: 500 var(--step--1) / 1 var(--mono);
+}
+
+.community-path-cards :where(h3) {
+  margin: 20px 0 0;
+}
+
+.community-path-cards :where(p) {
+  color: var(--ink-2);
+  flex: 1;
+}
+
+.community-next {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px;
+  background: var(--wash);
+}
+
+.community-next :where(h2) {
+  margin: 8px 0;
+}
+
+.community-next :where(p:last-child) {
+  max-width: 64ch;
+  margin-bottom: 0;
+  color: var(--ink-2);
+}
+
+.community-context {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr);
+  gap: 40px 64px;
+  margin: 48px 0;
+}
+
+.community-context :where(h2) {
+  margin-top: 8px;
+  letter-spacing: -0.025em;
+}
+
+.context-note {
+  align-self: start;
+  padding: 24px;
+  border: 1px solid var(--rule);
+}
+
+.context-note :where(h2) {
+  font-size: var(--step-1);
+}
+
+.context-note :where(p:not(.eyebrow)) {
+  color: var(--ink-2);
+  font-size: 0.9375rem;
+}
+
+.community-faq :where(details) {
+  padding: 20px 0;
+  border-top: 1px solid var(--rule);
+}
+
+.community-faq :where(summary) {
+  cursor: pointer;
+  font-size: var(--step-1);
+  font-weight: 650;
+}
+
+.community-faq :where(details p) {
+  max-width: 72ch;
+  color: var(--ink-2);
+}
+
+#submit,
+#epochs {
+  scroll-margin-top: 24px;
+}
+
+@media (max-width: 760px) {
+  .community-head,
+  .community-context,
+  .community-path-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .community-head {
+    padding: 36px 0;
+    gap: 24px;
+  }
+
+  .community-nav {
+    column-gap: 20px;
+  }
+
+  .community-next {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 24px;
+  }
+}
+
 .community-identity {
   display: flex;
   flex-wrap: wrap;
