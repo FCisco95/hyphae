@@ -2,6 +2,16 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-09 · Owner email sign-in succeeds; Phantom failure unresolved
+
+**Observed:** owner reports email worked and supplies development signed-in UI. Phantom failed after an owner-approved login message. Sign-out/refresh/wallet-success/private production proof remain open. No code/provider-setting change or speculative fix.
+
+**Decision and why:** trace the actual wallet failure before changing connectors. Public app GET200 verifies email/Solana enabled, EVM disabled, external signups enabled, exact preview origin and no allowlist/captcha. Configuration checks don't prove wallet authentication.
+
+**Validation/stage:** actual email UI receipt, wallet failure receipt; screenshots ignored under docs/plans. Existing1513-test/type/lint/build/ACCEPT at60ec29a unchanged; no tests rerun for docs-only operator evidence. Source commits534f807/60ec29a, previous docs89a26ba. Current receipt commit resolves via `git log -1 --format=%H -- docs/handoffs/2026-10-09-privy-development-setup.md`. Local only, no push/deploy/payment/private-access effects; funding paused and C14–C22 incomplete. Organic-sync carries partial real-email stage and unresolved wallet failure, never a completed login release claim.
+
+**Next:** owner confirms Sign out, then capture only failing wallet request status/error code for diagnosis. [Checkpoint](handoffs/2026-10-09-privy-development-setup.md).
+
 ## 2026-10-09 · Separate local Privy test built and reviewed
 
 **Built:** approved provider-only development sign-in page at `/dev/privy`, gated to exact loopback3010, explicit launcher mode, no Vercel and distinct public dev App ID. Email/existing Solana controls, embedded creation/auto-connect off, no member/token/identity reads. Logout success requires SDK-ready/unauthenticated confirmation; unresolved sign-out offers retry. Production App ID remains unconfigured; private member login remains off.
