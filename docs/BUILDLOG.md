@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-10 · Final session handoff (23:08Z Oct9)
+
+**Saved:** canonical handoff and durable [session-end snapshot](handoffs/2026-10-10-session-end.md). Latest clarified policy intent committed5d678cf8957ee198176715502dbb56f8fc3ddb14: submitted work with all-zero scores; amount/verified roster/budget/effective epoch unresolved. No reward policy or live state changed. Exact pending30 SHAs before this docs commit are listed in the snapshot; final handoff SHA resolves with `git log -1 --format=%H -- docs/handoffs/2026-10-10-session-end.md`.
+
+**Validation/stage:** clean main before handoff; held local remote-tracking refs unchanged, named resume paths verified and docs diff checked. No network fetch, runtime tests or production audit rerun. Source1510ebc historical1521passed/3skipped/type/lint/build/other-family ACCEPT remains the latest runtime gate. No C14–C22/C18b/payee/amount/publish/claim/P14 receipts. Actual close unread; scheduled close Oct10 00:00Z is still ahead of the saved clock. No final no-payable verdict. No push: active freeze through Oct11 00:00Z plus publication/release hold. No unattended live action scheduled.
+
+**Next:** on return read-only actual close/snapshot/jobs/gate inspection, then eligible all-zero roster/reasons and one missing founder decision at a time. Organic-sync carries actual stage/SHAs/checks and pending human steps; no Organic/vault write or downstream propagation performed. Payments and reviewed release remain held.
+
 ## 2026-10-09 · Participation minimum proposed, no policy change
 
 **Intent:** Cisco wants a small amount for zero-point participants and the remainder distributed by points, to demonstrate rewards. He clarified: people who submitted work and received only zeros, not everyone who joined. Amount/verified roster/budget/effective epoch not defined. Recommend a shared baseline for legitimate eligible participants plus a points bonus, avoiding a zero-score advantage over low-positive work. This recommendation is not a recorded new reward ruling; the clarification does not approve a minimum for positive-point participants.

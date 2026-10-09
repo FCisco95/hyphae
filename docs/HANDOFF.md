@@ -1,11 +1,13 @@
 ---
-date: 2026-10-09
-summary: Owner email sign-in and sign-out confirmed; fresh code after explicit logout is expected. Refresh persistence untested, Phantom failure unresolved. Private member/publication/payout holds preserved.
+date: 2026-10-10
+summary: Session ended; payments and feature release held. All-zero submitters specified for a proposed minimum, amount and policy undecided. Local website checked; email login/logout confirmed, Phantom and refresh proof open.
 ---
 
 # Hyphae handoff
 
 ## TL;DR
+
+**Final handoff confirmed Oct10 00:08 Lisbon / Oct9 23:08Z.** Stop session work after saving. [Session-end checkpoint](handoffs/2026-10-10-session-end.md) records exact pending SHAs, actual model/effort availability, historical checks, all-zero scope and downstream Organic-sync handoff. No unattended live action scheduled; no push under the freeze/publication hold.
 
 **Cisco is stopping for sleep, confirmed22:21Z.** No further attendance tonight; stop agent/operator work after saving this handoff. Exact stop: no Ledger connection/address read, no C14–C22/C18b completed, no pause/author attestation/correction/funding/publication/claim executed. Keep money/publication holds. Tomorrow begin with read-only actual close/snapshot/jobs/gate inspection; missing pre-close author/correction evidence remains a blocker under the current runbook. No retroactive frozen-allocation changes or inferred payout authority. [Morning boundary](handoffs/2026-10-09-tomorrow-session-boundary.md).
 
@@ -150,7 +152,7 @@ Fresh fetch21:22Z: remote refs unchanged, held next worktree clean, no git index
 
 ## Suggested skills
 
-handoff-memory, the-analyst, superpowers:executing-plans for remaining auth proof/review tasks, test-driven-development for findings, frontend-design, verification-before-completion, handoff. Reuse next's ACCEPTs only for its existing code; this new auth requires fresh other-family review. Existing operator scripts/runbook only if Cisco explicitly resumes payouts.
+handoff-memory, the-analyst, superpowers:verification-before-completion, superpowers:brainstorming for the unresolved reward policy, handoff. Use executing-plans/test-driven-development for resumed auth tasks and findings. Reuse next's ACCEPTs only for its existing code. Existing operator scripts/runbook only if Cisco explicitly resumes payouts and row preconditions pass.
 
 ## Quick Reference
 
@@ -163,6 +165,7 @@ Check status/both refs and clock before any later publication. Preserve held nex
 ## Next-session prompt
 
 ```text
+Read docs/handoffs/2026-10-10-session-end.md first for the final stopping point, pending SHAs and downstream handoff. Final session end confirmed Oct10 00:08 Lisbon / Oct9 23:08Z; no unattended live action scheduled. Actual close/snapshot remains unread.
 Cisco stopped for sleep22:21Z Oct9. No overnight attendance or agent action authorized. Ledger preparation never started; all C14–C22/C18b incomplete. No author attestation/correction/pause/transfer/publish/claim/P14. Epoch2 scheduled close Oct10 00:00Z (01:00 Lisbon); actual close/snapshot not yet read. Missing pre-close evidence blocks epoch2 publication under current runbook. Funding/payouts and reviewed feature release held.
 Later policy clarification: minimum requested for people who submitted work and received only zeros, not everyone who joined. Verify eligibility/reasons for zero before proposing amounts; budget/fee/cap treatment and effective epoch remain open. This is not renewed Ledger attendance, a new reward ruling or authority to change epoch2. Read docs/handoffs/2026-10-09-participation-minimum-proposal.md; do not re-ask the answered population question.
 Files: CLAUDE.md, docs/HANDOFF.md, docs/demo/2026-10-08-first-payout-readiness.md, docs/handoffs/2026-09-28-runbook-c.md, docs/handoffs/2026-10-09-tomorrow-session-boundary.md, docs/handoffs/2026-10-09-payment-orientation.md
