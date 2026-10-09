@@ -28,6 +28,8 @@ export function MemberProvider({ appId, community }: { appId: string; community:
 
 export function MemberSession({ community }: { community: Community }) {
   const { ready, authenticated, user, logout, getAccessToken } = usePrivy();
+  const tokenReader = useRef(getAccessToken);
+  tokenReader.current = getAccessToken;
   const [resolved, setResolved] = useState<{ key: string | null; state: MemberViewState }>({
     key: null,
     state: { kind: "loading" },
@@ -106,11 +108,11 @@ export function MemberSession({ community }: { community: Community }) {
       .run(async (signal) => {
         try {
           // Let the provider renew its session; the access credential is never forwarded by JS.
-          await getAccessToken();
+          await tokenReader.current();
           signal.throwIfAborted();
           let result = await readMemberState(community.mint, signal);
           if (result.kind === "logged_out") {
-            await getAccessToken();
+            await tokenReader.current();
             signal.throwIfAborted();
             result = await readMemberState(community.mint, signal);
           }
@@ -121,7 +123,7 @@ export function MemberSession({ community }: { community: Community }) {
       }, setState)
       .catch(() => {});
     return () => reads.invalidate();
-  }, [ready, authenticated, requestKey, community.mint, getAccessToken, setState]);
+  }, [ready, authenticated, requestKey, community.mint, setState]);
 
   const signOut = () => {
     suppressed.current = true;

@@ -25,11 +25,16 @@ export function requestGeneration(): {
 }
 
 export async function readMemberState(mint: string, signal: AbortSignal): Promise<MemberViewState> {
+  const abort = new AbortController();
+  const cancel = () => abort.abort();
+  signal.addEventListener("abort", cancel, { once: true });
+  if (signal.aborted) cancel();
+  const timer = setTimeout(cancel, 6500);
   try {
     const response = await fetch(`/api/member/${encodeURIComponent(mint)}`, {
       cache: "no-store",
       credentials: "same-origin",
-      signal: AbortSignal.any([signal, AbortSignal.timeout(6500)]),
+      signal: abort.signal,
     });
     if (response.status === 401) return { kind: "logged_out" };
     if (response.status === 429) return { kind: "rate_limited" };
@@ -39,5 +44,9 @@ export async function readMemberState(mint: string, signal: AbortSignal): Promis
     return { kind: "account", account: parsed.data };
   } catch {
     return { kind: "unavailable" };
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener("abort", cancel);
+    cancel();
   }
 }

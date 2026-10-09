@@ -6,6 +6,7 @@ import { MemberProvider, MemberSession } from "./member-provider.js";
 
 // Only provider/network boundaries are fixtures; the mounted component and its effects are real.
 const sdk = vi.hoisted(() => ({
+  unstableToken: false,
   state: {
     ready: true,
     authenticated: false,
@@ -22,7 +23,12 @@ const sdk = vi.hoisted(() => ({
   config: undefined as Record<string, unknown> | undefined,
 }));
 vi.mock("@privy-io/react-auth", () => ({
-  usePrivy: () => ({ ...sdk.state, getAccessToken: sdk.token, logout: sdk.logout }),
+  usePrivy: () => ({
+    ...sdk.state,
+    getAccessToken:
+      sdk.unstableToken && sdk.token.mock.calls.length < 3 ? () => sdk.token() : sdk.token,
+    logout: sdk.logout,
+  }),
   useLogin: (callbacks: { onError: () => void }) => {
     sdk.loginCallbacks = callbacks;
     return { login: sdk.login };
@@ -58,6 +64,7 @@ let root: Root;
 let container: HTMLDivElement;
 beforeEach(() => {
   vi.clearAllMocks();
+  sdk.unstableToken = false;
   sdk.state = { ready: true, authenticated: false, user: undefined };
   sdk.logout.mockImplementation(async () => {});
   sdk.token.mockImplementation(async () => "fixture-only");
@@ -94,6 +101,16 @@ const signedIn = () => {
 };
 
 describe("mounted member login flow with provider fixtures", () => {
+  it("does not reread when the SDK returns a new token callback on each render", async () => {
+    signedIn();
+    sdk.unstableToken = true;
+    const fetch = vi.fn(async () => Response.json(account));
+    vi.stubGlobal("fetch", fetch);
+    await render();
+    expect(fetch).toHaveBeenCalledOnce();
+    expect(sdk.token).toHaveBeenCalledOnce();
+    expect(container.textContent).toContain(wallet);
+  });
   it("recovers after one renewed cookie read without another login", async () => {
     signedIn();
     const fetch = vi
