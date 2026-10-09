@@ -3,6 +3,7 @@
   "private": true,
   "packageManager": "pnpm@10.29.3",
   "scripts": {
+    "preview": "node apps/web/scripts/preview.mjs",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
