@@ -24,8 +24,10 @@
     "@hyphae/db": "workspace:*",
     "@noble/hashes": "^2.4.0",
     "@organichub/verify": "0.1.0",
+    "@privy-io/node": "0.35.0",
     "@solana/kit": "^8.3.0",
     "@typesafe-ai/sdk": "0.6.0",
+    "abort-controller": "3.0.0",
     "ai": "^7.0.0",
     "drizzle-orm": "^0.45.0",
     "grammy": "^1.46.0",
@@ -35,13 +37,14 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@hyphae/read-client": "workspace:*",
     "@ledgerhq/hw-app-solana": "7.11.0",
     "@ledgerhq/hw-transport-node-hid-noevents": "6.36.0",
     "@types/node": "^22.0.0",
     "@wallet-standard/app": "1.1.1",
+    "jose": "6.2.2",
     "tsup": "^8.0.0",
     "tsx": "^4.0.0",
-    "vitest": "^3.0.0",
-    "@hyphae/read-client": "workspace:*"
+    "vitest": "^3.0.0"
   }
 }

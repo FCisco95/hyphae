@@ -26,6 +26,7 @@ function CommunityIntro({
     { key: "overview", label: "Overview", href: base },
     { key: "about", label: "Project context", href: `${base}/about` },
     { key: "join", label: "Get started", href: `${base}/join` },
+    { key: "me", label: "Your account", href: `${base}/me` },
   ];
   return (
     <>

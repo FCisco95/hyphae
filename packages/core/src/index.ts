@@ -2,6 +2,7 @@ export * from "./allocation.js";
 export * from "./canonical.js";
 export * from "./commitments.js";
 export * from "./custody.js";
+export * from "./member-account.js";
 export * from "./merkle.js";
 export * from "./program.js";
 export * from "./read-api.js";

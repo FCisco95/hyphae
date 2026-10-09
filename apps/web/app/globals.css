@@ -1382,3 +1382,29 @@ td:first-child {
   margin-top: 40px;
   color: var(--ink-2);
 }
+.member-account {
+  max-width: 72ch;
+  margin: 40px 0 64px;
+}
+
+.member-account-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.member-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.member-wallet {
+  overflow-wrap: anywhere;
+  padding: 20px 0;
+  border-block: 1px solid var(--rule);
+}

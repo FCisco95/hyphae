@@ -13,6 +13,10 @@
   "dependencies": {
     "@hyphae/core": "workspace:*",
     "@noble/hashes": "^2.4.0",
+    "@privy-io/react-auth": "3.48.0",
+    "@solana-program/memo": "0.15.0",
+    "@solana-program/system": "0.15.0",
+    "@solana-program/token": "0.17.0",
     "@solana/kit": "^8.3.0",
     "@wallet-standard/app": "1.1.1",
     "next": "16.3.6",
@@ -23,6 +27,7 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "jsdom": "26.1.0",
     "typescript": "^5.9.0",
     "vitest": "^3.0.0",
     "zod": "^4.0.0"

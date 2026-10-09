@@ -12,6 +12,10 @@ import { startQueue } from "./jobs/queue.js";
 import { telegramLinkedNotifier } from "./link/notify.js";
 import { assertProofConfig, proofConfig } from "./link/proof-config.js";
 import { linkRoutes } from "./link/routes.js";
+import { memberAuthConfig } from "./member-auth/config.js";
+import { privyIdentity } from "./member-auth/privy.js";
+import { memberRoutes } from "./member-auth/routes.js";
+import { telegramMembership } from "./member-auth/telegram.js";
 import { startRaidNotifier } from "./raid-alerts/runner.js";
 import { stopApiOnSignals } from "./raid-alerts/shutdown.js";
 
@@ -32,6 +36,15 @@ app.route(
   linkRoutes({ db, tenant: proofConfig(), notify: telegramLinkedNotifier(notifyApi) }),
 );
 app.route("/docs", docsRoutes());
+const memberConfig = memberAuthConfig(env);
+app.route(
+  "/member/v1",
+  memberRoutes({
+    db,
+    ...(memberConfig ? { identity: privyIdentity(memberConfig) } : {}),
+    chatMember: telegramMembership(notifyApi),
+  }),
+);
 app.route(
   "/v1",
   readRoutes({

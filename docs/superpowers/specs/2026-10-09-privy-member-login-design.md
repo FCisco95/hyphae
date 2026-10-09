@@ -1,6 +1,6 @@
-# Privy member login — design for review
+# Privy member login — approved local design
 
-Status: **DRAFT awaiting written-spec review**. Provider choice approved by Cisco on October 9: email plus an existing Solana wallet through Privy, explicit linking to existing Telegram membership, no automatically created wallet. This approval does not create a provider account, approve publication, resume payouts or approve the design below.
+Status: **Approved for local implementation** by Cisco's October 9 “Okay, let's put it to work.” Provider choice: email plus an existing Solana wallet through Privy, explicit linking to existing Telegram membership, no automatically created wallet. This approval does not create a provider account, approve publication or resume payouts. [Implementation plan](../plans/2026-10-09-privy-member-login.md); verified HttpOnly transport and an attended configured-provider smoke remain open.
 
 ## Intended result and scope
 
@@ -18,7 +18,7 @@ Alternative: a custom one-time bot-to-account linking ceremony with durable Hyph
 
 Do not match identities by email, username or a pasted wallet. Do not resolve legacy membership from the wallet used to log in: a login credential is separate from the recorded reward wallet.
 
-Privy documents [Telegram linking](https://docs.privy.io/user-management/users/linking-accounts) and its [linked Telegram user ID](https://docs.privy.io/user-management/users/the-user-object). The architecture above is Hyphae's proposed use of those capabilities, not a tested integration.
+Privy documents [Telegram linking](https://docs.privy.io/user-management/users/linking-accounts) and its [linked Telegram user ID](https://docs.privy.io/user-management/users/the-user-object). The architecture is implemented with local verifier, HTTP, database and mounted-client fixtures; an attended real-provider integration smoke is still open.
 
 ## Member experience
 
@@ -62,7 +62,7 @@ Implementation ownership is one session over `apps/web`, a focused `apps/api/src
 
 ## Configuration and release
 
-Use a dedicated Hyphae Privy application, with email/external Solana wallet login and Telegram account linking enabled. It must not trust another application's tokens or silently reuse Organic's identity realm. Required configuration is an app ID (public client/server value), server app secret/verification configuration kept server-side, explicit allowed web origins and the provider's Telegram OAuth setup. SDK metadata checked October 9: React SDK 3.48.0 accepts React 18/19 and Solana Kit >=3.0.3; Node SDK 0.35.0 is current. Installed runtime is Node 22.21.0. These are compatibility inputs, not an installed/tested integration; pin and verify the selected releases in the implementation plan.
+Use a dedicated Hyphae Privy application, with email/external Solana wallet login and Telegram account linking enabled. It must not trust another application's tokens or silently reuse Organic's identity realm. Required configuration is an app ID (public client/server value), server app secret/verification configuration kept server-side, explicit allowed web origins and the provider's Telegram OAuth setup. SDK metadata checked October 9: React SDK 3.48.0 accepts React 18/19 and Solana Kit >=3.0.3; Node SDK 0.35.0 is current. Installed runtime is Node 22.21.0. These releases are now pinned and locally compiled/tested. Remaining peer warnings are recorded in the implementation checkpoint; live provider compatibility is not yet proven.
 
 No provider account, OAuth configuration, secrets or allowed domains are created/changed during design. The operator supplies configuration through the existing secret stores only when the reviewed local implementation is ready. Missing member-auth configuration must disable this new surface without preventing the existing API/bot from starting. The existing server-side read token never becomes user authentication.
 
@@ -78,6 +78,6 @@ All work stays local under current publication conditions. Payouts remain explic
 
 ## Self-review and next stage
 
-Reviewed for placeholders, contradictory scope, identity selection, private-data caching, token versus wallet authority, backend startup behavior, held migrations and release authority. No product code or dependency installed for this design. The key remaining validation is the pinned provider's actual cookie/server-user adapter and an attended operator-owned provider smoke.
+Reviewed for placeholders, contradictory scope, identity selection, private-data caching, token versus wallet authority, backend startup behavior, held migrations and release authority. Local API/proxy/member UI implementation, tests and dependencies now exist. Official HttpOnly production-domain support is documented; actual configured-cookie receipts, an attended provider smoke and fresh other-family review remain open. Local fixtures do not establish live login.
 
-Next: Cisco reviews this written spec. After approval, create the implementation plan using writing-plans, with concrete tests and file boundaries, and select execution. Web-quiz and Telegram-independent membership designs follow this auth boundary rather than weakening current eligibility.
+Next: finish the local review and operator-owned configured-domain proof under the implementation plan. Web-quiz and Telegram-independent membership designs follow this auth boundary rather than weakening current eligibility. Keep live login disabled until the required transport proof exists.
