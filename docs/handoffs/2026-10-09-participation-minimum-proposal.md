@@ -8,13 +8,15 @@ Current source packages/core/src/allocation.ts explicitly refuses payable member
 
 Treat implementation as architectural policy work: eligibility, allocation, commitments and public explanation are coupled. No implementation/spec approval inferred from this initial proposal. Recommendation only: equal small baseline for legitimate eligible participants (including actual zero-point own work), plus points-based bonus. A zero-only floor can pay more than a low-positive contributor; avoid that incentive. Failed ownership/safety/duplicate checks and missing wallet proof are not equivalent to low scoring, and remain excluded. Do not silently retrofit epoch2; separately labelled pilot support or a prospectively announced future-epoch policy are alternatives requiring explicit scope/budget and review. No choice selected.
 
-First clarification: does “zero points” mean people who submitted genuine work but scored zero, or everyone who joined? Then define exact floor or baseline pool, eligible roster, budget/fee/cap treatment, effective epoch and public notice. Do not invent these from the approved0.5SOL pot. Required other-family sensitive review and release conditions remain before any new policy deployment. No source change, scoring call, production write, pause, funding, signing, publish, claim, message or post this turn.
+Founder clarification: “Submitted work and got only zeros.” The requested population is submitters whose scores were all zero, not everyone who joined. This identifies the intended group; it does not attest authorship, safety, uniqueness or wallet eligibility. Check why each submission scored zero before proposing a payable roster. The shared-baseline recommendation above remains unapproved; this answer does not extend the minimum to positive-point participants.
+
+Next define exact floor or baseline pool, eligible roster, budget/fee/cap treatment, effective epoch and public notice. Do not invent these from the approved0.5SOL pot. Required other-family sensitive review and release conditions remain before any new policy deployment. No source change, scoring call, production write, pause, funding, signing, publish, claim, message or post this turn. Sleep stop and funding/publication holds remain in force.
 
 ## Generated artifacts this session
 
 | What | Home | Stage |
 |---|---|---|
-| Unresolved policy intent | This checkpoint, docs/HANDOFF.md, docs/BUILDLOG.md | Proposal only, local/public-safe |
+| Policy intent and answered population question | This checkpoint, docs/HANDOFF.md, docs/BUILDLOG.md | Proposal only; all-zero submitters specified, actual eligibility/amount/effective epoch open; local/public-safe |
 | Code/config/funds/keys/live schedule | None changed | Existing payout/release holds preserved |
 
 ## Suggested skills
@@ -24,9 +26,9 @@ handoff-memory, the-analyst, superpowers:brainstorming for architectural reward-
 ## Next-session prompt
 
 ```text
-Cisco proposed a small amount for zero-point people plus point-weighted distribution of the remainder, to explain rewards. No floor amount, roster, budget/cap/fee treatment or effective epoch defined. Current allocation rejects payable<=0points; do not manufacture points/override eligibility or silently change epoch2. Recommendation only: common baseline for legitimate eligible participants plus bonus, avoiding zero-only inversion. Missing pre-close author audit remains a blocker. Sleep/funding/payout/publication/reviewed-feature/next holds unchanged; no attendance/signing/transfer.
+Cisco proposed a small amount for zero-point people plus point-weighted distribution of the remainder, to explain rewards. He clarified the group: people who submitted work and received only zero scores. No floor amount, verified roster, budget/cap/fee treatment or effective epoch defined. Current allocation rejects payable<=0points; do not manufacture points/override eligibility or silently change epoch2. Recommendation only: common baseline for legitimate eligible participants plus bonus, avoiding zero-only inversion; founder has not approved extending the minimum to positive-point participants. Missing pre-close author audit remains a blocker. Sleep/funding/payout/publication/reviewed-feature/next holds unchanged; no attendance/signing/transfer.
 Files: CLAUDE.md, docs/HANDOFF.md, packages/core/src/allocation.ts, docs/demo/2026-10-08-first-payout-readiness.md, docs/handoffs/2026-10-09-participation-minimum-proposal.md, docs/handoffs/2026-10-09-tomorrow-session-boundary.md
 Model: project recommendation Opus5/xhigh for policy architecture; record actual runtime identity/effort, not an invented model ID.
 Skills: handoff-memory, the-analyst, superpowers:brainstorming, superpowers:verification-before-completion, handoff.
-First clarify genuine zero-point submissions versus everyone who joined. Define exact population/amount/budget/effective epoch without assuming transfers or retroactive policy authority. Preserve legitimate author/wallet/rules/holder/safety gates, existing points/frozen manifests/caps and both histories/held next0018+0019/verify0.1.0/publication freeze. No implementation before reviewed policy/design; no Treasury-source inference, new keys/messages/posts/deploys or Organic/vault edits.
+Do not re-ask submitted work versus everyone who joined: answered. On return, inspect why all-zero submissions scored zero and count the legitimate eligible group before proposing amounts. Define amount/budget/effective epoch one decision at a time without assuming transfers or retroactive policy authority. Preserve legitimate author/wallet/rules/holder/safety gates, existing points/frozen manifests/caps and both histories/held next0018+0019/verify0.1.0/publication freeze. No implementation before reviewed policy/design; no Treasury-source inference, new keys/messages/posts/deploys or Organic/vault edits.
 ```
