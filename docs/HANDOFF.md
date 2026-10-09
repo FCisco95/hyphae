@@ -1,6 +1,6 @@
 ---
 date: 2026-10-09
-summary: Cisco explicitly paused all funding/payout actions, then requested a clearer scalable community website and email/wallet login. Product discovery is active; no product implementation or provider/domain changes. Prior preflight receipts remain historical; reviewed next held.
+summary: Funding/payouts paused. Cisco approved the complete website direction. Community home/context/join work locally at b750dd9; full gate/build passed at a717c17, focused follow-up passed. Login/web quiz remain next; no publication/provider/domain changes. Reviewed next held.
 ---
 
 # Hyphae handoff
@@ -9,24 +9,24 @@ summary: Cisco explicitly paused all funding/payout actions, then requested a cl
 
 **Funding and payouts are explicitly PAUSED by Cisco.** He said he does not want to pay already, then redirected work to a clearer, scalable community website with possible community domains/subdomains and email/wallet login. Do not act on the earlier Ledger-readiness question or resume C14–C22 without his explicit instruction.
 
-Active next question: should the website offer the complete member journey with Telegram optional, or remain a dashboard alongside the bot? Recommended direction: complete member workspace, delivered in stages. This is discovery, not an approved auth/domain architecture. [Discovery checkpoint](handoffs/2026-10-09-web-experience-discovery.md).
+Cisco approved the complete website direction with Telegram optional. **Community home, context and dedicated join guide now work locally**, committed at `a717c17` with a wording follow-up `b750dd9`. [Implementation checkpoint and draft identity design](handoffs/2026-10-09-community-web-foundation.md). Next: resolve the pending login-method reply and complete the member-linking/web-quiz implementation plan. Actual login, web quiz, task feed and private progress are not implemented.
 
 ## Recent Changes
 
-Cisco explicitly paused funding/payouts and redirected work to website discovery. No product code changed. The pending product question and account-linking findings are saved in the discovery checkpoint.
+Built community-scoped overview/context/join pages with the existing public reads. Unknown communities fail not-found, unreadable data shows unavailable, and a pause prevents submission encouragement while preserving audit access. Reused existing join instructions; no invented invite, private link session, quiz pass or personal progress. Mobile/desktop walkthrough passed. Full test/typecheck/lint/build passed at `a717c17`; the text-only follow-up passed 34 view tests and focused lint. Restored one missing locked SDK dependency without changing manifests/lockfile. Backend, DB, wallet proofs and payout logic unchanged.
 
 Coordination patch checked/applied once, local commit **c64624519e9091c0a00d8963db0761b5aefd9ff2**. No push, merge, deploy, production write, transfer, message or model evaluation. **No payout exists yet; this is neither a ready verdict nor a final no-payable outcome.**
 
 ## Metadata
 
-Last Updated: 2026-10-09T11:07Z
-Project: Hyphae; community website discovery. Existing payout arc parked by Cisco.
+Last Updated: 2026-10-09T12:45Z
+Project: Hyphae; local community website foundation. Existing payout arc parked by Cisco.
 Updated By: Codex (GPT-6). Exact runtime model ID/configured effort are not exposed in this session; do not substitute the prior operator's model/effort.
 Checkpoint: [October 9 read-only receipt](handoffs/2026-10-09-payout-preflight.md). Previous feature/review details: [overnight architect](handoffs/2026-10-08-overnight-architect.md).
 
 ## Current Objective
 
-Clarify and design a website where members understand their community, available work and their own progress, with a scalable community structure and possible email/wallet login. Assumption: "Pryv" means Privy, not yet confirmed. No provider account, keys, domain/DNS, migration or product implementation authorized by a finished design. Reviewed next and all release conditions remain held. Prior payout receipts below are dated evidence, not instructions to resume.
+Build toward a complete website member journey. The first public-read slice is implemented locally: `/c/[mint]`, `/c/[mint]/about`, `/c/[mint]/join`. Recommend one shared app and later verified domain aliases; Organic can link to the reusable screens after authorized publication. An async question asks whether to use email plus an existing Solana wallet through Privy (recommended) or wallet-only login; no reply received at this checkpoint. No provider account/keys, domain/DNS, auth/schema/proof change or live quiz implemented. Reviewed next and all release conditions remain held. Prior payout receipts below are dated evidence, not instructions to resume.
 
 ## Current State
 
@@ -45,9 +45,10 @@ Clarify and design a website where members understand their community, available
 
 ## Next Actions
 
-1. Resolve the pending product question: complete website journey with Telegram optional, or dashboard alongside the required bot. Explore screens/account mapping in that direction; present a concrete design before implementation.
-2. Recommend one shared app with communities keyed by existing immutable IDs/mints; readable paths and verified domain aliases can map to the same workspace. No separate deployment per community.
-3. Design account-to-member linking before auth implementation. Current members require Telegram IDs; email login alone cannot safely infer an existing member, wallet ownership or payout authority. Preserve wallet-link history and close-time eligibility.
+1. Use the local preview on port 3010 to inspect overview → project context → join. The complete website direction is answered; do not re-ask it.
+2. Resolve the pending login-method reply, then present the concrete account/member linking and web-quiz implementation plan in the [foundation checkpoint](handoffs/2026-10-09-community-web-foundation.md). Provider app configuration is a future human action, not requested/created here.
+3. Preserve existing member IDs, close snapshots, wallet evidence and quiz timestamps. Current member/proof protocols require Telegram identity; email login cannot safely infer it. Telegram-independent membership needs a reviewed design, no invented IDs or silent eligibility changes. Preserve `@organichub/verify` 0.1.0 through Oct 12.
+4. Prioritize a real identity-bound web quiz, approved task cards and private progress after identity. Reuse held next's accepted wallet/status work when release is permitted; plan new migrations after its 0018+0019, never collide with them. Community-specific founder context, verified invites and domain aliases remain owner inputs.
 
 ### Historical payout queue — PAUSED, dates are not authority
 
@@ -60,7 +61,7 @@ Clarify and design a website where members understand their community, available
 
 ## Validation
 
-**Freeze: no main push or deploy Oct 9 22:00Z–Oct 11 00:00Z.** This checkpoint is local-only under the prompt's local-docs scope; a Vercel-triggering docs push was not inferred as publication authority. No push attempted. Before an authorized push run **pnpm test, pnpm typecheck, pnpm lint**, check clock and verify Vercel READY. Full main push gate was **not run** here. Patch check, whitespace check, runtime-source comparison and production reads passed. No DB/reward code change, so no new Drizzle/PG gate or sensitive-code review.
+**Freeze: no main push or deploy Oct 9 22:00Z–Oct 11 00:00Z.** Website work is local-only; no publication authority inferred and no push attempted. Full gate at `a717c17`: **119 core / 26 read-client / 135 web / 1037 API passed, 3 API skipped**, test/typecheck/lint exit 0; web production build exit 0. After text-only `b750dd9`: 34 view tests and focused Biome/whitespace clean; full gate/build not repeated. Browser: actual public reads, desktop and 390×844 mobile, overview/context/join navigation and FAQ, no overflow or console errors. Before any authorized push run the full gate on the final combined tree, check clock/release conditions and verify Vercel READY. No DB/reward/auth code change, so no new Drizzle/PG gate or sensitive-code review. Prior preflight production reads remain historical.
 
 ## Known Issues / Watch List
 
@@ -78,7 +79,7 @@ Both private decision files present/read; no guessed restoration or vault writes
 
 ## Publication ledger and organic-sync
 
-Pending local milestone: **c64624519e9091c0a00d8963db0761b5aefd9ff2**. Checkpoint bookkeeping SHA: `git log -1 --format=%H -- docs/handoffs/2026-10-09-payout-preflight.md`; resolve its exact ID before publishing/resuming. Origin/main stays **d3b8c6c**. Only documentation changed: visibility/timetable/consumer constraints/completed review and gate status. No downstream runtime contract change. Organic-sync owns vault/Organic propagation; this session wrote neither.
+Pending local commits: **c64624519e9091c0a00d8963db0761b5aefd9ff2**, **6abf23a4e23ef2e2ba41cba2d9acb92fb66f2984**, **b1385404823f620ef0ba3bd9bb773e0b99f12053**, **a717c17d25b1f450e34a5d3c1276f976c9bdd104**, **b750dd98aa8b9b1ca629779172d05d19b3132ebe**. Resolve this checkpoint's documentation commit with `git log -1 --format=%H -- docs/handoffs/2026-10-09-community-web-foundation.md`. Origin/main stays **d3b8c6c**; next/origin-next stays **1249fed**. No push: publication/release conditions remain held, including the freeze. New website routes only; no API/settlement contract change. Organic may use those routes after publication. Organic-sync owns vault/Organic propagation; neither was edited here.
 
 ## Generated artifacts this session
 
@@ -87,11 +88,14 @@ Pending local milestone: **c64624519e9091c0a00d8963db0761b5aefd9ff2**. Checkpoin
 | Coordination patch | Four checked targets, c646245 | Applied once, local only |
 | Public-safe checkpoint | docs/handoffs/2026-10-09-payout-preflight.md, this handoff, docs/BUILDLOG.md | Read-only evidence/exact stop |
 | Private read-backs | docs/plans/operator-receipts/2026-10-09-*.json and audit stderr | Gitignored; do not publish |
+| Community pages/views/tests | apps/web/, a717c17 + b750dd9 | Local, committed; no backend/auth change |
+| Screenshots/gate logs | docs/plans/2026-10-09-community-*.png and 2026-10-09-website-*.log | Ignored local artifacts; website rendering, not payment evidence |
+| Developer preview | Local port 3010 | Running locally; existing read token server-side only |
 | Keys/resources/jobs | None | None created/changed |
 
 ## Suggested skills
 
-handoff-memory, the-analyst, superpowers:verification-before-completion, handoff at the stop. Existing operator scripts/runbook only. Reuse next's ACCEPTs; any new sensitive-code change requires fresh other-family review.
+handoff-memory, the-analyst, superpowers:brainstorming for account/member design, frontend-design, test-driven-development for new behavior, verification-before-completion, handoff. Reuse next's ACCEPTs; any new sensitive-code change requires fresh other-family review. Existing operator scripts/runbook only if Cisco explicitly resumes payouts.
 
 ## Quick Reference
 
@@ -99,16 +103,16 @@ Canonical procedure: docs/demo/2026-10-08-first-payout-readiness.md and docs/han
 
 ## Resume Checklist
 
-Fetch/status/both refs; preserve local documentation and held next; check writers and clock before any later publication. Continue website discovery. All funding/payout actions are paused; do not prompt for Ledger readiness or run publish-epoch plan. Full main gate required before any authorized push.
+Fetch/status/both refs; preserve local website/docs and held next; check writers and clock before any later publication. Read the implementation checkpoint and any pending login reply. Do not repeat answered product discovery or overwrite next's accepted web additions. All funding/payout actions are paused; do not prompt for Ledger readiness or run publish-epoch plan. Full main gate on the final combined tree required before any authorized push.
 
 ## Next-session prompt
 
 ## Resume Prompt
 
 ```text
-Cisco explicitly PAUSED funding/payouts and requested clearer community website organization, scalable community domains/subdomains and possible email/wallet login. No product implementation yet. Prior production preflight is historical; next 1249fed held; preserve both histories and local docs commits.
-Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-10-09-web-experience-discovery.md, docs/handoffs/2026-10-09-payout-preflight.md, docs/ROADMAP.md, apps/web/components/views.tsx, apps/web/components/site.tsx, packages/db/src/schema.ts
+Cisco explicitly PAUSED funding/payouts and approved the complete website direction with Telegram optional. Community home/context/join work locally at b750dd9; no login/in-page quiz/task feed/private progress yet. Prior production preflight is historical; next 1249fed held; preserve both histories and local commits. Full gate/build at a717c17 passed; text-only follow-up passed focused checks.
+Files: CLAUDE.md, docs/HANDOFF.md, docs/handoffs/2026-10-09-community-web-foundation.md, docs/handoffs/2026-10-09-payout-preflight.md, apps/web/components/community.tsx, apps/web/components/views.tsx, packages/db/src/schema.ts, apps/api/src/payout/rules-test.ts
 Model: use the available architecture/reasoning model at high effort; do not invent runtime ID/effort.
 Skills: handoff-memory, the-analyst, superpowers:brainstorming, handoff.
-Resolve whether members should complete the journey on the website with Telegram optional or use a dashboard alongside the bot. Recommend reusable community workspaces and email/existing-wallet login with explicit member/wallet linking. Treat domain aliases and embedded-wallet creation as separate design choices. Present design before implementation. Do not resume C14–C22, merge/deploy next, alter DNS/provider keys or send messages. Preserve freeze Oct 9 22:00Z–Oct 11 00:00Z.
+Read the pending email/existing-wallet versus wallet-only login reply if any, then present the account/member linking and web-quiz implementation plan. Keep the Privy recommendation a draft until resolved; provider login does not establish membership or reward-wallet proof. Preserve existing IDs/evidence, 0018+0019 on next and verify 0.1.0 through Oct 12. Keep independent local website improvements moving. Do not resume C14–C22, merge/deploy next, alter DNS/provider keys or send messages. Preserve publication holds and freeze Oct 9 22:00Z–Oct 11 00:00Z.
 ```

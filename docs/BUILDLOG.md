@@ -2,6 +2,18 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-09 · Community website foundation, local only
+
+**Built:** a focused community home, project-context page and dedicated join guide. Members can understand the contribution process, follow the existing setup steps and open their selected epoch's actual audit. Each community keeps its own identity/navigation; unknown or unreadable data fails closed. Paused intake does not invite new reward submissions. Login, the in-page quiz, a task feed and private progress are still next.
+
+**Decision and why:** Cisco approved the complete website direction with Telegram optional. Build reusable member screens in one Hyphae app so Organic can link to them later; first preserve the existing member/wallet/test evidence instead of making a login button imply eligibility. No founder backstory, invite or private session was invented. Account/member design is a draft in the [implementation checkpoint](handoffs/2026-10-09-community-web-foundation.md).
+
+**Validation:** full gate at `a717c17`: **119 core, 26 read-client, 135 web, 1037 API passed; 3 API skipped**, test/typecheck/lint exit 0; production web build exit 0. Initial gate failure was an absent already locked SDK; frozen install restored one cached package without manifest/lockfile changes, repeat passed. The text-only follow-up passed **34 view tests** and focused Biome/whitespace; full gate not repeated after that copy fix. Actual public API desktop/390px mobile walkthrough: overview → context FAQ → join, zero overflow/offscreen links and browser errors. No DB/auth/reward/claim code changed, no new PG/schema gate.
+
+**Commits/stage:** `a717c17d25b1f450e34a5d3c1276f976c9bdd104`, `b750dd98aa8b9b1ca629779172d05d19b3132ebe`, plus this checkpoint's documentation commit (`git log -1 --format=%H -- docs/handoffs/2026-10-09-community-web-foundation.md`). All local-only. Earlier pending commits: `c64624519e9091c0a00d8963db0761b5aefd9ff2`, `6abf23a4e23ef2e2ba41cba2d9acb92fb66f2984`, `b1385404823f620ef0ba3bd9bb773e0b99f12053`. Push deferred: publication/release conditions remain held, with the Oct 9 22:00Z–Oct 11 00:00Z freeze preserved. Next/origin-next `1249fed` untouched. No deploy, DNS/provider/key change, vault/Organic edit, funding, signing or message. All C14–C22 remain paused/incomplete; actual payout receipts/payees/amounts none.
+
+**Next:** resolve the pending login-method reply, then finish the explicit account/member linking and server-recorded web-quiz design. Reuse held next's accepted progress/wallet work after authorized release, preserve its 0018+0019 migration sequence and verify 0.1.0 through Oct 12. The local preview runs on port 3010.
+
 ## 2026-10-09 · Payout paused; website experience discovery
 
 **Changed:** Cisco explicitly paused funding/payouts and redirected work toward clearer community pages, scalable domain organization and possible email/wallet login. Recorded the [discovery checkpoint](handoffs/2026-10-09-web-experience-discovery.md); no product implementation or approved architecture.
