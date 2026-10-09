@@ -65,7 +65,7 @@ describe("CommunityView", () => {
 
   it("only offers raid setup for an open selected epoch with open intake", () => {
     expect(renderToStaticMarkup(<CommunityView community={f.community} />)).toContain(
-      `href="/c/${f.community.mint}/join#submit"`,
+      'href="#raids"',
     );
     for (const community of [
       { ...f.community, current_epoch: null },

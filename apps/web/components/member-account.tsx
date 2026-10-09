@@ -57,7 +57,25 @@ export function MemberAccountView({
         {state.kind === "disabled" ? (
           <>
             <h2>Sign-in is not available yet</h2>
-            <p>You can still read the project context and use the existing member setup guide.</p>
+            <p>
+              Email and existing Solana wallet sign-in use Privy. Sign-in will open when this
+              community's account setup is ready.
+            </p>
+            <fieldset
+              className="member-actions member-login-options"
+              aria-label="Privy sign-in options"
+            >
+              <button className="button" type="button" disabled>
+                Sign in with email
+              </button>
+              <button className="button button-secondary" type="button" disabled>
+                Use an existing Solana wallet
+              </button>
+            </fieldset>
+            <p className="small muted">
+              No wallet is created for you. You can read the project and follow the setup guide
+              while sign-in is unavailable.
+            </p>
             <ButtonLink href={`${base}/join`}>Open the setup guide</ButtonLink>
           </>
         ) : null}

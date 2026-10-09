@@ -1,10 +1,19 @@
-import { ReadApiV1Loose } from "@hyphae/core";
+import { PublicRaidsSchema, ReadApiV1Loose } from "@hyphae/core";
 import { getJson } from "./api.js";
 
 const enc = encodeURIComponent;
 
 export const readCommunity = (mint: string) =>
   getJson(`/v1/communities/${enc(mint)}`, ReadApiV1Loose.community);
+export async function readRaids(mint: string) {
+  const result = await getJson(`/v1/communities/${enc(mint)}/raids`, PublicRaidsSchema, fetch, {
+    fresh: true,
+    ...(process.env.HYPHAE_RAID_API_URL ? { baseUrl: process.env.HYPHAE_RAID_API_URL } : {}),
+  });
+  if (result.ok && result.data.community.mint !== mint)
+    return { ok: false, reason: "unavailable" } as const;
+  return result;
+}
 export const readEpoch = (mint: string, index: string) =>
   getJson(`/v1/communities/${enc(mint)}/epochs/${enc(index)}`, ReadApiV1Loose.epoch);
 export const readContributions = (mint: string, index: string, offset: number) =>

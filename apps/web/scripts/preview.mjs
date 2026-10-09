@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseEnv } from "node:util";
 
 const root = new URL("../../../", import.meta.url);
@@ -29,9 +29,54 @@ const env = {
 delete env.PRIVY_APP_SECRET;
 delete env.PRIVY_VERIFICATION_KEY;
 const next = createRequire(import.meta.url).resolve("next/dist/bin/next");
+const api = fileURLToPath(new URL("../../../apps/api/", import.meta.url));
+const tsx = createRequire(new URL("../../../apps/api/package.json", import.meta.url)).resolve(
+  "tsx",
+);
+// Run just the new read-only feed locally; all existing public reads stay on deployed source.
+const reader = spawn(
+  process.execPath,
+  ["--import", pathToFileURL(tsx).href, "scripts/preview-raids.ts"],
+  {
+    cwd: api,
+    env: process.env,
+    stdio: "inherit",
+  },
+);
+reader.on("error", () => {
+  console.error("Raid preview could not start.");
+});
+let readerReady = false;
+for (let attempt = 0; attempt < 30; attempt += 1) {
+  if (reader.exitCode !== null) break;
+  try {
+    const response = await fetch("http://127.0.0.1:3011/health", {
+      signal: AbortSignal.timeout(1000),
+    });
+    if (response.ok && (await response.json()).pid === reader.pid) {
+      readerReady = true;
+      break;
+    }
+  } catch {
+    /* Wait for the owned reader to listen. */
+  }
+  await new Promise((resolve) => setTimeout(resolve, 300));
+}
+if (!readerReady) {
+  reader.kill();
+  console.error("Raid preview is unavailable; build not started.");
+  process.exit(1);
+}
+env.HYPHAE_RAID_API_URL = "http://127.0.0.1:3011";
 const build = spawnSync(process.execPath, [next, "build"], { cwd: web, env, stdio: "inherit" });
-if (build.error) throw build.error;
-if (build.status !== 0) process.exit(build.status ?? 1);
+if (build.error) {
+  reader.kill();
+  throw build.error;
+}
+if (build.status !== 0) {
+  reader.kill();
+  process.exit(build.status ?? 1);
+}
 
 console.log(`\nCommunity preview: http://127.0.0.1:3010/c/${mint}`);
 console.log("Login disabled. Existing public-read configuration stays server-side.\n");
@@ -45,10 +90,16 @@ const server = spawn(
   },
 );
 server.on("error", () => {
+  reader.kill();
   console.error("Preview could not start.");
   process.exitCode = 1;
 });
 server.on("exit", (code) => {
+  reader.kill();
   process.exitCode = code ?? 1;
 });
-for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => server.kill(signal));
+for (const signal of ["SIGINT", "SIGTERM"])
+  process.on(signal, () => {
+    server.kill(signal);
+    reader.kill(signal);
+  });

@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import { openApiDocument } from "./openapi.js";
 import { budgets, type RateLimit, rateLimit } from "./rate-limit.js";
+import { readRaids } from "./read-raids.js";
 import {
   type Page,
   readClaim,
@@ -105,6 +106,9 @@ export function readRoutes(deps: {
 
   app.get("/communities/:mint", async (c) =>
     send(c, await readCommunity(db, mint(c.req.param("mint")), await now(), deps.chain)),
+  );
+  app.get("/communities/:mint/raids", async (c) =>
+    send(c, await readRaids(db, mint(c.req.param("mint")), await now())),
   );
   app.get("/communities/:mint/epochs/:index", async (c) => {
     const body = await readEpoch(

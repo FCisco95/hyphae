@@ -28,9 +28,13 @@ export async function getJson<T>(
   // fresh: never from a cache, for answers that expire (a claim's blockhash, its paid status).
   // visitor: the address a read is made for, which the API trusts only with the web's token. By
   // default, the visitor of the page being rendered.
-  { fresh = false, visitor }: { fresh?: boolean; visitor?: string | null } = {},
+  {
+    fresh = false,
+    visitor,
+    baseUrl,
+  }: { fresh?: boolean; visitor?: string | null; baseUrl?: string } = {},
 ): Promise<Result<T>> {
-  const base = process.env.HYPHAE_API_URL;
+  const base = baseUrl ?? process.env.HYPHAE_API_URL;
   if (!base) {
     console.error(JSON.stringify({ web: "HYPHAE_API_URL is not set" }));
     return { ok: false, reason: "unavailable" };

@@ -56,5 +56,6 @@ it("keeps the member page disabled before verified provider activation", async (
     await MemberPage({ params: Promise.resolve({ mint: community.mint }) }),
   );
   expect(html).toContain("Sign-in is not available yet");
-  expect(html).not.toContain("Sign in with email");
+  expect(html).toContain("Sign in with email");
+  expect(html.match(/disabled=""/g)).toHaveLength(2);
 });

@@ -6,9 +6,11 @@ import type {
   EpochV1,
   LeaderboardV1,
   LooseEpochV1,
+  PublicRaids,
   RevisionV1,
 } from "@hyphae/core";
 import { CUSTODY_POLICY_URL, CUSTODY_SUMMARY } from "@hyphae/core";
+import type { Result } from "../lib/api.js";
 import type { CommunityPresentation } from "../lib/community-presentation.js";
 import {
   creditSentence,
@@ -76,13 +78,15 @@ export function UnavailableView() {
 export function CommunityView({
   community,
   presentation,
+  raids,
 }: {
   community: CommunityV1;
   presentation?: CommunityPresentation;
+  raids?: Result<PublicRaids>;
 }) {
   return (
     <>
-      <CommunityOverview community={community} presentation={presentation} />
+      <CommunityOverview community={community} presentation={presentation} raids={raids} />
       <section id="epochs" className="community-history" aria-labelledby="epoch-history-title">
         <div className="community-section-head">
           <p className="eyebrow">Public record</p>

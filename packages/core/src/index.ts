@@ -5,6 +5,7 @@ export * from "./custody.js";
 export * from "./member-account.js";
 export * from "./merkle.js";
 export * from "./program.js";
+export * from "./public-raids.js";
 export * from "./read-api.js";
 export * from "./reward-eval.js";
 export * from "./reward-points.js";

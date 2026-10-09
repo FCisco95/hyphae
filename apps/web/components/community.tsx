@@ -1,12 +1,15 @@
-import type { CommunityV1 } from "@hyphae/core";
+import type { CommunityV1, PublicRaids } from "@hyphae/core";
+import type { Result } from "../lib/api.js";
 import type { CommunityPresentation } from "../lib/community-presentation.js";
 import { utc } from "../lib/format.js";
 import { BOT, RUBRICS } from "../lib/links.js";
+import { RaidsView } from "./raids.js";
 import { ButtonLink, Panel, StatusPill } from "./ui.js";
 
 type CommunityProps = {
   community: CommunityV1;
   presentation?: CommunityPresentation;
+  raids?: Result<PublicRaids>;
 };
 
 function openEpoch(community: CommunityV1) {
@@ -24,6 +27,7 @@ function CommunityIntro({
   const current = openEpoch(community);
   const tabs = [
     { key: "overview", label: "Overview", href: base },
+    { key: "raids", label: "Live raids", href: `${base}#raids` },
     { key: "about", label: "Project context", href: `${base}/about` },
     { key: "join", label: "Get started", href: `${base}/join` },
     { key: "me", label: "Your account", href: `${base}/me` },
@@ -79,13 +83,14 @@ function CommunityIntro({
   );
 }
 
-export function CommunityOverview({ community, presentation }: CommunityProps) {
+export function CommunityOverview({ community, presentation, raids }: CommunityProps) {
   const base = `/c/${encodeURIComponent(community.mint)}`;
   const current = openEpoch(community);
   const accepting = current && community.reward_intake === "open";
   return (
     <>
       <CommunityIntro community={community} presentation={presentation} page="overview" />
+      <RaidsView community={community} result={raids ?? { ok: false, reason: "unavailable" }} />
       <section className="community-path" aria-labelledby="community-path-title">
         <div className="community-section-head">
           <p className="eyebrow">Your next step</p>
@@ -130,11 +135,11 @@ export function CommunityOverview({ community, presentation }: CommunityProps) {
           </h2>
           <p>
             {accepting
-              ? "Open raids live in the registered group. The guide shows how to find a brief and submit your own work."
+              ? "Read the raids above, then use the registered group's submission flow to send your own work."
               : "You can read the rules and set up your wallet. Check that reward intake is open before submitting new work."}
           </p>
         </div>
-        <ButtonLink href={accepting ? `${base}/join#submit` : `${base}/join`}>
+        <ButtonLink href={accepting ? "#raids" : `${base}/join`}>
           {accepting ? "Find a raid" : "Get ready"}
         </ButtonLink>
       </section>

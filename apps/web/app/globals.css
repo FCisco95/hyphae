@@ -1408,3 +1408,135 @@ td:first-child {
   padding: 20px 0;
   border-block: 1px solid var(--rule);
 }
+.member-login-options {
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+/* Briefs are the primary workspace; the account and epoch cutoff stay beside the work. */
+.community-live {
+  scroll-margin-top: 24px;
+  margin: 24px 0 64px;
+}
+.community-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+.raid-feed,
+.community-account-entry {
+  min-width: 0;
+}
+.raid-feed-heading {
+  margin-bottom: 24px;
+}
+.raid-list {
+  display: grid;
+  gap: 20px;
+}
+.raid-card {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: clamp(18px, 3vw, 28px);
+  overflow-wrap: anywhere;
+}
+.raid-card-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.raid-title {
+  margin: 0;
+  font-size: var(--step-1);
+}
+.raid-status {
+  font-size: var(--step--1);
+  border-radius: 5px;
+  padding: 2px 10px;
+  background: var(--wash);
+  color: var(--ink-2);
+}
+.raid-status-open {
+  background: #eaf0ff;
+  color: #24458b;
+}
+.raid-deadline {
+  margin: 8px 0 20px;
+  font-size: var(--step--1);
+}
+.raid-post {
+  border-left: 3px solid var(--rule);
+  padding-left: 20px;
+}
+.raid-post-source {
+  color: var(--ink-3);
+  font-size: var(--step--1);
+}
+.raid-post blockquote {
+  margin: 8px 0 16px;
+  padding: 0;
+  border: 0;
+  color: var(--ink);
+  font-size: var(--step-0);
+  white-space: pre-wrap;
+}
+.raid-post a,
+.raid-participate {
+  font-weight: 600;
+}
+.raid-brief {
+  margin-top: 24px;
+  white-space: pre-wrap;
+}
+.raid-participate {
+  display: inline-block;
+  margin-top: 8px;
+}
+.raid-recent {
+  margin-top: 32px;
+}
+.raid-recent summary {
+  cursor: pointer;
+  padding: 12px 0;
+  font-weight: 600;
+}
+.raid-recent .raid-list {
+  margin-top: 16px;
+}
+.raid-empty {
+  padding: 24px;
+  border: 1px dashed var(--rule);
+  border-radius: var(--radius);
+}
+.raid-empty-title {
+  margin-top: 0;
+}
+.community-account-entry {
+  padding: 28px;
+  background: var(--wash);
+  border-radius: var(--radius);
+}
+.community-account-entry h2 {
+  font-size: var(--step-2);
+}
+.community-account-entry .button {
+  margin: 12px 0;
+}
+.raid-intake-note {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--rule);
+}
+.raid-note-title {
+  font-size: var(--step-1);
+}
+@media (max-width: 860px) {
+  .community-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+}

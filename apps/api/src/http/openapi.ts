@@ -1,4 +1,4 @@
-import { ReadApiV1 } from "@hyphae/core";
+import { PublicRaidsSchema, ReadApiV1 } from "@hyphae/core";
 import { z } from "zod";
 
 // The v1 contract as OpenAPI 3.1. Every schema is generated from the zod schemas the api's own
@@ -7,6 +7,7 @@ import { z } from "zod";
 
 const schemas = {
   Community: ReadApiV1.community,
+  Raids: PublicRaidsSchema,
   Epoch: ReadApiV1.epoch,
   Contributions: ReadApiV1.contributions,
   Leaderboard: ReadApiV1.leaderboard,
@@ -102,6 +103,13 @@ export function openApiDocument() {
         "A community",
         "Its name, current epoch and every served epoch.",
         "Community",
+        [mint],
+        "No community with this mint.",
+      ),
+      "/v1/communities/{mint}/raids": get(
+        "A community's raids",
+        "Up to 20 active or scheduled raids, earliest deadline first, and 6 recent closed or cancelled raids. Approved records only; safe X links and recorded post text, no private member or moderation metadata. A raid window never extends the reward epoch deadline.",
+        "Raids",
         [mint],
         "No community with this mint.",
       ),
