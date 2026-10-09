@@ -26,6 +26,7 @@ const env = {
     process.env.HYPHAE_API_TOKEN || values.HYPHAE_API_TOKEN || values.READ_API_WEB_TOKEN || "",
   DEFAULT_MINT: mint,
   PRIVY_LOGIN_ENABLED: "off",
+  PRIVY_DEV_APP_ID: process.env.PRIVY_DEV_APP_ID || values.PRIVY_DEV_APP_ID || "",
 };
 // The preview needs public reads only. Never copy the API's secret configuration into it.
 delete env.PRIVY_APP_SECRET;
@@ -98,6 +99,8 @@ if (build.status !== 0) {
 
 console.log(`\nCommunity preview: http://127.0.0.1:3010/c/${mint}`);
 console.log("Login disabled. Existing public-read configuration stays server-side.\n");
+if (env.PRIVY_DEV_APP_ID)
+  console.log("Separate provider-only sign-in test: http://127.0.0.1:3010/dev/privy\n");
 const server = spawn(
   process.execPath,
   [next, "start", "--hostname", "127.0.0.1", "--port", "3010"],
