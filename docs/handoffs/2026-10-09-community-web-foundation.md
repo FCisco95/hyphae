@@ -1,5 +1,7 @@
 # Community web foundation — October 9
 
+Follow-up: Cisco subsequently selected Privy email/existing-wallet login with explicit Telegram linking and no auto-created wallet. See the [later design checkpoint](2026-10-09-privy-login-design.md) and [written spec](../superpowers/specs/2026-10-09-privy-member-login-design.md). The pending-choice and custom-linking notes below describe the earlier checkpoint, not an unanswered current question.
+
 ## TL;DR
 
 Cisco explicitly paused all funding and payouts, then approved building toward a complete website member experience with Telegram optional. The first slice works locally: community overview, project context and a dedicated join guide. Website login, the in-page eligibility quiz, task discovery and personal progress are not implemented yet. Reviewed `next` remains held; nothing was pushed or deployed.

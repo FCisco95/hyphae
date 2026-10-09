@@ -2,6 +2,18 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-09 · Privy selected; member-login design ready for review
+
+**Decision:** Cisco selected email plus an existing Solana wallet through Privy, explicit linking to existing Telegram membership, and no automatically created wallet. Provider choice is answered. Prepared the [written login spec](superpowers/specs/2026-10-09-privy-member-login-design.md), awaiting written review before the implementation plan.
+
+**Design and why:** use native provider Telegram linking, fresh server-side provider/group proof and the existing community/member record. This avoids duplicate memberships and a migration for the first read-only account screen. Login does not set a reward wallet, prove a quiz pass or grant payout eligibility. The earlier custom account-linking proposal is a future alternative.
+
+**Validation/stage:** official docs and read-only package metadata checked; React SDK 3.48.0 accepts the existing React 19/Solana Kit versions, Node SDK current 0.35.0. Spec self-reviewed for scope, identity, caching and held migration/release constraints. No SDK installed, auth code/configuration/account/keys created, or live compatibility smoke. Docs only; prior website gate/build results remain historical. Handoff/whitespace/lint checks recorded at commit. Design bookkeeping SHA: `git log -1 --format=%H -- docs/superpowers/specs/2026-10-09-privy-member-login-design.md`.
+
+**Publication:** local-only, no push; existing release/publication holds and freeze remain. Earlier pending local commits: `c646245`, `6abf23a`, `b138540`, `a717c17`, `b750dd9`, `acd5616` (full IDs in HANDOFF). Next/origin-next `1249fed` preserved, no Organic/vault changes or downstream API change. Payouts paused; no completed C14–C22 or payees/amounts/receipts.
+
+**Next:** review the written spec, then writing-plans and its required implementation-plan review. Provider setup follows a reviewable local implementation; no redundant provider-choice question.
+
 ## 2026-10-09 · Community website foundation, local only
 
 **Built:** a focused community home, project-context page and dedicated join guide. Members can understand the contribution process, follow the existing setup steps and open their selected epoch's actual audit. Each community keeps its own identity/navigation; unknown or unreadable data fails closed. Paused intake does not invite new reward submissions. Login, the in-page quiz, a task feed and private progress are still next.
