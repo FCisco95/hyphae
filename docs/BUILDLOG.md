@@ -10,7 +10,9 @@ One entry per work session, newest first. Written so it can be read aloud as a s
 
 **Numbers:** gross 1.5 SOL; fee 0.045 to the MYCEL Treasury; 1.238881509 allocated to 4 wallets; two hit the 25% cap (0.36375 each); 0.21611849 stays in the vault for later epochs. Publish `4qhKtnsV…p6EnLm`, first claim `5iBbZVJE…D6sZn55`. Claimed + unclaimed = allocated.
 
-**Next:** the three other payees claim; finalize and approve the transparency report; claim-page improvements (single wallet picker, visible wallet state, waiting feedback, treasury dashboard). [Session receipts](handoffs/2026-10-10-payout-session.md).
+**Later the same day:** all four payees claimed (claimed = allocated, unclaimed 0), and the program's IDL was published on-chain so Solscan decodes every claim receipt: score, amount and evidence hash, in plain text. Cisco posted the payout and the breakdown on X.
+
+**Next:** hackathon submission; finalize and approve the transparency report; claim-page improvements (single wallet picker, visible wallet state, waiting feedback, treasury dashboard). [Session receipts](handoffs/2026-10-10-payout-session.md).
 
 ## 2026-10-10 · Final session handoff (23:08Z Oct9)
 
