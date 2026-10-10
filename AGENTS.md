@@ -1,31 +1,62 @@
-# Hyphae agent instructions
+# Hyphae — agent rules
 
-<!-- ORGANIC-SYNC:WORKING-AGREEMENT:BEGIN v2 — managed by cisco-brain /organic-sync; edit the canonical copy there, not here -->
-## Working agreement (solo founder)
+The one source of process rules for every agent (Codex reads this file; `CLAUDE.md` imports it). If any other file, skill or old handoff says otherwise, this file wins.
 
-Cisco is the only developer and the only reviewer. Work like a senior engineer trusted with a long session, not an assistant waiting for a nod.
+Hyphae is Cisco's Colosseum Crypto World's Fair entry (2026-09-14 → submission 2026-10-12 23:59 PDT = 2026-10-13 06:59Z) and the first community MYCEL under the Organic umbrella. Public GitHub repo `FCisco95/hyphae`, BUSL 1.1. The program and the rubrics are also published in `FCisco95/hyphae-program`, which must be updated (with Cisco's yes: it is a publish) whenever `programs/hyphae` or `docs/rubrics/*.json` change.
 
-- **An approved plan is the approval.** A task named in an approved plan, spec, recorded ruling or session prompt is authorized, including the risky steps it names. Don't ask "ok?", "go?" or "should I continue?". Finish a step, verify it, commit it, start the next.
-- **A working result is the goal.** Name what will work and the check proving it. Build/fix/test the approved steps; reuse accepted work. Docs support the result. Never repeat completed preparation or audits to fill a session. If only human input remains, say Needs you and give the next action.
-- **Run the whole arc.** Work through the prompt's steps, then the plan's next tasks, until the arc ends or you hit a hard stop. Don't end a session after one small task when the next one needs nothing from Cisco.
-- **Hard stops, and only these:** a founder decision nothing records (money, rewards, custody, pricing, public claims, priorities); an irreversible or external action nothing approves (production migration or data change, mainnet transaction or funds movement, package publish or release, public post or message, credential or secret change, deleting production data, accounts or unmerged work); weakening a security invariant; writing in another repo. At a stop, park that item, keep doing everything it doesn't block, and surface the nearest human blocker plainly. Guide Cisco through one concrete action at a time, wait for the result, then give the next action. Keep other blockers in the handoff.
-- **Recommend, don't survey.** Every choice gets one recommendation and a one-line why. Pick what a senior engineer who will own this codebase for years would pick: correct, secure, maintainable, honest about what is and isn't done, even when it's more work. Never pick an option because it's easier for you. If the right option doesn't fit the deadline, say so and name what gets deferred.
-- **Trunk-based git, no PRs.** Commit to `main` after each verified milestone and push once the repo's local gate passes and recorded release conditions permit it; never bypass hooks. Preserve publication/production holds, including docs pushes that trigger deployment. No feature branches or PRs unless Cisco asks. Two sessions in one repo at once: each works on a short-lived worktree branch, rebases on `main`, fast-forward merges it locally, pushes `main` and deletes the branch. Finish an existing feature branch the same way only after its release preconditions and authorization pass; preserve unmerged work while held.
-- **A review replaces the PR.** For money, rewards, auth, RLS, wallet, security or migration changes, get a fresh-session review of `git diff <arc-start>..HEAD` from the other model family (Codex `/review` if Claude built it, Claude `/code-review` if Codex did) before pushing. Fix findings test-first and record the verdict in the handoff.
-- **Talk plainly.** Short sentences, simple words, direct point. Explain what we are doing and why a human is needed. One step, one expected result, then wait; never a wall of instructions.
-- **Report the outcome:** what now works, checks and evidence stage, commit SHAs, what is blocked, and the next human action. Surface human blockers when discovered; routine updates stay brief.
-<!-- ORGANIC-SYNC:WORKING-AGREEMENT:END -->
+## How we work
 
-## Hackathon visibility
+Cisco is the only developer and the only reviewer. He works from two machines (MacBook and Windows PC) with two agent families (Claude Code and Codex). Git is the only shared truth, so both machines must always see the same `main`.
 
-Hyphae is a public Colosseum Crypto World's Fair hackathon project. Make daily progress easy to inspect on GitHub without overstating it.
+1. **One branch: `main`.** No feature branches, worktrees, backup branches or PRs. If a temporary branch is truly unavoidable, merge or delete it in the same session. `next` (the reviewed post-payout release) is the last integration branch; the release plan merges it and then it goes.
+2. **Session start:** `node scripts/session-check.mjs start`. It fetches, fast-forwards a clean `main` and fails when anything could strand work: another branch with commits not in `origin/main`, a worktree, a stash, a dirty tree, unpushed or diverged `main`. Resolve what it reports before working. Never delete work that exists nowhere else; ask Cisco.
+3. **Session end:** commit and push `main`, then `node scripts/session-check.mjs end` must say OK. If a recorded hold blocks the push, leave the commits on local `main` and say so in `docs/HANDOFF.md`.
+4. **`main` is always deployable,** because a push to `main` deploys the web to production (see below). Nothing on `main` may change production before Cisco wants it: unfinished risky web code sits behind a flag; web code that needs a newer API waits until that API is live. Migrations in `packages/db/drizzle` are inert on `main`; only `scripts/rollout/db.mjs` applies them, on Cisco's yes.
+5. **The gate is automatic.** `.githooks/pre-push` runs `pnpm test`, `pnpm typecheck`, `pnpm lint` (and `drizzle-kit check` when `packages/db` changes) on every push that touches more than docs; `session-check start` points git at it. CI repeats the gate plus the Postgres suites. Don't add manual gate runs or paperwork on top. Never bypass hooks (`--no-verify`).
+6. **Hard stops (ask Cisco), only these:**
+   - mainnet transactions, funds, Ledger or Squads signing;
+   - production writes: applying a migration, writing production data (epoch changes, corrections, amendments), deploying the API or worker to Fly, changing Vercel settings;
+   - a recorded freeze or hold (the payout runbook, `docs/HANDOFF.md`): no push to `main`, no deploy, no change to payout, hold or scoring code or data while it lasts;
+   - secrets and keys;
+   - deleting work that exists nowhere else;
+   - product decisions: money, rewards, rubrics, pricing, public claims and wording, posting to Telegram or X, publishing to `hyphae-program`;
+   - writing in another repo.
 
-- On each active hackathon day, create at least one small, coherent conventional commit after a verifiable milestone. Do not manufacture commits, and identify WIP or review-blocked work plainly.
-- In `docs/BUILDLOG.md`, add a same-day, public-safe entry with: what changed, a decision and why, validation numbers, commit SHA(s), and the next bounded action. Say whether the work is local-only or pushed.
-- Refresh `docs/HANDOFF.md` whenever the working state, risks, validation, or next action changes. Add a dated `docs/handoffs/` snapshot for durable reviews, approvals, or checkpoints.
-- Before ending an active hackathon day, push the documented commits to the configured GitHub remote and verify `git status -sb`. If that cannot happen, document why and the precise pending commit IDs in both the build log and handoff.
-- Keep commits truthful and focused. Prefer implementation-plus-tests together; use separate commits for review findings and process/documentation when that gives judges a clearer history. Never commit credentials, private-vault content, or unrelated workspace changes.
+   Everything else: decide, do, verify, report once at the end. A recorded approval (a ruling, a release plan Cisco said yes to) covers the steps it names.
+7. **Cross-model review only for code that moves funds:** `programs/hyphae`, and the code that decides who is paid or how much (`packages/core` merkle, settle and scoring; `apps/api` payout, hold, reward jobs, wallet linking; `scripts/rollout`). Get a fresh-session review of `git diff <arc-start>..HEAD` from the other model family (Codex `/review` if Claude built it, Claude `/code-review` if Codex did) before pushing, fix findings test-first, and record the verdict in `docs/reviews/`. Not required elsewhere.
+8. **`docs/HANDOFF.md` is short** (about 80 lines): current state, next step, blockers, open questions. History lives in `git log` and `docs/BUILDLOG.md`; dated `docs/handoffs/` files only for major events. When shortening, archive the old text in `docs/handoffs/archive/HANDOFF-<date>.md`; never delete it.
+9. **Machine-local agent memory is not authoritative** (`~/.claude/projects/*/memory`, Codex memory). Durable facts go in the repo, or in the vault when private.
+10. **Custody stays separated.** Signing keys stay on their own device (Ledger admin and upgrade key, the Squads fee vault, any machine hot key). "Same truth on both machines" never means copying keys.
+11. **Talk plainly.** Short sentences, one recommendation with a one-line why, not a survey. Report what now works, the evidence, commit SHAs, what is blocked and the next human action.
 
-## Repository safety
+## What a push to `main` triggers
 
-Read `CLAUDE.md` and `docs/HANDOFF.md` before planning or implementing. This is a public repository: keep private strategy in the vault and respect the Organic boundary described in `CLAUDE.md`.
+| Trigger | Effect |
+|---|---|
+| Vercel Git integration (project `prj_zGEwnzy5ATqVXru7apeDkPfrcHSM`, root `apps/web`) | **Production deploy** of the web to `hyphae-delta.vercel.app`, even for a docs-only push. Other branches get preview deploys (Vercel default, not checked). |
+| `.github/workflows/ci.yml` | The gate on every push to any branch: tests, typecheck, lint, `drizzle-kit check`, `test:pg` on Postgres 17, H-CONTRACT vectors. Build and test only. |
+| `.github/workflows/program.yml` | Nothing; it runs weekly and on demand (`anchor build`, program tests). It never deploys the program. |
+| Fly (`apps/api`, processes `api` and `worker`) | Nothing; images are deployed by hand on Cisco's yes. |
+| Neon migrations | Nothing; only `scripts/rollout/db.mjs`, on Cisco's yes. |
+
+## Hackathon record (until the submission)
+
+- Each active day: at least one small, truthful conventional commit after a verifiable milestone, and a public-safe `docs/BUILDLOG.md` entry (what changed, the decision and why, numbers, commit SHAs, next step; say whether it is pushed). The build log is the script source for the judge video and the demo.
+- Never manufacture activity or call review-blocked work shipped. Never commit secrets, private-vault material, generated noise or unrelated changes.
+
+## Where things live
+
+- **Private spec and plan (vault):** `~/Documents/cisco-brain/10 - PROJECTS/Organic/plans/2026-09-16-hyphae-design.md` and `2026-09-16-hyphae-implementation-plan.md`. Local mirror `docs/plans/` is gitignored; copy from the vault when stale, never commit it. Strategy and competitive reasoning stay out of this public repo.
+- **Current state:** `docs/HANDOFF.md`. Payout runbook: `docs/demo/2026-10-08-first-payout-readiness.md`. Release plans: `docs/demo/`. Reviews: `docs/reviews/`.
+
+## Repo boundary (hard rule)
+
+This repo consumes Organic's **public** settlement API only: `/api/launchpad/coins/mint/[mint]/settlement` (GET). It never touches `organic-app`. Stage C1 in `organic-app` owns `supabase/migrations/**`, `messages/*.json`, `[mint]/page.tsx`, `settlement/**`. If a task seems to need any of those, stop: that is a collision with parallel work, not a Hyphae task.
+
+## Stack (decided 2026-09-16, reasoning in the vault spec)
+
+pnpm workspace · Anchor 1.0.1 at root (`programs/hyphae`, LiteSVM tests, `clients/js` Codama) · `packages/core` pure TS (merkle, settle, rubric, scoring contract) · `packages/db` Drizzle on Neon · `apps/api` Hono + grammY + pg-boss on Fly (processes `api`, `worker`) · `apps/web` Next.js on Vercel. Solana/Anchor commands run in WSL Ubuntu on the Windows PC.
+
+## Standards
+
+Comments only for non-obvious why. No speculative abstractions, no dead code, no placeholder scaffolding. Ecosystem-standard layouts. Pure modules have tests. Conventional commits. `Cargo.lock` is committed. Pull current docs (Context7 or the package's own docs) before writing against Anchor, Token-2022, grammY, pg-boss, AI SDK or Drizzle. `pnpm --filter @hyphae/api test:pg` needs Docker locally; CI runs it on every push.

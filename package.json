@@ -5,7 +5,7 @@
   "scripts": {
     "preview": "node apps/web/scripts/preview.mjs",
     "build": "pnpm -r build",
-    "test": "pnpm -r test",
+    "test": "pnpm -r test && node --test scripts/session-check.test.mjs",
     "typecheck": "pnpm -r typecheck",
     "lint": "biome check ."
   },

@@ -9,13 +9,14 @@ summary: First mainnet payout complete. Epoch 2 published with 1.5 SOL, all four
 
 **Epoch 2 is fully paid on Solana mainnet (2026-10-10).** Community `HRkBN4…XbRX` and vault `AC3zkG…oG86K` were created and bound. Epoch 2 was published with the Ledger: 1.5 SOL gross, 0.045 fee to the MYCEL Treasury, 1.238881509 SOL to 4 wallets, 0.216 SOL cap remainder kept in the vault. **All 4 claimed**, so claimed = allocated and unclaimed = 0. The canonical IDL is published, and Solscan decodes claim receipts (score, amount, evidence hash) in plain text. Final read and every receipt: [payout complete](handoffs/2026-10-10-payout-complete.md), [payout session](handoffs/2026-10-10-payout-session.md).
 
-**Next:** the hackathon submission (deadline Oct 12): demo video, post 4, Colosseum form. Then Cisco's decision on the held `next` release and on pushing `main`.
+**Next:** the hackathon submission (deadline 2026-10-12 23:59 PDT = 2026-10-13 06:59Z): demo video, post 4, Colosseum form. Then Cisco's decision on the held `next` release and on pushing `main`.
 
 ## Current state
 
 | Surface | State |
 |---|---|
-| Git | `main` 36+ commits ahead of `origin/main` (includes held member-login code). Payment docs pushed to `origin/hold/hyphae-member-login` only. `next` 1249fed held, untouched |
+| Git | Windows `main` (payout records + held member-login code, `af96a28`) merged with the Mac's 2026-10-10 one-branch workflow commits (`57a3f8e`, via temporary `origin/hold/mac-hyphae`). Not on `origin/main`. Both machines share it through the temporary transfer branch `origin/hold/hyphae-combined`; the Mac fast-forwards to it. Delete all `hold/*` branches right after the first `main` push. `next` 1249fed held, untouched |
+| Workflow | Adopted 2026-10-10 on the Mac: one branch (`main`), [AGENTS.md](../AGENTS.md) is the single rules source, `node scripts/session-check.mjs` at start/end, `.githooks/pre-push` runs the gate. Previous handoff archived: [archive/HANDOFF-2026-10-09.md](handoffs/archive/HANDOFF-2026-10-09.md) |
 | Production | Fly API and worker on `jev-e5f864b`, journal 18, health ok. Epoch 3 open Oct 10 → Oct 17 00:00Z on Haiku `reward-eval/2` |
 | Chain | Program `EAz8Wk…4d6E`, hash `7e902d1b…43ac`, upgrade authority = Ledger admin. Admin holds 0.0069 SOL. Vault holds the 0.216 SOL remainder + rent. IDL metadata `zxj1hrV2…c9d` |
 | Website | Live site unchanged (serves `origin/main`). Local member login stays disabled |
@@ -24,9 +25,17 @@ summary: First mainnet payout complete. Epoch 2 published with 1.5 SOL, all four
 
 1. **Submission:** record the demo video (prints folder + Solscan decoded receipt), post 4 on X, Colosseum form, reviewer access. Post 3 is scheduled for Oct 11 morning.
 2. **Held release:** the "after C22" precondition is met. Ask Cisco for an exact yes on [the release plan](demo/2026-10-11-release-plan.md) before merging `next`, applying 0018+0019 or amending epoch 3. Preserve both histories.
-3. **Pushing `main`:** needs Cisco's release decision and the full local gate (`pnpm test`, `pnpm typecheck`, `pnpm lint`). Until then push only `main:hold/hyphae-member-login`.
+3. **Pushing `main`:** needs Cisco's release decision and the full local gate (`pnpm test`, `pnpm typecheck`, `pnpm lint`). Until then push only `main:hold/hyphae-combined`.
 4. **Product follow-ups (not built):** claim page (single wallet picker, visible connected state, waiting state with timeout, treasury dashboard); a one-command weekly publish with one Ledger approval; pre-raid eligibility enforcement (needs Cisco's strictness ruling); admin dashboard; publisher-key design for automatic Organic communities.
 5. **Carried over:** member login (Phantom failure, refresh persistence), participation-minimum proposal, scorer-v3 questions, `@organichub/verify` 0.1.0 through Oct 12. See [session end Oct 10](handoffs/2026-10-10-session-end.md) and the Oct 9 checkpoints.
+
+## Carried from the Mac handoff (2026-10-10, still open)
+
+- Public wording (`docs/plans/transparency-note.md`, private): changelog entry for the moved close, the scorer's "why", X and Hyphae Lab post, README lines, panel text.
+- Branch disposition (Cisco decides; nothing deleted): merged `feat/jev-eval` and local `hackathon/r1-exact-reward-points` could go; `next` and the five `FCisco95/*` branches after the release; `feat/rules-v2` (7 unmerged commits: rubric 1.3.1, `/rules` page, rules-test changes) needs his call. `session-check` fails on these until then; that is expected.
+- Outside this repo: the global hook `~/.claude/hooks/docs-only-push-guard.sh` blocks any push to `main` and asks for a PR (contradicts AGENTS.md rule 1); the cisco-brain `organic-sync` skill still manages a v2 working-agreement block this repo no longer carries.
+- Housekeeping: revoke the temporary Anthropic eval key if not done; rotate the Neon password after Oct 11; `rmdir ~/Desktop/DEVELOPMENTS/hyphae-jev-reward` on the home machine.
+- Known issues: a fresh checkout needs `@hyphae/read-client` built before `pnpm test`; run at most two or three suites at once with `--maxWorkers=2`; the raid-alert and private-journey pg tests are flaky and pass alone.
 
 ## Watch list
 
@@ -44,5 +53,5 @@ handoff-memory, the-analyst, superpowers:verification-before-completion, hyperfr
 ```text
 Resume Hyphae after the first mainnet payout. Read docs/HANDOFF.md and docs/handoffs/2026-10-10-payout-complete.md.
 Epoch 2 is fully paid (4/4 claimed), IDL on-chain. Focus: hackathon submission by Oct 12 (demo video, post 4, Colosseum form).
-Do not push main or merge next without Cisco's exact yes; push only main:hold/hyphae-member-login. No organic-app or vault edits.
+Do not push main or merge next without Cisco's exact yes; push only main:hold/hyphae-combined. No organic-app or vault edits.
 ```
