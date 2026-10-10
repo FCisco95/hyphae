@@ -33,8 +33,20 @@ Fee 45,000,000 to the Treasury; net 1,455,000,000; cap 363,750,000 (25%). Four p
 
 | Row | Stage |
 |---|---|
-| C14–C18 | Open, starting now |
+| C14 | Done: 0.02 SOL funding wallet → admin, `5MbsKUxE…Rb1tSZ8`, finalized 12:56:23Z; admin 20,000,000 lamports. Ledger read `44'/501'/2'/0'` = recorded admin first |
+| C15 | Done: plan matched program/admin/mint/community/vault/fee recipient; Cisco matched the Squads Treasury Receive address |
+| C16 | Done: `initialize_community` `aensGhPg…ghNX`, 13:00:37Z; decoded mint/admin/fee recipient match, outstanding 0 |
+| C17 | Done: 1 row bound, `chain_address = HRkBN4…XbRX`, read back 13:02:06Z |
+| C18 | Done: 1.5 SOL funding wallet → vault, `5spBxwDa…7rjtj`, 13:03:09Z; plan rerun says the 1.5 SOL pot is covered |
 | C18b | Audit clean after close, attested; pause skipped (reason above) |
-| C19–C22 | Open; gate ready |
+| Pre-C19 | Program hash `7e902d1b…43ac` matches the Oct 2 build; upgrade authority = Ledger admin; Fly api+worker on `jev-e5f864b`; journal 18 |
+| C19 | Done: intent stored; 4 leaves, allocated 1,238,881,509, remainder 216,118,490, dust 1; root `f98ff930…f5f7d1d3`, audit `c340a280…633e0a90` |
+| C20 | Done: `publish_epoch` `4qhKtnsV…p6EnLm`, 13:09:22Z; decoded root/audit/gross/fee/allocated match; Treasury +45,000,000; API `published`, payment `available`, 4 claimable |
+| C21–C22 | Open |
+
+## Later: claim page (Cisco's note, not now)
+
+- One "Connect wallet" button that opens a wallet picker, replacing the seven per-wallet buttons.
+- A transparency dashboard on the claim/epoch page: Treasury fee balance, total paid to members, unclaimed and vault remainder, community size.
 
 Private receipts (identities): `docs/plans/operator-receipts/2026-10-10-*`. Transparency report draft for Cisco's approval: `docs/plans/2026-10-10-epoch2-transparency-report.md`, not posted.
