@@ -47,6 +47,10 @@ Fee 45,000,000 to the Treasury; net 1,455,000,000; cap 363,750,000 (25%). Four p
 
 **First mainnet payout complete.** Three payees still have to claim themselves.
 
+## IDL published on-chain (Cisco's request, 13:3xZ)
+
+Canonical Program Metadata account `zxj1hrV2pYRuHC65TvUVsRssMUvzu8bZ7YKWkPTrc9d` (seed `idl`, program `EAz8Wk…4d6E`), authority and payer the Ledger admin (= upgrade authority). Content `target/idl/hyphae.json` (13,211 bytes, zlib 1,682), checked first against live discriminators of the claim receipt, epoch 2 and community accounts. Two Ledger approvals, each simulated first: `4Dp1vDjs…SUEm7f`, `2sS66trK…9ArgZ`. Rent 9,682,480 lamports + 10,000 fees from the admin. Read back identical. Solscan's Data tab now decodes `ClaimReceipt` (score 274, amount, evidence hash, claimed_at) and `Epoch`. Built with `@solana-program/program-metadata` 0.10.0 instructions and the repo's Ledger signer, because the Anchor CLI runs in WSL, which cannot see the Ledger. Reversible: the Ledger can close the account and recover the rent.
+
 ## Later: claim page (Cisco's note, not now)
 
 - One "Connect wallet" button that opens a wallet picker, replacing the seven per-wallet buttons.
