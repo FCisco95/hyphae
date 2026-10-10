@@ -42,11 +42,16 @@ Fee 45,000,000 to the Treasury; net 1,455,000,000; cap 363,750,000 (25%). Four p
 | Pre-C19 | Program hash `7e902d1b…43ac` matches the Oct 2 build; upgrade authority = Ledger admin; Fly api+worker on `jev-e5f864b`; journal 18 |
 | C19 | Done: intent stored; 4 leaves, allocated 1,238,881,509, remainder 216,118,490, dust 1; root `f98ff930…f5f7d1d3`, audit `c340a280…633e0a90` |
 | C20 | Done: `publish_epoch` `4qhKtnsV…p6EnLm`, 13:09:22Z; decoded root/audit/gross/fee/allocated match; Treasury +45,000,000; API `published`, payment `available`, 4 claimable |
-| C21–C22 | Open |
+| C21 | Done: genuine claim by the founder's payable wallet `MAoRn1…VhAB` from the claim page with Phantom, `5iBbZVJE…D6sZn55`, finalized 13:16:34Z, no error. Vault −363,750,000; receipt `C7nEMEav…MDP9` created (1,305,560 rent); wallet net +362,364,440 after the 80,000 fee. The first Phantom approval returned no signature and nothing landed; the retry succeeded |
+| C22 / P14 | Done 13:17Z: API `allocation = published`, `publish_tx` = C20; `payment = available`; founder `paid` with `claim_tx` = C21, the other 3 `claimable`; claimed 363,750,000 + unclaimed 875,131,509 = allocated 1,238,881,509; fee 45,000,000 and cap remainder 216,118,490 equal C19. Wallet claims API lists the paid claim; epoch page shows the claim tx |
+
+**First mainnet payout complete.** Three payees still have to claim themselves.
 
 ## Later: claim page (Cisco's note, not now)
 
 - One "Connect wallet" button that opens a wallet picker, replacing the seven per-wallet buttons.
 - A transparency dashboard on the claim/epoch page: Treasury fee balance, total paid to members, unclaimed and vault remainder, community size.
+- A visible connected-wallet state (address, disconnect) instead of the small "Connected …" line.
+- An animated "waiting for your wallet" state with a timeout and retry hint: the first Phantom approval never returned and the page waited with no feedback.
 
 Private receipts (identities): `docs/plans/operator-receipts/2026-10-10-*`. Transparency report draft for Cisco's approval: `docs/plans/2026-10-10-epoch2-transparency-report.md`, not posted.

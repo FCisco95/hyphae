@@ -2,6 +2,16 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-10 · First mainnet payout: epoch 2 published and claimed
+
+**Shipped:** Hyphae paid its first contributor on mainnet. Epoch 2 closed at 00:00 UTC with 33 posts from 9 testers; the code-run gate found 4 payable. We created the MYCEL community and its vault, funded a 1.5 SOL pot, published the epoch with the Ledger, and the first payee claimed 0.36375 SOL from the claim page. The other three can claim now.
+
+**Decisions:** pot raised from 0.5 to 1.5 SOL, founder-funded, not from the Treasury. Pay by the published rules only: no retroactive eligibility change for the five unpaid testers (missing rules test, wallet or points). The pre-close author audit was missed; it ran after close on the frozen snapshot, which nothing had changed since Oct 9 17:03Z, and Cisco attested the four payees' X accounts.
+
+**Numbers:** gross 1.5 SOL; fee 0.045 to the MYCEL Treasury; 1.238881509 allocated to 4 wallets; two hit the 25% cap (0.36375 each); 0.21611849 stays in the vault for later epochs. Publish `4qhKtnsV…p6EnLm`, first claim `5iBbZVJE…D6sZn55`. Claimed + unclaimed = allocated.
+
+**Next:** the three other payees claim; finalize and approve the transparency report; claim-page improvements (single wallet picker, visible wallet state, waiting feedback, treasury dashboard). [Session receipts](handoffs/2026-10-10-payout-session.md).
+
 ## 2026-10-10 · Final session handoff (23:08Z Oct9)
 
 **Saved:** canonical handoff and durable [session-end snapshot](handoffs/2026-10-10-session-end.md). Latest clarified policy intent committed5d678cf8957ee198176715502dbb56f8fc3ddb14: submitted work with all-zero scores; amount/verified roster/budget/effective epoch unresolved. No reward policy or live state changed. Exact pending30 SHAs before this docs commit are listed in the snapshot; final handoff SHA resolves with `git log -1 --format=%H -- docs/handoffs/2026-10-10-session-end.md`.
