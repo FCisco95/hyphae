@@ -51,6 +51,13 @@ Fee 45,000,000 to the Treasury; net 1,455,000,000; cap 363,750,000 (25%). Four p
 
 Canonical Program Metadata account `zxj1hrV2pYRuHC65TvUVsRssMUvzu8bZ7YKWkPTrc9d` (seed `idl`, program `EAz8Wk…4d6E`), authority and payer the Ledger admin (= upgrade authority). Content `target/idl/hyphae.json` (13,211 bytes, zlib 1,682), checked first against live discriminators of the claim receipt, epoch 2 and community accounts. Two Ledger approvals, each simulated first: `4Dp1vDjs…SUEm7f`, `2sS66trK…9ArgZ`. Rent 9,682,480 lamports + 10,000 fees from the admin. Read back identical. Solscan's Data tab now decodes `ClaimReceipt` (score 274, amount, evidence hash, claimed_at) and `Epoch`. Built with `@solana-program/program-metadata` 0.10.0 instructions and the repo's Ledger signer, because the Anchor CLI runs in WSL, which cannot see the Ledger. Reversible: the Ledger can close the account and recover the rent.
 
+## Later: operations direction (Cisco, 2026-10-10)
+
+- Now: manual weekly sitting, polished: one command, one Ledger approval.
+- Next: an admin dashboard per community with buttons for close review, fund, publish (signed through a browser wallet with the Ledger attached), plus member and payout status.
+- With Organic communities launching coins: Hyphae runs each community's epochs automatically. Open design question: who holds each community's publish key (the community's own admin, or a Hyphae publisher delegate behind a program upgrade with caps and a veto delay).
+- Enforce payout requirements before people raid: wallet, rules test and hold are checked up front, so nobody earns points they can't be paid for. This reverses the 2026-10-07 "a member may earn first" ruling and needs Cisco's ruling on how strict.
+
 ## Later: claim page (Cisco's note, not now)
 
 - One "Connect wallet" button that opens a wallet picker, replacing the seven per-wallet buttons.
