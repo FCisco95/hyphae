@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { CommunityOnboarding } from "../components/community-onboarding.js";
 import { Hero, HowItWorks, Integrate, Proof, Trust } from "../components/landing.js";
 import { loadLiveProof } from "../lib/landing.js";
 import { readCommunity, readEpoch } from "../lib/reads.js";
@@ -16,6 +17,7 @@ export default function Home() {
   const mint = process.env.DEFAULT_MINT;
   return (
     <div className="landing">
+      <CommunityOnboarding />
       <Hero communityHref={mint ? `/c/${mint}` : "/community"} />
       <HowItWorks />
       <Suspense fallback={<Proof live={{ state: "loading" }} />}>

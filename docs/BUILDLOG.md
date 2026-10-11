@@ -2,6 +2,10 @@
 
 Public technical milestones for Colosseum. Each item names what shipped and its evidence. Owner planning, approvals, release procedures and recording scripts are private.
 
+## October 11 — Community setup prompt
+
+The homepage offers a copyable agent prompt linked to the [community setup guide](community/SETUP-INTEGRATION.md). It prepares a private setup brief for operator review and states the current assisted-registration boundary. Copy confirmation, manual-copy recovery and dismissal pass three interaction tests. Fresh desktop and phone checks cover both color schemes, clipboard success/denial, and layouts down to 320 pixels.
+
 ## October 11 — Curated public evidence
 
 Public documentation now contains technical interfaces, published rubrics, reproducible fixtures and curated [program](evidence/PROGRAM.md), [review](evidence/REVIEWS.md), [release](evidence/2026-10-11-release.md) and [mainnet payout](evidence/2026-10-10-mainnet-payout.md) evidence. Proof links no longer depend on owner working notes. Before publication, Markdown links were checked against the proposed Git tree. This changes documentation and trust-page links; no claim transaction, payout, scorer, API or program behavior changes.

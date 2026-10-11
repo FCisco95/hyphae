@@ -2,6 +2,7 @@
 // public in hyphae-program; the application, curated review results and SECURITY.md in the public hyphae repo.
 export const GITHUB = "https://github.com/FCisco95/hyphae-program";
 export const APP_REPO = "https://github.com/FCisco95/hyphae";
+export const COMMUNITY_SETUP = `${APP_REPO}/blob/main/docs/community/SETUP-INTEGRATION.md`;
 export const API_DOCS = "https://hyphae-api.fly.dev/docs";
 // The site's public address, for links shared off the site: never a preview deployment's.
 export const SITE = "https://hyphae-delta.vercel.app";
