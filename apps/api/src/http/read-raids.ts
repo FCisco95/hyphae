@@ -2,11 +2,13 @@ import { clipRaidText, type PublicRaids, PublicRaidsSchema, publicXPost } from "
 import { communities, type Db, raidLifecycleEvents, tasks } from "@hyphae/db";
 import { and, asc, desc, eq, gt, inArray, lte, or } from "drizzle-orm";
 import { isoUs, readOnly } from "../pg.js";
+import type { ReadClock } from "./read-service.js";
 
 // Only approved raid records and public post snapshots. Never select member IDs,
 // chat IDs, message IDs, proposals, moderation reasons or private submission sessions.
-export function readRaids(db: Db, mint: string, now: Date): Promise<PublicRaids | null> {
+export function readRaids(db: Db, mint: string, clock: ReadClock): Promise<PublicRaids | null> {
   return readOnly(db, async (tx) => {
+    const now = clock instanceof Date ? clock : await clock(tx);
     const [community] = await tx
       .select({
         id: communities.id,
