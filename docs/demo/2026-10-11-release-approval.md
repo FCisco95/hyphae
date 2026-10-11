@@ -14,7 +14,7 @@ Prepared October 11. Original reviewed next: 1249fed. Privacy accepted at f573a6
 
 **Privacy selected by Cisco:** “Authorize the privacy change: public aggregates only; member checklist private (recommended)”. Public API, pages and group scores omit per-member rules-test/hold verdicts. A private checklist checks current community membership and uses the authenticated Telegram sender. Existing public on-chain payout receipts remain public.
 
-**Reviews and evidence:** [privacy ACCEPT](../reviews/2026-10-11-privacy.md), [claim-page ACCEPT](../reviews/2026-10-11-claim-page.md), [judge links](2026-10-11-judge-links.md), [local screenshots](screenshots/2026-10-11/README.md). E0 combined gate runs only after the authorized merge; no image, migration, machine update or main push has run.
+**Reviews and evidence:** [privacy ACCEPT](../reviews/2026-10-11-privacy.md), [claim-page ACCEPT](../reviews/2026-10-11-claim-page.md), [judge links](2026-10-11-judge-links.md), [local screenshots](screenshots/2026-10-11/README.md). Authorized E0 combined gate passed and E1 exact image pushed; ongoing migration/deployment evidence is in the [release Record](2026-10-11-release-plan.md#record).
 
 **Required production authorization:** exactly **yes, run the post-payout release (E0–E6)**. Covers the history-preserving merge, combined gate, exact image, db.mjs precheck → 0018 → 0019 → postcheck, API, worker, main web push and smoke. E7–E8, scorer amendment, announcements, new payouts and epoch 3 publication remain excluded.
 
