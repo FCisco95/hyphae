@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-11 · Post-payout release live; recording packet ready
+
+**Shipped on Cisco's exact E0–E6 approval:** merge e7b6824 preserves main and reviewed next. Frozen runtime source 3a3e294 produced next-3a3e294, digest sha256:0a00c38d24c19ba4195ba93205443c3bdadf986e8e1503a38f505fff723be841. Production db.mjs precheck/migrate/postcheck passed; journal 18 → 20, pinned 0018 then 0019. API and worker started on that digest; newer recovery completed 12:40:46Z, zero failed jobs. Main release 77e575d pushed after the automatic gate; Vercel Production succeeded 12:47Z and CI 38140495535 passed, including Postgres 17 and contract hashes. Later commits are docs/evidence only. [Full release Record](demo/2026-10-11-release-plan.md#record).
+
+**Now works:** the claim page has one picker, the full connected wallet, bounded waiting and safe recheck/retry; fresh Claude Opus 5.5 high ACCEPT. Individual rules-test/hold outcomes stay in the member's private checklist; group /me and score messages are neutral, public allocation/payment receipts survive. Privacy ACCEPT. Wallet record, Actions/CORS and Schedule change are live. Fresh signed-out desktop/390-phone smoke showed four paid epoch-2 rows, 1.238881509 SOL claimed, zero unclaimed, paid C21 wallet record, no overflow/page errors. Connected-wallet browser checks used the already-paid public C21 address with signing disabled; zero signing calls. [11 production screenshots](demo/screenshots/2026-10-11-live/README.md). Cisco confirmed neutral group /me and his private checklist.
+
+**Truth and recording:** both public README Status sections, live proof, final video beats 4–6 and checklist cite October 10 mainnet receipts; C14–C22 done. Full program hash re-read matches 7e902d1b5f8d8c49dfd199ec2e7bf44139b56524d98408f1556e14f4e9ab43ac. Judge receipt links and decoded accounts opened cleanly. Soulbound points remain not built. No new signing, payout, scorer amendment or epoch publication; epoch 3 remains reward-eval/2 while Cisco opens raids. E7–E8 excluded. Builder Codex/GPT-6 (effort not exposed); claim/privacy reviewers actual claude-opus-5-5 high. No Organic/vault edit. Next: Cisco records the pitch/demo, weekly summary and presentation, uploads the videos and submits before October 13 06:59Z; /organic-sync consumes the final handoff in its own scope. Deploy cutoff October 12 12:00Z remains.
+
 ## 2026-10-11 · Authorized release integration gate
 
 **Authorized:** Cisco's exact `yes, run the post-payout release (E0–E6)`; public aggregates/member-only private checklist selected. E7–E8 and epoch 3 amendment/announcement excluded.

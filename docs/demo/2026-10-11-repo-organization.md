@@ -23,3 +23,9 @@ Report only. No refs, files, worktrees or stashes deleted. Main began at 4e6b99e
 | `origin/next` | `1249fed` | 62 |
 
 The existing next worktree is C:/hy/next, at 1249fed. The untracked .codex directory contains local config/hooks files and was left untouched and unstaged. Session-check start reports these held histories, ahead main and the extra worktree. These are expected pending Cisco's disposition. A fully merged branch is still not deletion-authorized.
+
+## After the approved release
+
+The table above is the pre-release inventory. Release main `77e575d` is pushed; history-preserving merge `e7b6824` includes reviewed next `9d0da9b`. All five FCisco95 refs, all three hold refs, feat/jev-eval and next are now fully in origin/main; they remain intact. Local/origin feat/rules-v2 still have seven unique commits; local feat/sonnet55-medium has one. Existing next worktree retained. No stash/reset or held-ref deletion.
+
+The plan's disposable detached exact-source worktree at 3a3e294 was unregistered after E6 and after proving its source is in origin/main. Its source/install files were removed; an empty directory residue was locked by a process. This cleanup does not touch the original next worktree. Final end check should report only pre-existing .codex, the unique feat histories and C:/hy/next; main must equal origin after the final docs push.

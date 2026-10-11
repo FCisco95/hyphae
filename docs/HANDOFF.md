@@ -1,78 +1,74 @@
 ---
 date: 2026-10-11
-summary: Cisco authorized E0–E6 October 11 with the exact sentence. History-preserving integration and combined gate in progress; no production change yet. E7–E8 excluded.
+summary: E0–E6 released, CI and live/Cisco smoke passed. Claim recovery and private checklist live; recording/submission next. E7–E8 excluded.
 ---
 
 # Hyphae handoff
 
-**Execution in progress:** Cisco supplied exactly `yes, run the post-payout release (E0–E6)` October 11. Follow [the release plan Record](demo/2026-10-11-release-plan.md#record) for current execution; the held state below is the pre-release checkpoint and will be refreshed after ship or rollback. The one-screen [copy/privacy sheet](demo/2026-10-11-release-approval.md) and both ACCEPT reviews preceded approval. E7–E8 remain excluded.
+**Next: Cisco records the pitch/demo, weekly summary and presentation.** The approved post-payout release is live. [Demo script](demo/2026-10-09-final-video.md), [submission checklist](demo/2026-10-10-submission-checklist.md), [release Record](demo/2026-10-11-release-plan.md#record).
 
 ## Current state
 
-| Surface | Verified state |
+| Surface | Confirmed state |
 |---|---|
-| Main | Code/docs checkpoint `14e01bfcf1ae25a639e50e82c875bd7bc72201d5`; handoff-only commit follows. Started at `4e6b99e`, 42 ahead; now 49 ahead before handoff. Origin main `d3b8c6c` unchanged. No app push. |
-| Next | Existing integration worktree, `9d0da9b337d1b11770278603b595ebcbd60f12d7`, clean; base `1249fed` plus privacy implementation/fix/review. Not merged or pushed. Preserve both histories. |
-| Program docs | Public main `e574a99127a86273e5da97afdb61b5d0bcf84528`, pushed, clean. README Status and receipt index cite October 10. |
-| Production | Read-only Fly image check October 11: API/worker still `jev-e5f864b`, digest `sha256:b3f5617d804a377e8eaae1c6c67641ffe85390e47d88c162f0723206994236c4`. Last recorded journal 18. Web serves origin/main. |
-| Approval | Privacy approved: public aggregates; member checklist private. Exact E0–E6 yes absent. No merge, image push, migration, machine update or main push. |
+| Main / web | Release `77e575d6b3fbff72519caa512af148d517bb92ca` pushed; Vercel Production succeeded October 11 12:47Z. Final docs/handoff commits follow with no runtime diff. |
+| Histories | Merge `e7b6824428ab1c485683b72827132be7155c24d6` preserves prepared main `99cd33e` and reviewed next `9d0da9b337d1b11770278603b595ebcbd60f12d7`. No reset or assumed fast-forward. |
+| API + worker | Both started on `next-3a3e294`, exact source `3a3e294f764545b9a66c795d1e2b4c4bfd037b68`; immutable digest in Record. PUBLIC_WEB_URL matches the live site. |
+| Database | Approved db.mjs precheck → 0018 → 0019 → postcheck PASS; journal 18 → 20. New recovery 12:40:46Z; zero failed jobs. |
+| Program docs | Public main `e574a99127a86273e5da97afdb61b5d0bcf84528`, pushed, clean. Both README Status sections cite October 10 mainnet receipts. |
 
-Epoch 2 is fully paid on mainnet: community `HRkBN4sX7NyPEfa4SfRoTsP1dynmPDLMYbY7qLa4XbRX`, vault `AC3zkGQ9abJs6sssaY5nDX8Qjv2UM19r4JYLgcHoG86K`; 4/4 claims, 1,238,881,509 lamports claimed, 0 unclaimed, 3 non-founder payees. IDL published. [Receipts](demo/2026-10-10-mainnet-payout.md).
+Epoch 2 fully paid: community `HRkBN4sX7NyPEfa4SfRoTsP1dynmPDLMYbY7qLa4XbRX`, vault `AC3zkGQ9abJs6sssaY5nDX8Qjv2UM19r4JYLgcHoG86K`; 4/4 claims, 1,238,881,509 lamports, 0 unclaimed, three non-founder payees, IDL published. [Receipt index](demo/2026-10-10-mainnet-payout.md).
 
-Confirmed full program hash from fresh WSL solana-verify mainnet read:
+Full confirmed mainnet program hash, freshly re-read with WSL solana-verify:
 `7e902d1b5f8d8c49dfd199ec2e7bf44139b56524d98408f1556e14f4e9ab43ac`.
-Matches the recorded October 2 build; this session did not rebuild or sign a transaction. RPC alias failure and explicit mainnet endpoint fallback are recorded in the receipt index.
+Matches the recorded reproducible build; no new program build/deploy or transaction signed. Landing tile abbreviates it and links to the public full hash.
 
-## Ready locally
+## Checks and review
 
-- Steps 1–3 committed: both Status sections, mainnet demo beats 4–6, checklist C14–C22, 33 clean-browser judge links plus five decoded Solscan tabs. App README/script remain local until main is released.
-- Claim fix `cc4f773eaf1d5ae15f0ef98613e6dec4993b46f9`: one picker, full connected wallet, waiting timeout/cancellation/recheck, stale-result guards and late-signature recovery. Transaction builder unchanged. [Fresh other-family ACCEPT](reviews/2026-10-11-claim-page.md).
-- Privacy code `f573a68147d94e9da43b508c1c25031954eba4d0` on next: public eligibility removed, group scores neutral, sender-bound membership-checked private /me. Gate/scoring unchanged. [Fresh other-family ACCEPT](reviews/2026-10-11-privacy.md).
-- Checks: privacy 150 targeted tests including isolated Postgres 17 race; claim 27; home/trust 27; relevant typechecks and changed-file Biome passed. E0 combined gate and live smoke pending. [14 screenshots](demo/screenshots/2026-10-11/README.md): 1920×1080 dark and 390 phone; actual mainnet paid data, disabled signing.
-- Models: builder Codex/GPT-6, runtime effort not exposed; reviewer Claude Opus 5.5 (`claude-opus-5-5`), high. [Major session record](handoffs/2026-10-11-release-prepared.md).
+- Combined gate and automatic pre-push gate: 1,731 tests passed, three gated API tests skipped; typecheck, lint, Drizzle and 16 contract hashes passed. Isolated Postgres 17: 84 tests passed. [Release CI](https://github.com/FCisco95/hyphae/actions/runs/38140495535) green, including Postgres/contract suites.
+- Fresh other-family ACCEPT: [claim recovery](reviews/2026-10-11-claim-page.md) at `cc4f773`, [privacy](reviews/2026-10-11-privacy.md) at `f573a68`. Final claim builder unchanged. Integrated raid clock and stale group test fixes are recorded in the release Record.
+- Live desktop 1920×1080 and 390 phone: settlement/four paid rows, Schedule change, Scored, one picker, full connected C21 address, wallet record, Actions GET/OPTIONS and CORS passed. No overflow/page errors. Read-only smoke wallet, zero signing calls. [11 production screenshots](demo/screenshots/2026-10-11-live/README.md); [14 earlier local previews](demo/screenshots/2026-10-11/README.md).
+- Cisco confirmed group /me neutral and his checklist opens privately. E0–E6 complete, no rollback. Builder Codex/GPT-6 (runtime effort not exposed); reviewer actual Claude Opus 5.5 (`claude-opus-5-5`), high.
 
-## Release stops and deadlines
-
-1. No exact yes: E0–E6 unexecuted, step 5 deploy held. A docs-only main push also deploys web. Commit locally only while held.
-2. With yes: history-preserving merge and combined gate; exact-source `next-<sha7>` image; db.mjs precheck → migrate 0018 then 0019 → postcheck; API, worker, main push, live smoke. Fill the plan Record with actual evidence.
-3. Any db.mjs refusal or failed smoke: stop and use the plan's rollback. No unreviewed claim diff ships.
-4. E7–E8, scorer amendment, posts, new keys, payouts and epoch 3 publication excluded. No epoch 3 raid opened here. Public read already showed epoch 3 activity; do not claim it was empty.
-5. Deploy cutoff **October 12 12:00Z**, then only single-commit link/README fixes. Submission deadline **October 13 06:59Z**.
-
-## Judge links / Organic follow-through
+## Final judge links / Organic follow-through
 
 - Site [home](https://hyphae-delta.vercel.app/), [proof](https://hyphae-delta.vercel.app/#proof), [trust](https://hyphae-delta.vercel.app/#trust).
-- [Epoch 2](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2), [claim](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2/claim).
-- API [docs](https://hyphae-api.fly.dev/docs), [OpenAPI](https://hyphae-api.fly.dev/v1/openapi.json); [public program Status](https://github.com/FCisco95/hyphae-program#status).
-- New wallet route and /actions.json need post-release smoke; do not list them as live yet. Signed C21 wallet: `MAoRn1JFD66gcXHiCqcAgppXBCR4TP8pKT4XV7HVhAB`.
-- After actual ship, /organic-sync uses these links/full hash and the completed release Record. Existing mainnet payout status is live; new wallet record and private eligibility contract are held. Organic must use public allocations/receipts, not per-member eligibility. No Organic or vault file changed.
+- [Epoch 2 settlement](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2), [claim](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2/claim), [signed C21 wallet](https://hyphae-delta.vercel.app/wallet/MAoRn1JFD66gcXHiCqcAgppXBCR4TP8pKT4XV7HVhAB).
+- API [docs](https://hyphae-api.fly.dev/docs), [OpenAPI](https://hyphae-api.fly.dev/v1/openapi.json), [C21 record](https://hyphae-api.fly.dev/v1/wallets/MAoRn1JFD66gcXHiCqcAgppXBCR4TP8pKT4XV7HVhAB/record); [actions.json](https://hyphae-delta.vercel.app/actions.json).
+- Public [app Status](https://github.com/FCisco95/hyphae#status), [program Status](https://github.com/FCisco95/hyphae-program#status), [decoded mainnet receipts](https://github.com/FCisco95/hyphae-program/blob/main/docs/2026-10-10-mainnet-payout.md). [Clean-browser link record](demo/2026-10-11-judge-links.md).
 
-Cisco still records the pitch/demo, weekly summary and presentation, then submits the Colosseum videos/form. [Demo script](demo/2026-10-09-final-video.md) and [submission checklist](demo/2026-10-10-submission-checklist.md) are ready; no recording or submission claimed.
+/organic-sync can now use these links, full hash and release Record for the vault kit's access text. Released fields: actual payout status and wallet record. Public member rules-test/hold eligibility fields are removed; consumers use public allocation/payment receipts and aggregates, not private checklists. Organic/vault were not edited here.
+
+## Remaining human work and boundaries
+
+Cisco records and uploads the pitch/demo, weekly summary and presentation, then saves/submits Colosseum and supplies viewer/submission URLs. Nothing is marked recorded or submitted. Soulbound Token-2022 points, Codama client and admin dashboard remain not built.
+
+Submission deadline **October 13 06:59Z**. Deploy cutoff **October 12 12:00Z**, then only single-commit link/README fixes. E7–E8, announcement/T, scorer amendment, new payouts/keys and epoch 3 publication remain excluded. Epoch 3 still selects reward-eval/2 with no amendment; Cisco opened a raid during rollout. No closure is required for E0–E6; the historical no-raid mitigation is not in effect.
 
 ## Repository and session check
 
-End check: **NOT OK**, expected held main, retained branches, existing next worktree and pre-existing untracked `.codex/`. No stash, reset or deletion. [Report only](demo/2026-10-11-repo-organization.md). All session app commits exist only locally; only program docs were pushed. Do not fast-forward/reset main to next or delete held histories.
+Main release is published. Existing next worktree and all held refs remain; deletion is not authorized. Pre-existing untracked `.codex/` untouched. Expected end-check exceptions are that directory, retained feat/rules-v2 / feat/sonnet55-medium histories and existing next worktree; report exact output after the final push, never call it OK. [Report only](demo/2026-10-11-repo-organization.md).
 
-Previous canonical handoff archived at [October 10](handoffs/archive/HANDOFF-2026-10-10.md); its delete/push advice is superseded by this arc. Old follow-ups remain in that archive. Local preview servers stopped; disposable test Postgres removed; Docker Desktop remains running.
+The release's clean detached worktree was unregistered after its source was verified on origin/main. Source/install files removed; an empty directory residue was locked by a process. Preview servers stopped, disposable test Postgres removed; Docker Desktop remains running. No stash/reset or held-history deletion. [Pre-release canonical archive](handoffs/archive/HANDOFF-2026-10-11.md) and [release snapshot](handoffs/2026-10-11-post-payout-release.md).
 
 ## Generated artifacts this session
 
 | What | Canonical home | State |
 |---|---|---|
-| Receipt/demo/link/privacy/review records | docs/demo/, docs/reviews/ | Tracked; app local, program receipt docs public. |
-| 14 browser screenshots | docs/demo/screenshots/2026-10-11/ | Tracked local previews; not production smoke. |
-| Handoff/archive/session snapshot | docs/HANDOFF.md, docs/handoffs/ | Tracked; no keys, credentials, scheduled jobs or deployed resources created. |
+| Receipt/demo/review/link/release records and 25 screenshots | docs/demo/, docs/reviews/ | Git-tracked, public-safe; local previews and production evidence clearly separated. |
+| Image + migrations + deployed web | Fly next-3a3e294, Neon journal 20, Vercel Production | Immutable digest and production receipts in release Record. No new keys/credentials/scheduled jobs. |
+| Handoff/archive/snapshot | docs/HANDOFF.md, docs/handoffs/ | Portable tracked state; operational DB reports with private IDs stay local and uncommitted. |
 
 ## Suggested skills
 
-handoff-memory, the-analyst, handoff; hyperframes/faceless-explainer for Cisco's recording session. Invoke /organic-sync only after ship in its own authorized scope.
+handoff-memory, the-analyst, handoff; hyperframes/faceless-explainer for recording. /organic-sync only in its own authorized scope.
 
 ## Next-session prompt
 
 ```text
-Resume Hyphae: October 10 mainnet payout is fully paid; docs/demo and claim/private-eligibility fixes are prepared with fresh ACCEPT reviews, but app release/main push are held. No exact E0–E6 authorization has arrived; preserve main and next histories and delete nothing.
-Files: docs/HANDOFF.md, docs/demo/2026-10-11-release-approval.md, docs/demo/2026-10-11-release-plan.md, docs/demo/2026-10-09-final-video.md, docs/demo/2026-10-10-submission-checklist.md
-Model: Claude Opus 5.5 (high) — careful production state checks; record the actual selected runtime.
-Skills: handoff-memory, the-analyst, handoff.
-Read the pending release decision. Only with exactly 'yes, run the post-payout release (E0–E6)', execute E0–E6, fill Record and smoke; E7–E8 excluded. After ship refresh the short Organic-sync handoff and push it. No deploy after October 12 12:00Z except single-commit link/README fixes. Otherwise keep all app changes local and report the exact missing authorization.
+Hyphae E0–E6 shipped October 11; mainnet epoch 2 fully paid, claim recovery/private eligibility live, CI/browser/Cisco smoke passed. Record and submit the videos; no scorer switch or new production arc is approved. Preserve held histories.
+Files: docs/HANDOFF.md, docs/demo/2026-10-11-release-plan.md, docs/demo/2026-10-09-final-video.md, docs/demo/2026-10-10-submission-checklist.md
+Model: Claude Opus 5.5 (high) — careful production and recording-state checks; record the actual runtime.
+Skills: handoff-memory, the-analyst, handoff; recording skill when requested.
+Use the live judge links/full hash for the Organic sync packet in its own scope. Confirm recorded video and submission URLs before logging completion. No deploy after October 12 12:00Z except single-commit link/README fixes; E7–E8 remain excluded.
 ```

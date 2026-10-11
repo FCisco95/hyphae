@@ -52,4 +52,13 @@ All five direct `#accountData` links also opened in a fresh context. Each render
 
 The historical devnet duplicate correctly renders a finalized program error. This is proof of rejection, not a broken link. No mainnet duplicate is claimed. No signing, transaction or production write occurred.
 
-This is the pre-release check. Wallet record, Actions routes, released copy and local claim fix still require post-release smoke. App README changes remain local under the hold; program README and receipt docs are public.
+The table above is the pre-release receipt audit. E0–E6 subsequently shipped on October 11: app README and video script are public, and the reviewed claim fix is live. Fresh signed-out production checks at 12:49–12:52Z opened home, proof, trust, epoch 2, claim, both README Status anchors and the script. The trust tile's abbreviated hash links to the program README's full hash. API docs/OpenAPI opened after the API update and omit private member eligibility.
+
+| Added release link | Live result |
+|---|---|
+| [Signed C21 wallet page](https://hyphae-delta.vercel.app/wallet/MAoRn1JFD66gcXHiCqcAgppXBCR4TP8pKT4XV7HVhAB) | 200; epoch 2 paid with C21 signature; no private checklist |
+| [Signed C21 wallet API record](https://hyphae-api.fly.dev/v1/wallets/MAoRn1JFD66gcXHiCqcAgppXBCR4TP8pKT4XV7HVhAB/record) | 200; actual 363750000-lamport payment |
+| [actions.json](https://hyphae-delta.vercel.app/actions.json) | GET 200, both mappings; OPTIONS 204 and CORS |
+| [Epoch 2 Action](https://hyphae-delta.vercel.app/api/actions/claim/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/2) | GET 200, mainnet card; OPTIONS 204 and CORS; no POST |
+
+[Release Record](2026-10-11-release-plan.md#record), [11 production screenshots](screenshots/2026-10-11-live/README.md). Desktop and phone smoke found no overflow/page errors; four paid rows, one picker and the full connected C21 address passed. Cisco separately confirmed neutral group /me and his private checklist.

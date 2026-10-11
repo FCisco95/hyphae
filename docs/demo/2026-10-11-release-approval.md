@@ -1,10 +1,10 @@
 # Post-payout release approval sheet
 
-Prepared October 11. Original reviewed next: 1249fed. Privacy accepted at f573a68 (review record on next 9d0da9b); claim recovery accepted at main cc4f773. **Cisco authorized E0–E6 on October 11 with the exact sentence below. Execution in progress; see the release plan Record.** Deploy cutoff: October 12 12:00Z, except single-commit link/README fixes.
+Prepared October 11. Original reviewed next: 1249fed. Privacy accepted at f573a68 (review record on next 9d0da9b); claim recovery accepted at main cc4f773. **Cisco authorized E0–E6 on October 11 with the exact sentence below. Released: migrations, API, worker, web, CI, browser smoke and Cisco's private /me check passed; see the release plan Record.** Deploy cutoff: October 12 12:00Z, except single-commit link/README fixes.
 
 ## One-screen release copy
 
-| Surface | Member-visible examples that will ship |
+| Surface | Member-visible examples shipped |
 |---|---|
 | Public scoring / private checklist | Public: “Scored.” Group /me: “Open your checklist in private chat.” Button: “Open my private checklist”. Only the member in private chat sees “To be paid for epoch {n}:”, their rules-test result, hold check and next step. |
 | Wallet record | “Wallet record”; “Points from an open epoch are provisional, and points do not promise payment.”; “{amount}, paid in {tx}”; “No public record”. |
@@ -14,7 +14,7 @@ Prepared October 11. Original reviewed next: 1249fed. Privacy accepted at f573a6
 
 **Privacy selected by Cisco:** “Authorize the privacy change: public aggregates only; member checklist private (recommended)”. Public API, pages and group scores omit per-member rules-test/hold verdicts. A private checklist checks current community membership and uses the authenticated Telegram sender. Existing public on-chain payout receipts remain public.
 
-**Reviews and evidence:** [privacy ACCEPT](../reviews/2026-10-11-privacy.md), [claim-page ACCEPT](../reviews/2026-10-11-claim-page.md), [judge links](2026-10-11-judge-links.md), [local screenshots](screenshots/2026-10-11/README.md). Authorized E0 combined gate passed and E1 exact image pushed; ongoing migration/deployment evidence is in the [release Record](2026-10-11-release-plan.md#record).
+**Reviews and evidence:** [privacy ACCEPT](../reviews/2026-10-11-privacy.md), [claim-page ACCEPT](../reviews/2026-10-11-claim-page.md), [judge links](2026-10-11-judge-links.md), [production screenshots](screenshots/2026-10-11-live/README.md). E0–E6 execution and successful smoke are in the [release Record](2026-10-11-release-plan.md#record).
 
 **Required production authorization:** exactly **yes, run the post-payout release (E0–E6)**. Covers the history-preserving merge, combined gate, exact image, db.mjs precheck → 0018 → 0019 → postcheck, API, worker, main web push and smoke. E7–E8, scorer amendment, announcements, new payouts and epoch 3 publication remain excluded.
 

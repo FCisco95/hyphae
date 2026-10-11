@@ -12,10 +12,10 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 ## Before recording
 
-**Verified October 11:** epoch 2 was published on Solana mainnet on October 10. All four payees claimed 1,238,881,509 lamports, unclaimed 0; three payees are non-founder community members. C14–C22 are complete. The community, vault, publication, claims, IDL and fresh program hash are in the [public receipt index](https://github.com/FCisco95/hyphae-program/blob/main/docs/2026-10-10-mainnet-payout.md). The API and worker last recorded image is `jev-e5f864b`; the reviewed post-payout release is held until Cisco approves E0–E6. Epoch 3 still uses `reward-eval/2`; no scorer amendment is part of this recording arc. Re-read the live pages before recording. Never describe a local commit as deployed.
+**Verified October 11:** epoch 2 was published on Solana mainnet on October 10. All four payees claimed 1,238,881,509 lamports, unclaimed 0; three payees are non-founder community members. C14–C22 are complete. The community, vault, publication, claims, IDL and fresh program hash are in the [public receipt index](https://github.com/FCisco95/hyphae-program/blob/main/docs/2026-10-10-mainnet-payout.md). Cisco approved E0–E6; API/worker `next-3a3e294` and web `77e575d` are released with green CI and live smoke. The reviewed claim recovery, wallet record and private member checklist are live. [Release Record](2026-10-11-release-plan.md#record) and [production screenshots](screenshots/2026-10-11-live/README.md). Epoch 3 still uses `reward-eval/2`; no scorer amendment is part of this recording arc. Re-read the live pages before recording. Never describe a local commit as deployed.
 
 1. Open the [epoch 2 settlement](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2). It must show published on mainnet and four paid claims; compare it with the public receipt index.
-2. Read `git status -sb` and the latest approved release record. Do not pull, reset or push held main to prepare a recording. Note the actual deployed SHA and image separately from local main.
+2. Read the completed release Record and `git status -sb`. Release main is pushed; documentation commits may follow web source `77e575d` without changing its runtime. Keep the actual API image source `3a3e294` separate from the web and documentation SHAs.
 3. Open the tabs in the recording guide. Use the literal links below; the mainnet explorer links have no devnet query.
 4. If a live page fails, show its actual error. Screenshots in `docs/showcase/` are fixture data, not a mainnet receipt. Record with the real mainnet explorer and Solscan receipts instead.
 
@@ -31,7 +31,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 |---|---|---|
 | 1 | `<site>/` (the hero) | — |
 | 2 | `<site>/#how`, step 2 | the Hyphae Lab reply of 2026-09-17 |
-| 3 | `<site>/c/<mint>/e/<n>`, the Wallet column | `/link`, Phantom's prompt, `/me` in Hyphae Lab |
+| 3 | `<site>/c/<mint>/e/<n>`, the Wallet column | `/link`, Phantom's prompt; group `/me` opens the member's private checklist |
 | 4 | [Community](https://solscan.io/account/HRkBN4sX7NyPEfa4SfRoTsP1dynmPDLMYbY7qLa4XbRX), then [vault](https://solscan.io/account/AC3zkGQ9abJs6sssaY5nDX8Qjv2UM19r4JYLgcHoG86K) | C16 [aensGhPg…aQJSghNX](https://explorer.solana.com/tx/aensGhPgR8XBz5unAugUd9bJai3WbyUoJFwCLKmGn5kqUjsTNYNSQXR9oraAx9FitJac74tK9fYyCTBaQJSghNX) and C18 [5spBxwDa…i1c7rjtj](https://explorer.solana.com/tx/5spBxwDa9jbMbvZup3bR1aU5t2HVoYb24U2JLvX4dx8U6GJehDr1i1pgepxqTtodJf2ykRTP95dHGMBqi1c7rjtj) |
 | 5 | [Epoch 2 settlement](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2) | C20 [4qhKtnsV…Xop6EnLm](https://explorer.solana.com/tx/4qhKtnsVD78xpvRPdi7TQ1fcF86FjiueCFZNq6a11yfSQ7Q4UeXboGaRtzTDtyMnFbDtVywHGzgytrXqXop6EnLm) |
 | 6 | [Epoch 2 claim page](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2/claim), then the four paid rows | C21 [5iBbZVJE…vD6sZn55](https://explorer.solana.com/tx/5iBbZVJEnjr9tvpHZ2dFYgsKAxy5tSvqQ3bUCaXY4fDGgH9PfomphF8SuTFrFqvpbFdLLE89AHZSSQRUvD6sZn55) and the three member claims below |
@@ -60,7 +60,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 ## Beat 3 — only a wallet that signed gets paid (historical, 2026-09-24) · ~20 s
 
-**Show:** `/link` in Hyphae Lab, then Phantom's signing prompt, then `/me` showing "verified". Then an epoch page, `<site>/c/<mint>/e/<n>`: a verified wallet is shown in green, any other as "unverified".
+**Show:** the historical `/link` and Phantom message-signing prompt, then the current `/me` flow: the group gives “Open my private checklist”; the member's private chat shows their signed wallet. Cisco confirmed this live after release. Then an epoch page, `<site>/c/<mint>/e/<n>`: a verified wallet is shown in green, any other as “unverified”. The group does not expose rules-test/hold outcomes.
 
 **Say:** "To be paid, a member proves their wallet by signing a message. Pasting an address isn't enough. A closed week always pays the wallet that was verified at its close."
 
@@ -132,7 +132,7 @@ C22/P14 is the readback after C21, not a separate signature. The final October 1
 - the wallet-claims route and rate limits: `d712289`, `6e48b12`; OpenAPI and `/docs`: `135a80f`;
 - the README integration: `1d56e5d`.
 
-Say "deployed" for the community/epoch routes, wallet claims, `/v1/openapi.json` and `/docs`: they have answered 200 from production since October 2 C7 and again on October 5 (receipts in the packet). The API and the worker now both run image `jev-e5f864b` (`sha256:b3f5617d…`, since 2026-10-07 21:36Z); never say "Fly v11" for the API. Cite the packet's newest read-back, not a deployment inferred from current `main`.
+Say “deployed” for the community/epoch routes, wallet claims, wallet record, `/v1/openapi.json` and `/docs`: the post-release reads answered 200. API and worker both run `next-3a3e294`, immutable digest `sha256:0a00c38d24c19ba4195ba93205443c3bdadf986e8e1503a38f505fff723be841`. Web release `77e575d` and E6 smoke are in the [Record](2026-10-11-release-plan.md#record); do not infer deployment from local main.
 
 ## Close · ~5 s
 
@@ -147,7 +147,7 @@ These were not built or are not live; the video must not imply them:
 - the Codama client;
 - the web `/admin` page (plan Week 4 #3, dropped by Cisco on 2026-09-27);
 - the fixture data in `docs/showcase/`'s settled-epoch and claim pages, as if it were real;
-- "open source" (both repositories are BUSL 1.1, source available; both the application repo and the program/rubric repo are public in `FCisco95/hyphae-program`);
+- “open source” (both repositories are BUSL 1.1, source available; public application `FCisco95/hyphae` and program/rubrics `FCisco95/hyphae-program`);
 - tester or member counts past what the closed epoch records: epoch 2 had 33 contributions from 9 members, with 4 payees; this is one pilot epoch, not an active-user claim;
 - members using the private raid buttons, receipts, `/issue` or raid alerts: they are deployed on the API since October 5 and the operator view and receipt lookup were exercised by Cisco only; no member has used them, and no alert subscriber or real-phone test exists;
 - X relation or account ownership as verified (the system records an attestation, not proof);

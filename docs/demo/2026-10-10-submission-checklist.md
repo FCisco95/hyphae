@@ -4,7 +4,7 @@
 
 ## Verified scope
 
-Epoch 2 paid on mainnet on October 10. Four of four payees claimed 1,238,881,509 lamports, unclaimed 0; three payees are non-founder community members. The community, vault, publish, claim and IDL signatures and October 11 full program hash are in the [public receipts](https://github.com/FCisco95/hyphae-program/blob/main/docs/2026-10-10-mainnet-payout.md). API and worker last recorded image: `jev-e5f864b`; reviewed `next` release is held until Cisco approves E0–E6. Epoch 3 remains on `reward-eval/2`; scorer amendment, announcements and publication are outside this arc.
+Epoch 2 paid on mainnet on October 10. Four of four payees claimed 1,238,881,509 lamports, unclaimed 0; three payees are non-founder community members. The community, vault, publish, claim and IDL signatures and October 11 full program hash are in the [public receipts](https://github.com/FCisco95/hyphae-program/blob/main/docs/2026-10-10-mainnet-payout.md). Cisco approved E0–E6: API/worker `next-3a3e294`, migrations 0018+0019 and web `77e575d` are released; CI and browser/Cisco smoke passed. [Release Record](2026-10-11-release-plan.md#record). Epoch 3 remains on `reward-eval/2`; scorer amendment, announcements and publication are outside this arc.
 
 Both [app](https://github.com/FCisco95/hyphae) and [program](https://github.com/FCisco95/hyphae-program) repositories are public. The former collaborator-access step is removed; judges can open them without an account. Both are BUSL 1.1, source available, not open source.
 
@@ -20,11 +20,11 @@ Soulbound Token-2022 points, Codama client and the web admin dashboard are not b
 
 ## Preparation (agent)
 
-1. **Make Status truthful.** Both READMEs must cite mainnet receipts, 4/4 paid, 0 unclaimed, the Ledger authority and full verified hash. Program docs push: `55396b6`; app truth checkpoint: `35c0692`, local until release.
-2. **Check clean-browser links.** Open [site](https://hyphae-delta.vercel.app/), [proof](https://hyphae-delta.vercel.app/#proof), [trust](https://hyphae-delta.vercel.app/#trust), [epoch 2](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2), [claim page](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2/claim), [API docs](https://hyphae-api.fly.dev/docs), [OpenAPI](https://hyphae-api.fly.dev/v1/openapi.json), and every explorer/Solscan link in the READMEs and script. Record actual page results, not just HTTP 200 from an explorer shell.
-3. **Resolve release approval.** Show the branch notes' member-visible strings and privacy call first. Run [release-plan E0–E6](2026-10-11-release-plan.md) only after Cisco says exactly `yes, run the post-payout release (E0–E6)`. No E7–E8 scorer switch. Without approval, retain local work and the hold.
-4. **Verify the approved release and claim fix.** Fill the release Record. Let the pre-push hook run its gate; preserve both main/next histories. Smoke epoch 2, `/actions.json`, Action OPTIONS and the signed wallet record. Claim-page transaction changes require a fresh other-family ACCEPT before push. Capture dark 1920×1080 and 390 phone screenshots. If migration precheck refuses or smoke fails, follow the release rollback.
-5. **Save final state.** Record actual SHAs, checks, judge links, confirmed hash, release state and remaining human steps in the short handoff. Never mark a held or review-blocked change shipped. No branch or worktree deletion without Cisco's yes.
+1. **Status done.** Both READMEs cite October 10 mainnet receipts, 4/4 paid, 0 unclaimed and the hash read. Program docs main `e574a99` pushed; app truth `35c0692` included in release `77e575d`.
+2. **Links passed.** [Clean-browser audit](2026-10-11-judge-links.md): site/proof/trust, epoch/claim, docs/OpenAPI, both public repos and every explorer/Solscan receipt. Added signed-wallet and Actions routes passed after release. Actual content and identifiers checked.
+3. **Approval recorded.** One-screen member copy/privacy sheet preceded Cisco's exact `yes, run the post-payout release (E0–E6)`. Public aggregates/member checklist private selected. E7–E8 remain excluded.
+4. **Release and claim fix passed.** [Record](2026-10-11-release-plan.md#record) filled; both histories preserved; automatic gate and CI green; db.mjs precheck/migrations/postcheck passed; API, worker and web live. Fresh other-family claim/privacy ACCEPT. Epoch 2, wallet, Actions/CORS and Cisco's private /me passed. [11 production screenshots](screenshots/2026-10-11-live/README.md), dark 1920×1080 and 390 phone. No rollback required.
+5. **Final handoff saved.** [HANDOFF](../HANDOFF.md) carries actual source SHAs, checks, full program hash, judge links and Organic impacts. Cisco still records/uploads/submits below. Held histories and the existing next worktree stay intact; only the release's disposable exact-source worktree is cleaned up.
 
 ## Recording and submission (Cisco)
 
