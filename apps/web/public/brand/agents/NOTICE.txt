@@ -1,0 +1,17 @@
+Agent logos identify example tools into which a community setup prompt can be pasted.
+They are third-party marks, not Hyphae branding or a claim of endorsement.
+The SVG files are unmodified vendor assets downloaded on October 11, 2026.
+
+Cursor cube: Anysphere, Inc.
+https://cursor.com/brand
+Official kit: https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/brand/cursor-brand-assets.zip
+Asset: General Logos/Cube/SVG/CUBE_2D_LIGHT.svg
+
+Claude Spark, representing Claude Code: Anthropic, PBC.
+https://www.anthropic.com/press-kit
+Asset: Anthropic media resources/Anthropic logos/Claude logos/3 Claude Spark/SVG/Claude Spark - Clay.svg
+
+OpenAI Blossom: OpenAI.
+https://openai.com/brand/
+Official kit: https://cdn.openai.com/brand/openai-logos.zip
+Asset: OpenAI-logos/SVGs/OAI_OpenAI-Blossom_Black.svg

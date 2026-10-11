@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image.js";
 import { useState } from "react";
 import { COMMUNITY_SETUP_PROMPT } from "../lib/community-onboarding.js";
 import { COMMUNITY_SETUP } from "../lib/links.js";
@@ -43,15 +44,23 @@ export function CommunityOnboarding() {
         </div>
         <div className="onboarding-action">
           <button type="button" className="onboarding-copy" onClick={copyPrompt}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="m8 7-5 5 5 5m8-10 5 5-5 5m-3-13-2 16"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <span className="onboarding-agents" aria-hidden="true">
+              <span className="onboarding-agent" title="Cursor">
+                <Image src="/brand/agents/cursor.svg" width={18} height={18} alt="" unoptimized />
+              </span>
+              <span className="onboarding-agent" title="Claude Code">
+                <Image
+                  src="/brand/agents/claude-code.svg"
+                  width={18}
+                  height={18}
+                  alt=""
+                  unoptimized
+                />
+              </span>
+              <span className="onboarding-agent" title="OpenAI">
+                <Image src="/brand/agents/openai.svg" width={32} height={32} alt="" unoptimized />
+              </span>
+            </span>
             <span>{copyState === "copied" ? "Prompt copied" : "Copy setup prompt"}</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <rect x="8" y="8" width="12" height="12" rx="2" stroke="currentColor" />

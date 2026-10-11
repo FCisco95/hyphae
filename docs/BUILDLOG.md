@@ -4,7 +4,7 @@ Public technical milestones for Colosseum. Each item names what shipped and its 
 
 ## October 11 — Community setup prompt
 
-The homepage offers a copyable agent prompt linked to the [community setup guide](community/SETUP-INTEGRATION.md). It prepares a private setup brief for operator review and states the current assisted-registration boundary. Copy confirmation, manual-copy recovery and dismissal pass three interaction tests. Fresh desktop and phone checks cover both color schemes, clipboard success/denial, and layouts down to 320 pixels.
+The homepage offers a copyable agent prompt linked to the [community setup guide](community/SETUP-INTEGRATION.md). It prepares a private setup brief for operator review and states the current assisted-registration boundary. Copy confirmation, manual-copy recovery and dismissal pass three interaction tests. Fresh desktop and phone checks cover both color schemes, clipboard success/denial, and layouts down to 320 pixels. The prompt shipped in 1fa0f78; the copy button now identifies Cursor, Claude Code and OpenAI with locally served official logo assets and [source attribution](../apps/web/public/brand/agents/NOTICE.txt).
 
 ## October 11 — Curated public evidence
 
