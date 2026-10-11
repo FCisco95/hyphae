@@ -2,6 +2,17 @@
 
 Public technical milestones for Colosseum. Each item names what shipped and its evidence. Owner planning, approvals, release procedures and recording scripts are private.
 
+## Milestone snapshots
+
+These annotated Git tags mark readable public snapshots. Milestone dates describe when the work happened; the payout and release tags point to the October 11 documentation cleanup, preserving the receipts without restoring owner notes. The demo tag is a recording baseline, not a claim that videos were uploaded or the entry submitted.
+
+| Date | Milestone and tagged snapshot | Evidence |
+|---|---|---|
+| October 10 | [mainnet-payout-2026-10-10](https://github.com/FCisco95/hyphae/tree/mainnet-payout-2026-10-10) | [4/4 finalized claims, 1,238,881,509 lamports, zero unclaimed](evidence/2026-10-10-mainnet-payout.md) |
+| October 11 | [post-payout-release-2026-10-11](https://github.com/FCisco95/hyphae/tree/post-payout-release-2026-10-11) | [Reviewed recovery, private checklists, wallet records and live smoke](evidence/2026-10-11-release.md) |
+| October 11 | [community-onboarding-2026-10-11](https://github.com/FCisco95/hyphae/tree/community-onboarding-2026-10-11) | Homepage setup prompt shipped in 1fa0f78; [operator-assisted setup](community/SETUP-INTEGRATION.md) |
+| October 11 | [hackathon-demo-2026-10-11](https://github.com/FCisco95/hyphae/tree/hackathon-demo-2026-10-11) | [Judge tour, Telegram member path and public rules](../README.md#quick-tour); Cursor, Claude Code and OpenAI logos on the setup prompt |
+
 ## October 11 — Community setup prompt
 
 The homepage offers a copyable agent prompt linked to the [community setup guide](community/SETUP-INTEGRATION.md). It prepares a private setup brief for operator review and states the current assisted-registration boundary. Copy confirmation, manual-copy recovery and dismissal pass three interaction tests. Fresh desktop and phone checks cover both color schemes, clipboard success/denial, and layouts down to 320 pixels. The prompt shipped in 1fa0f78; the copy button now identifies Cursor, Claude Code and OpenAI with locally served official logo assets and [source attribution](../apps/web/public/brand/agents/NOTICE.txt).

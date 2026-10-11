@@ -4,6 +4,30 @@ Hyphae is a proof-of-contribution layer for token communities. Members do real w
 
 Built solo for [Colosseum's Crypto World's Fair](https://colosseum.com/worldsfair) (2026-09-14 → 2026-10-12), under the Organic/MYCEL umbrella. The build log is [docs/BUILDLOG.md](docs/BUILDLOG.md).
 
+## Quick tour
+
+[Live demo](https://hyphae-delta.vercel.app/) · [Paid epoch 2](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2) · [Mainnet receipts](docs/evidence/2026-10-10-mainnet-payout.md) · [Development milestones](docs/BUILDLOG.md#milestone-snapshots) · [Public rules](docs/rubrics/mycel-1.2.0.json)
+
+Start with the paid epoch: inspect a contribution's score and reasoning, its allocation, and its confirmed claim. The [wallet record](https://hyphae-delta.vercel.app/wallet/MAoRn1JFD66gcXHiCqcAgppXBCR4TP8pKT4XV7HVhAB) connects the signed identity to its payment history. The homepage setup prompt helps another community prepare an operator-assisted setup.
+
+### Telegram member path
+
+Use the [official bot](https://t.me/hyphaeprotocol_bot) from your community's registered group. Ask its owner for the verified group invite.
+
+| Step | Command or button | Result |
+|---|---|---|
+| 1. Set up | `/setup` in the group | Open your guided checklist privately; `/link` verifies your wallet with a readable message. |
+| 2. Learn the rules | `/rules` in the group | Open this community's rules quiz privately; `/help` explains scores and payment conditions. |
+| 3. Find work | `/help brief` | Read the current raid brief and its audit link. |
+| 4. Submit | The exact raid's **Submit** button | Send your own reply/quote URL privately; retain its receipt to inspect the result. |
+| 5. Check progress | `/me` → **Open my private checklist** | See your wallet and eligibility privately. Published allocations and confirmed claims are on the audit site. |
+
+Optional alerts use `/notifications`; privately refresh a result with `/receipt <receipt ID>` or report a scoring issue with `/issue <receipt ID> <reason>`. Points do not promise payment.
+
+### Public rules and version history
+
+Epoch 2 used [MYCEL 1.2.0](docs/rubrics/mycel-1.2.0.json). The [rubric and scorer changelog](docs/rubrics/CHANGELOG.md), [whitepaper](docs/WHITEPAPER.md), and each epoch's public audit expose the applicable rules and amendments. [Published rubric files](https://github.com/FCisco95/hyphae-program/tree/main/rubrics) retain prior versions. MYCEL 1.3.0 is a candidate, not the live epoch-2 rule set. Rules are public; individual rules-test and hold checklists are private.
+
 ## Status
 
 **October 10, 2026: epoch 2 paid on Solana mainnet.** All four payees claimed **1,238,881,509 lamports**, with **0 unclaimed**; three of the four payees are non-founder community members. [Finalized payout and claim receipts](docs/evidence/2026-10-10-mainnet-payout.md#finalized-transactions).

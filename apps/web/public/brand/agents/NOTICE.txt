@@ -1,6 +1,7 @@
 Agent logos identify example tools into which a community setup prompt can be pasted.
 They are third-party marks, not Hyphae branding or a claim of endorsement.
-The SVG files are unmodified vendor assets downloaded on October 11, 2026.
+The SVG artwork comes from official vendor assets downloaded on October 11, 2026.
+Accessible titles were added; paths, colors, proportions and view boxes are unchanged.
 
 Cursor cube: Anysphere, Inc.
 https://cursor.com/brand
