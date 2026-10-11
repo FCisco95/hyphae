@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-11 · Judge links and release decision packet
+
+**Verified:** 33 judge routes/receipts opened in a fresh signed-out browser context, with content and chain identifiers checked. Five direct Solscan Data tabs decode all four ClaimReceipt amounts and the epoch allocation; the script now links directly to those fields. The historical refused duplicate is explicitly devnet. Both public repos open without reviewer access.
+
+**Prepared:** one-screen release-copy/privacy decision sheet with the full branch-note strings. Recommendation: aggregate public rules-test status only; reviewed next still discloses per-member status, so that choice needs API/bot scope and fresh review, not just a web hide. Repository organization is report-only: no branches, worktrees, stashes or local configuration deleted.
+
+**Commits/state:** prior app checkpoints 35c0692 and c5146cc remain local. Public program doc links e574a99127a86273e5da97afdb61b5d0bcf84528 pushed. Browser evidence is docs/demo/2026-10-11-judge-links.md. No production write or main push. Next: Cisco's privacy decision and exact E0–E6 approval; the claim-page fix may proceed locally while deployment remains held.
+
 ## 2026-10-11 · Mainnet demo and submission checklist
 
 **Prepared, not recorded:** video beats 4–6 now use C16, C18, C20, C21 and the three non-founder mainnet claims. Each number maps to a finalized receipt. C22 is described as a readback, not a transaction. The refused duplicate remains explicitly devnet. Beat 7 uses the fresh full mainnet hash and the recorded reproducible build; it does not imply a new build.

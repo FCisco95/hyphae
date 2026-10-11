@@ -78,7 +78,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 ## Beat 5 — the week's payout list goes on-chain (mainnet, October 10) · ~25 s
 
-**Show:** [epoch 2's settlement panel](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2), then C20 [4qhKtnsV…Xop6EnLm](https://explorer.solana.com/tx/4qhKtnsVD78xpvRPdi7TQ1fcF86FjiueCFZNq6a11yfSQ7Q4UeXboGaRtzTDtyMnFbDtVywHGzgytrXqXop6EnLm) and the [decoded epoch account](https://solscan.io/account/J7ipBhK2eJu8QFGtXTsYWNDhPYzcerwX22UkkJTaCPXG).
+**Show:** [epoch 2's settlement panel](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2), then C20 [4qhKtnsV…Xop6EnLm](https://explorer.solana.com/tx/4qhKtnsVD78xpvRPdi7TQ1fcF86FjiueCFZNq6a11yfSQ7Q4UeXboGaRtzTDtyMnFbDtVywHGzgytrXqXop6EnLm) and the [decoded epoch account](https://solscan.io/account/J7ipBhK2eJu8QFGtXTsYWNDhPYzcerwX22UkkJTaCPXG#accountData).
 
 **Say:** "The week's payout list is committed as one merkle root, beside the hash of its audit record. This mainnet epoch allocated 1.238881509 SOL to four wallets, including three community members other than me. The Treasury received 0.045 SOL. The cap remainder stayed in the vault."
 
@@ -86,16 +86,16 @@ No traction number is said unless the build log recorded it. Nothing is called l
 
 ## Beat 6 — all four members claimed (mainnet, October 10) · ~25 s
 
-**Show:** [epoch 2's claim page](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2/claim), then its four paid rows and the [decoded founder claim receipt](https://solscan.io/account/C7nEMEavZm9BE8i2jFVK3Lq1sWA1TKTqtHws9iUxMDP9). Open C21 [5iBbZVJE…vD6sZn55](https://explorer.solana.com/tx/5iBbZVJEnjr9tvpHZ2dFYgsKAxy5tSvqQ3bUCaXY4fDGgH9PfomphF8SuTFrFqvpbFdLLE89AHZSSQRUvD6sZn55), then one non-founder claim. No new transaction is needed for this recording.
+**Show:** [epoch 2's claim page](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2/claim), then its four paid rows and the [decoded founder claim receipt](https://solscan.io/account/C7nEMEavZm9BE8i2jFVK3Lq1sWA1TKTqtHws9iUxMDP9#accountData). Open C21 [5iBbZVJE…vD6sZn55](https://explorer.solana.com/tx/5iBbZVJEnjr9tvpHZ2dFYgsKAxy5tSvqQ3bUCaXY4fDGgH9PfomphF8SuTFrFqvpbFdLLE89AHZSSQRUvD6sZn55), then one non-founder claim. No new transaction is needed for this recording.
 
 **Say:** "I claimed my own allocation through Phantom. The other three payees claimed too: all 1.238881509 SOL is paid, with zero unclaimed. Each claim leaves a receipt containing its score, amount and evidence hash. The page says paid only when that receipt is on-chain."
 
 **Evidence:**
 
-- **C21, founder:** [5iBbZVJE…vD6sZn55](https://explorer.solana.com/tx/5iBbZVJEnjr9tvpHZ2dFYgsKAxy5tSvqQ3bUCaXY4fDGgH9PfomphF8SuTFrFqvpbFdLLE89AHZSSQRUvD6sZn55) — 363750000 lamports to `MAoRn1JFD66gcXHiCqcAgppXBCR4TP8pKT4XV7HVhAB`; [decoded claim receipt](https://solscan.io/account/C7nEMEavZm9BE8i2jFVK3Lq1sWA1TKTqtHws9iUxMDP9).
-- **Member claim 1:** [2gbAmxM6…Wh4ek1tK](https://explorer.solana.com/tx/2gbAmxM6Q4LPC8R68wRbRyGKn7nD97vRZJ4FVD8eZucJab82LtDGFB1oK3d2TnzkkXM2m45aG6EpQc8QWh4ek1tK) — 223351074 lamports to `GsirkxvyAaNsvDCXFUJBh7vf3cMpv5X1wmBTwvHeXgt3`; [decoded claim receipt](https://solscan.io/account/Hti2rp3dNmzkdQjWoHxcYSa58tJc2b6D5my2hqmVrioa).
-- **Member claim 2:** [59kNeiZ5…nGtAZvSy](https://explorer.solana.com/tx/59kNeiZ53TqEk9RU5Ujr5Wb6SfkjaRwtXBdBeovR9ZDPQC6H3qcRCd6YyspLDPwXGMmCmLxeZM99bcBsnGtAZvSy) — 363750000 lamports to `2BsmXzsH9fjDVTmkR2hGXfRPFcfv7EHvvF6JdjotneB8`; [decoded claim receipt](https://solscan.io/account/7NGcK4KiMG12Jfre5xBQq1BEHPtD34mMEGrDzTx8NYt).
-- **Member claim 3:** [63tutuXC…vWRLCHzq](https://explorer.solana.com/tx/63tutuXCGdRvHrMZBaF973jDgQoweV5RFRCkmmP9xRG51xga9Xe7dDuAY78YbZA9EZR8WiRc92X88YoDvWRLCHzq) — 288030435 lamports to `4a5G78Rns6g7EUEmRw15Rk6NwNsUeZnQjPDgHbhdigvN`; [decoded claim receipt](https://solscan.io/account/3JfF36qcrxFpm2LgV6dmha2sSvLz7jmiWd82VwnGvGsS).
+- **C21, founder:** [5iBbZVJE…vD6sZn55](https://explorer.solana.com/tx/5iBbZVJEnjr9tvpHZ2dFYgsKAxy5tSvqQ3bUCaXY4fDGgH9PfomphF8SuTFrFqvpbFdLLE89AHZSSQRUvD6sZn55) — 363750000 lamports to `MAoRn1JFD66gcXHiCqcAgppXBCR4TP8pKT4XV7HVhAB`; [decoded claim receipt](https://solscan.io/account/C7nEMEavZm9BE8i2jFVK3Lq1sWA1TKTqtHws9iUxMDP9#accountData).
+- **Member claim 1:** [2gbAmxM6…Wh4ek1tK](https://explorer.solana.com/tx/2gbAmxM6Q4LPC8R68wRbRyGKn7nD97vRZJ4FVD8eZucJab82LtDGFB1oK3d2TnzkkXM2m45aG6EpQc8QWh4ek1tK) — 223351074 lamports to `GsirkxvyAaNsvDCXFUJBh7vf3cMpv5X1wmBTwvHeXgt3`; [decoded claim receipt](https://solscan.io/account/Hti2rp3dNmzkdQjWoHxcYSa58tJc2b6D5my2hqmVrioa#accountData).
+- **Member claim 2:** [59kNeiZ5…nGtAZvSy](https://explorer.solana.com/tx/59kNeiZ53TqEk9RU5Ujr5Wb6SfkjaRwtXBdBeovR9ZDPQC6H3qcRCd6YyspLDPwXGMmCmLxeZM99bcBsnGtAZvSy) — 363750000 lamports to `2BsmXzsH9fjDVTmkR2hGXfRPFcfv7EHvvF6JdjotneB8`; [decoded claim receipt](https://solscan.io/account/7NGcK4KiMG12Jfre5xBQq1BEHPtD34mMEGrDzTx8NYt#accountData).
+- **Member claim 3:** [63tutuXC…vWRLCHzq](https://explorer.solana.com/tx/63tutuXCGdRvHrMZBaF973jDgQoweV5RFRCkmmP9xRG51xga9Xe7dDuAY78YbZA9EZR8WiRc92X88YoDvWRLCHzq) — 288030435 lamports to `4a5G78Rns6g7EUEmRw15Rk6NwNsUeZnQjPDgHbhdigvN`; [decoded claim receipt](https://solscan.io/account/3JfF36qcrxFpm2LgV6dmha2sSvLz7jmiWd82VwnGvGsS#accountData).
 
 C22/P14 is the readback after C21, not a separate signature. The final October 10 read and the fresh October 11 API read both show 4/4 paid, claimed = allocated and unclaimed 0. The IDL publication transactions in the [receipt index](https://github.com/FCisco95/hyphae-program/blob/main/docs/2026-10-10-mainnet-payout.md) explain Solscan's decoded fields.
 
