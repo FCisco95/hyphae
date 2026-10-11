@@ -2,6 +2,16 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-11 · Mainnet payout truth pass
+
+**Verified:** the public epoch-2 API reports all four wallets paid: 1,238,881,509 lamports claimed, 0 unclaimed. C16, C18, C20, all four claims and both IDL transactions were rechecked finalized with no error. C18's parsed transfer is exactly 1.5 SOL to the recorded vault. The fresh mainnet executable hash from WSL solana-verify is `7e902d1b5f8d8c49dfd199ec2e7bf44139b56524d98408f1556e14f4e9ab43ac`, matching the October 2 build.
+
+**Changed:** both README Status sections now cite the October 10 mainnet receipts, community and vault, 4/4 claims (three non-founder payees), and published IDL. Both repos are described as public. The public receipt index contains only chain addresses, signatures and aggregate counts. No member identities or private operator notes were copied.
+
+**Commits/checks:** public program docs `55396b649b359aa673ff839dce1ba5d0b13de5d7` pushed to `hyphae-program/main`; clean and equal to origin/main. App baseline `4e6b99e7acdb7bf69891934b760a29bf2ec32669`; this app checkpoint stays local under the release hold. Both docs diffs pass whitespace checks. Default RPC failed from WSL; the alternate public mainnet RPC supplied the hash.
+
+**Next:** replace the video's devnet-only payout beats with the mainnet receipts, update the submission checklist, check judge links in a fresh browser, then present exact release strings and the privacy ruling before requesting E0–E6 approval. No main push, migration, deployment or epoch-3 amendment.
+
 ## 2026-10-10 · First mainnet payout: epoch 2 published and claimed
 
 **Shipped:** Hyphae paid its first contributor on mainnet. Epoch 2 closed at 00:00 UTC with 33 posts from 9 testers; the code-run gate found 4 payable. We created the MYCEL community and its vault, funded a 1.5 SOL pot, published the epoch with the Ledger, and the first payee claimed 0.36375 SOL from the claim page. The other three can claim now.
