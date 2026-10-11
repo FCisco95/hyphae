@@ -1,9 +1,15 @@
 "use client";
 
-import Image from "next/image.js";
+import { getImageProps } from "next/image.js";
 import { useState } from "react";
 import { COMMUNITY_SETUP_PROMPT } from "../lib/community-onboarding.js";
 import { COMMUNITY_SETUP } from "../lib/links.js";
+
+const AGENT_LOGOS = [
+  { name: "Cursor", src: "/brand/agents/cursor.svg", size: 18 },
+  { name: "Claude Code", src: "/brand/agents/claude-code.svg", size: 18 },
+  { name: "OpenAI", src: "/brand/agents/openai.svg", size: 32 },
+];
 
 export function CommunityOnboarding() {
   const [dismissed, setDismissed] = useState(false);
@@ -45,21 +51,20 @@ export function CommunityOnboarding() {
         <div className="onboarding-action">
           <button type="button" className="onboarding-copy" onClick={copyPrompt}>
             <span className="onboarding-agents" aria-hidden="true">
-              <span className="onboarding-agent" title="Cursor">
-                <Image src="/brand/agents/cursor.svg" width={18} height={18} alt="" unoptimized />
-              </span>
-              <span className="onboarding-agent" title="Claude Code">
-                <Image
-                  src="/brand/agents/claude-code.svg"
-                  width={18}
-                  height={18}
-                  alt=""
-                  unoptimized
-                />
-              </span>
-              <span className="onboarding-agent" title="OpenAI">
-                <Image src="/brand/agents/openai.svg" width={32} height={32} alt="" unoptimized />
-              </span>
+              {AGENT_LOGOS.map(({ name, src, size }) => (
+                <span className="onboarding-agent" title={name} key={name}>
+                  {/* biome-ignore lint/performance/noImgElement: getImageProps serves tiny, unmodified local SVGs. */}
+                  <img
+                    {...getImageProps({
+                      src,
+                      width: size,
+                      height: size,
+                      alt: "",
+                      unoptimized: true,
+                    }).props}
+                  />
+                </span>
+              ))}
             </span>
             <span>{copyState === "copied" ? "Prompt copied" : "Copy setup prompt"}</span>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
