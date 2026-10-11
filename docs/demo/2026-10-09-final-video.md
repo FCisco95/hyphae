@@ -2,22 +2,22 @@
 
 Plan Week 4 #6. Under 3 minutes, recorded in Loom. Built from `docs/BUILDLOG.md` and shipped evidence only. Rescheduled 2026-10-08: epoch 2 now closes 2026-10-10T00:00Z, so the recording moved to October 11, after C22.
 
-Every claim carries its evidence in brackets: a commit, a devnet signature (open it at `https://explorer.solana.com/tx/<signature>?cluster=devnet`) or a page. Each beat has one label:
+Every claim carries a commit, a linked mainnet receipt or a page as evidence. Devnet evidence is explicitly labeled and used only for the historical refused duplicate claim. Each beat has one label:
 - **historical:** happened and was recorded at the time;
 - **devnet:** on Solana devnet, with signatures;
 - **locally tested:** a passing test on a named commit;
-- **mainnet:** only if Runbook C ran, with the signatures it recorded.
+- **mainnet:** the October 10 finalized transactions in the public receipt index.
 
 No traction number is said unless the build log recorded it. Nothing is called live unless the build log says it was deployed.
 
 ## Before recording
 
-**Live state, October 8, 18:00Z (re-read it before recording):** web serves `main` (6425b99, docs only on top of the `jev-e5f864b` source). The API machine and the worker both run image `jev-e5f864b` (`sha256:b3f5617d804a377e8eaae1c6c67641ffe85390e47d88c162f0723206994236c4`) since 2026-10-07 21:36Z; the Neon journal is at 18 (migration `0017_reward_amendment_chain`). C1–C13 are complete: the mainnet program, hash and Ledger authority are recorded in [C13](../handoffs/2026-10-02-c13-mainnet-receipt.md). On October 8 no MYCEL community, vault or epoch account exists on mainnet (Ledger admin 0 lamports; C14 not started) and no payout has happened. Epoch 2 held 16 contributions from 8 members on the 18:13Z read, all decided; six of the eight have no signed wallet, so the payable set is recounted at the sitting and no figure here is a payout figure. Epoch 2 keeps Claude Haiku 5.5 on `reward-eval/2` to the close; epoch 3 moves to `reward-eval/3` after the hold. The [live receipts](2026-10-08-first-payout-readiness.md#live-receipts-october-5-read-only) are the October 5 reads, and the packet's current-state paragraph is the October 8 one; read both before making a live claim. Beats 4–6 keep their devnet evidence until their specific October 9–11 receipts exist; beat 7 may use the verified mainnet program, and beat 8 may show the live read API. If the epoch is empty or blocked, show its actual unavailable settlement and say “mainnet program deployed; no contributor payment” instead of implying a first payout. If it pays only the founder, use [the plain wording](2026-10-08-first-payout-readiness.md#when-the-founder-is-the-only-payable-member) (confirmed by Cisco on 2026-10-05).
+**Verified October 11:** epoch 2 was published on Solana mainnet on October 10. All four payees claimed 1,238,881,509 lamports, unclaimed 0; three payees are non-founder community members. C14–C22 are complete. The community, vault, publication, claims, IDL and fresh program hash are in the [public receipt index](https://github.com/FCisco95/hyphae-program/blob/main/docs/2026-10-10-mainnet-payout.md). The API and worker last recorded image is `jev-e5f864b`; the reviewed post-payout release is held until Cisco approves E0–E6. Epoch 3 still uses `reward-eval/2`; no scorer amendment is part of this recording arc. Re-read the live pages before recording. Never describe a local commit as deployed.
 
-1. Read the newest build-log entries. Runbook C (`docs/handoffs/2026-09-28-runbook-c.md`) runs in two blocks: Parts 1–2 (C1–C13, the candidate on Fly and Vercel, then the program on mainnet) on Oct 2–3, and Parts 3–4 (C14–C22, MYCEL's community and vault, then the first payout) on Oct 9–11: C14–C18 on Oct 9, the close on Oct 10 at 00:00Z, C19–C22 on Oct 11. Use each **mainnet swap-in** below only if the steps it names ran, with the signatures the build log records for them. Otherwise that beat says "devnet" on screen.
-2. `git switch main && git pull --ff-only`. Note the SHA and the latest CI run; say those, not the numbers in this file.
-3. Open the tabs in the order of the recording guide below. The site is https://hyphae-delta.vercel.app, live since the Sep 29 cutover (`docs/handoffs/2026-09-29-cutover-run.md`, step 15).
-4. Fallbacks, if the site can't be reached: `docs/showcase/` has every page in both themes. Its settled-epoch and claim pages show the web tests' fixture data, so don't present them as real numbers. A real devnet settlement panel, in the earlier design, is `git show ffdfac0:docs/screenshots/epoch-1180.png`.
+1. Open the [epoch 2 settlement](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2). It must show published on mainnet and four paid claims; compare it with the public receipt index.
+2. Read `git status -sb` and the latest approved release record. Do not pull, reset or push held main to prepare a recording. Note the actual deployed SHA and image separately from local main.
+3. Open the tabs in the recording guide. Use the literal links below; the mainnet explorer links have no devnet query.
+4. If a live page fails, show its actual error. Screenshots in `docs/showcase/` are fixture data, not a mainnet receipt. Record with the real mainnet explorer and Solscan receipts instead.
 
 ## Recording guide
 
@@ -32,9 +32,9 @@ No traction number is said unless the build log recorded it. Nothing is called l
 | 1 | `<site>/` (the hero) | — |
 | 2 | `<site>/#how`, step 2 | the Hyphae Lab reply of 2026-09-17 |
 | 3 | `<site>/c/<mint>/e/<n>`, the Wallet column | `/link`, Phantom's prompt, `/me` in Hyphae Lab |
-| 4 | `<site>/#proof`, the first two devnet rows | the explorer on `2xkfBY…` and `2Af95f…` |
-| 5 | `<site>/#proof`, the publish row; after Runbook C, `<site>/c/<mint>/e/2`'s settlement panel | the explorer on the publish |
-| 6 | `<site>/#proof`, the claim and the refused claim; after Runbook C, `<site>/c/<mint>/e/2/claim` | the explorer on both |
+| 4 | [Community](https://solscan.io/account/HRkBN4sX7NyPEfa4SfRoTsP1dynmPDLMYbY7qLa4XbRX), then [vault](https://solscan.io/account/AC3zkGQ9abJs6sssaY5nDX8Qjv2UM19r4JYLgcHoG86K) | C16 [aensGhPg…aQJSghNX](https://explorer.solana.com/tx/aensGhPgR8XBz5unAugUd9bJai3WbyUoJFwCLKmGn5kqUjsTNYNSQXR9oraAx9FitJac74tK9fYyCTBaQJSghNX) and C18 [5spBxwDa…i1c7rjtj](https://explorer.solana.com/tx/5spBxwDa9jbMbvZup3bR1aU5t2HVoYb24U2JLvX4dx8U6GJehDr1i1pgepxqTtodJf2ykRTP95dHGMBqi1c7rjtj) |
+| 5 | [Epoch 2 settlement](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2) | C20 [4qhKtnsV…Xop6EnLm](https://explorer.solana.com/tx/4qhKtnsVD78xpvRPdi7TQ1fcF86FjiueCFZNq6a11yfSQ7Q4UeXboGaRtzTDtyMnFbDtVywHGzgytrXqXop6EnLm) |
+| 6 | [Epoch 2 claim page](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2/claim), then the four paid rows | C21 [5iBbZVJE…vD6sZn55](https://explorer.solana.com/tx/5iBbZVJEnjr9tvpHZ2dFYgsKAxy5tSvqQ3bUCaXY4fDGgH9PfomphF8SuTFrFqvpbFdLLE89AHZSSQRUvD6sZn55) and the three member claims below |
 | 7 | `<site>/#trust` (the build hash and the custody policy) | the terminal's `solana-verify` |
 | 8 | `<site>/#integrate` | the public README's vault section; live `/docs` on the api (C7 completed October 2) |
 | Close | `<site>/` | — |
@@ -68,50 +68,46 @@ No traction number is said unless the build log recorded it. Nothing is called l
 - the linking build and the wallet-at-close rule: build log 2026-09-24 (night), commits `a4265f7`..`3e00174`;
 - live: build log 2026-09-24 (evening), the cutover deployed `b7bfe55` and Phantom signed in Hyphae Lab (`docs/handoffs/2026-09-24-cutover.md`).
 
-## Beat 4 — a community's vault on Solana, set up from a hardware wallet (devnet) · ~25 s
+## Beat 4 — a community's vault on Solana mainnet (mainnet, October 10) · ~25 s
 
-**Show:** the site's `<site>/#proof`, the first two rows of the devnet run, then each row's explorer link: `initialize_community`, then the vault deposit.
+**Show:** the MYCEL [community](https://solscan.io/account/HRkBN4sX7NyPEfa4SfRoTsP1dynmPDLMYbY7qLa4XbRX) and [vault](https://solscan.io/account/AC3zkGQ9abJs6sssaY5nDX8Qjv2UM19r4JYLgcHoG86K), then C16 [aensGhPg…aQJSghNX](https://explorer.solana.com/tx/aensGhPgR8XBz5unAugUd9bJai3WbyUoJFwCLKmGn5kqUjsTNYNSQXR9oraAx9FitJac74tK9fYyCTBaQJSghNX) and C18 [5spBxwDa…i1c7rjtj](https://explorer.solana.com/tx/5spBxwDa9jbMbvZup3bR1aU5t2HVoYb24U2JLvX4dx8U6GJehDr1i1pgepxqTtodJf2ykRTP95dHGMBqi1c7rjtj). These are mainnet links.
 
-**Say:** "Each community gets a vault that only the program controls. Here, Hyphae's admin key on my Ledger sets one up and funds it. There's no withdraw instruction. Money leaves the vault only as the 3% fee or as a valid claim."
+**Say:** "On October 10, my Ledger created MYCEL's community vault on Solana mainnet. I funded it with 1.5 SOL from my own wallet. The vault has no withdraw instruction: funds leave as the fixed 3% fee or a valid member claim."
 
-**Evidence:**
-- run 7, from Hyphae's admin `2kz1Zq…` on the Ledger: `initialize_community` `2xkfBYCqiJhQupUL6gB7P9m6DkpgomVkysYMw5bRVveAZvBDmSwzZ7C3kfSVDpaY5PFoN7mcwXbQ8KPHhStvsENo`, deposit `2Af95ffYBU6fE11G7hJryYeASkD85HsZ1ikfbbHu1srBp72hWHSzaJRAiqZuRVj65EFxoYJQgRu6Z3dKb8agaoof` (`docs/handoffs/2026-09-27-devnet-proof.md`);
-- the program: `b782495` (program), build log 2026-09-25 (third session).
+**Evidence:** C16 creates community `HRkBN4…XbRX` and vault `AC3zkG…oG86K`; C18 transfers 1,500,000,000 lamports. The fee recipient is the MYCEL Treasury `rRceAUBN…u7MK`. The [public program source](https://github.com/FCisco95/hyphae-program/tree/main/programs/hyphae/src) defines publish and claim, with no withdraw. [Receipt index](https://github.com/FCisco95/hyphae-program/blob/main/docs/2026-10-10-mainnet-payout.md).
 
-**Mainnet swap-in:** C16's `initialize_community` and C18's vault funding. Fee address: the MYCEL Treasury vault `rRceAUBN…u7MK`.
+## Beat 5 — the week's payout list goes on-chain (mainnet, October 10) · ~25 s
 
-## Beat 5 — the week's payout list goes on-chain as one root (devnet) · ~25 s
+**Show:** [epoch 2's settlement panel](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2), then C20 [4qhKtnsV…Xop6EnLm](https://explorer.solana.com/tx/4qhKtnsVD78xpvRPdi7TQ1fcF86FjiueCFZNq6a11yfSQ7Q4UeXboGaRtzTDtyMnFbDtVywHGzgytrXqXop6EnLm) and the [decoded epoch account](https://solscan.io/account/J7ipBhK2eJu8QFGtXTsYWNDhPYzcerwX22UkkJTaCPXG).
 
-**Show:** the publish row in `<site>/#proof` and its explorer link on `publish_epoch`. After Runbook C, the settlement panel on `<site>/c/<mint>/e/2`.
+**Say:** "The week's payout list is committed as one merkle root, beside the hash of its audit record. This mainnet epoch allocated 1.238881509 SOL to four wallets, including three community members other than me. The Treasury received 0.045 SOL. The cap remainder stayed in the vault."
 
-**Say:** "When the week closes, every member's payout goes into a merkle root, and the root goes on-chain with the hash of the full audit record. The 3% fee goes to a fixed address set when the community was created. Only what's allocated is reserved; the rest stays for next week."
+**Evidence:** C20 `publish_epoch` at 2026-10-10 13:09:22Z; gross 1.5 SOL, fee 45,000,000 lamports, allocation 1,238,881,509; cap remainder 216,118,490, dust 1. C19's recorded plan and C20's decoded account match the [receipt index](https://github.com/FCisco95/hyphae-program/blob/main/docs/2026-10-10-mainnet-payout.md) and [live API](https://hyphae-api.fly.dev/v1/communities/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/epochs/2). These are allocation amounts; do not call the remainder the vault's rent-inclusive balance.
 
-**Evidence:**
-- run 7 `publish_epoch` `3oJ4T6NeYonVRgi1JBfofsRHEkd5RfuTKaEhUc7AHqFL8Pio2r2s6o4n7YtLm7zMPpLCw38mDa1efEzBBpAgy6DD`: gross 50,000,000 lamports, fee 1,500,000, 30,460,365 allocated across 3 payable members;
-- the settlement panel: commit `4ca3abf`; a real devnet publication in it: `git show ffdfac0:docs/screenshots/epoch-1180.png` (the earlier design).
+## Beat 6 — all four members claimed (mainnet, October 10) · ~25 s
 
-**Mainnet swap-in:** C20's `publish_epoch`, with C19's printed numbers. If the founder is the only payable member, say so here: “One member is paid this week, and it is me.” Do not call it a community payout; the unallocated remainder stays in the vault, and the figure is C19's, not the computed preview.
+**Show:** [epoch 2's claim page](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2/claim), then its four paid rows and the [decoded founder claim receipt](https://solscan.io/account/C7nEMEavZm9BE8i2jFVK3Lq1sWA1TKTqtHws9iUxMDP9). Open C21 [5iBbZVJE…vD6sZn55](https://explorer.solana.com/tx/5iBbZVJEnjr9tvpHZ2dFYgsKAxy5tSvqQ3bUCaXY4fDGgH9PfomphF8SuTFrFqvpbFdLLE89AHZSSQRUvD6sZn55), then one non-founder claim. No new transaction is needed for this recording.
 
-## Beat 6 — a member claims, and can't claim twice (devnet) · ~25 s
-
-**Show:** the claim and refused-claim rows in `<site>/#proof`, and their explorer links. After Runbook C: the claim page `<site>/c/<mint>/e/2/claim`, then the member shown as "paid" on `<site>/c/<mint>/e/2`.
-
-**Say:** "The member claims with their proof and gets exactly their share. A receipt is left on-chain, so a second claim of the same share fails on-chain. The page marks someone paid only when the chain holds that receipt."
+**Say:** "I claimed my own allocation through Phantom. The other three payees claimed too: all 1.238881509 SOL is paid, with zero unclaimed. Each claim leaves a receipt containing its score, amount and evidence hash. The page says paid only when that receipt is on-chain."
 
 **Evidence:**
-- run 7 claim `5ccGT1yLxySoRKjUZftCooXmbxk35WrJ71XFVuH8rfXxaKNiufPkzgLRdAbywRoLjoTL4DvFv3daYTgGyp8a3SmK`, 12,125,000 lamports;
-- the duplicate, refused on-chain: `5ob9A3Sg7DYoxCAMLDyX5EpuT2jSF6QBsruPRLf4tdTdTCSkfZCdXSkMuWLuqkFEPQC3eQJVGgzosxdLQbA2EknP`;
-- the claim page: commit `44c495d`; its phone layout in `docs/showcase/claim-390-dark.png` (fixture data).
 
-**Mainnet swap-in:** C21's claim and C22's P14 read. Say “paid” only with C21's claim signature and the receipt C22 shows. Say “my own reply, my own signed wallet” if that is the claimant; the system records Cisco's attestation of the author and does not verify the X account.
+- **C21, founder:** [5iBbZVJE…vD6sZn55](https://explorer.solana.com/tx/5iBbZVJEnjr9tvpHZ2dFYgsKAxy5tSvqQ3bUCaXY4fDGgH9PfomphF8SuTFrFqvpbFdLLE89AHZSSQRUvD6sZn55) — 363750000 lamports to `MAoRn1JFD66gcXHiCqcAgppXBCR4TP8pKT4XV7HVhAB`; [decoded claim receipt](https://solscan.io/account/C7nEMEavZm9BE8i2jFVK3Lq1sWA1TKTqtHws9iUxMDP9).
+- **Member claim 1:** [2gbAmxM6…Wh4ek1tK](https://explorer.solana.com/tx/2gbAmxM6Q4LPC8R68wRbRyGKn7nD97vRZJ4FVD8eZucJab82LtDGFB1oK3d2TnzkkXM2m45aG6EpQc8QWh4ek1tK) — 223351074 lamports to `GsirkxvyAaNsvDCXFUJBh7vf3cMpv5X1wmBTwvHeXgt3`; [decoded claim receipt](https://solscan.io/account/Hti2rp3dNmzkdQjWoHxcYSa58tJc2b6D5my2hqmVrioa).
+- **Member claim 2:** [59kNeiZ5…nGtAZvSy](https://explorer.solana.com/tx/59kNeiZ53TqEk9RU5Ujr5Wb6SfkjaRwtXBdBeovR9ZDPQC6H3qcRCd6YyspLDPwXGMmCmLxeZM99bcBsnGtAZvSy) — 363750000 lamports to `2BsmXzsH9fjDVTmkR2hGXfRPFcfv7EHvvF6JdjotneB8`; [decoded claim receipt](https://solscan.io/account/7NGcK4KiMG12Jfre5xBQq1BEHPtD34mMEGrDzTx8NYt).
+- **Member claim 3:** [63tutuXC…vWRLCHzq](https://explorer.solana.com/tx/63tutuXCGdRvHrMZBaF973jDgQoweV5RFRCkmmP9xRG51xga9Xe7dDuAY78YbZA9EZR8WiRc92X88YoDvWRLCHzq) — 288030435 lamports to `4a5G78Rns6g7EUEmRw15Rk6NwNsUeZnQjPDgHbhdigvN`; [decoded claim receipt](https://solscan.io/account/3JfF36qcrxFpm2LgV6dmha2sSvLz7jmiWd82VwnGvGsS).
 
-**Don't claim:** soulbound points in the wallet. The Token-2022 points mint (plan Week 3 #1) was not built.
+C22/P14 is the readback after C21, not a separate signature. The final October 10 read and the fresh October 11 API read both show 4/4 paid, claimed = allocated and unclaimed 0. The IDL publication transactions in the [receipt index](https://github.com/FCisco95/hyphae-program/blob/main/docs/2026-10-10-mainnet-payout.md) explain Solscan's decoded fields.
 
-## Beat 7 — anyone can check it (devnet, locally tested) · ~25 s
+**Duplicate-claim evidence, optional:** the program rejects a second claim for the same leaf. The recorded refused attempt is [on devnet](https://explorer.solana.com/tx/5ob9A3Sg7DYoxCAMLDyX5EpuT2jSF6QBsruPRLf4tdTdTCSkfZCdXSkMuWLuqkFEPQC3eQJVGgzosxdLQbA2EknP?cluster=devnet). Label that shot **devnet**; do not imply a refused mainnet attempt occurred.
+
+**Don't claim:** soulbound points in the wallet. The Token-2022 points mint was not built. X ownership is operator-attested, not verified by the system.
+
+## Beat 7 — anyone can check it (mainnet hash, recorded reproducible build) · ~25 s
 
 **Show:**
-1. The terminal: `solana-verify get-program-hash -u devnet EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E` prints `7e902d1b…43ac`.
-2. The same hash from `anchor build --verifiable`, in a fresh clone of the public program repo, `FCisco95/hyphae-program`.
+1. The terminal: `solana-verify get-program-hash -u https://solana-rpc.publicnode.com EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E` prints `7e902d1b5f8d8c49dfd199ec2e7bf44139b56524d98408f1556e14f4e9ab43ac`.
+2. The recorded reproducible build hash in the public [program README](https://github.com/FCisco95/hyphae-program#verify-the-build). Rebuild from a fresh clone only if showing a new build; the October 11 check re-read the chain hash.
 3. The site's `<site>/#trust`: the same hash, and the custody policy word for word.
 
 **Say:** "The program on chain is byte for byte what its public repository builds in Anchor's pinned Docker image. The custody rules are public. The key that publishes each root decides where that week's pot goes, and the program can be upgraded. The policy keeps both keys on a hardware wallet."
@@ -121,7 +117,7 @@ No traction number is said unless the build log recorded it. Nothing is called l
 - the custody policy: `37d09cc`, and `CUSTODY_POLICY` in `packages/core`; the key rulings: `docs/handoffs/2026-09-27-keys-and-fee-rulings.md`;
 - the program security review (three rounds, no fund-loss path): `docs/handoffs/2026-09-27-afternoon-arc.md`.
 
-**Mainnet swap-in:** `solana-verify get-program-hash -u mainnet-beta EAz8…` and C13's readback, upgrade authority `2kz1Zq…`.
+**Mainnet evidence:** the October 11 full hash read is in the [public receipt index](https://github.com/FCisco95/hyphae-program/blob/main/docs/2026-10-10-mainnet-payout.md); C13 records deployment and Ledger authority. No on-chain explorer verification registration is claimed.
 
 ## Beat 8 — any project can fund a vault, and read everything (locally tested) · ~20 s
 
@@ -151,8 +147,8 @@ These were not built or are not live; the video must not imply them:
 - the Codama client;
 - the web `/admin` page (plan Week 4 #3, dropped by Cisco on 2026-09-27);
 - the fixture data in `docs/showcase/`'s settled-epoch and claim pages, as if it were real;
-- "open source" (both repositories are BUSL 1.1, source available; the application repo is private, and the program and rubrics are public in `FCisco95/hyphae-program`);
-- tester or member counts past what the build log records (on October 5: one member with a counted contribution, the founder; on the October 8 18:13Z read: 16 contributions from 8 members, six without a signed wallet);
+- "open source" (both repositories are BUSL 1.1, source available; both the application repo and the program/rubric repo are public in `FCisco95/hyphae-program`);
+- tester or member counts past what the closed epoch records: epoch 2 had 33 contributions from 9 members, with 4 payees; this is one pilot epoch, not an active-user claim;
 - members using the private raid buttons, receipts, `/issue` or raid alerts: they are deployed on the API since October 5 and the operator view and receipt lookup were exercised by Cisco only; no member has used them, and no alert subscriber or real-phone test exists;
 - X relation or account ownership as verified (the system records an attestation, not proof);
 - any mainnet transaction that Runbook C did not record.

@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-11 · Mainnet demo and submission checklist
+
+**Prepared, not recorded:** video beats 4–6 now use C16, C18, C20, C21 and the three non-founder mainnet claims. Each number maps to a finalized receipt. C22 is described as a readback, not a transaction. The refused duplicate remains explicitly devnet. Beat 7 uses the fresh full mainnet hash and the recorded reproducible build; it does not imply a new build.
+
+**Checklist:** C14–C22 marked complete with the late C18b audit disclosed. Removed the private-repo collaborator step because both repos are public. Retained the not-built points/client/admin disclosures. Recorded the exact E0–E6 approval scope, claim review stop and October 12 12:00Z deploy cutoff. No E7–E8 amendment or posts.
+
+**Checks/state:** scripts cite the public program receipt index at `55396b6`; app truth checkpoint `35c0692`. Whitespace and receipt coverage checked before this docs checkpoint. App commits remain local; no release, production write or main push. Next: clean-browser judge links, then Cisco's privacy and exact release decision.
+
 ## 2026-10-11 · Mainnet payout truth pass
 
 **Verified:** the public epoch-2 API reports all four wallets paid: 1,238,881,509 lamports claimed, 0 unclaimed. C16, C18, C20, all four claims and both IDL transactions were rechecked finalized with no error. C18's parsed transfer is exactly 1.5 SOL to the recorded vault. The fresh mainnet executable hash from WSL solana-verify is `7e902d1b5f8d8c49dfd199ec2e7bf44139b56524d98408f1556e14f4e9ab43ac`, matching the October 2 build.
