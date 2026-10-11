@@ -1,21 +1,24 @@
 # Post-payout release approval sheet
 
-Prepared October 11 from reviewed `next` 1249fed. **No release approval received.** Scope: E0–E6 only. No scorer amendment or announcement. Deploy cutoff: October 12 12:00Z, except single-commit link/README fixes.
+Prepared October 11. Original reviewed next: 1249fed. Privacy accepted at f573a68 (review record on next 9d0da9b); claim recovery accepted at main cc4f773. **No exact E0–E6 production authorization received.** Deploy cutoff: October 12 12:00Z, except single-commit link/README fixes.
 
-## One-screen decision
+## One-screen release copy
 
-| Surface | Exact visible examples |
+| Surface | Member-visible examples that will ship |
 |---|---|
-| Payout rows and /me | “Scored.”; “Payable: wallet, rules test and hold confirmed.”; “Not payable: the rules test was not passed by the close.”; “Current link: {AbCd…WxYz}, signed” |
-| Wallet record | “Wallet record”; “Points from an open epoch are provisional, and points do not promise payment.”; “{amount}, paid in {tx}”; “No public record” |
+| Public scoring / private checklist | Public: “Scored.” Group /me: “Open your checklist in private chat.” Button: “Open my private checklist”. Only the member in private chat sees “To be paid for epoch {n}:”, their rules-test result, hold check and next step. |
+| Wallet record | “Wallet record”; “Points from an open epoch are provisional, and points do not promise payment.”; “{amount}, paid in {tx}”; “No public record”. |
 | Raid stats / public recap | “5 members took part: 4 replies, 2 quotes.”; “Credited so far: 3 of 6, average credited score 71.”; “2 still being scored and may be credited later.” |
-| Claim / Blink | “Share claim link on X”; “Your wallet pays the network fee and the claim receipt's rent.”; “That request could not be read. Try again.”; already-claimed error includes its explorer transaction |
-| Epoch 2 schedule | “Schedule change”; “This epoch closes on 2026-10-10 00:00 UTC: 1 day later than its configured window of 7 days, which would have ended on 2026-10-09 00:00 UTC.”; “The change and its reason are recorded in the public changelog.” |
+| Claim / Blink | “Share claim link on X”; “Connect wallet”; “{wallet} connected” with the full address; “Waiting for your wallet… Check its approval window.”; after 60 seconds: cancel the pending request before retrying; “I cancelled it — check again”. |
+| Epoch 2 schedule | “Schedule change”; “This epoch closes on 2026-10-10 00:00 UTC: 1 day later than its configured window of 7 days, which would have ended on 2026-10-09 00:00 UTC.”; links to the recorded reason. |
 
-**Privacy recommendation:** hide per-member rules-test status in public API responses and pages; show aggregates only. Keep a member's own checklist private. Reviewed next currently exposes rules-test pass/fail and the hold outcome per member id, plus a first-score hint in the group. Hiding web text alone leaves the API disclosure. This recommendation needs explicit API/bot scope and fresh review before release; it is not a setting in the reviewed plan.
+**Privacy selected by Cisco:** “Authorize the privacy change: public aggregates only; member checklist private (recommended)”. Public API, pages and group scores omit per-member rules-test/hold verdicts. A private checklist checks current community membership and uses the authenticated Telegram sender. Existing public on-chain payout receipts remain public.
 
-**Decision:** approve the reviewed per-member disclosures and full copy below, or authorize the privacy change and review it before release. After that decision, production authorization must be the exact sentence **yes, run the post-payout release (E0–E6)**. It covers the merge, exact image, migrations 0018+0019 through db.mjs, API, worker, main web push and smoke.
+**Reviews and evidence:** [privacy ACCEPT](../reviews/2026-10-11-privacy.md), [claim-page ACCEPT](../reviews/2026-10-11-claim-page.md), [judge links](2026-10-11-judge-links.md), [local screenshots](screenshots/2026-10-11/README.md). E0 combined gate runs only after the authorized merge; no image, migration, machine update or main push has run.
 
+**Required production authorization:** exactly **yes, run the post-payout release (E0–E6)**. Covers the history-preserving merge, combined gate, exact image, db.mjs precheck → 0018 → 0019 → postcheck, API, worker, main web push and smoke. E7–E8, scorer amendment, announcements, new payouts and epoch 3 publication remain excluded.
+
+**Copy precedence:** the full branch-note quotes below are historical reviewed copy. Their public per-member eligibility sentences and first-score hints are superseded by the selected privacy rule. The checklist sentences survive only in the member’s private chat.
 ## Full branch-note copy
 
 

@@ -2,13 +2,13 @@ import { readFileSync } from "node:fs";
 import { CUSTODY_POLICY, CUSTODY_POLICY_URL } from "@hyphae/core";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { DEVNET_RECORD, LICENSE, VERIFY_BUILD } from "../lib/links.js";
+import { LICENSE, MAINNET_RECORD, VERIFY_BUILD } from "../lib/links.js";
 import * as f from "./fixtures.js";
 import {
-  DEVNET_RUN,
   Hero,
   INTEGRATION,
   Integrate,
+  MAINNET_RUN,
   Proof,
   Trust,
   VERIFIED_HASH,
@@ -23,9 +23,9 @@ const text = (el: React.ReactElement) =>
     .replace(/&amp;/g, "&")
     .replace(/\s+/g, " ");
 const repo = (path: string) => readFileSync(new URL(`../../../${path}`, import.meta.url), "utf8");
-// The live column comes before the devnet record in the proof section.
+// The live column comes before the mainnet record in the proof section.
 const liveColumn = (el: React.ReactElement) =>
-  text(el).split("A full run on Solana devnet")[0] ?? "";
+  text(el).split("October 10: four wallets paid on mainnet")[0] ?? "";
 
 describe("Hero", () => {
   it("leads to the community and to the claim page", () => {
@@ -128,16 +128,16 @@ describe("Proof", () => {
     expect(epochDown).toContain("The newest closed epoch can't be read right now.");
   });
 
-  it("cites every devnet transaction from the run 7 record, labelled devnet", () => {
-    const record = repo("docs/handoffs/2026-09-27-devnet-proof.md");
+  it("cites all seven mainnet payout transactions, labelled mainnet", () => {
+    const record = repo("docs/demo/2026-10-10-mainnet-payout.md");
     const html = renderToStaticMarkup(<Proof live={{ state: "unavailable" }} />);
-    expect(DEVNET_RUN).toHaveLength(5);
-    for (const { signature } of DEVNET_RUN) {
+    expect(MAINNET_RUN).toHaveLength(7);
+    for (const { signature } of MAINNET_RUN) {
       expect(record).toContain(signature);
-      expect(html).toContain(`https://explorer.solana.com/tx/${signature}?cluster=devnet`);
+      expect(html).toContain(`https://explorer.solana.com/tx/${signature}`);
     }
-    expect(html.match(/class="net">devnet</g)).toHaveLength(DEVNET_RUN.length);
-    expect(html).toContain(`href="${DEVNET_RECORD}"`);
+    expect(html.match(/class="net">mainnet</g)).toHaveLength(MAINNET_RUN.length);
+    expect(html).toContain(`href="${MAINNET_RECORD}"`);
   });
 });
 

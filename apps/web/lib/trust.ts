@@ -179,10 +179,14 @@ export const TRUST_SECTIONS: TrustSection[] = [
         evidence: [address(ADMIN_LEDGER, "Ledger on Solana Explorer"), MAINNET_RECEIPT],
       },
       {
-        text: `Hyphae Lab's fee goes to the MYCEL Treasury, Squads vault ${FEE_VAULT}, which needs 2 of 3 signers to move funds. It is fixed when the community is created on mainnet, planned for 2026-10-08, and cannot change afterwards.`,
+        text: `Hyphae Lab's fee goes to the MYCEL Treasury, Squads vault ${FEE_VAULT}, which needs 2 of 3 signers to move funds. It was fixed when the community was created on mainnet on 2026-10-10 and cannot change afterwards.`,
         evidence: [
           address(FEE_VAULT, "vault on Solana Explorer"),
           file("docs/handoffs/2026-09-27-keys-and-fee-rulings.md", "fee ruling"),
+          {
+            label: "October 10 mainnet receipts",
+            href: `${GITHUB}/blob/main/docs/2026-10-10-mainnet-payout.md`,
+          },
         ],
       },
       {

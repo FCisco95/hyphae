@@ -5,6 +5,7 @@ export const APP_REPO = "https://github.com/FCisco95/hyphae";
 export const API_DOCS = "https://hyphae-api.fly.dev/docs";
 export const README_STATUS = `${GITHUB}#status`;
 export const VERIFY_BUILD = `${GITHUB}#verify-the-build`;
+export const MAINNET_RECORD = `${GITHUB}/blob/main/docs/2026-10-10-mainnet-payout.md`;
 export const DEVNET_RECORD = `${GITHUB}#a-full-run-on-devnet`;
 export const LICENSE = `${GITHUB}/blob/main/LICENSE`;
 export const RUBRICS = `${GITHUB}/tree/main/rubrics`;

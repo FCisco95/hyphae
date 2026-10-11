@@ -10,7 +10,7 @@ export function TrustPage() {
           What the admin can and cannot do, where the keys are, what is stored about you, and how to
           report a problem. Every statement links to the file or the on-chain record behind it.
         </p>
-        <p className="muted small">Last checked 2026-10-07. The same text is in SECURITY.md.</p>
+        <p className="muted small">Last checked 2026-10-11. The same text is in SECURITY.md.</p>
       </header>
       <nav className="trust-toc" aria-label="On this page">
         <ul>

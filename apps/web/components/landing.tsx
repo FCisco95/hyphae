@@ -10,6 +10,7 @@ import {
   DEVNET_RECORD,
   GITHUB,
   LICENSE,
+  MAINNET_RECORD,
   README_STATUS,
   RUBRICS,
   VERIFY_BUILD,
@@ -21,7 +22,7 @@ import { ButtonLink, EvidenceLink, Section, Stat, Stats } from "./ui.js";
 import { unavailableSentence } from "./views.js";
 
 // The landing page. Every sentence comes from the README, the build log or an evidenced beat of the
-// Oct 9 video script; every number is read from the API or cited from a recorded devnet run.
+// Oct 9 video script; every number is read from the API or cited from the October 10 mainnet payout receipts.
 
 const FILAMENTS = growFilaments({ seed: 20260916, count: 14, width: 1600, height: 920 });
 const PULSES = FILAMENTS.filter((f) => f.depth === 0).slice(0, 4);
@@ -176,33 +177,42 @@ export function HowItWorks() {
   );
 }
 
-// Run 7 of the devnet proof (docs/handoffs/2026-09-27-devnet-proof.md): Hyphae's admin key on a
-// Ledger signs the community, the deposit and the publication; a member claims, then is refused.
-export const DEVNET_RUN = [
+// October 10 receipts: every step is finalized on mainnet and listed in MAINNET_RECORD.
+export const MAINNET_RUN = [
   {
-    what: "A community and its vault are created, signed by Hyphae's admin key on a Ledger.",
+    what: "MYCEL community HRkBN4…XbRX and vault AC3zkG…oG86K are created on mainnet.",
     signature:
-      "2xkfBYCqiJhQupUL6gB7P9m6DkpgomVkysYMw5bRVveAZvBDmSwzZ7C3kfSVDpaY5PFoN7mcwXbQ8KPHhStvsENo",
+      "aensGhPgR8XBz5unAugUd9bJai3WbyUoJFwCLKmGn5kqUjsTNYNSQXR9oraAx9FitJac74tK9fYyCTBaQJSghNX",
   },
   {
-    what: "The vault is funded with 0.05 SOL.",
+    what: "The vault receives 1.5 SOL for epoch 2.",
     signature:
-      "2Af95ffYBU6fE11G7hJryYeASkD85HsZ1ikfbbHu1srBp72hWHSzaJRAiqZuRVj65EFxoYJQgRu6Z3dKb8agaoof",
+      "5spBxwDa9jbMbvZup3bR1aU5t2HVoYb24U2JLvX4dx8U6GJehDr1i1pgepxqTtodJf2ykRTP95dHGMBqi1c7rjtj",
   },
   {
-    what: "The epoch is published as one merkle root: 0.030460365 SOL allocated to 3 members, and the 3% fee.",
+    what: "The Ledger publishes the root: 1.238881509 SOL allocated to 4 wallets; 0.045 SOL goes to the MYCEL Treasury.",
     signature:
-      "3oJ4T6NeYonVRgi1JBfofsRHEkd5RfuTKaEhUc7AHqFL8Pio2r2s6o4n7YtLm7zMPpLCw38mDa1efEzBBpAgy6DD",
+      "4qhKtnsVD78xpvRPdi7TQ1fcF86FjiueCFZNq6a11yfSQ7Q4UeXboGaRtzTDtyMnFbDtVywHGzgytrXqXop6EnLm",
   },
   {
-    what: "A member claims 0.012125 SOL with a merkle proof.",
+    what: "The founder claims 0.36375 SOL.",
     signature:
-      "5ccGT1yLxySoRKjUZftCooXmbxk35WrJ71XFVuH8rfXxaKNiufPkzgLRdAbywRoLjoTL4DvFv3daYTgGyp8a3SmK",
+      "5iBbZVJEnjr9tvpHZ2dFYgsKAxy5tSvqQ3bUCaXY4fDGgH9PfomphF8SuTFrFqvpbFdLLE89AHZSSQRUvD6sZn55",
   },
   {
-    what: "The same claim, sent again, is refused on-chain.",
+    what: "A member claims 0.223351074 SOL.",
     signature:
-      "5ob9A3Sg7DYoxCAMLDyX5EpuT2jSF6QBsruPRLf4tdTdTCSkfZCdXSkMuWLuqkFEPQC3eQJVGgzosxdLQbA2EknP",
+      "2gbAmxM6Q4LPC8R68wRbRyGKn7nD97vRZJ4FVD8eZucJab82LtDGFB1oK3d2TnzkkXM2m45aG6EpQc8QWh4ek1tK",
+  },
+  {
+    what: "A member claims 0.36375 SOL.",
+    signature:
+      "59kNeiZ53TqEk9RU5Ujr5Wb6SfkjaRwtXBdBeovR9ZDPQC6H3qcRCd6YyspLDPwXGMmCmLxeZM99bcBsnGtAZvSy",
+  },
+  {
+    what: "A member claims 0.288030435 SOL. All 4 are paid; unclaimed is 0.",
+    signature:
+      "63tutuXCGdRvHrMZBaF973jDgQoweV5RFRCkmmP9xRG51xga9Xe7dDuAY78YbZA9EZR8WiRc92X88YoDvWRLCHzq",
   },
 ] as const;
 
@@ -221,7 +231,8 @@ function Payout({ closed }: { closed: LooseEpochV1 | "unavailable" | null }) {
       </p>
     );
   }
-  const a = settlementOf(closed).allocation;
+  const settlement = settlementOf(closed);
+  const a = settlement.allocation;
   if (a.status !== "published") {
     return (
       <p className="banner">
@@ -230,16 +241,32 @@ function Payout({ closed }: { closed: LooseEpochV1 | "unavailable" | null }) {
     );
   }
   return (
-    <p className="banner">
-      Epoch {closed.index} was published on {networkName(a.network)}: {sol(a.allocated_lamports)}{" "}
-      allocated to {a.payable_members} members, in{" "}
-      <EvidenceLink
-        href={explorerTx(a.publish_tx, a.network)}
-        value={a.publish_tx}
-        shown={shortWallet(a.publish_tx)}
-      />
-      .
-    </p>
+    <>
+      <p className="banner">
+        Epoch {closed.index} was published on {networkName(a.network)}: {sol(a.allocated_lamports)}{" "}
+        allocated to {a.payable_members} members, in{" "}
+        <EvidenceLink
+          href={explorerTx(a.publish_tx, a.network)}
+          value={a.publish_tx}
+          shown={shortWallet(a.publish_tx)}
+        />
+        .
+      </p>
+      {settlement.payment.status === "available" && (
+        <Stats>
+          <Stat
+            label="Claimed"
+            value={sol(settlement.payment.claimed_lamports)}
+            note={`${settlement.payment.claims.filter((c) => c.status === "paid").length} of ${settlement.payment.claims.length} allocations paid`}
+          />
+          <Stat
+            label="Unclaimed"
+            value={sol(settlement.payment.unclaimed_lamports)}
+            note="Read from on-chain receipts"
+          />
+        </Stats>
+      )}
+    </>
   );
 }
 
@@ -312,37 +339,41 @@ export function Proof({ live }: { live: ProofState }) {
     <Section
       id="proof"
       title="Proof you can check"
-      lead="Numbers read from Hyphae's public API as this page loads, and every transaction of a full run on Solana devnet."
+      lead="Live numbers from the public API, alongside the receipts for the completed mainnet payout."
     >
       <div className="proof-grid">
         <div className="proof-live">
           <Live live={live} />
         </div>
         <div className="proof-chain">
-          <h3>A full run on Solana devnet</h3>
+          <h3>October 10: four wallets paid on mainnet</h3>
           <ol className="timeline">
-            {DEVNET_RUN.map((step) => (
+            {MAINNET_RUN.map((step) => (
               <li key={step.signature}>
                 <p>{step.what}</p>
                 <EvidenceLink
-                  href={explorerTx(step.signature, "solana:devnet")}
+                  href={explorerTx(step.signature, "solana:mainnet")}
                   value={step.signature}
                   shown={shortWallet(step.signature)}
-                  network="devnet"
+                  network="mainnet"
                 />
               </li>
             ))}
           </ol>
           <p className="muted small">
-            These transactions are on devnet.{" "}
-            <a href={README_STATUS} rel="noopener noreferrer">
-              The program's README
+            3 of 4 payees are non-founder wallets. The IDL is published. Read the{" "}
+            <a href={MAINNET_RECORD} rel="noopener noreferrer">
+              mainnet receipts and decoded accounts
             </a>{" "}
-            says what is deployed where, and{" "}
-            <a href={DEVNET_RECORD} rel="noopener noreferrer">
-              lists this run
+            or the{" "}
+            <a href={README_STATUS} rel="noopener noreferrer">
+              program status
             </a>
-            .
+            . The{" "}
+            <a href={DEVNET_RECORD} rel="noopener noreferrer">
+              repeat-claim refusal
+            </a>{" "}
+            was demonstrated on devnet.
           </p>
         </div>
       </div>

@@ -4,7 +4,7 @@ What Hyphae's admin can and cannot do, where the keys are, what is stored about 
 
 **Report a vulnerability privately:** https://github.com/FCisco95/hyphae-program/security/advisories/new (GitHub private vulnerability reporting on the public program repository).
 
-Last checked 2026-10-07.
+Last checked 2026-10-11.
 
 ## What you trust
 
@@ -37,7 +37,7 @@ On chain, the program enforces the limits. Off chain, the operator's tools do.
 ## Keys and custody
 
 - The program's only upgrade authority on mainnet, and the key that publishes Hyphae Lab's epochs, is the Ledger 2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR. It was read back from the chain at deploy. Evidence: [Ledger on Solana Explorer](https://explorer.solana.com/address/2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR) · [mainnet deploy receipt](https://github.com/FCisco95/hyphae/blob/main/docs/handoffs/2026-10-02-c13-mainnet-receipt.md).
-- Hyphae Lab's fee goes to the MYCEL Treasury, Squads vault rRceAUBNsnZKJDytjdHfCdqgTJGoDagtKujfvaBu7MK, which needs 2 of 3 signers to move funds. It is fixed when the community is created on mainnet, planned for 2026-10-08, and cannot change afterwards. Evidence: [vault on Solana Explorer](https://explorer.solana.com/address/rRceAUBNsnZKJDytjdHfCdqgTJGoDagtKujfvaBu7MK) · [fee ruling](https://github.com/FCisco95/hyphae/blob/main/docs/handoffs/2026-09-27-keys-and-fee-rulings.md).
+- Hyphae Lab's fee goes to the MYCEL Treasury, Squads vault rRceAUBNsnZKJDytjdHfCdqgTJGoDagtKujfvaBu7MK, which needs 2 of 3 signers to move funds. It was fixed when the community was created on mainnet on 2026-10-10 and cannot change afterwards. Evidence: [vault on Solana Explorer](https://explorer.solana.com/address/rRceAUBNsnZKJDytjdHfCdqgTJGoDagtKujfvaBu7MK) · [fee ruling](https://github.com/FCisco95/hyphae/blob/main/docs/handoffs/2026-09-27-keys-and-fee-rulings.md) · [October 10 mainnet receipts](https://github.com/FCisco95/hyphae-program/blob/main/docs/2026-10-10-mainnet-payout.md).
 - The temporary keys used to deploy were deleted after the deploy, and the deletions are recorded. Evidence: [key registry](https://github.com/FCisco95/hyphae/blob/main/docs/WALLETS.md).
 
 ## Verifiable build

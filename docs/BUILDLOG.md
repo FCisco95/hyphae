@@ -2,6 +2,16 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-11 · Reviewed claim recovery and private eligibility
+
+**Prepared locally:** one claim wallet picker, the full connected address, a 60-second wallet deadline and 10-second read deadline, cancellation/recheck before retry, account and epoch switching guards, duplicate-click guard, and receipt polling cancellation. A confirmed paid read survives a late signature and failed later reads. Transaction construction is unchanged. Commits 9777a66, 9b9d0ba and cc4f773; fresh Claude Opus 5.5 high review ACCEPT at cc4f773. Claim tests: 12 mounted UI + 8 transaction + 7 view passed; web typecheck and changed-file Biome passed.
+
+**Privacy, authorized by Cisco:** individual rules-test/hold checklists are private. Public contributions/leaderboard/OpenAPI and group score messages omit eligibility verdicts. Group /me links to sender-bound, membership-checked private chat. Existing public allocation/payment receipts remain public. Next code commits b1ec662 + f573a68, review record 9d0da9b, fresh Claude Opus 5.5 high ACCEPT. Core schema 26, API 83, web 35, OpenAPI 5 and isolated Postgres 17 concurrency 1 passed; relevant typechecks and Biome passed. No gate, scoring, program or payout logic changed.
+
+**Demo site truth:** proof timeline now uses all seven October 10 mainnet signatures, 4/4 paid, 1.238881509 SOL claimed, 0 unclaimed and the published IDL. Treasury wording cites the completed community creation. Historical repeat-claim refusal stays labelled devnet. Home/trust checks 27 passed. Desktop 1920×1080 and 390 px phone screenshots exist for home, proof, epoch-2 settlement, clean claim, connected paid claim and wallet record; no horizontal overflow. The wallet record was rendered from a read-only production snapshot through a loopback-only preview of the reviewed code; signing disabled, no production writes.
+
+**Stage:** steps 1–3 committed; program README/docs e574a99 pushed. App main and updated next remain local and separate; exact E0–E6 authorization still absent. No main push, merge, image push, production migration or deploy. E0 combined gate and live release smoke remain pending. Models: builder Codex/GPT-6 (runtime effort not exposed); reviewer actual claude-opus-5-5 high. No Organic or vault change. Next: the exact E0–E6 decision, then the release plan in order.
+
 ## 2026-10-11 · Judge links and release decision packet
 
 **Verified:** 33 judge routes/receipts opened in a fresh signed-out browser context, with content and chain identifiers checked. Five direct Solscan Data tabs decode all four ClaimReceipt amounts and the epoch allocation; the script now links directly to those fields. The historical refused duplicate is explicitly devnet. Both public repos open without reviewer access.
