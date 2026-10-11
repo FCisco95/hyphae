@@ -1,4 +1,4 @@
-import type { PayoutV1, RewardPurpose } from "@hyphae/core";
+import type { RewardPurpose } from "@hyphae/core";
 import {
   communities,
   contributions,
@@ -12,6 +12,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { seedSignedLink } from "../../http/demo-seed.js";
 import { evaluatePayoutGate } from "../../payout/gate.js";
+import type { PayoutV1 } from "../../payout/readiness.js";
 import { closeEpoch } from "../../rewards/close.js";
 import { beginDispatch, completeDispatch, runEvaluation } from "../../rewards/evaluation.js";
 import { createTestDb, later, seedCommunity, seedRewardLane, T0 } from "../../rewards/test-db.js";

@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { type PayoutV1, ReadApiV1, ReadApiV1Loose } from "@hyphae/core";
 import {
   communities,
   epochs,
@@ -199,43 +198,9 @@ describe("payoutOf", () => {
     );
     for (const p of [holder, below]) {
       expect(p).toEqual({ status: "held", reasons: ["hold_pending"], hold: "at_close" });
-      expect(schemasAccept(false, p)).toEqual([true, true]);
     }
   });
 });
-
-// Whether the strict schema (this API's output) and the loose one (a consumer's) accept `payout`
-// on a leaderboard entry of an epoch read as `closed`.
-function schemasAccept(closed: boolean, payout: PayoutV1) {
-  const ts = "2026-10-09T00:00:00.000000Z";
-  const board = {
-    community: { mint: "Mint1" },
-    epoch: { index: 1, opens_at: ts, closes_at: ts },
-    closed,
-    final: false,
-    as_of: ts,
-    total_entries: 1,
-    total_contributions: 1,
-    offset: 0,
-    limit: 50,
-    entries: [
-      {
-        rank: 1,
-        member_id: "00000000-0000-4000-8000-000000000001",
-        wallet: null,
-        wallet_status: "none",
-        point_units: "0",
-        points: "0",
-        whole_points: "0",
-        contributions: 1,
-        counted: 1,
-        pending: 0,
-        payout,
-      },
-    ],
-  };
-  return [ReadApiV1.leaderboard, ReadApiV1Loose.leaderboard].map((s) => s.safeParse(board).success);
-}
 
 describe("epochPayouts", () => {
   it("before the close: every combination, with the hold left to the close", async () => {
@@ -333,7 +298,6 @@ describe("epochPayouts", () => {
             ? { status: "held", reasons: ["hold_pending"], hold: "at_close" }
             : { status: "not_payable", reasons, hold: "at_close" },
         );
-        expect(p && schemasAccept(false, p)).toEqual([true, true]);
       }
     }
   });

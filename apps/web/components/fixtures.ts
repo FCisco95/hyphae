@@ -220,7 +220,6 @@ export const offTopicRow: ContributionRowV1 = {
     explanation: "Talks about another project.",
     corrected: false,
   },
-  payout: { status: "payable", reasons: [], hold: "holder" },
 };
 export const upgradedRow: ContributionRowV1 = {
   ...offTopicRow,
@@ -250,45 +249,23 @@ export const pendingRow: ContributionRowV1 = {
   url: null,
   state: "pending_at_close",
   selected: null,
-  payout: {
-    status: "not_payable",
-    reasons: ["no_points", "no_verified_wallet", "no_rules_test"],
-    hold: "not_checked",
-  },
 };
 
-// One scored row per payout status an open epoch can show, in the order the epoch page lists them.
+// Public scoring rows carry no member eligibility verdict.
 const openRef = { index: 2, closes_at: ts(9), closed: false, final: false };
-const openRow = (n: number, payout: ContributionRowV1["payout"]): ContributionRowV1 => ({
+const openRow = (n: number): ContributionRowV1 => ({
   ...upgradedRow,
   id: id(20 + n),
   epoch: openRef,
   member_id: id(30 + n),
   accepted_at: ts(3, n),
-  payout,
 });
 export const openPayoutRows: ContributionRowV1[] = [
-  openRow(1, { status: "held", reasons: ["hold_pending"], hold: "at_close" }),
-  {
-    ...openRow(2, { status: "not_payable", reasons: ["no_verified_wallet"], hold: "at_close" }),
-    wallet: null,
-    wallet_status: "none",
-  },
-  openRow(3, { status: "not_payable", reasons: ["no_rules_test"], hold: "at_close" }),
-  {
-    ...openRow(4, {
-      status: "not_payable",
-      reasons: ["no_verified_wallet", "no_rules_test"],
-      hold: "at_close",
-    }),
-    wallet: null,
-    wallet_status: "unverified",
-  },
-  {
-    ...openRow(5, { status: "held", reasons: ["hold_pending"], hold: "at_close" }),
-    state: "pending",
-    selected: null,
-  },
+  openRow(1),
+  { ...openRow(2), wallet: null, wallet_status: "none" },
+  openRow(3),
+  { ...openRow(4), wallet: null, wallet_status: "unverified" },
+  { ...openRow(5), state: "pending", selected: null },
 ];
 export const openContributions: ContributionsV1 = {
   community: { mint: "MintAbc" },
@@ -332,7 +309,6 @@ export const leaderboard: LeaderboardV1 = {
       contributions: 2,
       counted: 2,
       pending: 0,
-      payout: { status: "held", reasons: ["hold_pending"], hold: "at_close" },
     },
     {
       rank: 2,
@@ -345,11 +321,6 @@ export const leaderboard: LeaderboardV1 = {
       contributions: 1,
       counted: 0,
       pending: 1,
-      payout: {
-        status: "not_payable",
-        reasons: ["no_points", "no_verified_wallet", "no_rules_test"],
-        hold: "at_close",
-      },
     },
   ],
 };

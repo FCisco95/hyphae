@@ -1,7 +1,7 @@
 import { inspect } from "node:util";
-import type { PayoutVerdictV1 } from "@hyphae/core";
 import { HttpError } from "grammy";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { PayoutVerdictV1 } from "../payout/readiness.js";
 
 const TOKEN = "1234567890:AAH-worker-token-that-must-never-be-stored";
 const CLOSES_AT = new Date("2026-10-10T00:00:00.000Z");
@@ -75,8 +75,6 @@ const notYet: PayoutVerdictV1 = {
   reasons: ["no_verified_wallet", "no_rules_test"],
   hold: "at_close",
 };
-const hinted =
-  "scored\nNot payable yet: link a wallet by signing and pass the rules test before the epoch closes.";
 
 beforeEach(() => {
   m.marked = [];
@@ -109,14 +107,10 @@ describe("notifyReward", () => {
     expect(m.marked).toEqual([]);
   });
 
-  it("adds what a member still needs to be paid, with a button to the next step", async () => {
+  it("keeps a member's eligibility off group score messages", async () => {
     m.hint = notYet;
     await notifyReward(job);
-    expect(m.sent).toHaveLength(1);
-    expect(m.sent[0]?.text).toBe(hinted);
-    expect(m.sent[0]?.other.reply_markup).toEqual({
-      inline_keyboard: [[{ text: "Link my wallet", url: "https://t.me/t_bot?start=link_c1" }]],
-    });
+    expect(m.sent.map((s) => [s.text, s.other.reply_markup])).toEqual([["scored", undefined]]);
     expect(m.marked).toEqual(["d1"]);
   });
 
@@ -140,60 +134,16 @@ describe("notifyReward", () => {
   });
 });
 
-describe("notifyReward without the bot's username yet", () => {
-  it("sends the score alone when Telegram cannot name the bot, and logs no token", async () => {
+describe("notifyReward without bot initialization", () => {
+  it("does not fetch a username or an eligibility checklist for a group score", async () => {
     m.hint = notYet;
     m.inited = false;
     m.init = async () => {
-      throw new HttpError(
-        "Network request for 'getMe' failed!",
-        new Error(`request to https://api.telegram.org/bot${TOKEN}/getMe failed`),
-      );
+      throw new Error("must not initialize for a private hint");
     };
-    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
     await notifyReward(job);
+    expect(m.initSignals).toEqual([]);
     expect(m.sent.map((s) => [s.text, s.other.reply_markup])).toEqual([["scored", undefined]]);
     expect(m.marked).toEqual(["d1"]);
-    expect(logged).toHaveBeenCalled();
-    expect(inspect(logged.mock.calls, { depth: null })).not.toContain(TOKEN);
-  });
-
-  it("gives up on a lookup that never answers at its deadline, then sends the score", async () => {
-    m.hint = notYet;
-    m.inited = false;
-    m.init = (signal) =>
-      new Promise((_, reject) => {
-        signal?.addEventListener("abort", () => reject(new Error("aborted")));
-      });
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    const done = notifyReward(job);
-    await vi.advanceTimersByTimeAsync(2_999);
-    expect(m.sent).toEqual([]);
-    await vi.advanceTimersByTimeAsync(1);
-    await done;
-    expect(m.initSignals[0]).toBeInstanceOf(AbortSignal);
-    expect(m.sent.map((s) => s.text)).toEqual(["scored"]);
-    expect(m.marked).toEqual(["d1"]);
-  });
-
-  it("drops the instruction when the lookup ends after the epoch closed", async () => {
-    vi.setSystemTime(new Date(CLOSES_AT.getTime() - 1_000));
-    m.hint = notYet;
-    m.inited = false;
-    m.init = () => new Promise((resolve) => setTimeout(resolve, 2_000));
-    const done = notifyReward(job);
-    await vi.advanceTimersByTimeAsync(2_000);
-    await done;
-    expect(m.sent.map((s) => [s.text, s.other.reply_markup])).toEqual([["scored", undefined]]);
-    expect(m.marked).toEqual(["d1"]);
-  });
-
-  it("asks Telegram once: the username found is kept for the process", async () => {
-    m.hint = notYet;
-    m.inited = false;
-    await notifyReward(job);
-    await notifyReward({ ...job, decisionId: "d2" });
-    expect(m.initSignals).toHaveLength(1);
-    expect(m.sent.map((s) => s.text)).toEqual([hinted, hinted]);
   });
 });

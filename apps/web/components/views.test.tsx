@@ -86,22 +86,16 @@ describe("EpochView", () => {
     expect(closing).toContain("Final numbers appear when the snapshot is written");
   });
 
-  it("says, for each scored row, whether its member can be paid, and never just Counted", () => {
-    const open = text(<EpochView epoch={f.openEpoch} list={f.openContributions} />);
-    expect(open).toContain(
-      "Scored. Wallet and rules test done. The hold is checked after the close.",
-    );
-    expect(open).toContain("Scored. Not payable yet: link a wallet by signing.");
-    expect(open).toContain("Scored. Not payable yet: pass the rules test.");
-    expect(open).toContain(
-      "Scored. Not payable yet: link a wallet by signing and pass the rules test.",
-    );
-    expect(open).toContain("Not scored yet.");
-    expect(open).not.toContain("Counted.");
-    expect(open).not.toMatch(NEVER);
-    expect(open).not.toMatch(/payable:|confirmed/i);
-    const final = text(<EpochView epoch={f.finalEpoch} list={f.contributions} />);
-    expect(final).toContain("Scored. Payable: wallet, rules test and hold confirmed.");
+  it("shows public scoring without member rules-test or hold outcomes", () => {
+    for (const [epoch, list] of [
+      [f.openEpoch, f.openContributions],
+      [f.finalEpoch, f.contributions],
+    ] as const) {
+      const shown = text(<EpochView epoch={epoch} list={list} />);
+      expect(shown).toContain("Scored.");
+      expect(shown).not.toMatch(/rules test|not payable|hold confirmed|hold check/i);
+      expect(shown).not.toContain("Counted.");
+    }
   });
 
   it("renders a verified wallet shortened and never an unverified address", () => {
@@ -269,10 +263,7 @@ describe("LeaderboardView", () => {
     expect(t).toContain("127.5");
     expect(t).toContain("128");
     expect(t).toContain("unverified");
-    expect(t).toContain("Wallet and rules test done. The hold is checked after the close.");
-    expect(t).toContain(
-      "Not payable yet: link a wallet by signing, pass the rules test and earn points.",
-    );
+    expect(t).not.toMatch(/rules test|not payable|hold check/i);
     expect(t).not.toMatch(NEVER);
   });
 });
@@ -292,10 +283,10 @@ describe("ContributionView", () => {
     expect(t).not.toMatch(NEVER);
   });
 
-  it("says whether the member behind a scored contribution can be paid", () => {
-    expect(text(<ContributionView c={f.offTopic} />)).toContain(
-      "Scored. Payable: wallet, rules test and hold confirmed.",
-    );
+  it("shows a contribution score without the private member checklist", () => {
+    const shown = text(<ContributionView c={f.offTopic} />);
+    expect(shown).toContain("Scored.");
+    expect(shown).not.toMatch(/rules test|payable|hold confirmed/i);
   });
 
   it("says what a contribution that never counted earns", () => {

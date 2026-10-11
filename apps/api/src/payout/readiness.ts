@@ -1,4 +1,3 @@
-import type { PayoutV1, PayoutVerdictV1 } from "@hyphae/core";
 import {
   type communities,
   type Db,
@@ -11,6 +10,14 @@ import { RewardConfigPayload } from "../rewards/config.js";
 import { selectEffective } from "../rewards/effective.js";
 import { type HoldRequirement, judgeMembers, type MemberVerdict, payTerms } from "./gate.js";
 import type { RulesTest } from "./rules-test.js";
+
+// Private member checklist only. Eligibility reasons are never public read-API fields.
+export type PayoutVerdictV1 = {
+  status: MemberVerdict["status"];
+  reasons: MemberVerdict["reasons"];
+  hold: "at_close" | "pending" | "holder" | "below" | "not_checked" | "not_required";
+};
+export type PayoutV1 = { status: "unpaid_epoch" | "published" } | PayoutVerdictV1;
 
 // What the gate did with the balance: nothing before the close, and after it only for a member
 // who meets every other condition.

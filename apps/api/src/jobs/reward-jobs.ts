@@ -1,13 +1,10 @@
-import { communities, contributions, type Db, rewardNominations } from "@hyphae/db";
+import { communities, contributions, rewardNominations } from "@hyphae/db";
 import { eq } from "drizzle-orm";
-import { InlineKeyboard } from "grammy";
-import { stepButton } from "../bot/commands/payout-step.js";
 import { telegramCall } from "../bot/errors.js";
 import { bot } from "../bot/index.js";
 import { db } from "../db.js";
 import { env } from "../env.js";
 import { dueHoldChecks, holdCheckerFromEnv, runHoldChecks } from "../payout/hold-gate.js";
-import { nextStep } from "../payout/readiness.js";
 import { closeEpoch, dueCloses } from "../rewards/close.js";
 import { type EvaluationTarget, type RunResult, runEvaluation } from "../rewards/evaluation.js";
 import { decisionNotified, markNotified, strandedWork } from "../rewards/recovery.js";
@@ -19,9 +16,9 @@ import { jevDepsFromEnv } from "../scoring/jev-config.js";
 import { JEV_REGISTRY } from "../scoring/jev-registry.js";
 import { callRewardModel, REWARD_CALL_TIMEOUT_MS } from "../scoring/run.js";
 import { captureLimitations, fetchPost } from "../x/oembed.js";
-import { lockScoreMessages, scoreHint } from "./payout-hint.js";
+import { lockScoreMessages } from "./payout-hint.js";
 import { boss, QUEUES } from "./queue.js";
-import { payoutHintLine, type RewardOutcome, rewardMessage } from "./reward-message.js";
+import { type RewardOutcome, rewardMessage } from "./reward-message.js";
 
 export interface RewardEvaluationJob {
   communityId: string;
@@ -191,49 +188,6 @@ export async function checkEpochHolds(job: HoldCheckJob): Promise<void> {
   console.log(JSON.stringify({ job: "hold-check", ...job, ...result }));
 }
 
-// The worker handles no updates, so it asks Telegram for the bot's username when a button first
-// needs it; grammY keeps it once found. Only for a few seconds: the button is optional, the score
-// it rides on is not.
-const USERNAME_DEADLINE_MS = 3_000;
-async function botUsername(): Promise<string | null> {
-  if (bot.isInited()) return bot.botInfo.username;
-  const deadline = new AbortController();
-  const timer = setTimeout(() => deadline.abort(), USERNAME_DEADLINE_MS);
-  try {
-    await telegramCall(bot.token, () =>
-      // grammY types a polyfill signal; installed node-fetch also accepts the native Node signal.
-      bot.init(deadline.signal as unknown as Parameters<typeof bot.init>[0]),
-    );
-    return bot.botInfo.username;
-  } catch (err) {
-    // telegramCall's error names no token.
-    console.error("reward: bot username unavailable", { error: (err as Error).message });
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-// What a member still needs to be paid, under their first scored message of the epoch. It is
-// read when the message is sent, so a queued or recovered message carries the current status.
-async function payoutHint(tx: Db, decisionId: string, communityId: string) {
-  // In a savepoint, so a failed read cannot abort the transaction that marks the send.
-  const hint = await tx
-    .transaction((savepoint) => scoreHint(savepoint, decisionId, new Date()))
-    .catch((err: unknown) => {
-      // The score is the message; a status that cannot be read is left out, not waited for.
-      console.error("reward: payout hint failed", { decisionId, err });
-      return null;
-    });
-  const line = hint && payoutHintLine(hint.payout);
-  const step = hint && line ? nextStep(hint.payout) : null;
-  if (!hint || !line || !step) return null;
-  const username = await botUsername();
-  // The lookup can take seconds; an instruction for before the close is dropped once it passed.
-  if (!username || Date.now() >= hint.closesAt.getTime()) return null;
-  return { line, button: stepButton(step, username, communityId) };
-}
-
 // At least once: a crash between Telegram's accept and the commit of the mark sends the message
 // again. A decision's message is read, sent and marked under its member and epoch's lock.
 export async function notifyReward(job: RewardNotifyJob): Promise<void> {
@@ -248,25 +202,22 @@ export async function notifyReward(job: RewardNotifyJob): Promise<void> {
     .innerJoin(communities, eq(communities.id, contributions.communityId))
     .where(eq(contributions.id, job.contributionId));
   if (!row) throw new Error(`reward: contribution ${job.contributionId} missing`);
-  const send = (hint: Awaited<ReturnType<typeof payoutHint>>) =>
+  const send = () =>
     telegramCall(bot.token, () =>
-      bot.api.sendMessage(Number(row.chatId), hint ? `${job.text}\n${hint.line}` : job.text, {
+      bot.api.sendMessage(Number(row.chatId), job.text, {
         reply_parameters: { message_id: row.messageId, allow_sending_without_reply: true },
         link_preview_options: { is_disabled: true },
-        ...(hint && {
-          reply_markup: new InlineKeyboard().url(hint.button.label, hint.button.url),
-        }),
       }),
     );
   if (!decisionId) {
-    await send(null);
+    await send();
     return;
   }
   await db.transaction(async (tx) => {
     await lockScoreMessages(tx, decisionId);
     // A copy of this job may have sent the message while this one waited for the lock.
     if (await decisionNotified(tx, decisionId)) return;
-    await send(await payoutHint(tx, decisionId, job.communityId));
+    await send();
     await markNotified(tx, decisionId, new Date());
   });
 }

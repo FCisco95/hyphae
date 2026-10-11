@@ -4,7 +4,7 @@ import { env } from "../env.js";
 import { chatMigration } from "./chat-migration.js";
 import { effort } from "./commands/effort.js";
 import { linkInGroup, linkStart } from "./commands/link.js";
-import { me } from "./commands/me.js";
+import { me, meStart } from "./commands/me.js";
 import {
   enableRaidAlerts,
   notifications,
@@ -38,7 +38,8 @@ commands.use(chatMigration(db));
 commands.command("start", async (ctx) => {
   if (
     ctx.chat.type === "private" &&
-    ((await linkStart(ctx)) ||
+    ((await meStart(ctx)) ||
+      (await linkStart(ctx)) ||
       (await setupStart(db, ctx)) ||
       (await rulesStart(db, ctx)) ||
       (await raidAlertStart(db, ctx)) ||

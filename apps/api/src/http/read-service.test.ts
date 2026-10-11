@@ -1,11 +1,10 @@
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
-import { promptTemplateHash, ReadApiV1, ReadApiV1Loose } from "@hyphae/core";
+import { promptTemplateHash, ReadApiV1 } from "@hyphae/core";
 import {
   communities,
   type Db,
   epochs,
-  holdChecks,
   members,
   memberWalletLinks,
   rulesTestPasses,
@@ -480,139 +479,35 @@ async function seedPaidLane(db: Db) {
   };
 }
 
-describe("payout status", () => {
+describe("public eligibility privacy", () => {
   const page = { offset: 0, limit: 50 };
-
-  // Every read names the same status for a member: rows, leaderboard entries, the contribution.
-  const statusesAt = async (lane: Awaited<ReturnType<typeof seedPaidLane>>, now: Date) => {
-    const list = strict(
-      ReadApiV1.contributions,
-      await readContributions(t.db, lane.mint, 1, page, now),
-    );
-    const board = strict(
-      ReadApiV1.leaderboard,
-      await readLeaderboard(t.db, lane.mint, 1, page, now),
-    );
-    const out: Record<string, unknown> = {};
+  const assertPrivate = async (lane: Awaited<ReturnType<typeof seedPaidLane>>, now: Date) => {
+    const list = await readContributions(t.db, lane.mint, 1, page, now);
+    const board = await readLeaderboard(t.db, lane.mint, 1, page, now);
+    strict(ReadApiV1.contributions, list);
+    strict(ReadApiV1.leaderboard, board);
     for (const label of ["ready", "unlinked"] as const) {
-      const memberId = lane.members[label];
-      const one = strict(
-        ReadApiV1.contribution,
-        await readContribution(t.db, lane.contributions[label], now),
-      );
-      const row = list.contributions.find((r) => r.member_id === memberId);
-      const entry = board.entries.find((e) => e.member_id === memberId);
-      expect(row?.payout).toEqual(one.payout);
-      expect(entry?.payout).toEqual(one.payout);
-      out[label] = one.payout;
+      const one = await readContribution(t.db, lane.contributions[label], now);
+      strict(ReadApiV1.contribution, one);
+      for (const body of [list, board, one]) {
+        expect(JSON.stringify(body)).not.toMatch(
+          /"payout"|"hold"|no_rules_test|no_verified_wallet|hold_pending|below_hold/,
+        );
+      }
     }
-    return out;
   };
-
-  it("an open paid epoch: what each member still needs, with the hold left to the close", async () => {
+  it("omits individual eligibility while open, after the close, and after publication", async () => {
     const lane = await seedPaidLane(t.db);
-    expect(await statusesAt(lane, new Date(T0.getTime() + 3_600_000))).toEqual({
-      ready: { status: "held", reasons: ["hold_pending"], hold: "at_close" },
-      unlinked: {
-        status: "not_payable",
-        reasons: ["no_verified_wallet", "no_rules_test"],
-        hold: "at_close",
-      },
-    });
-  });
-
-  it("after the close: the hold check, then its result, and the settlement once published", async () => {
-    const lane = await seedPaidLane(t.db);
+    await assertPrivate(lane, new Date(T0.getTime() + 3_600_000));
     const after = new Date(lane.epoch.closesAt.getTime() + 60_000);
-    const closing = {
-      ready: { status: "held", reasons: ["hold_pending"], hold: "pending" },
-      unlinked: {
-        status: "not_payable",
-        reasons: ["no_verified_wallet", "no_rules_test"],
-        hold: "not_checked",
-      },
-    };
-    expect(await statusesAt(lane, after)).toEqual(closing);
     await closeEpoch(
       t.db,
       { communityId: lane.communityId, epochId: lane.epoch.id },
       { clock: at(after) },
     );
-    expect(await statusesAt(lane, after)).toEqual(closing);
-    await t.db.insert(holdChecks).values({
-      communityId: lane.communityId,
-      epochId: lane.epoch.id,
-      memberId: lane.members.ready,
-      wallet: lane.wallet,
-      mint: lane.mint,
-      thresholdRaw: rubric.minHoldUnits,
-      checkRound: "11111111-1111-4111-8111-111111111111",
-      status: "holder",
-      attempts: 1,
-      rawAmount: "150000000000",
-      decimals: 6,
-      provider: "consensus",
-      slot: "321",
-      observedAt: new Date(after.getTime() + 60_000),
-    });
-    expect(await statusesAt(lane, after)).toEqual({
-      ...closing,
-      ready: { status: "payable", reasons: [], hold: "holder" },
-    });
+    await assertPrivate(lane, after);
     await t.db.update(epochs).set({ status: "published" }).where(eq(epochs.id, lane.epoch.id));
-    expect(await statusesAt(lane, after)).toEqual({
-      ready: { status: "published" },
-      unlinked: { status: "published" },
-    });
-  });
-
-  it("a clock taken before the close, read after the hold check: the hold still waits for the close", async () => {
-    const lane = await seedPaidLane(t.db);
-    const after = new Date(lane.epoch.closesAt.getTime() + 60_000);
-    await closeEpoch(
-      t.db,
-      { communityId: lane.communityId, epochId: lane.epoch.id },
-      { clock: at(after) },
-    );
-    await t.db.insert(holdChecks).values({
-      communityId: lane.communityId,
-      epochId: lane.epoch.id,
-      memberId: lane.members.ready,
-      wallet: lane.wallet,
-      mint: lane.mint,
-      thresholdRaw: rubric.minHoldUnits,
-      checkRound: "22222222-2222-4222-8222-222222222222",
-      status: "holder",
-      attempts: 1,
-      rawAmount: "150000000000",
-      decimals: 6,
-      provider: "consensus",
-      slot: "321",
-      observedAt: new Date(after.getTime() + 60_000),
-    });
-    const before = new Date(lane.epoch.closesAt.getTime() - 1);
-    expect(await statusesAt(lane, before)).toEqual({
-      ready: { status: "held", reasons: ["hold_pending"], hold: "at_close" },
-      unlinked: {
-        status: "not_payable",
-        reasons: ["no_verified_wallet", "no_rules_test"],
-        hold: "at_close",
-      },
-    });
-    for (const [schema, body] of [
-      [ReadApiV1Loose.contributions, await readContributions(t.db, lane.mint, 1, page, before)],
-      [ReadApiV1Loose.leaderboard, await readLeaderboard(t.db, lane.mint, 1, page, before)],
-    ] as const) {
-      expect(schema.safeParse(body).success).toBe(true);
-    }
-  });
-
-  it("an epoch of a community with no paid epoch pays no one", async () => {
-    const rows = strict(
-      ReadApiV1.contributions,
-      await readContributions(t.db, demo.mint, 2, page, NOW),
-    ).contributions;
-    expect(rows.map((r) => r.payout)).toEqual(rows.map(() => ({ status: "unpaid_epoch" })));
+    await assertPrivate(lane, after);
   });
 });
 

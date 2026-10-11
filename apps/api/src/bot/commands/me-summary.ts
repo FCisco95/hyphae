@@ -1,4 +1,4 @@
-import { exactPoints, type PayoutV1 } from "@hyphae/core";
+import { exactPoints } from "@hyphae/core";
 import {
   communities,
   contributions,
@@ -9,6 +9,7 @@ import {
   scoringRuns,
 } from "@hyphae/db";
 import { and, desc, eq, isNotNull, lte, sql } from "drizzle-orm";
+import type { PayoutV1 } from "../../payout/readiness.js";
 import { epochPayouts, nextStep, type PayoutStep } from "../../payout/readiness.js";
 import { readOnly } from "../../pg.js";
 import { dbClock, type RewardDeps } from "../../rewards/config.js";

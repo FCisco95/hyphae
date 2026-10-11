@@ -15,7 +15,6 @@ import {
   explorerTx,
   multiplier,
   networkName,
-  payoutSentence,
   rowState,
   STATE,
   shortId,
@@ -632,7 +631,6 @@ export function LeaderboardView({ board }: { board: LeaderboardV1 }) {
               <th>Exact points</th>
               <th>Whole points</th>
               <th>Counted</th>
-              <th>Payout</th>
             </tr>
           </thead>
           <tbody>
@@ -655,9 +653,6 @@ export function LeaderboardView({ board }: { board: LeaderboardV1 }) {
                 </td>
                 <td data-label="Counted" className="num">
                   {e.counted} of {e.contributions}
-                </td>
-                <td data-label="Payout">
-                  {e.payout ? payoutSentence(e.payout, board.closed) : "—"}
                 </td>
               </tr>
             ))}

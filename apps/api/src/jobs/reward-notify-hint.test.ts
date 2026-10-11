@@ -7,8 +7,8 @@ import { appendCorrection } from "../rewards/decisions.js";
 import { runEvaluation } from "../rewards/evaluation.js";
 import { later, seedRewardLane, T0 } from "../rewards/test-db.js";
 
-// notifyReward on a real database (PGlite): the score message, its once-per-epoch payout hint and
-// the mark, in the transaction that holds the member and epoch's lock.
+// Group scores stay public; private eligibility is never read or appended. Notification marking
+// and retry behavior are still exercised on the real database (PGlite).
 const m = vi.hoisted(() => ({
   sent: [] as { text: string; markup: unknown }[],
   failNext: 0,
@@ -54,8 +54,6 @@ const { db } = await import("../db.js");
 const { notifyReward } = await import("./reward-jobs.js");
 
 const MIN = 60_000;
-const HINT =
-  "Not payable yet: link a wallet by signing and pass the rules test before the epoch closes.";
 
 // A paid epoch 1 whose member has only a pasted wallet and no rules test pass, so their first
 // score message carries the hint.
@@ -93,7 +91,6 @@ const notified = async (decisionId: string) =>
       .from(rewardDecisions)
       .where(eq(rewardDecisions.id, decisionId))
   )[0]?.at ?? null;
-const hints = () => m.sent.filter((s) => s.text.endsWith(HINT)).length;
 
 beforeEach(() => {
   m.sent = [];
@@ -111,11 +108,11 @@ describe("notifyReward on the database", () => {
     const { job } = await lane.score();
     await notifyReward(job);
     await notifyReward(job);
-    expect(m.sent.map((s) => s.text)).toEqual([`${job.text}\n${HINT}`]);
+    expect(m.sent.map((s) => s.text)).toEqual([job.text]);
     expect(await notified(job.decisionId)).not.toBeNull();
   });
 
-  it("a failed send marks nothing and spends no hint: the next message carries it", async () => {
+  it("a failed send stays retryable without disclosing eligibility", async () => {
     const lane = await paidLane();
     const first = (await lane.score()).job;
     const second = (await lane.score()).job;
@@ -124,11 +121,13 @@ describe("notifyReward on the database", () => {
     expect(await notified(first.decisionId)).toBeNull();
     await notifyReward(second);
     await notifyReward(first);
-    expect(m.sent.map((s) => s.text)).toEqual([`${second.text}\n${HINT}`, first.text]);
-    expect(hints()).toBe(1);
+    expect(m.sent.map((s) => s.text)).toEqual([second.text, first.text]);
+    expect(m.sent.every((s) => !s.text.includes("rules test") && s.markup === undefined)).toBe(
+      true,
+    );
   });
 
-  it("a corrected revision after the member was told carries no hint", async () => {
+  it("a corrected revision sends only its public score", async () => {
     const lane = await paidLane();
     const { job, contributionId } = await lane.score();
     await notifyReward(job);
@@ -148,10 +147,10 @@ describe("notifyReward on the database", () => {
     );
     if (corrected.status !== "appended") throw new Error(corrected.status);
     await notifyReward({ ...job, decisionId: corrected.decision.id, text: "revised" });
-    expect(m.sent.map((s) => s.text)).toEqual([`${job.text}\n${HINT}`, "revised"]);
+    expect(m.sent.map((s) => s.text)).toEqual([job.text, "revised"]);
   });
 
-  it("a status read that fails in the database still sends and marks the score", async () => {
+  it("never reads private eligibility while sending a public score", async () => {
     const lane = await paidLane();
     const { job } = await lane.score();
     m.brokenStatus = true;

@@ -8,7 +8,6 @@ import {
   type EpochV1,
   exactPoints,
   type LeaderboardV1,
-  type PayoutV1,
   type PointUnits,
   type RevisionV1,
   type SelectedV1,
@@ -51,7 +50,6 @@ import {
   sql,
 } from "drizzle-orm";
 import { loadIntent } from "../payout/intent.js";
-import { epochPayouts } from "../payout/readiness.js";
 import { isoUs, readOnly } from "../pg.js";
 import { amendmentsOf } from "../rewards/amendment.js";
 import { RewardConfigPayload } from "../rewards/config.js";
@@ -393,26 +391,8 @@ function selectedView(d: Decision): SelectedV1 {
   };
 }
 
-type PayoutCommunity = Parameters<typeof epochPayouts>[1]["community"];
-
-const payoutsOf = (
-  tx: Db,
-  community: PayoutCommunity,
-  epoch: EpochView,
-  memberIds: string[],
-  now: Date,
-) =>
-  epochPayouts(tx, {
-    community,
-    epoch: epoch.row,
-    snapshotId: epoch.snapshot?.id ?? null,
-    closed: isClosed(epoch.row, now),
-    memberIds,
-  });
-
 async function rows(
   tx: Db,
-  community: PayoutCommunity,
   epoch: EpochView,
   entries: Entry[],
   now: Date,
@@ -431,7 +411,6 @@ async function rows(
   );
   const memberIds = [...new Set(entries.map((e) => e.memberId))];
   const wallets = await publicWallets(tx, memberIds, walletTime(epoch.row, now));
-  const payouts = (await payoutsOf(tx, community, epoch, memberIds, now)).members;
   const closed = isClosed(epoch.row, now);
   return entries.map((e) => {
     const c = byId.get(e.contributionId);
@@ -455,15 +434,8 @@ async function rows(
       accepted_at: e.acceptedAt,
       state: e.state,
       selected: d ? selectedView(d) : null,
-      payout: payoutOf(payouts, e.memberId),
     };
   });
-}
-
-function payoutOf(payouts: Map<string, PayoutV1>, memberId: string): PayoutV1 {
-  const payout = payouts.get(memberId);
-  if (!payout) throw new Error(`read: member ${memberId} has no payout status`);
-  return payout;
 }
 
 export async function readCommunity(
@@ -913,7 +885,7 @@ export async function readContributions(
       total_contributions: total,
       offset: page.offset,
       limit: page.limit,
-      contributions: await rows(tx, community, epoch, entries, now),
+      contributions: await rows(tx, epoch, entries, now),
     };
   });
 }
@@ -975,7 +947,6 @@ export async function readLeaderboard(
     const slice = totals.slice(page.offset, page.offset + page.limit);
     const sliceIds = slice.map((m) => m.memberId);
     const wallets = await publicWallets(tx, sliceIds, walletTime(epoch.row, now));
-    const payouts = (await payoutsOf(tx, community, epoch, sliceIds, now)).members;
     return {
       community: { mint: community.mint },
       epoch: { index: epoch.row.index, opens_at: epoch.opensAt, closes_at: epoch.closesAt },
@@ -999,7 +970,6 @@ export async function readLeaderboard(
           points: exactPoints(m.units),
           whole_points: m.whole.toString(),
           ...mine,
-          payout: payoutOf(payouts, m.memberId),
         };
       }),
     };
@@ -1047,7 +1017,7 @@ export async function readContribution(
       ? withStates([intakeRow], await statesFor(tx, epoch, [contributionId], now))
       : [];
     if (!entry) throw new Error(`read: contribution ${contributionId} missing from its epoch`);
-    const [row] = await rows(tx, community, epoch, [entry], now);
+    const [row] = await rows(tx, epoch, [entry], now);
     if (!row) throw new Error("read: row");
 
     const [content] = await tx

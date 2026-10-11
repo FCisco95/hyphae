@@ -115,7 +115,7 @@ export function openApiDocument() {
       ),
       "/v1/communities/{mint}/epochs/{index}/contributions": get(
         "An epoch's contributions",
-        "Audit rows in intake order, each with its selected judgement and its member's payout status: what the payout gate would decide as of the read (the hold is read only after the close).",
+        "Audit rows in intake order, each with its selected judgement. Member eligibility checklists are private; published payment totals are on the epoch settlement.",
         "Contributions",
         [
           mint,
@@ -127,7 +127,7 @@ export function openApiDocument() {
       ),
       "/v1/communities/{mint}/leaderboard": get(
         "An epoch's leaderboard",
-        "Members ranked by point units; ties share a rank. Each with its payout status.",
+        "Members ranked by point units; ties share a rank. Member eligibility checklists are private.",
         "Leaderboard",
         [
           mint,
@@ -138,7 +138,7 @@ export function openApiDocument() {
       ),
       "/v1/contributions/{id}": get(
         "A contribution",
-        "One contribution with every judgement revision, correction and provenance, and its member's payout status.",
+        "One contribution with every judgement revision, correction and provenance. Member eligibility checklists are private.",
         "Contribution",
         [path("id", "The contribution id.", { type: "string", format: "uuid" })],
         "No such served contribution.",
