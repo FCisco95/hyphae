@@ -25,7 +25,7 @@ import {
   utc,
   utcExact,
 } from "../lib/format.js";
-import { APP_REPO, BOT } from "../lib/links.js";
+import { APP_REPO } from "../lib/links.js";
 import { walletPath } from "../lib/record.js";
 import { settlementOf } from "../lib/settlement.js";
 import { CommunityOverview } from "./community.js";

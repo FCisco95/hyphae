@@ -2,6 +2,14 @@
 
 One entry per work session, newest first. Written so it can be read aloud as a script.
 
+## 2026-10-11 · Authorized release integration gate
+
+**Authorized:** Cisco's exact `yes, run the post-payout release (E0–E6)`; public aggregates/member-only private checklist selected. E7–E8 and epoch 3 amendment/announcement excluded.
+
+**Integrated locally:** both histories preserved in merge e7b6824. Lockfile keeps main's pins and adds the reviewed exact Anthropic SDK; claim recovery and privacy ACCEPT diffs retained. Combined gate exposed a stale group /me test (fixed 30833d5) and the main-only public raid route's old clock call (fixed test-first in 42ce449). No funds, scoring or payout verdict change. Final gate: 1,731 unit/workflow tests, 84 isolated Postgres 17 tests, typecheck, lint, Drizzle and 16 contract hashes passed. Runtime source 42ce449; final unused import removed and checked before image freeze.
+
+**Stage:** E0 done; no app push or production migration/deploy yet. Next: exact-source image, db.mjs 0018 then 0019 with pre/post checks, API, worker, web push, live smoke. Execution evidence belongs in the release plan Record. Builder Codex/GPT-6 (effort not exposed); existing fresh Claude Opus 5.5 high reviews ACCEPT.
+
 ## 2026-10-11 · Reviewed claim recovery and private eligibility
 
 **Prepared locally:** one claim wallet picker, the full connected address, a 60-second wallet deadline and 10-second read deadline, cancellation/recheck before retry, account and epoch switching guards, duplicate-click guard, and receipt polling cancellation. A confirmed paid read survives a late signature and failed later reads. Transaction construction is unchanged. Commits 9777a66, 9b9d0ba and cc4f773; fresh Claude Opus 5.5 high review ACCEPT at cc4f773. Claim tests: 12 mounted UI + 8 transaction + 7 view passed; web typecheck and changed-file Biome passed.
