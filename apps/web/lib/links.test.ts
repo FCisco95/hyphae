@@ -14,7 +14,7 @@ describe("links", () => {
       const target = new URL(url);
       expect(target.hostname, url).toBe("github.com");
       const repository = target.pathname.split("/").slice(1, 3).join("/");
-      expect(["FCisco95/hyphae", "FCisco95/hyphae-program"], url).toContain(repository);
+      expect([APP_REPO, PUBLIC_REPO], url).toContain(`${target.origin}/${repository}`);
     }
   });
 
