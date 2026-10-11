@@ -293,6 +293,39 @@ describe("ClaimPanel recovery", () => {
     expect(fetcher.mock.calls.length).toBe(before);
   });
 
+  it("keeps a confirmed paid read when a late signature returns and later reads fail", async () => {
+    let finish!: (signature: string) => void;
+    sdk.send.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await render();
+    await connect();
+    await click("Claim 0.12125 SOL");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    fetcher.mockImplementation(async () =>
+      Response.json({ ...claim, payment: { status: "paid", claim_tx: f.CLAIM_TX } }),
+    );
+    await click("I cancelled it — check again");
+    expect(container.textContent).toContain("Paid in");
+    fetcher.mockImplementation(async () => {
+      throw new Error("offline");
+    });
+    await act(async () => {
+      finish(f.CLAIM_TX);
+    });
+    expect(container.textContent).toContain("Paid in");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(70_000);
+    });
+    expect(container.textContent).toContain("Paid in");
+    expect(container.textContent).not.toContain("Claim 0.12125 SOL");
+  });
+
   it("clears the connected allocation when the epoch changes", async () => {
     await render();
     await connect();

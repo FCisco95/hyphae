@@ -171,7 +171,9 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
         activeClaim.current = reportId;
       }
       clearTimeout(timer);
-      setLoad(fresh);
+      setLoad((shown) =>
+        shown.state === "ready" && shown.claim.payment.status === "paid" ? shown : fresh,
+      );
       if (!signature) {
         setSend({ state: "idle" });
         return;
@@ -187,7 +189,11 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
         () => new Promise((resolve) => setTimeout(resolve, POLL_MS)),
       );
       if (reportId !== generation.current) return;
-      setLoad(afterSendRead(fresh, receipt.read).shown);
+      setLoad((shown) =>
+        shown.state === "ready" && shown.claim.payment.status === "paid"
+          ? shown
+          : afterSendRead(fresh, receipt.read).shown,
+      );
       if (receipt.state === "unresolved") setSend({ state: "unresolved", signature });
     } catch (e) {
       if (id === generation.current) setSend({ state: "failed", message: messageOf(e) });
@@ -389,7 +395,14 @@ function WalletPicker({
     >
       <div className="wallet-picker-head">
         <h2 id="wallet-picker-title">Choose your wallet</h2>
-        <button type="button" className="button-secondary" onClick={onClose}>
+        <button
+          type="button"
+          className="button-secondary"
+          onClick={() => {
+            dialog.current?.close();
+            onClose();
+          }}
+        >
           Close
         </button>
       </div>
@@ -398,7 +411,14 @@ function WalletPicker({
       ) : (
         <div className="wallet-options">
           {wallets.map((wallet) => (
-            <button type="button" key={wallet.name} onClick={() => onChoose(wallet)}>
+            <button
+              type="button"
+              key={wallet.name}
+              onClick={() => {
+                dialog.current?.close();
+                onChoose(wallet);
+              }}
+            >
               {wallet.name}
             </button>
           ))}
