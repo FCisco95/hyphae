@@ -75,6 +75,9 @@ beforeEach(() => {
   HTMLDialogElement.prototype.showModal = function () {
     this.open = true;
   };
+  HTMLDialogElement.prototype.close = function () {
+    this.open = false;
+  };
   sdk.connect.mockResolvedValue({ address: f.claim.wallet, chains: [f.claim.network] });
   sdk.send.mockImplementation(() => new Promise(() => {}));
   fetcher = vi.fn(async () => Response.json(claim));
@@ -251,5 +254,53 @@ describe("ClaimPanel recovery", () => {
       });
     });
     expect(sdk.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("retains a late signature after a timeout recheck when no newer claim is active", async () => {
+    let finish!: (signature: string) => void;
+    sdk.send.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await render();
+    await connect();
+    await click("Claim 0.12125 SOL");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    await click("I cancelled it — check again");
+    await act(async () => {
+      finish(f.CLAIM_TX);
+    });
+    expect(container.textContent).toContain("Sent in");
+    expect(container.textContent).not.toContain("Claim 0.12125 SOL");
+    expect(sdk.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops polling the receipt after disconnect", async () => {
+    sdk.send.mockResolvedValue(f.CLAIM_TX);
+    await render();
+    await connect();
+    await click("Claim 0.12125 SOL");
+    expect(container.textContent).toContain("Sent in");
+    await click("Disconnect");
+    const before = fetcher.mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(70_000);
+    });
+    expect(fetcher.mock.calls.length).toBe(before);
+  });
+
+  it("clears the connected allocation when the epoch changes", async () => {
+    await render();
+    await connect();
+    await act(async () => {
+      root.render(<ClaimPanel mint="MintAbc" index={3} />);
+    });
+    expect(container.querySelector(".wallet-address")).toBeNull();
+    expect(container.textContent).toContain("Connect wallet");
+    expect(container.textContent).not.toContain("Claim 0.12125 SOL");
   });
 });

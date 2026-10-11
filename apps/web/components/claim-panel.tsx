@@ -38,12 +38,15 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
   const [picker, setPicker] = useState(false);
   const [connecting, setConnecting] = useState<string | null>(null);
   const generation = useRef(0);
+  const walletGeneration = useRef(0);
+  const route = useRef({ mint, index });
   const activeClaim = useRef<number | null>(null);
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
 
   useEffect(
     () => () => {
       generation.current += 1;
+      walletGeneration.current += 1;
       activeClaim.current = null;
       for (const timer of timers.current) clearTimeout(timer);
     },
@@ -57,6 +60,7 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
 
   const clearWallet = useCallback(() => {
     generation.current += 1;
+    walletGeneration.current += 1;
     activeClaim.current = null;
     for (const timer of timers.current) clearTimeout(timer);
     timers.current.clear();
@@ -65,6 +69,13 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
     setSend({ state: "idle" });
     setConnecting(null);
   }, []);
+
+  useEffect(() => {
+    if (route.current.mint !== mint || route.current.index !== index) {
+      route.current = { mint, index };
+      clearWallet();
+    }
+  }, [mint, index, clearWallet]);
 
   useEffect(() => {
     if (!linked) return;
@@ -92,6 +103,7 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
 
   async function choose(w: ClaimWallet) {
     const id = ++generation.current;
+    walletGeneration.current += 1;
     setPicker(false);
     setConnecting(w.name);
     setSend({ state: "idle" });
@@ -133,10 +145,12 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
     if (!linked || load.state !== "ready" || activeClaim.current !== null) return;
     const wallet = linked.account.address;
     const id = ++generation.current;
+    const walletId = walletGeneration.current;
+    let reportId = id;
     activeClaim.current = id;
     setSend({ state: "signing" });
     const timer = setTimeout(() => {
-      if (id === generation.current) setSend({ state: "wallet_timeout" });
+      if (reportId === generation.current) setSend({ state: "wallet_timeout" });
     }, WALLET_MS);
     timers.current.add(timer);
     try {
@@ -148,7 +162,14 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
           return signAndSend(linked.w, linked.account, c.network, transaction);
         },
       );
-      if (id !== generation.current) return;
+      if (id !== generation.current) {
+        // A recheck may finish before a late approval. Retain its signature for the same
+        // connected wallet when no newer signing attempt is active.
+        if (!signature || walletId !== walletGeneration.current || activeClaim.current !== null)
+          return;
+        reportId = ++generation.current;
+        activeClaim.current = reportId;
+      }
       clearTimeout(timer);
       setLoad(fresh);
       if (!signature) {
@@ -158,17 +179,20 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
       setSend({ state: "sent", signature });
       // Paid is shown only once the receipt is read on-chain.
       const receipt = await awaitReceipt(
-        () => read(wallet),
+        () => {
+          if (reportId !== generation.current) throw new Error("Receipt check cancelled.");
+          return read(wallet);
+        },
         POLLS,
         () => new Promise((resolve) => setTimeout(resolve, POLL_MS)),
       );
-      if (id !== generation.current) return;
+      if (reportId !== generation.current) return;
       setLoad(afterSendRead(fresh, receipt.read).shown);
       if (receipt.state === "unresolved") setSend({ state: "unresolved", signature });
     } catch (e) {
       if (id === generation.current) setSend({ state: "failed", message: messageOf(e) });
     } finally {
-      if (activeClaim.current === id) activeClaim.current = null;
+      if (activeClaim.current === reportId) activeClaim.current = null;
       clearTimeout(timer);
       timers.current.delete(timer);
     }
@@ -352,7 +376,9 @@ function WalletPicker({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
-    dialog.current?.showModal();
+    const modal = dialog.current;
+    modal?.showModal();
+    return () => modal?.close();
   }, []);
   return (
     <dialog
