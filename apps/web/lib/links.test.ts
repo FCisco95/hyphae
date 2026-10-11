@@ -11,7 +11,10 @@ describe("links", () => {
     const github = Object.values(links).filter((v: string) => v.includes("github.com"));
     expect(github.length).toBeGreaterThan(3);
     for (const url of github) {
-      expect(url === APP_REPO || url.startsWith(PUBLIC_REPO), url).toBe(true);
+      const target = new URL(url);
+      expect(target.hostname, url).toBe("github.com");
+      const repository = target.pathname.split("/").slice(1, 3).join("/");
+      expect(["FCisco95/hyphae", "FCisco95/hyphae-program"], url).toContain(repository);
     }
   });
 
