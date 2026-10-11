@@ -151,7 +151,7 @@ describe("actual bot onboarding wiring", () => {
     expect(await inventory()).toEqual(before);
   });
 
-  it("keeps other-community help scoped and leaves personal progress in existing /me", async () => {
+  it("keeps other-community help scoped and routes personal progress to private /me", async () => {
     const first = await seedCommunity(t.db);
     const second = await seedCommunity(t.db);
     await bot.handleUpdate(command("/help", Number(second.community.telegramChatId)));
@@ -160,8 +160,23 @@ describe("actual bot onboarding wiring", () => {
     expect(texts()[0]).not.toContain(second.member.wallet);
     out.length = 0;
     await bot.handleUpdate(command("/me", Number(second.community.telegramChatId)));
+    expect(texts()[0]).toBe("Open your checklist in private chat.");
+    expect(texts()[0]).not.toMatch(/Wallet|Rules test|Hold/);
+    expect(out.find((o) => o.method === "sendMessage")?.payload.reply_markup).toEqual({
+      inline_keyboard: [
+        [
+          {
+            text: "Open my private checklist",
+            url: `https://t.me/t_bot?start=me_${second.community.id}`,
+          },
+        ],
+      ],
+    });
+    out.length = 0;
+    await bot.handleUpdate(command(`/start me_${second.community.id}`, 42, "private"));
     expect(texts()[0]).toContain("Wallet");
     expect(texts()[0]).toContain(`/c/${second.community.mint}`);
+    expect(texts()[0]).not.toContain(`/c/${first.community.mint}`);
   });
 
   it("routes link/rules keyboard commands to the existing private deep links", async () => {
