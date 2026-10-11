@@ -259,43 +259,22 @@ The 16 founder-graded synthetic cases, in fixture order (`docs/rubrics/eval/myce
 | 15 | image-context-limitation | 75 | 75 | none | context_fit, own_voice, value_angle? | 2-3 |
 | 16 | code-only-spam | 0 | 0 | spam | spam (off_topic? low_effort?) | 0 |
 
-## Rulings (Cisco, 2026-09-30)
+
+## Policy provenance
+
+Drafted by an agent, then ruled on and amended by Cisco in session on 2026-09-30. The executable questions above are preserved word for word; owner working notes and future proposals are private.
 
 ### Ruling 1
-`low_effort` is a hard zero, like `spam`, `off_topic` and `guideline_breach`. The eval applies it in `compareScore`; production's credit rule is unchanged until a rubric version adopts it. Cisco also wants a deterministic pre-filter with no AI call for the plainest cases (a bare "gm", emoji only), and a way for a greeting under a greeting post to be fine: an admin tags a ritual post at intake, and replies to it get a small fixed participation credit with no AI call. Both are rubric-level design items, not part of this eval.
+The evaluation harness zeroes low_effort; production credit rules are separately defined by code and the pinned epoch.
 
 ### Ruling 2
-Keep the rubric's criterion weights (0.35, 0.30, 0.35) and the 50/50 split between quality and criteria for the first run. Tune only after reading where the 16 cases land.
+Keep criterion weights 0.35, 0.30 and 0.35, with a 50/50 split between quality and criteria for this version.
 
 ### Ruling 3
-No cap. A reply or quote can compose to 100. Expect cases 2 and 9 (founder 90, accepted 85-95) to fail on raw if Jev rates them perfect; that is a finding to report, not a reason to change the rule.
+There is no additional composition cap: a reply or quote can compose to 100. Raw and credited fixture misses must still be reported.
 
 ### Ruling 4
-Check both `raw` and `credited` on every case, including the flagged cases 3, 7, 11 and 13. A raw miss on a flagged case is a defect in the questions to fix, not to excuse. The goal is a scorer that matches the founder's judgment and resists gaming.
+Evaluate both raw and credited scores against the labeled test cases.
 
 ### Ruling 5
-The tell that separates case 1 from case 12 is a sentence built backwards: the thing first, then the speaker's verb after it ("Buying the coin is what I'm going to do", where a person writes "I'm going to buy the coin"). One such sentence is enough for `ai_slop`. Cisco's words: "no one talks like this." The `ai_slop` and `own_voice` questions say so without quoting a fixture case.
-
-**Amended the same day, after labeling session 1 and a holdout (session 2).** The shape alone is not the tell: "Sometimes people do sentences like this." It reads as AI when the reply is polished, complete and praises an abstract quality, or when two such sentences are stacked. It reads human when it is unforced, about a concrete thing, or ends on a tossed-off human reaction ("nice"). Question set v2 says so. On the holdout the amended wording cleared one flag on a reply with the shape that Cisco could not call (0.69 to 0.19) and lowered another such reply that was already under the threshold (0.44 to 0.16), and kept Cisco's clear AI calls flagged, though one fell from 0.80 to 0.58. It still flags a reply Cisco first called human and later could not explain, and still misses fixture case 1.
-
-## Rulings 6 to 8 (Cisco, 2026-09-30, after scoring his own replies)
-
-Ruling 6 is in the questions since v3 (with ruling 9). Rulings 7 and 8 (project brief, quoted material) are not yet: the brief waits for Cisco's approval of its content, and quoted material is an intake change. The scratch experiment behind them is in the report's second addendum.
-
-### Ruling 6
-Do not be too critical. A funny joke is not low effort, and a personal opinion is not low effort even when short. What matters is an organic reaction to the post; demanding the best engagement from everyone would look like paid shilling. Generic hype that fits under any post stays low effort (the rubric's own words).
-
-### Ruling 7
-The scorer needs a maintained memory of the project. Cisco created the project, so when he answers a post with something else he knows, he is bringing project information the scorer lacks, and it must not read as off topic. Direction: a project brief, kept up to date by the community admin, passed to the scorer as state (`project_context`), and published and pinned per epoch like the rubric so the audit trail covers it.
-
-### Ruling 8
-Answering a post about the project with the project's own material (for example a link to the article on Hyphae) is good, organic engagement and plainly not a bot. The scorer must see the quoted or linked material, so intake has to pass the quoted post's text (and, ideally, a description of any image) along with the member's words.
-
-### Ruling 9
-A short organic reaction (a joke that lands, a short personal opinion that responds to the post) earns the low end of the same scale, about 60 to 70 raw: less than a substantive reply, which can reach 90. One scale, no flat participation credit, because a flat credit would be free points for anyone and invite spam reactions. Generic hype and cheers still score 0. v3 writes this into `low_effort`, `context_fit`, `value_angle` and the quality ladder.
-
-## Later, not in this eval
-
-- Train or calibrate Jev on the founder's labels once there are a few hundred to a thousand of them (admin corrections and appeals are the source). Supervised calibration, not RLHF.
-- Add an adversarial set written to fool the scorer.
-- Add a positive `link_mismatch` case before relying on that flag; none of the 16 exercises it.
+A backwards sentence alone is not enough to identify AI writing. The implemented questions require the accompanying wording/context signals.

@@ -1,8 +1,6 @@
-# Community setup and Organic integration
+# Community setup interface
 
-**Current continuation — October 4:** source/checkpoint `e5ee300d6ce65231ec2325fef60be1f1ecbcba05` contains completed, independently reviewed T/A/B onboarding and operator-assisted setup. Both remain local-only, unpushed/undeployed. The owner-doc patch is applied. Next gate: combined release/target preflight, genuine owner inputs and separately authorized attended phone/setup/live scope; no rebuild of accepted source. [Current handoff](../HANDOFF.md).
-
-Local operator tooling; no production community is registered by this guide. Hyphae is a shared bot/service. Each token community uses its own registered Telegram contribution group and `/c/<mint>` audit page. Lab is the MYCEL pilot, not the destination for every community.
+Operator-assisted setup tooling; no production community is registered by this guide. Hyphae is a shared bot/service. Each token community uses its own registered Telegram contribution group and `/c/<mint>` audit page. Lab is the MYCEL pilot, not the destination for every community.
 
 ## Current usable boundary
 
@@ -91,16 +89,5 @@ The Organic community page should provide a setup checklist/deep links and verif
 
 Hyphae's currently permitted Organic interface is the public settlement GET only. A settings feed and owner-authorized provisioning require a separately scoped Organic change; this repo does not implement or assume them. Existing generic welcome/help works for registered communities, not for arbitrary groups just because the bot was added.
 
-## Validation and release
 
-Unit/PGlite tests cover manifest/target refusal, read-only preflight, two-community welcome isolation, paused intake, exact replay, conflicts and rollback. Real Postgres tests use two independent pools for duplicate/conflicting requests, lost-COMMIT reconciliation and expiry during a lock wait. No provider scoring experiment or real holder is used.
-
-Before a later authorized publication: rerun the complete repository gate, DB consistency and real-Postgres checks. Reuse the accepted unchanged setup review (072e99b..cd4c4ef, APPROVE); review any new sensitive delta separately. No schema, SDK or reward-policy change is included. SDK stays 0.1.0 through October 12; Sentinel remains PARKED F-13; existing payout gates remain unchanged.
-
-Primary sources checked October 3: [Drizzle transactions](https://orm.drizzle.team/docs/transactions), [grammY API](https://grammy.dev/ref/core/api), [Telegram getChatMember](https://core.telegram.org/bots/api#getchatmember). Context7 was unavailable; current official documentation and installed package types were used.
-
-## Combined release continuation — October4
-
-The [single combined packet](../demo/2026-10-04-combined-release-packet.md) now owns source/artifact/target pins, selected-effect approvals, timestamped technical preflight, phone matrix, private-manifest readiness, Organic consumer requirements and the one bundled input list. Both candidates remain complete at source/checkpoint **e5ee300d6ce65231ec2325fef60be1f1ecbcba05**, local-only. Prior latest gate851/1 skip + Postgres50/50 is prior evidence; no runtime tests/builds ran in this preparation. Current next gate: existing read-only access/genuine URLs and concrete publication/deployment/test/setup scope.
-
-Fresh Oct4 public/API/site reads passed; internal Lab UUID/chat/admin/type/webhook/migration/Fly health remain UNKNOWN. Vercel production target/source is freshly confirmed, and main auto-deploy is enabled: source publication must account for its web deployment. Recommend coupled publication+selected web release and API-only image update with frozen v11 worker retained after preflight. No actual image build, push, deploy or configuration change.
+The CLI is technical tooling, not public self-service. Registration requires exact community authority and a privately reviewed manifest. It does not send Telegram messages or move funds. [Current integration interfaces](INTEGRATING.md).

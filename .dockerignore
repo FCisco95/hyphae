@@ -6,3 +6,10 @@ target
 docs
 programs
 tests
+
+# Private local agent context
+AGENTS.md
+CLAUDE.md
+.claude
+.codex
+.agents

@@ -50,7 +50,7 @@ On PowerShell use `pnpm.cmd` if execution policy blocks `pnpm.ps1`. Paths are re
 
 Stdout is one JSON record per case: expected labels, raw/credited scores, failures, and the complete scoring run (input, output/reasoning/flags, model, rubric version, prompt hash, evidence hash, latency, cost). Stderr ends with passed/total and cost in micro-dollars. Exit status is nonzero for any mismatch, invalid fixture, or provider error. Provider errors stop the run; preceding case records remain available. Redirect stdout to a local `.jsonl` file to compare a baseline and candidate. Results are gitignored because they contain the full input text; deliberately review any real examples before committing them to this repository.
 
-No real labelled dataset is included yet. The previous session's Organic_Bonk example has a founder grade of 4/5 and an observed raw score of 38, but the full target and reply text still need to be supplied. Do not reconstruct them from the abbreviated handoff.
+Real private contributions and raw model recordings are not included. Reproducible synthetic fixtures remain public.
 
 ## Synthetic review set
 
@@ -67,10 +67,10 @@ A test keeps the fixture equal to the generator's output. Keep real founder-labe
 
 ## Jev backend
 
-`--backend jev` scores each case with TypeSafe's Jev instead of the Sonnet scorer. It is offline only: production scoring never calls it, and it writes nothing.
+`--backend jev` scores each case with TypeSafe's Jev instead of the Sonnet scorer. The harness itself is offline and writes no production data. Production scorer selection is epoch-specific; check the live epoch configuration.
 
 - The model is pinned to `jev-1.13.0`; an answer from any other model is refused.
-- The questions come from `apps/api/src/scoring/jev-questions.ts`. The default is set `v3-2026-09-30`, written out in `docs/evals/jev-questions.md` (a test holds the code to that document, word for word): agent-drafted, then ruled on and amended by Cisco on 2026-09-30. `--questions <id>` picks another set. The recordings in `docs/evals/recordings/jev-*.json` were made under v1 at commit `4fe3815`. Later sets changed the `ai_slop`, `low_effort`, `context_fit` and `value_angle` questions and the quality ladder, so the recordings replay only at that commit; a replay against the current set is refused. The eval's credited score also zeroes `low_effort` (Cisco's ruling 1); production's credit rule does not yet.
+- The questions come from `apps/api/src/scoring/jev-questions.ts`. The default is set `v3-2026-09-30`, written out in `docs/evals/jev-questions.md` (a test holds the code to that document, word for word): agent-drafted, then ruled on and amended by Cisco on 2026-09-30. `--questions <id>` picks another set. Historical recordings are private and are not shipped as reproducible fixtures. The eval's credited score also zeroes `low_effort` (evaluation policy); production's credit rule does not yet.
 - Jev answers yes/no probabilities and one quality level. `apps/api/src/scoring/jev.ts` composes them to 0–100 (half the quality level, half the rubric's weighted criteria) and sets each flag at P(yes) ≥ 0.5; the harness then applies the production credit rule plus the eval-only `low_effort` zero.
 - Cost is $0.042 per million input tokens (output tokens are free), reported per case in micro-dollars.
 - `--questions`, `--record`, and `--recorded` require `--backend jev` and a nonempty value. `--record` and `--recorded` are mutually exclusive; invalid combinations stop before any provider call.

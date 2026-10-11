@@ -1,33 +1,19 @@
-# Private member submission receipts
+# Member receipts and private checklists
 
-**Source is published on GitHub main and reviewed; the production bot rollout is pending.** The running API and reward worker remain on their frozen image. Using this new bot journey requires separately approved migrations0013+0014 and an API-only rollout. Fixtures do not prove a real Telegram message, wallet signature, attended phone session or claim transaction.
+Use the bot's raid buttons to submit work for the named community and raid. A private receipt belongs to the submitting member and is checked again on every read. It records the submission, selected decision, exact points and audit link. Submission in private chat does not make a later group scoring announcement private.
 
-An authorized designated admin selects a raid target. A member who enabled that community's private alerts can choose **Submit my reply** or **Submit my quote** from the raid, then reply to the bot's specific prompt with their own post URL. The server binds that prompt to the caller, community, raid and declared kind. A different or newer raid cannot silently take that submission. The declared kind is the member's assertion, not evidence that X actually linked the post to that target.
+| State | Meaning |
+|---|---|
+| Received / pending dispatch | Work is stored; queue dispatch may still need confirmation. |
+| Pending scoring | No accepted decision exists yet. |
+| Scored | A decision and its reason exist; a zero remains visible. |
+| Counted, provisional | Points contribute to the open epoch; points are not SOL. |
+| Counted, frozen / excluded at cutoff | The closed snapshot selected the decision or recorded its exclusion reason. |
 
-The receipt names the exact raid, target, submitted URL, received time and receipt ID. Keep that ID. Use `/receipt <receipt ID>` or **Refresh receipt** privately to read the current result. A receipt reference grants no access by itself: the bot checks the caller and the linked member, community, task, contribution and prompt on every read. Members retain access to read and report issues on their own history after a raid expires, closes or is cancelled, or after leaving the group. New submissions and dispatch retries still require current membership in that exact registered group; departing does not grant a retry exception. Pending work remains visible to the designated admin.
+After a raid ends or a member leaves, the member retains read/report access to their own history. New submissions and dispatch retries still require current membership. The bot checks community and caller identity; a forwarded receipt grants no access.
 
-Both the pre-submission prompt and the private receipt disclose that the existing scorer may post the result publicly in the group, replying to the raid message. A private submission or receipt does not promise a private scoring announcement. The frozen worker's existing group notification behavior is unchanged.
+Group /me shows a neutral link to **Open my private checklist**. The checklist opens in private chat after identity and membership checks. Per-member rules-test and token-hold outcomes stay private; public audit pages retain contributions, allocations, payments and aggregates.
 
-| Receipt state | What it establishes |
-| --- | --- |
-| Received | The contribution and receipt were recorded for the named raid. |
-| Pending dispatch | The work is stored, but queue dispatch has not been confirmed. Retry the same original submission if this persists. |
-| Pending scoring | There is no accepted scoring decision. A queue request does not establish scoring success. |
-| Scored | A decision exists, with credited quality, raw quality, revision and a reason. A zero-point decision stays in the audit and is excluded from positive credit. |
-| Counted, provisional | The selected decision currently contributes points to the open epoch. Points are not SOL. |
-| Counted, frozen | The closed snapshot selected that decision. Later decisions do not replace it. |
-| Excluded at cutoff | No decision qualified before close, or evidence/evaluation was still pending. The receipt explains which reason the frozen audit recorded. |
+To report a score, send /issue with the receipt ID and a specific reason in private chat. A stored issue is not a correction or promised response. Stored reports are limited to three per receipt, with a 60-second interval between distinct messages; retries of the same message preserve the original report.
 
-The receipt uses the existing audited reward selection and frozen snapshots. It does not write decisions, change epoch timing, calculate a new payout, or change the frozen reward worker.
-
-Target relation and X account ownership are separate, both currently **unverified**. The existing capture can show text and a displayed author, but it does not provide a trustworthy structured reply/quote parent or proof that the Telegram caller controls that X account. First-seen handle binding prevents some conflicting submissions; it is not account ownership verification. Model judgments are also not ownership evidence. The approved human authorship-attestation process for the current payout remains in force.
-
-Eligibility remains subject to the existing wallet, rules, holder, authorship/duplicate and safety gates. A current signed wallet link does not prove the member passed those gates at epoch close. A stored allocation is shown as an amount for the whole member epoch, not as a payment for this individual post. Claimability requires verified on-chain publication. Actual payment requires a confirmed claim receipt. This private receipt does not perform those chain checks and says so explicitly; an epoch root, a stored allocation or a cached transaction string is not treated as payment proof. The audit link opens the existing contribution page.
-
-To report a scoring issue, send `/issue <receipt ID> <what seems wrong>` privately, with up to 1,000 characters. The report is attached to the caller's original receipt. The first report is accepted immediately. Technical abuse limits allow three stored reports per receipt, with at least 60 seconds between distinct messages; the database clock and a receipt-row lock enforce both bounds across concurrent processes. Retries of the same Telegram message return the same report ID and preserve the original text, even during the cooldown or after the storage limit. Existing reports remain recorded when a follow-up is refused. Further context can be taken to the community's designated admin, without a promised response or action. These are storage and request limits; they do not decide dispute merits or change scoring, eligibility, frozen decisions, allocations or payout rules. A confirmation means the report was stored for operator review; it promises no response time and does not automatically change those outcomes.
-
-Council permissions remain blocked on Organic's authoritative community-specific role and Telegram identity contract. Until that contract is available and reviewed, the designated-admin guard remains the source of target/lifecycle authority. Telegram group administration, alert subscription, wallet linking and member receipts grant no council authority.
-
-Local receipt coverage includes cross-community and wrong-caller refusals, repeated issue requests, stale callback acknowledgements, provisional and zero-point results, frozen selection despite late corrections, expired/closed/cancelled history, and refusing to infer payment from cached settlement fields. An attended first-time phone run and any real messages, signatures or claim transactions still need their separate scope.
-
-Queue insertion and its receipt confirmation now commit in the same database transaction. A lost acknowledgement is resolved from the stored receipt on retry. Saved legacy-lane work whose dispatch never committed requires the member's retry; it has no automatic dispatch sweep. The operator sees pending dispatch counts. Private legacy intake also respects a community intake pause; old standalone group text behavior remains unchanged. The receipt's received time is the canonical reward acceptance time when a reward intake exists. New private prompts are limited to 10 per member/community in a rolling hour; previously issued prompts and receipt access remain usable. These technical abuse bounds are not spending or reward limits.
+A wallet link does not establish every eligibility gate at close. A cached signature, allocation or root is not payment proof. Check the [epoch settlement](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2) and confirmed claim receipt for payment. Account ownership and target relation remain separately unverified by the text scorer.

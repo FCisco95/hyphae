@@ -1,81 +1,35 @@
-# Hyphae
+# Hyphae: proof of contribution
 
-A proof-of-contribution layer for token communities. Short version, updated 2026-09-24 (after the cutover).
+Hyphae rewards work done for token communities. Members submit text or an X post, an AI scores it against a public rubric, and an epoch's payout is committed to Solana. A member claims the allocation with their own wallet signature and Merkle proof.
 
-## 1. The problem
+## Live proof
 
-Token communities pay people for engagement: replies, quotes, explanations, raids. Nobody outside the admin team can check how that money was split. Scores live in a spreadsheet or a private bot, the rules change without notice, and a member who thinks they were underpaid has nothing to point at. Rewards that can't be audited end up rewarding whoever games the admin, not whoever did the work.
+On October 10, 2026, MYCEL epoch 2 paid **four wallets**, **1,238,881,509 lamports**, with **zero unclaimed**. Three payees are non-founder members. [Finalized mainnet receipts](evidence/2026-10-10-mainnet-payout.md); [live epoch](https://hyphae-delta.vercel.app/c/HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg/e/2).
 
-## 2. What Hyphae does
+The program is on mainnet and devnet. Its reproducible executable hash is `7e902d1b5f8d8c49dfd199ec2e7bf44139b56524d98408f1556e14f4e9ab43ac`. [Verify the build](https://github.com/FCisco95/hyphae-program#verify-the-build).
 
-A community publishes a rubric, a versioned JSON file that says what good work looks like. Members send their work to a Telegram bot. A model scores each piece against the rubric, and code, not the model, decides what that score is worth.
+## Contribution and scoring
 
-- **Public rubric.** Every version is in `docs/rubrics/`, and changes are listed in its `CHANGELOG.md`. A score always names the rubric version it used.
-- **Model score, code-enforced credit.** The model returns a raw quality score from 0 to 100, flags and its reasoning. `creditedScore` then applies the community's gates: a guideline breach, spam or an off-topic reply credits zero whatever the raw score; text that reads as AI-written is capped at 79 (mild) or 40 (strong); anything under the floor of 60 earns nothing. The raw score stays on record, so "raw 84, credited 0, and why" is visible.
-- **Reasoning shown.** The bot replies in the group with the score, the flags and the model's reasoning.
-- **Append-only records.** A re-grade or correction is a new row next to the old one. Nothing is overwritten.
+A registered Telegram community has its own raids, pinned epoch configuration and public audit page. Members submit work through the bot. The scorer reads text and the raid's target text, applies the public rubric and records its reasoning. Scores become exact points after the published caps, hard zeros, timing decay and effort rules. [Rubrics](rubrics/CHANGELOG.md); [member receipts](community/MEMBER-RECEIPTS.md).
 
-## 3. Rewards design
+Epochs pin their rubric and scorer. The pilot supports publicly recorded, prospective scorer amendments; an amendment does not rewrite already admitted work or change payout rules. Corrections append a new decision with its reason and evidence, keeping the original. A correction after close does not rewrite the frozen payout.
 
-Rewards run in epochs of seven days each.
+## Allocation and claims
 
-- **Pinned configuration.** Each epoch pins one immutable configuration: rubric, timing, credit gates, effort multiplier, slot limit and the exact prompt text, by hash. A deploy or a rubric edit can't change how an open epoch is scored. If the running code's prompt no longer matches the pinned hash, no call is made.
-- **Cooldown.** A rubric change activates no earlier than two epochs after the current one. Activate a rubric in epoch 11, and the earliest replacement lands in epoch 13, even if it was proposed during epoch 11 or 12.
-- **Admission.** A submission is accepted inside one database transaction under a per-community lock, and the time is read from the database clock after the lock is taken. Epochs are half-open: work accepted exactly at an epoch's close belongs to the next one. "Counted" means exactly "accepted before `closesAt`", whenever the model answers.
-- **One effort slot.** Each member can nominate one piece of work per epoch with `/effort` for a 3× effort multiplier. Plain `/submit` never touches the slot. Upgrading work that was already scored reuses its quality and asks the model about effort only, so 85 becomes 255, never 85 + 255.
-- **Exact points first.** Points are computed exactly with integer arithmetic and rounded to whole points only once, at the end. Timing decays linearly: full credit for 6 hours after a raid opens, zero at 48 hours. Nominated effort work credited at 85 and submitted at 27 hours is worth 85 × 3 × 0.5 = 127.5 exact points. If that's the member's only contribution, it rounds to 128 whole points.
-- **Paid calls never repeat on their own.** Every model call is a database row committed before the call is made. If the provider times out or returns something unusable, Hyphae doesn't call again. The work waits for the original answer or for an operator's written proof that nothing was sent.
+An epoch closes into a frozen audit. Only members who satisfy the existing eligibility gates can be allocated funds. Points are not payments. Exact integer arithmetic applies the 3% fee and per-member cap; allocation cannot exceed available funds.
 
-## 4. Audit trail
+The publisher commits a payout root and an audit hash to a program-derived epoch account. Each community has its own SOL vault and fixed fee recipient. A claim reconstructs the leaf from the signing wallet and pays it once, recording the wallet, score, amount and evidence hash on chain. [Program source](https://github.com/FCisco95/hyphae-program/tree/main/programs/hyphae); [read API](https://hyphae-api.fly.dev/docs).
 
-Every score records:
+## What users can verify
 
-| Field | Why |
-|---|---|
-| Model id | Switching models shows up in the record |
-| Rubric version | Which rules the work was judged by |
-| Prompt version and template hash | Exactly what the model was asked |
-| Evidence hash | Changes whenever the model, rubric version or output changes |
-| Full input and output, latency, cost | Recorded for every call. The public audit shows the input and output hashes, which pin exactly what was sent and returned, plus latency and cost |
+The public site shows contribution decisions and revisions, scorer/configuration history, allocations and chain-confirmed payments. The API supplies individual claim leaves and proofs. A signature or stored allocation alone does not establish payment. A wallet record shows actual published claim history across communities.
 
-Corrections are appended, never written over. At the close of an epoch, one snapshot is frozen and never changes afterwards.
+Public contribution/payment receipts and aggregates remain visible. Per-member rules-test and hold checklists are private. Telegram IDs and usernames are not in public receipts. [Privacy and security](SECURITY.md).
 
-The public audit reads all of this through a read-only API: every contribution with its raw and credited score and the rule between them, which decision counted at the close, the member totals, and whether anything has been allocated (nothing yet). It never serves a Telegram identity or a wallet that was not linked by signing.
+## Trust and limits
 
-## 5. On-chain plan
+The publisher chooses the payout list; the program cannot judge whether that list is fair. Its upgrade authority can change the program. Funding one epoch at a time limits exposure but does not remove that trust. The complete off-chain audit manifest is stored but not yet publicly downloadable.
 
-Scores are computed off-chain. At each close, the epoch's full score set is committed to Solana as a single merkle root. Leaves and internal nodes are hashed with separate domain tags, so a node can never be replayed as a leaf. Chain writes grow with the number of epochs, not the number of contributions. Each community has one vault that anyone can fund. The deployed program has no withdraw instruction: SOL leaves the vault only as the 3% Hyphae fee at publish or as a claim against a published root. The community's admin key publishes each root, so that key chooses where each epoch's pot goes; the program checks that a claim matches the root, not that the root matches the audit. Publishing an epoch anchors the root and the hash of the epoch's full audit record, and reserves exactly what the epoch allocates. A contributor claims with a merkle proof signed by their own wallet, once, and the claim leaves a receipt on-chain. The program runs on devnet, where a publish, a claim and a refused second claim are recorded, and on mainnet, where it is deployed with a Ledger hardware wallet as its upgrade authority and no community has been created yet. Soulbound Token-2022 points in the claim are planned, not built.
+The scorer reads text, not image/video content. A model score does not prove account ownership or a reply's relationship to the target post. AI review is not a third-party audit. [Review results and known limits](evidence/REVIEWS.md).
 
-## 6. Status
-
-| Label | Meaning |
-|---|---|
-| **Historical** | Happened and was recorded at the time; not re-run |
-| **Locally tested** | Passes the test suite on a named commit; not running anywhere |
-| **Deployed** | Running on Fly or Neon, as last recorded |
-| **Planned** | Scoped or scheduled, not built |
-
-| What | Label | Evidence |
-|---|---|---|
-| Bot in the Hyphae Lab test group: `/link`, `/raid`, `/submit`, `/effort`, `/me`, scored replies with reasoning | Deployed (production `b7bfe55`, 2026-09-24) | `docs/handoffs/2026-09-24-cutover.md` |
-| First live scoring: 3 contributions, 6 scoring runs across rubric versions 1.0.0, 1.1.0 and 1.2.0; credited 85, 0 and 0; 5–11 s per score; $0.084 total spend | Historical | Build log, 2026-09-17 |
-| Exact reward-point arithmetic (R1) | Locally tested, merged | PR #1 |
-| Pinned configuration, cooldown and admission (R2) | Deployed 2026-09-24 | PR #2 |
-| Effort slots, `/effort`, dispatch that never pays twice (R3), with a real-Postgres race suite | Deployed 2026-09-24 | PRs #6, #9 and #10; all four review findings fixed |
-| Rubric 1.3.0 (grounded price talk allowed, criticism graded like praise) | Candidate, not applied | `docs/rubrics/CHANGELOG.md` |
-| Epoch-scoped `/me` and corrections (R4) | Deployed 2026-09-24 | PR #12 |
-| Strict close with a frozen snapshot, and re-entry of expired work (R5) | Deployed 2026-09-24; first real close 2026-10-02 00:00 UTC | PR #13; Codex review, two findings fixed |
-| Verified wallet linking: private single-use link, signed message checked by `@organichub/verify` 0.1.0, append-only wallet history | Deployed 2026-09-24; a live link with Phantom verified | `docs/handoffs/2026-09-24-verified-link-implemented.md`, `2026-09-24-cutover.md` |
-| MYCEL reward epoch 1 (2026-09-25 → 2026-10-02, rubric 1.2.0) | Deployed; not a paid epoch | `docs/handoffs/2026-09-24-cutover.md` |
-| Public read API v1 and audit page | Deployed: the API's community and epoch routes since the 2026-09-29 cutover, every route (a wallet's claims, `/v1/openapi.json`, `/docs`) since Runbook C's C7; the audit site at hyphae-delta.vercel.app | `docs/handoffs/2026-09-25-audit-page-plan.md` |
-| Rules test (`/rules`, six questions, 6/6), payout gate and token-hold gate (100,000 MYCEL, read within 24 hours of the close by two independent mainnet providers) | Deployed; accepted October 2 readiness verified all 13 migration hashes 0000–0012. This is a dated receipt, not a fresh database read | `docs/handoffs/2026-10-02-payout-readiness.md` |
-| Program: per-community vault, publish (root, audit hash, 3% fee), one claim per leaf with a receipt; exact allocation, member and epoch audit manifests, publish job (R6) | Deployed on devnet with throwaway keys, and on mainnet at the same address since Runbook C's C13, upgradable there only by a Ledger; no mainnet community exists yet; the publish job has no production caller | `docs/handoffs/2026-09-25-r6-anchor-built.md`; the mainnet deploy is in `docs/BUILDLOG.md` |
-| Devnet run: publish a seeded epoch, one claim, a refused second claim, and the audit's settlement read back from devnet | Run 2026-09-27, every signature recorded | `docs/handoffs/2026-09-27-devnet-proof.md` |
-| Mainnet payout (epoch 2 at the earliest) | Planned | `docs/handoffs/2026-09-25-plan.md` |
-
-## 7. Limits
-
-- **Text only.** The scorer reads a post's text through X's public oEmbed. It can't see images or video. Work that depends on media it can't capture waits for evidence instead of being judged blind.
-- **Only signed wallets can ever be paid.** `/link` links a wallet by signing. A wallet pasted before the cutover keeps scoring but is marked not verified and is never paid. A closed epoch pays the wallet that was verified at its close.
-- **No mainnet payout yet.** Points are not money. On devnet, test SOL has been published and claimed; on mainnet no root has been published, no claim exists and nothing has been paid.
-- **The model can disagree with the founder.** Scores are a model's reading of the rubric. When it disagrees, the answer is a public correction: a human score recorded as a new row beside the model's, with its reason.
+Soulbound Token-2022 points, a generated Codama client, npm SDK publication and self-service administrator setup remain not built/published. Current integrations use the public read API and operator-assisted registration.

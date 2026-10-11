@@ -2,17 +2,11 @@
 
 Hyphae already has a public read API and reviewed operator-assisted community setup. Start with those interfaces. The reusable reader below is a **local repository example**, not a published SDK or a self-service registration API. It requires no production credentials and performs only public GET requests.
 
-## October 9 integration checkpoint
+## Current public contract
 
-Organic’s reviewed held main 9c2b6d1d documents the settlement GET in docs/contracts/2026-10-08-public-consumers.md. Hyphae has no runtime Organic HTTP caller today. Future adoption must be server-side (Organic sends no CORS), respect Cache-Control and Retry-After, keep exact decimal lamport strings and distinguish unavailable/error from zero. The held JSON privacy fix removes sheet inputs; never consume eligibility worksets or platform amounts from those internal fields. Collection/sweep rows are not Hyphae funding or payment proof. Organic’s upgrade/proof does not authorize a transfer or create a community.
+Epoch-2 payout status, wallet records/history, recap and Solana Actions are live. A stored allocation is not a payment receipt. Per-member rules-test and hold verdicts are private; integrations consume public contribution/payment receipts and aggregates. Preserve exact decimal strings and distinguish unavailable from zero. Epochs expose base configuration and amendments; the effective scorer depends on admission time.
 
-Hyphae production now exposes vault and settlement states; earn-first permits nullable wallet/link fields, and epochs expose immutable base config plus amendments. The base prompt is not necessarily the effective prompt at admission. Oct 9 live epoch 2 closes Oct 10 00:00Z, with reward-eval/2 effective since Oct 7 18:00Z. Jev is deployed but not selected by an epoch.
-
-Reviewed next 1249fed adds payout verdicts, wallet record/history, recap and Blink; these are not deployed. A payable/published label is not a payment receipt; wallet history is not Organic authorization. Organic’s existing adapter only reads current epoch/close and rubric version and remains compatible. API/schema changes need the same producer-to-consumer acceptance after release.
-
-Cisco’s Oct 7 direction makes Organic the authority for Organic communities and Hyphae the called engine; other communities retain the operator path. The proposed provisioning POST and unsigned initialize endpoint are not shipped. Publisher-key custody is distinct from the permanent fee-recipient treasury; authentication, replay handling, exact mint/group scope and public identity must be agreed before a write API.
-
-Payout and release hold: C14–C18 Oct 9, close Oct 10 00:00Z, C19–C22 Oct 11; no main push/deploy Oct 9 22:00Z–Oct 11 00:00Z. Release next only after payout and its exact approval. The verify dependency remains 0.1.0 through Oct 12; the read SDK is still privately packed, not publicly released.
+Community registration is operator-assisted. Self-service provisioning, a public write API and council delegation are not built. This repository consumes only Organic's public settlement GET; no runtime Organic HTTP caller or owner-authority adapter is shipped here.
 
 ## Run the example
 
@@ -46,7 +40,7 @@ This repository CLI runs with `tsx` and the built SDK as a dev-only dependency. 
 | Contributions and selected judgements | `GET /v1/communities/{mint}/epochs/{index}/contributions` | Paginate using `offset`/`limit`; preserve pending and excluded states. |
 | Leaderboard | `GET /v1/communities/{mint}/leaderboard?epoch={index}` | Points are not payments. |
 | Full contribution audit | `GET /v1/contributions/{id}` | Retain revisions, provenance and correction timing. |
-| Whether a member can be paid | `payout` on each contribution row, leaderboard entry and contribution | The payout gate's status as of the read. Before the close the hold is only ever `at_close`, never met; once published, `settlement` is the record. |
+| Actual allocation and payment | Epoch settlement, wallet claims and wallet record | Rules-test/hold eligibility stays private; allocation and confirmed chain receipts remain public. |
 | A wallet's published leaves | `GET /v1/wallets/{wallet}/claims` | Empty results are valid; payment may be unavailable. |
 | One fresh claim | `GET /v1/communities/{mint}/epochs/{index}/claims/{wallet}` | Transaction preparation/signing is outside this reader. Re-read immediately before a separately authorized claim. |
 | Register a real new community | Reviewed operator `plan` → `check` → authorized `apply` | See [setup integration](SETUP-INTEGRATION.md); exact private authority, manifest, target and hash, paused pinned bootstrap. |
@@ -59,11 +53,11 @@ A launchpad can consume the public audit API for any registered mint without a H
 
 For setup, the launchpad's owning server must establish the actor's authority over the exact mint and permitted settings/actions. Telegram administration and a public mint page do not prove that authority. Carry the verified authority reference into the existing operator procedure. An authenticated provisioning transport, scoped expiry/replay handling and owner editor still require their own contract; this example adds none.
 
-Organic's current permitted interface from Hyphae remains its public settlement GET `/api/launchpad/coins/mint/[mint]/settlement`. Organic's owner-authority/settings work stays in its existing task **3.6 / DEP-09**. Another launchpad would own the equivalent authority adapter in its own project. No cross-project write or real registration is needed to run this reader.
+Organic's current permitted interface from Hyphae remains its public settlement GET `/api/launchpad/coins/mint/[mint]/settlement`. Organic owns its authority/settings contract. Another launchpad would own the equivalent authority adapter in its own project. No cross-project write or real registration is needed to run this reader.
 
 ## Local standalone read-only SDK
 
-Cisco approved the bounded local SDK milestone. **@hyphae/read-client 0.1.0 is built and privately packed**, with seven typed GET operations, ESM JavaScript and declarations. A clean project outside the workspace installed its tarball with scripts disabled, checked its types, and ran all seven operations and two community identities in Node and actual desktop Chromium against local fixtures. Package publication remains separate.
+**@hyphae/read-client 0.1.0 is built and privately packed**, with seven typed GET operations, ESM JavaScript and declarations. A clean project outside the workspace installed its tarball with scripts disabled, checked its types, and ran all seven operations and two community identities in Node and actual desktop Chromium against local fixtures. Package publication remains separate.
 
 See [SDK documentation](../../packages/read-client/README.md) for installation, all method signatures, cancellation/deadline/error behavior and package verification. From the repository root:
 
@@ -87,14 +81,6 @@ A small fixture app now installs the packed SDK in a clean consumer and shows tw
 node examples/read-sdk-demo/run.mjs
 ```
 
-Open `http://127.0.0.1:8788`. The persistent LOCAL FIXTURES label identifies synthetic data. Controls exercise healthy,503,429,malformed and slow responses; errors clear stale values to Unavailable. See [the reference app](../../examples/read-sdk-demo/README.md) for verification and source. Browser proof covers both communities, recovery/cancelled-read isolation, keyboard controls and1280/390/320px without overflow. It creates no real registrations, transactions or phone proof.
+Open `http://127.0.0.1:8788`. The persistent LOCAL FIXTURES label identifies synthetic data. Controls exercise healthy,503,429,malformed and slow responses; errors clear stale values to Unavailable. See [review results](../evidence/REVIEWS.md) for verification and source. Browser proof covers both communities, recovery/cancelled-read isolation, keyboard controls and1280/390/320px without overflow. It creates no real registrations, transactions or phone proof.
 
-Initial exact post-a646 SDK review is [ACCEPT](../reviews/2026-10-04-sdk-initial-opus-review.md); its Low transport/starter findings were repaired test-first during adoption. New fix/demo range still needs coordinator's focused check; ACCEPT does not authorize publication.
-
-## Organic-sync adoption notes
-
-Producer: Hyphae. Contract: existing public read API **v1**, unchanged. New artifacts: local standalone read-only SDK/tarball with isolated Node/browser install proof, executable reader and this adoption guide. Consumer: Organic's existing task 3.6/DEP-09 owner, or another launchpad's equivalent integration owner.
-
-The next sync should carry these concrete changes into existing plans: adopt the locally packed read SDK where permitted, reuse the reader and reviewed setup; use current Windows operator receipts and completed publication evidence; stop scheduling completed onboarding/setup or another release-preparation pass. Owner authority/provisioning stays unimplemented, and no live dependency is closed by local SDK or fixture evidence.
-
-The Organic-sync portable loader resolves to its canonical skill on this Mac. Only that loader, canonical instructions and handoff requirements were checked here. A full multi-repository/vault sync was **not run**; those write targets remain outside this Hyphae-only session. This guide and `docs/HANDOFF.md` are the normal producer handoff to that owning sync.
+The SDK and adopter example were independently reviewed and accepted; see the curated review results.

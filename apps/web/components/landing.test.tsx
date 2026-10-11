@@ -129,7 +129,7 @@ describe("Proof", () => {
   });
 
   it("cites all seven mainnet payout transactions, labelled mainnet", () => {
-    const record = repo("docs/demo/2026-10-10-mainnet-payout.md");
+    const record = repo("docs/evidence/2026-10-10-mainnet-payout.md");
     const html = renderToStaticMarkup(<Proof live={{ state: "unavailable" }} />);
     expect(MAINNET_RUN).toHaveLength(7);
     for (const { signature } of MAINNET_RUN) {
@@ -149,9 +149,7 @@ describe("Trust", () => {
   });
 
   it("gives the verifiable build's hash as recorded", () => {
-    expect(repo("docs/handoffs/2026-09-28-verifiable-build-and-deploy-rehearsal.md")).toContain(
-      VERIFIED_HASH,
-    );
+    expect(repo("docs/evidence/PROGRAM.md")).toContain(VERIFIED_HASH);
     expect(renderToStaticMarkup(<Trust />)).toContain(`title="${VERIFIED_HASH}"`);
     expect(text(<Trust />)).toContain("The program on mainnet and on devnet is byte for byte");
     expect(renderToStaticMarkup(<Trust />)).toContain(`href="${VERIFY_BUILD}"`);

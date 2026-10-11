@@ -35,3 +35,36 @@ Thumbs.db
 # Next.js
 apps/web/next-env.d.ts
 *.tsbuildinfo
+
+# Agent instructions and owner workflow are private, even when generated locally
+AGENTS.md
+CLAUDE.md
+**/AGENTS.md
+**/CLAUDE.md
+**/SKILL.md
+.claude/
+.codex/
+.agents/
+
+# Public documentation allowlist: technical interfaces, reproducible tests and proof only
+docs/*
+!docs/BUILDLOG.md
+!docs/SECURITY.md
+!docs/TESTING.md
+!docs/WHITEPAPER.md
+!docs/WALLETS.md
+!docs/evidence/
+!docs/community/
+!docs/evals/
+!docs/rubrics/
+docs/community/*
+!docs/community/INTEGRATING.md
+!docs/community/SETUP-INTEGRATION.md
+!docs/community/RAID-ALERTS.md
+!docs/community/MEMBER-RECEIPTS.md
+docs/evals/*
+!docs/evals/jev-questions.md
+!docs/evals/jev-questions-v4.md
+!docs/evals/jev-holdout-3.json
+!docs/evals/jev-v4-calibration-2026-10-07.md
+docs/rubrics/eval/policy-scenarios.md

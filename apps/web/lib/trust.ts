@@ -24,7 +24,7 @@ export const PROGRAM_ID = "EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E";
 export const ADMIN_LEDGER = "2kz1Zq8UDm9Hq6XwPW6cViQZe7aySEBGk1gLWN8gofjR";
 export const FEE_VAULT = "rRceAUBNsnZKJDytjdHfCdqgTJGoDagtKujfvaBu7MK";
 // `solana-verify get-program-hash` of the mainnet and devnet programs, reproduced by two clean
-// builds (docs/handoffs/2026-09-28-verifiable-build-and-deploy-rehearsal.md).
+// builds (docs/evidence/PROGRAM.md).
 export const VERIFIED_HASH = "7e902d1b5f8d8c49dfd199ec2e7bf44139b56524d98408f1556e14f4e9ab43ac";
 
 // Security reports go to GitHub's private vulnerability reporting on the public program repo
@@ -47,11 +47,8 @@ const address = (value: string, label: string): Evidence => ({
 });
 
 const CUSTODY = { label: "custody policy", href: `${GITHUB}#custody-during-the-pilot` };
-const PROGRAM_REVIEW = file("docs/handoffs/2026-09-25-r6-anchor-built.md", "program review");
-const MAINNET_RECEIPT = file(
-  "docs/handoffs/2026-10-02-c13-mainnet-receipt.md",
-  "mainnet deploy receipt",
-);
+const PROGRAM_REVIEW = file("docs/evidence/REVIEWS.md", "program review");
+const MAINNET_RECEIPT = file("docs/evidence/PROGRAM.md", "mainnet deploy receipt");
 const WALLETS = file("docs/WALLETS.md", "key registry");
 const SCHEMA = file("packages/db/src/schema.ts", "database schema");
 const READ_SERVICE = file("apps/api/src/http/read-service.ts", "read API");
@@ -182,7 +179,7 @@ export const TRUST_SECTIONS: TrustSection[] = [
         text: `Hyphae Lab's fee goes to the MYCEL Treasury, Squads vault ${FEE_VAULT}, which needs 2 of 3 signers to move funds. It was fixed when the community was created on mainnet on 2026-10-10 and cannot change afterwards.`,
         evidence: [
           address(FEE_VAULT, "vault on Solana Explorer"),
-          file("docs/handoffs/2026-09-27-keys-and-fee-rulings.md", "fee ruling"),
+          file("docs/evidence/PROGRAM.md", "fee ruling"),
           {
             label: "October 10 mainnet receipts",
             href: `${GITHUB}/blob/main/docs/2026-10-10-mainnet-payout.md`,
@@ -190,7 +187,7 @@ export const TRUST_SECTIONS: TrustSection[] = [
         ],
       },
       {
-        text: "The temporary keys used to deploy were deleted after the deploy, and the deletions are recorded.",
+        text: "The temporary deployment keys were deleted after their recorded recovery checks. This is a historical operator attestation, not something a chain read can prove.",
         evidence: [WALLETS],
       },
     ],
@@ -205,14 +202,14 @@ export const TRUST_SECTIONS: TrustSection[] = [
       },
       {
         text: "Not done yet: the on-chain verification record that lets explorers show the program as verified.",
-        evidence: [file("docs/handoffs/2026-09-28-arc.md", "deploy plan")],
+        evidence: [file("docs/evidence/PROGRAM.md", "verification status")],
       },
     ],
   },
   {
     id: "reviews",
     title: "Independent reviews",
-    lead: `Hyphae has been ${AI_REVIEW_NOTE}. Each review below was done by a model from a different family than the one that built the change. The reports are public, findings included.`,
+    lead: `Hyphae has been ${AI_REVIEW_NOTE}. Each review below was done by a model from a different family than the one that built the change. Curated results and material findings are public; internal working reports are private.`,
     claims: [
       {
         text: "2026-09-25, the on-chain program: three Codex rounds, approved in the third. The finding that the admin can publish any root was kept as the pilot's custody model, not fixed.",
@@ -220,32 +217,23 @@ export const TRUST_SECTIONS: TrustSection[] = [
       },
       {
         text: "2026-10-03, community setup: Claude Opus approved it for local use with two fixes required, then approved the fixes.",
-        evidence: [
-          file("docs/reviews/2026-10-03-community-setup-opus-review.md", "review"),
-          file("docs/reviews/2026-10-03-community-setup-opus-fixcheck.md", "fix check"),
-        ],
+        evidence: [file("docs/evidence/REVIEWS.md", "review results")],
       },
       {
         text: "2026-10-04, the read SDK and the adopter demo: Claude Opus accepted them after one round of fixes.",
-        evidence: [
-          file("docs/reviews/2026-10-04-sdk-initial-opus-review.md", "first review"),
-          file("docs/reviews/2026-10-04-adopter-final-acceptance.md", "final acceptance"),
-        ],
+        evidence: [file("docs/evidence/REVIEWS.md", "review results")],
       },
       {
         text: "2026-10-04, raid alerts and the member journey (receipts, raid lifecycle, operator view): Claude Opus accepted both after rounds of fixes.",
-        evidence: [
-          file("docs/reviews/2026-10-04-raid-alerts-opus.md", "raid alerts"),
-          file("docs/reviews/2026-10-04-member-journey.md", "member journey"),
-        ],
+        evidence: [file("docs/evidence/REVIEWS.md", "review results")],
       },
       {
         text: "2026-10-06, the wallet link page: Codex accepted it with one advisory, fixed.",
-        evidence: [file("docs/reviews/2026-10-06-link-page.md", "review")],
+        evidence: [file("docs/evidence/REVIEWS.md", "review")],
       },
       {
         text: "2026-10-06, the scoring prompt reward-eval/2: Codex found the scoring itself clean and two defects in the evaluation script; both were fixed, and the fix was not reviewed again.",
-        evidence: [file("docs/reviews/2026-10-06-reward-eval-2.md", "review")],
+        evidence: [file("docs/evidence/REVIEWS.md", "review")],
       },
       {
         text: "2026-10-07, prompt injection (our own test, not a review): seven replies that try to instruct the AI scorer each earned 0 in 3 of 3 runs, and a real reply with an injection appended was not scored higher.",
@@ -273,7 +261,7 @@ export const TRUST_SECTIONS: TrustSection[] = [
         evidence: [file("docs/rubrics/CHANGELOG.md", "rubric changelog")],
       },
       {
-        text: "Every release, decision and known limit is written down in the public build log, including what went wrong.",
+        text: "Public release milestones and known limits are documented with evidence. Owner planning, approvals and working notes are private.",
         evidence: [BUILDLOG],
       },
     ],

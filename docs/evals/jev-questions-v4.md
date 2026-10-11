@@ -1,10 +1,10 @@
 # Jev question set v4
 
-**Question set `v4-2026-10-07`. Drafted by an agent on 2026-10-07 from Cisco's rules for the reward scorer (below), then calibrated on a fresh holdout that Cisco labeled the same evening. Cisco set the rules, labeled the holdout and ruled on four points while labeling ([Rulings](#rulings-cisco-2026-10-07-during-labeling)). The question wording is the agent's; Cisco has not reviewed it line by line.** It replaces v3's weighted blend with a filter: gate questions that zero a reply, then a fixed base for an organic, related reply and small bonuses for a question, a suggestion, the author's own material or reasoning. It does not try to rank the best replies finely.
+Question set v4-2026-10-07. Agent-authored questions calibrated on a founder-labeled holdout. Executable wording is preserved below; this is a technical specification, not a rollout instruction.
 
 Jev (`jev-1.13.0`) takes one state and named questions and returns typed answers. Every v4 question is a Noul: Jev returns P(yes) from 0 to 1. Question ids (the headings below) are for code and this file; Jev never sees them, so every instruction stands on its own. The instructions state policy in general terms and never quote a fixture reply, so the eval does not leak its own answers.
 
-## Cisco's rules (2026-10-07)
+## Scoring policy
 
 - Zero: a reply that restates the post in assertive, polished, obviously-AI wording; greetings and cheers; made-up sentences that add nothing; anything unrelated to the post or the project.
 - A reply related to the project that feels organic earns a nice score, not the best. Relevant questions, improvements, building on the topic and analysis score higher.
@@ -241,15 +241,7 @@ Does `contribution.text` reason about the subject of the target post in `task.ta
 ```
 - **Role:** Bonus, 10 × P(yes).
 
-## Rulings (Cisco, 2026-10-07, during labeling)
 
-Cisco labeled a fresh holdout of 64 replies blind. Where his labels contradicted his own rules or the published rubric, he ruled before any tuning:
+## Evaluation
 
-1. **Instructions to the scorer earn zero.** His words: "if they do it on every post, they find an exploit. And for that reason, it shouldn't count... If it's related with testing, it's okay. After that, it's a zero." The scorer cannot tell a first test from the fiftieth copy, so `addresses_grader` zeroes every such reply, even a good reply with one line added. A genuine break attempt on a testing post can be credited by a public admin correction.
-2. **Price and buy talk stays zero** under the epoch's pinned rubric "never" list, whatever the label.
-3. **Empty slogans and polished restatements of the post earn zero**, as his rules say ("I think those are zero, right?").
-4. **Asking for an airdrop, free tokens or the like earns zero.** His reason: "we dont mention airdrop". `generic` lists it.
-
-## Calibration
-
-[jev-v4-calibration-2026-10-07.md](jev-v4-calibration-2026-10-07.md): the 28 reward cases are 84 of 84 right in three runs, with Cisco's replies and the sincere replies all passing; on the 64-reply holdout, two labeled passes (jokes built on a cheer) are zeroed and one labeled zero passes. It also records each tuning attempt and what was kept.
+[Calibration results and limitations](jev-v4-calibration-2026-10-07.md): fixed reward cases, a partially contaminated holdout and the remaining misses. Deployment of this code does not select it for a live epoch; inspect the public epoch configuration.
