@@ -4,7 +4,7 @@ Public technical milestones for Colosseum. Each item names what shipped and its 
 
 ## October 11 — Curated public evidence
 
-Public documentation now contains technical interfaces, published rubrics, reproducible fixtures and curated [program](evidence/PROGRAM.md), [review](evidence/REVIEWS.md), [release](evidence/2026-10-11-release.md) and [mainnet payout](evidence/2026-10-10-mainnet-payout.md) evidence. Proof links no longer depend on owner working notes. Before publication, all 214 Markdown links were checked against the proposed Git tree. This changes documentation and trust-page links; no claim transaction, payout, scorer, API or program behavior changes.
+Public documentation now contains technical interfaces, published rubrics, reproducible fixtures and curated [program](evidence/PROGRAM.md), [review](evidence/REVIEWS.md), [release](evidence/2026-10-11-release.md) and [mainnet payout](evidence/2026-10-10-mainnet-payout.md) evidence. Proof links no longer depend on owner working notes. Before publication, Markdown links were checked against the proposed Git tree. This changes documentation and trust-page links; no claim transaction, payout, scorer, API or program behavior changes.
 
 ## October 11 — Claim recovery and private eligibility live
 
@@ -17,6 +17,10 @@ MYCEL epoch 2 paid four wallets: **1,238,881,509 lamports**, **0 unclaimed**, th
 ## October 7 — Public scorer history and injection checks
 
 Epoch 2 adopted reward-eval/2 from its recorded effective time while retaining rubric MYCEL 1.2.0 and payout rules. The epoch API lists the amendment and each contribution records its scorer. [Rubric/scorer changelog](rubrics/CHANGELOG.md); [injection evaluation and limits](rubrics/eval/reward-eval-2-injection.md).
+
+## October 7 — Public privacy policy
+
+Data is kept while the community runs. On request, Telegram ID, username and X handles are deleted and the wallet link ended within 30 days. Solana records and the contribution text, links, scores and wallet in public receipts remain as the audit trail. Deletion is manual today. Security reports use the program repository's private vulnerability reporting. [Full public policy](SECURITY.md#privacy-and-deletion).
 
 ## October 3–6 — Community and member interfaces
 
