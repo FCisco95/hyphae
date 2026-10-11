@@ -11,6 +11,7 @@ import {
   receiptAddress,
   vaultAddress,
   type WalletClaimV1,
+  type WalletRecordEpochV1,
 } from "@hyphae/core";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { type Address, address, getAddressDecoder } from "@solana/kit";
@@ -410,5 +411,31 @@ export async function walletClaimOf(
       Date.now() >= until
         ? late
         : await byDeadline(leafPayment(facts, reader, found.leaf), until, late),
+  };
+}
+
+// What `member` was allocated through `wallet` in an epoch, for the wallet's record: the leaf of
+// the recorded publication and its payment, or why there is none.
+export async function walletPayoutOf(
+  facts: PublicationFacts,
+  reader: SettlementReader | undefined,
+  wallet: string,
+  memberId: string,
+  until: number,
+): Promise<WalletRecordEpochV1["payout"]> {
+  if (facts.firstPaidEpoch !== null && facts.index < facts.firstPaidEpoch) {
+    return unavailable("before_first_paid_epoch");
+  }
+  if (!facts.publishTx) return unavailable("no_settlement");
+  if (!facts.intent) return unavailable("no_stored_intent");
+  const leaf = facts.intent.leaves.find((l) => l.wallet === wallet);
+  if (leaf?.memberId !== memberId) return unavailable("no_allocation");
+  const claim = await walletClaimOf(facts, reader, wallet, until);
+  if (!claim) throw new Error(`read: epoch ${facts.index} lost the leaf of ${wallet}`);
+  return {
+    status: "allocated",
+    network: claim.network,
+    amount_lamports: claim.amount_lamports,
+    payment: claim.payment,
   };
 }

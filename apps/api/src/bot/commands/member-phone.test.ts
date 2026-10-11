@@ -347,7 +347,7 @@ describe("first-time member journey through actual bot handlers (fixture only)",
     const task = required(
       await t.db.query.tasks.findFirst({ where: eq(tasks.communityId, community.id) }),
     );
-    const notifier = startRaidNotifier(t.db, bot.api);
+    const notifier = startRaidNotifier(t.db, bot.api, "https://hyphae.test");
     try {
       await vi.waitFor(() =>
         expect(texts().some((text) => text.startsWith("New raid"))).toBe(true),

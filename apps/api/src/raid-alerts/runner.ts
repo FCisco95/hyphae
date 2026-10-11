@@ -4,10 +4,12 @@ import { type Api, InlineKeyboard } from "grammy";
 import { isMemberStatus } from "../bot/membership.js";
 import { engageLinks } from "../x/intents.js";
 import { claimRaidAlert, deliverRaidAlert } from "./alerts.js";
+import { claimRaidRecap, deliverRaidRecap } from "./recap.js";
 
-// One message per second per API process. Outbox claims serialize concurrent processes;
-// Telegram 429 responses defer retry. No scoring/reward worker or pg-boss queue is changed.
-export function startRaidNotifier(db: Db, api: Api) {
+// One private alert and one group recap per second per API process. Outbox claims serialize
+// concurrent processes; Telegram 429 responses defer retry. No scoring/reward worker or pg-boss
+// queue is changed.
+export function startRaidNotifier(db: Db, api: Api, webBase: string) {
   const controller = new AbortController();
   const done = (async () => {
     while (!controller.signal.aborted) {
@@ -45,6 +47,23 @@ export function startRaidNotifier(db: Db, api: Api) {
       } catch {
         // Driver/Telegram errors can contain credentials; save/log only bounded outcome codes.
         console.error("raid-notifier: operation failed; check delivery state and connectivity");
+      }
+      try {
+        const recap = await claimRaidRecap(db, webBase);
+        if (recap) {
+          const status = await deliverRaidRecap(db, recap, {
+            send: (chat, text) =>
+              api.sendMessage(
+                Number(chat),
+                text,
+                { link_preview_options: { is_disabled: true } },
+                AbortSignal.timeout(4_000) as unknown as Parameters<Api["sendMessage"]>[3],
+              ),
+          });
+          console.log(JSON.stringify({ notifier: "recap", status }));
+        }
+      } catch {
+        console.error("raid-notifier: recap failed; check raid_recaps and connectivity");
       }
       await setTimeout(1000, undefined, { signal: controller.signal }).catch(() => {});
     }

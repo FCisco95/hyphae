@@ -1,9 +1,9 @@
 ---
 date: 2026-10-08
-summary: DRAFT, not authorized. Release plan for the reviewed `next` branch (scorer reward-eval/3 with its whole-call deadline, honest payout status, wallet record, raid stats and recap, claim Blink, the epoch-page schedule notice) after the epoch 2 payout. Migrations 0018 and 0019 through the re-pinned and reviewed db.mjs, one image for the API and the worker, then the push of main for the web, then the epoch 3 scorer amendment at a time Cisco announces. Recommended timing, after C22 on 2026-10-11.
+summary: Authorized October 11 for E0–E6 only, with the approved private member checklist and reviewed claim recovery. Execution in progress. E7–E8 scorer amendment/announcement excluded.
 ---
 
-# Release plan: `next` after the first payout (DRAFT, 2026-10-08 night)
+# Release plan: `next` after the first payout (E0–E6 authorized October 11)
 
 Written by Claude Fable 5.1 (architect). Format follows the [Jev live release plan](2026-10-07-jev-live-release-plan.md). Nothing here runs without Cisco's exact yes. Proposed sentence: **"yes, run the post-payout release"**.
 
@@ -61,4 +61,7 @@ What that costs: epoch 3 replies admitted between 2026-10-10T00:00Z and the amen
 
 ## Record
 
-(filled at execution: SHAs, image digest, migration times, machine updates, smoke results, T, the amendment's recorded time)
+- **Authorization:** Cisco replied exactly `yes, run the post-payout release (E0–E6)` on October 11. Execution began at 12:07:50Z. Privacy selection and accepted final member-visible copy: [approval sheet](2026-10-11-release-approval.md). Public eligibility/hints in the historical plan above are superseded by public aggregates and a member-only private checklist. Both privacy and claim-page reviews ACCEPT before execution.
+- **Scope:** E0–E6 only. E7–E8, T, scorer amendment, announcement, new payouts and epoch 3 publication excluded. No raid opened here.
+- **E0 in progress:** merge parents `99cd33ef40376d486c92b28134c6d93ae54e318e` and `9d0da9b337d1b11770278603b595ebcbd60f12d7`; both histories preserved. Only conflicts: web view imports and lockfile. Imports retained; combined lockfile regenerated from main's pins plus the exact reviewed Anthropic SDK 0.128.0 (33 additions, no removals).
+- **Production baseline:** both Fly machines remain on `jev-e5f864b`, `sha256:b3f5617d804a377e8eaae1c6c67641ffe85390e47d88c162f0723206994236c4`; web origin/main `d3b8c6c`. No production write or deploy yet.

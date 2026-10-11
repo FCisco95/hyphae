@@ -25,6 +25,7 @@ export type JevTransport = (
 
 // A registered Jev scorer: a pinned version of the questions and their composition. An epoch's
 // reward config pins `version` and `templateHash` exactly as it pins an Anthropic prompt version.
+// The one call goes to TypeSafe's Jev model (reward-jev/1) or to Claude (claude-registry.ts).
 export interface JevScorerDef {
   version: string;
   // Jev answers quality only. Effort judgments (nominations) stay on this registered prompt version.
@@ -37,6 +38,8 @@ export interface JevScorerDef {
   // Makes the one call through `transport`, then parses and composes. Throws on a missing or
   // malformed answer, so the dispatch goes to reconciliation instead of becoming a score.
   run(input: ScoringInput, transport: JevTransport): Promise<JevScore>;
+  // The cost of a paid response that failed a later check, from its usage; Jev's price when absent.
+  costOf?(response: unknown): number | null;
 }
 
 export type JevRegistry = ReadonlyMap<string, JevScorerDef>;

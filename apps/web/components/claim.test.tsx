@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ClaimSummary, ClaimView } from "./claim.js";
+import { ClaimSummary, ClaimView, ShareClaim } from "./claim.js";
 import { NoWallet, SendStatus } from "./claim-panel.js";
 import * as f from "./fixtures.js";
 
@@ -18,6 +18,24 @@ describe("ClaimView", () => {
     const retained = text(<ClaimView epoch={f.retainedEpoch} />);
     expect(retained).toContain("Retained: this epoch is before the first paid epoch.");
     expect(retained).not.toContain("Connect");
+  });
+});
+
+describe("ShareClaim", () => {
+  // The shared address is the claim page, which actions.json maps to the epoch's claim Action.
+  it("shares a published epoch's claim page on X", () => {
+    const html = renderToStaticMarkup(<ShareClaim epoch={f.settledEpoch} />);
+    expect(html).toContain(
+      "https://x.com/intent/tweet?url=https%3A%2F%2Fhyphae-delta.vercel.app%2Fc%2FMintAbc%2Fe%2F2%2Fclaim",
+    );
+    expect(text(<ShareClaim epoch={f.settledEpoch} />).trim()).toBe("Share claim link on X");
+    expect(text(<ClaimView epoch={f.settledEpoch} />)).toContain("Share claim link on X");
+  });
+
+  it("offers nothing to share for an epoch with nothing to claim", () => {
+    expect(renderToStaticMarkup(<ShareClaim epoch={f.retainedEpoch} />)).toBe("");
+    expect(renderToStaticMarkup(<ShareClaim epoch={f.chainDownEpoch} />)).toBe("");
+    expect(text(<ClaimView epoch={f.retainedEpoch} />)).not.toContain("Share");
   });
 });
 

@@ -43,6 +43,21 @@ describe("the OpenAPI document", () => {
     }
   });
 
+  it("never documents individual eligibility on public member surfaces", () => {
+    type Props = { properties: Record<string, Props & { items?: Props }> };
+    const schemas = doc.components.schemas as Record<string, Props>;
+    for (const properties of [
+      schemas.Contributions?.properties.contributions?.items?.properties,
+      schemas.Leaderboard?.properties.entries?.items?.properties,
+      schemas.Contribution?.properties,
+    ]) {
+      expect(properties).toBeDefined();
+      expect(properties).not.toHaveProperty("payout");
+      expect(properties).not.toHaveProperty("hold");
+      expect(properties).not.toHaveProperty("rules_test");
+    }
+  });
+
   it("is served as JSON under /v1", async () => {
     const r = await app.request("/openapi.json");
     expect(r.status).toBe(200);

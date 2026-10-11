@@ -1,10 +1,12 @@
 import { HYPHAE_PROGRAM_ID, ReadApiV1 } from "@hyphae/core";
-import type { Db } from "@hyphae/db";
+import { type Db, memberWalletLinks, schema } from "@hyphae/db";
+import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/pglite";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { type PublishChain, publishEpoch } from "../payout/publish.js";
 import { randomAddress, seedReadyEpoch } from "../payout/ready-seed.js";
-import { createTestDb } from "../rewards/test-db.js";
-import { type AuditDemo, seedAuditDemo } from "./demo-seed.js";
+import { createTestDb, seedRewardLane, T0 } from "../rewards/test-db.js";
+import { type AuditDemo, seedAuditDemo, seedSignedLink } from "./demo-seed.js";
 import { readRoutes } from "./routes.js";
 import type { SettlementReader } from "./settlement.js";
 
@@ -14,16 +16,43 @@ const WALLET = "So11111111111111111111111111111111111111112";
 let t: Awaited<ReturnType<typeof createTestDb>>;
 let demo: AuditDemo;
 let app: ReturnType<typeof readRoutes>;
+let quiet: string[];
 beforeAll(async () => {
   t = await createTestDb();
   demo = await seedAuditDemo(t.db, NOW);
   app = readRoutes({ db: t.db, clock: async () => NOW });
+  quiet = await seedQuietWallets();
 });
 afterAll(async () => {
   await t.close();
 });
 
 const get = (path: string) => app.request(path);
+
+// Signed wallets that no epoch shows: a member who never contributed, the same with the link
+// ended, and one wallet signed by such members in two communities.
+async function seedQuietWallets() {
+  const [active, expired, several] = [randomAddress(), randomAddress(), randomAddress()];
+  const ended = new Date(T0.getTime() + 3_600_000);
+  for (const [wallet, until] of [[active], [expired, ended], [several], [several]] as const) {
+    const lane = await seedRewardLane(t.db);
+    await seedSignedLink(t.db, {
+      communityId: lane.community.id,
+      memberId: lane.member.id,
+      telegramUserId: 42n,
+      wallet,
+      tokenDigest: `quiet-${lane.community.mint}`,
+      linkedAt: T0,
+    });
+    if (until) {
+      await t.db
+        .update(memberWalletLinks)
+        .set({ validTo: until })
+        .where(eq(memberWalletLinks.memberId, lane.member.id));
+    }
+  }
+  return [active, expired, several];
+}
 
 describe("read routes v1", () => {
   it("serve every route with a body that passes its schema", async () => {
@@ -35,6 +64,7 @@ describe("read routes v1", () => {
       [`/communities/${m}/leaderboard?epoch=1`, ReadApiV1.leaderboard],
       [`/contributions/${demo.contributions.upgraded}`, ReadApiV1.contribution],
       [`/wallets/${WALLET}/claims`, ReadApiV1.walletClaims],
+      [`/wallets/${demo.signedWallet}/record`, ReadApiV1.walletRecord],
     ];
     for (const [path, schema] of cases) {
       const r = await get(path);
@@ -54,6 +84,9 @@ describe("read routes v1", () => {
       "public, max-age=15",
     );
     expect((await get(`/communities/${m}`)).headers.get("cache-control")).toBe(
+      "public, max-age=15",
+    );
+    expect((await get(`/wallets/${demo.signedWallet}/record`)).headers.get("cache-control")).toBe(
       "public, max-age=15",
     );
   });
@@ -77,11 +110,39 @@ describe("read routes v1", () => {
       "/contributions/00000000-0000-4000-8000-000000000000",
       `/communities/${demo.mint}/epochs/1/claims/So11111111111111111111111111111111111111112`,
       "/wallets/anything",
+      // A wallet without a public record, signed or not, is not found.
+      `/wallets/${randomAddress()}/record`,
+      `/wallets/${demo.pastedWallet}/record`,
+      ...quiet.map((w) => `/wallets/${w}/record`),
     ]) {
       const r = await get(path);
       expect(r.status, path).toBe(404);
       expect(await r.json()).toEqual({ error: "not_found" });
     }
+  });
+
+  it("answer a missing record alike, with the same queries, whether or not its wallet is signed", async () => {
+    const queries: string[] = [];
+    const logged = drizzle(t.db.$client, {
+      schema,
+      logger: { logQuery: (q) => void queries.push(q) },
+    });
+    const answers: unknown[] = [];
+    for (const wallet of [randomAddress(), demo.pastedWallet, ...quiet]) {
+      queries.length = 0;
+      // A fresh app per request, so the rate-limit headers count from the same start.
+      const r = await readRoutes({ db: logged, clock: async () => NOW }).request(
+        `/wallets/${wallet}/record`,
+      );
+      answers.push({
+        status: r.status,
+        body: await r.text(),
+        headers: [...r.headers],
+        queries: [...queries],
+      });
+    }
+    expect(answers).toEqual(answers.map(() => answers[0]));
+    expect(answers[0]).toMatchObject({ status: 404, body: '{"error":"not_found"}' });
   });
 
   it("answer 400 for malformed parameters", async () => {
@@ -100,6 +161,11 @@ describe("read routes v1", () => {
       "/wallets/0OIl-not-base58/claims",
       `/wallets/${WALLET}/claims?limit=101`,
       `/wallets/${WALLET}/claims?offset=x`,
+      "/wallets/0OIl-not-base58/record",
+      // Base58, but 33 bytes: not an address.
+      `/wallets/${"z".repeat(44)}/record`,
+      `/wallets/${"1".repeat(32)}a/record`,
+      `/wallets/${demo.signedWallet}/record?limit=101`,
     ]) {
       const r = await get(path);
       expect(r.status, path).toBe(400);
@@ -267,6 +333,17 @@ describe("the claim route and settled epochs", () => {
     expect(body).toMatchObject({ wallet: seed.wallets.floor, total_claims: 1, limit: 10 });
     expect(body.claims.map((c) => [c.community.mint, c.payment])).toEqual([
       [seed.mint, { status: "unavailable", reason: "chain_unavailable" }],
+    ]);
+  });
+
+  it("serve a wallet's record briefly cached, its allocation served when the chain is down", async () => {
+    const { seed, app: live } = await publishedRoutes();
+    const r = await live.request(`/wallets/${seed.wallets.floor}/record`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get("cache-control")).toBe("public, max-age=15");
+    const body = ReadApiV1.walletRecord.parse(await r.json());
+    expect(body.epochs.map((e) => [e.community.mint, e.payout.status])).toEqual([
+      [seed.mint, "allocated"],
     ]);
   });
 

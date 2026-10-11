@@ -30,10 +30,13 @@ describe("fixtures", () => {
       f.retainedEpoch,
       f.chainDownEpoch,
       f.amendedEpoch,
+      f.movedCloseEpoch,
+      f.shortenedEpoch,
     ]) {
       ReadApiV1.epoch.parse(e);
     }
     ReadApiV1.contributions.parse(f.contributions);
+    ReadApiV1.contributions.parse(f.openContributions);
     ReadApiV1.leaderboard.parse(f.leaderboard);
     ReadApiV1.contribution.parse(f.offTopic);
     ReadApiV1.contribution.parse(f.pendingAtClose);
@@ -131,6 +134,18 @@ describe("EpochView", () => {
     expect(closing).toContain("Final numbers appear when the snapshot is written");
   });
 
+  it("shows public scoring without member rules-test or hold outcomes", () => {
+    for (const [epoch, list] of [
+      [f.openEpoch, f.openContributions],
+      [f.finalEpoch, f.contributions],
+    ] as const) {
+      const shown = text(<EpochView epoch={epoch} list={list} />);
+      expect(shown).toContain("Scored.");
+      expect(shown).not.toMatch(/rules test|not payable|hold confirmed|hold check/i);
+      expect(shown).not.toContain("Counted.");
+    }
+  });
+
   it("renders a verified wallet shortened and never an unverified address", () => {
     const html = renderToStaticMarkup(<EpochView epoch={f.finalEpoch} list={f.contributions} />);
     expect(html).toContain("MAoR…VhAB");
@@ -191,6 +206,42 @@ describe("a pilot amendment", () => {
       />,
     );
     expect(c).toContain("(in effect from 2026-10-07 18:00:30.000000 UTC)");
+  });
+});
+
+describe("a schedule change", () => {
+  const view = (epoch: Parameters<typeof EpochView>[0]["epoch"]) =>
+    text(<EpochView epoch={epoch} list={f.contributions} />);
+
+  it("says when a window runs longer than its configured duration", () => {
+    const t = view(f.movedCloseEpoch);
+    expect(t).toContain("Schedule change");
+    expect(t).toContain(
+      "This epoch closes on 2026-10-10 00:00 UTC: 1 day later than its configured window of 7 days, which would have ended on 2026-10-09 00:00 UTC.",
+    );
+    expect(t).toContain("The change and its reason are recorded in the public changelog .");
+    expect(t).not.toMatch(NEVER);
+    expect(
+      renderToStaticMarkup(<EpochView epoch={f.movedCloseEpoch} list={f.contributions} />),
+    ).toContain(
+      'href="https://github.com/FCisco95/hyphae/blob/main/docs/rubrics/CHANGELOG.md">public changelog</a>.',
+    );
+  });
+
+  it("says earlier when the window is shorter, in days and hours", () => {
+    expect(view(f.shortenedEpoch)).toContain(
+      "This epoch closes on 2026-10-08 21:00 UTC: 3 hours earlier than its configured window of 7 days, which would have ended on 2026-10-09 00:00 UTC.",
+    );
+  });
+
+  it("shows nothing when the window matches its duration", () => {
+    expect(view(f.onScheduleEpoch)).not.toContain("Schedule change");
+  });
+
+  it("shows nothing when the config carries no duration", () => {
+    expect(view(f.noConfigEpoch)).not.toContain("Schedule change");
+    expect(view(f.openEpoch)).not.toContain("Schedule change");
+    expect(view(f.firstV1Epoch)).not.toContain("Schedule change");
   });
 });
 
@@ -260,6 +311,7 @@ describe("LeaderboardView", () => {
     expect(t).toContain("127.5");
     expect(t).toContain("128");
     expect(t).toContain("unverified");
+    expect(t).not.toMatch(/rules test|not payable|hold check/i);
     expect(t).not.toMatch(NEVER);
   });
 });
@@ -277,6 +329,12 @@ describe("ContributionView", () => {
     expect(t).toContain("claude-sonnet-5");
     expect(t).toContain("aaaaaaaaaaaa");
     expect(t).not.toMatch(NEVER);
+  });
+
+  it("shows a contribution score without the private member checklist", () => {
+    const shown = text(<ContributionView c={f.offTopic} />);
+    expect(shown).toContain("Scored.");
+    expect(shown).not.toMatch(/rules test|payable|hold confirmed/i);
   });
 
   it("says what a contribution that never counted earns", () => {

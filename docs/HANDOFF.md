@@ -1,11 +1,11 @@
 ---
 date: 2026-10-11
-summary: Mainnet truth and demo complete; claim recovery and private eligibility reviewed ACCEPT. Program docs pushed. App release and main push held for Cisco's exact E0–E6 authorization.
+summary: Cisco authorized E0–E6 October 11 with the exact sentence. History-preserving integration and combined gate in progress; no production change yet. E7–E8 excluded.
 ---
 
 # Hyphae handoff
 
-**Next:** obtain exactly `yes, run the post-payout release (E0–E6)`, then execute [the release plan](demo/2026-10-11-release-plan.md) E0–E6 in order. The one-screen [copy/privacy sheet](demo/2026-10-11-release-approval.md) is ready. Earlier replies were not the exact authorization. An async choice is pending.
+**Execution in progress:** Cisco supplied exactly `yes, run the post-payout release (E0–E6)` October 11. Follow [the release plan Record](demo/2026-10-11-release-plan.md#record) for current execution; the held state below is the pre-release checkpoint and will be refreshed after ship or rollback. The one-screen [copy/privacy sheet](demo/2026-10-11-release-approval.md) and both ACCEPT reviews preceded approval. E7–E8 remain excluded.
 
 ## Current state
 

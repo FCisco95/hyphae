@@ -2,7 +2,7 @@
 // through the reward functions production uses (the model is a fake). Tests use it, and the local
 // end-to-end run seeds a disposable database with it:
 //   DATABASE_URL=<local postgres> node --import tsx src/http/demo-seed.ts
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import type { RewardPurpose, Rubric } from "@hyphae/core";
 import {
@@ -14,6 +14,7 @@ import {
   memberWalletLinks,
   walletProofRequests,
 } from "@hyphae/db";
+import { getAddressDecoder } from "@solana/kit";
 import { closeEpoch } from "../rewards/close.js";
 import {
   bootstrapRewardEpochs,
@@ -155,8 +156,9 @@ export async function seedAuditDemo(db: Db, now: Date): Promise<AuditDemo> {
   if (!community) throw new Error("demo: community");
   const communityId = community.id;
 
-  const signedWallet = `DemoSigned${suffix}Wallet1111111111111111`;
-  const pastedWallet = `DemoPasted${suffix}Wallet2222222222222222`;
+  // Real addresses, so the routes that check a wallet serve them.
+  const signedWallet = getAddressDecoder().decode(randomBytes(32));
+  const pastedWallet = getAddressDecoder().decode(randomBytes(32));
   const [signed, pasted] = await db
     .insert(members)
     .values([

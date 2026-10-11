@@ -1,11 +1,13 @@
-import { raidDeliveries, raidSubscriptions, tasks } from "@hyphae/db";
+import { setTimeout } from "node:timers/promises";
+import { raidDeliveries, raidRecaps, raidSubscriptions, tasks } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { Api } from "grammy";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { createTestDb, seedCommunity } from "../rewards/test-db.js";
+import { createTestDb, seedCommunity, seedTask } from "../rewards/test-db.js";
 import { openRaid, setRaidSubscription } from "./alerts.js";
 import { startRaidNotifier } from "./runner.js";
 
+const WEB = "https://hyphae.test";
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
   t = await createTestDb();
@@ -42,7 +44,7 @@ describe("API notifier runner with intercepted Telegram transport", () => {
         result: method === "getChatMember" ? { status: "member" } : true,
       } as never;
     });
-    const runner = startRaidNotifier(t.db, api);
+    const runner = startRaidNotifier(t.db, api, WEB);
     await delivered;
     await runner.stop();
     expect(signals).toHaveLength(2);
@@ -86,7 +88,7 @@ describe("API notifier runner with intercepted Telegram transport", () => {
       },
     } as unknown as typeof t.db;
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
-    const runner = startRaidNotifier(failingDb, new Api("1:test"));
+    const runner = startRaidNotifier(failingDb, new Api("1:test"), WEB);
     await runner.stop();
     expect(log).toHaveBeenCalled();
     expect(JSON.stringify(log.mock.calls)).not.toContain(token);
@@ -125,7 +127,7 @@ describe("API notifier runner with intercepted Telegram transport", () => {
         else signal.addEventListener("abort", fail, { once: true });
       });
     });
-    const runner = startRaidNotifier(t.db, api);
+    const runner = startRaidNotifier(t.db, api, WEB);
     try {
       await expired;
     } finally {
@@ -136,4 +138,69 @@ describe("API notifier runner with intercepted Telegram transport", () => {
     expect(rows.filter((row) => row.status === "uncertain")).toHaveLength(1);
     expect(sends).toBe(1);
   });
+  it("posts one recap in the group when a raid's window has ended", async () => {
+    const { community } = await seedCommunity(t.db);
+    const task = await seedTask(
+      t.db,
+      community.id,
+      new Date(Date.now() - 48 * 3_600_000 - 300_000),
+    );
+    const api = new Api("1:test");
+    const calls: { method: string; payload: Record<string, unknown> }[] = [];
+    let posted!: () => void;
+    const done = new Promise<void>((resolve) => {
+      posted = resolve;
+    });
+    api.config.use(async (_prev, method, payload) => {
+      calls.push({ method, payload: payload as Record<string, unknown> });
+      if (method === "sendMessage") posted();
+      return { ok: true, result: { message_id: 5 } } as never;
+    });
+    const runner = startRaidNotifier(t.db, api, WEB);
+    await done;
+    await runner.stop();
+    const sent = calls.filter((x) => x.method === "sendMessage").map((x) => x.payload);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.chat_id).toBe(Number(community.telegramChatId));
+    expect(String(sent[0]?.text).split("\n")[0]).toBe("Raid ended — @?:");
+    expect(sent[0]?.link_preview_options).toEqual({ is_disabled: true });
+    expect(
+      (await t.db.select().from(raidRecaps).where(eq(raidRecaps.taskId, task.id)))[0],
+    ).toMatchObject({ status: "sent", telegramMessageId: 5 });
+  });
+  it("retries a rate-limited recap once and never a third time, even after a restart", async () => {
+    const { community } = await seedCommunity(t.db);
+    const task = await seedTask(
+      t.db,
+      community.id,
+      new Date(Date.now() - 48 * 3_600_000 - 120_000),
+    );
+    const api = new Api("1:test");
+    let requests = 0;
+    let secondRequest!: () => void;
+    const limitedTwice = new Promise<void>((resolve) => {
+      secondRequest = resolve;
+    });
+    api.config.use(async (_prev, method) => {
+      if (method !== "sendMessage") return { ok: true, result: true } as never;
+      requests += 1;
+      if (requests === 2) secondRequest();
+      return {
+        ok: false,
+        error_code: 429,
+        description: "Too Many Requests: retry after 1",
+        parameters: { retry_after: 1 },
+      } as never;
+    });
+    const first = startRaidNotifier(t.db, api, WEB);
+    await limitedTwice;
+    await first.stop();
+    const restarted = startRaidNotifier(t.db, api, WEB);
+    await setTimeout(2_500);
+    await restarted.stop();
+    expect(requests).toBe(2);
+    expect(
+      (await t.db.select().from(raidRecaps).where(eq(raidRecaps.taskId, task.id)))[0],
+    ).toMatchObject({ status: "failed", reason: "rate_limit_retry_exhausted", retryUsed: true });
+  }, 15_000);
 });

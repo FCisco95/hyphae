@@ -119,6 +119,16 @@ export interface JevDeps {
   transport: JevTransport;
 }
 
+// The engines enabled here for Jev scorers: TypeSafe's Jev model, and Claude answering the same
+// question sets. Each is called through its own transport.
+export interface JevEngines {
+  jev?: JevDeps;
+  claude?: JevDeps;
+}
+
+const engineFor = (deps: JevEngines, version: string): JevDeps | undefined =>
+  [deps.jev, deps.claude].find((e) => e?.registry.has(version));
+
 export type BeginResult =
   | { status: "begun"; dispatch: Dispatch; request: ScorerRequest; purpose: RewardPurpose }
   | { status: "exists"; dispatch: Dispatch; ageMs: number }
@@ -129,7 +139,7 @@ export type BeginResult =
 export async function beginDispatch(
   db: Db,
   input: { communityId: string; target: EvaluationTarget; model: string },
-  deps: RewardDeps & { jev?: JevDeps } = {},
+  deps: RewardDeps & JevEngines = {},
 ): Promise<BeginResult> {
   return withCommunityLock(db, input.communityId, deps, async (tx, _community, now) => {
     let nomination: Nomination | undefined;
@@ -190,7 +200,8 @@ export async function beginDispatch(
       return { status: "not_ready", reason: "epoch_closed" };
     }
     const { promptVersion } = payload.scoring;
-    if (pinHash(promptVersion, deps.jev?.registry) !== payload.scoring.promptTemplateHash) {
+    const scorers = engineFor(deps, promptVersion)?.registry;
+    if (pinHash(promptVersion, scorers) !== payload.scoring.promptTemplateHash) {
       if (nomination) {
         await tx
           .update(rewardNominations)
@@ -227,7 +238,7 @@ export async function beginDispatch(
     }
     const prior = purpose === "effort" ? await latestDecision(tx, contributionId) : undefined;
     if (purpose === "effort" && !prior) throw new Error("reward: upgrade without a decision");
-    const route = routeFor(promptVersion, purpose, deps.jev?.registry);
+    const route = routeFor(promptVersion, purpose, scorers);
     if (!route) throw new Error(`reward: no scorer for ${promptVersion} although its pin matched`);
     const scored: ScoringInput = {
       rubric: payload.rubric,
@@ -648,11 +659,10 @@ export interface ProviderResult {
   costMicroUsd: number;
 }
 
-export interface EvaluationDeps extends RewardDeps {
+// The Jev engines are set only where enabled; an epoch pinned to a scorer they lack is not ready.
+export interface EvaluationDeps extends RewardDeps, JevEngines {
   model: string;
   call: (prompt: Prompt, purpose: RewardPurpose) => Promise<ProviderResult>;
-  // Set only where a Jev scorer is enabled; an epoch pinned to one is not ready without it.
-  jev?: JevDeps;
   // How long a dispatch without an outcome may be another worker's live call.
   horizonMs: number;
 }
@@ -699,7 +709,7 @@ export async function runEvaluation(
   const { dispatch, request, purpose } = begun;
   let result: ProviderResult;
   // What a Jev call returned, kept so a response that fails later checks is still on the record.
-  let received: { response: unknown; latencyMs: number } | undefined;
+  let received: { response: unknown; latencyMs: number; costMicroUsd: number | null } | undefined;
   const withResponse = (output: object): object =>
     received
       ? { ...output, jev: { ...(output as { jev?: object }).jev, response: received.response } }
@@ -708,11 +718,16 @@ export async function runEvaluation(
     if (request.kind === "prompt") {
       result = await deps.call(request.prompt, purpose);
     } else {
-      const jev = deps.jev;
-      if (!jev) throw new Error("reward: the Jev scorer is not enabled");
+      const engine = engineFor(deps, request.def.version);
+      if (!engine) throw new Error(`reward: the scorer ${request.def.version} is not enabled`);
+      const costOf = request.def.costOf ?? jevCostMicroUsd;
       const score = await request.def.run(request.input, async (body) => {
-        const answer = await jev.transport(body);
-        received = { response: answer.response, latencyMs: answer.latencyMs };
+        const answer = await engine.transport(body);
+        received = {
+          response: answer.response,
+          latencyMs: answer.latencyMs,
+          costMicroUsd: costOf(answer.response),
+        };
         return answer;
       });
       result = {
@@ -735,7 +750,7 @@ export async function runEvaluation(
         ...(received && {
           output: withResponse({}),
           latencyMs: received.latencyMs,
-          costMicroUsd: jevCostMicroUsd(received.response),
+          costMicroUsd: received.costMicroUsd,
         }),
       },
       deps,

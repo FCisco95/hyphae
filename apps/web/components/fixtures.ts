@@ -78,6 +78,18 @@ export const openEpoch: EpochV1 = {
   final: false,
   snapshot: { status: "not_frozen" },
 };
+// The payload of a configured 7-day epoch, as the API serves it.
+const sevenDays = { version: 2, epoch: { durationSeconds: 604800 } };
+const windowed = (closesAt: string, payload: Record<string, unknown>): EpochV1 => ({
+  ...openEpoch,
+  closes_at: closesAt,
+  config: { ...openEpoch.config, payload },
+});
+// Epoch 2's close moved a day: 8 days against a 7-day duration.
+export const movedCloseEpoch = windowed(ts(10), sevenDays);
+export const onScheduleEpoch = windowed(ts(9), sevenDays);
+export const shortenedEpoch = windowed(ts(8, 21), sevenDays);
+export const noConfigEpoch = windowed(ts(10), {});
 export const closingEpoch: EpochV1 = { ...openEpoch, status: "closing", closed: true };
 export const AMENDED_AT = "2026-10-07T18:00:00.000000Z";
 export const amendedEpoch: EpochV1 = {
@@ -237,6 +249,32 @@ export const pendingRow: ContributionRowV1 = {
   url: null,
   state: "pending_at_close",
   selected: null,
+};
+
+// Public scoring rows carry no member eligibility verdict.
+const openRef = { index: 2, closes_at: ts(9), closed: false, final: false };
+const openRow = (n: number): ContributionRowV1 => ({
+  ...upgradedRow,
+  id: id(20 + n),
+  epoch: openRef,
+  member_id: id(30 + n),
+  accepted_at: ts(3, n),
+});
+export const openPayoutRows: ContributionRowV1[] = [
+  openRow(1),
+  { ...openRow(2), wallet: null, wallet_status: "none" },
+  openRow(3),
+  { ...openRow(4), wallet: null, wallet_status: "unverified" },
+  { ...openRow(5), state: "pending", selected: null },
+];
+export const openContributions: ContributionsV1 = {
+  community: { mint: "MintAbc" },
+  epoch: { index: 2, closed: false, final: false },
+  as_of: ts(3),
+  total_contributions: openPayoutRows.length,
+  offset: 0,
+  limit: 50,
+  contributions: openPayoutRows,
 };
 
 export const contributions: ContributionsV1 = {

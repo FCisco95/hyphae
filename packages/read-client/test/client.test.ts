@@ -13,6 +13,7 @@ import {
   responseFor,
   WALLET,
   walletClaims,
+  walletRecord,
 } from "./fixtures.js";
 
 const json = (body: unknown, status = 200, headers?: HeadersInit) =>
@@ -51,7 +52,7 @@ describe("public read client", () => {
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   });
-  it("performs exactly the seven documented GET operations with pagination and normalized IDs", async () => {
+  it("performs exactly the eight documented GET operations with pagination and normalized IDs", async () => {
     const fetchImpl = mock();
     const c = createHyphaeReadClient({ fetch: fetchImpl });
     await c.getCommunity("CommunityA");
@@ -61,6 +62,7 @@ describe("public read client", () => {
     await c.getContribution(ID.toUpperCase());
     await c.getClaim("CommunityA", 2, WALLET);
     await c.getWalletClaims(WALLET, { offset: 3, limit: 10 });
+    await c.getWalletRecord(WALLET, { offset: 3, limit: 10 });
     expect(
       fetchImpl.mock.calls.map(([url]) => String(url).replace("https://hyphae-api.fly.dev", "")),
     ).toEqual([
@@ -71,6 +73,7 @@ describe("public read client", () => {
       `/v1/contributions/${ID}`,
       `/v1/communities/CommunityA/epochs/2/claims/${WALLET}`,
       `/v1/wallets/${WALLET}/claims?offset=3&limit=10`,
+      `/v1/wallets/${WALLET}/record?offset=3&limit=10`,
     ]);
     for (const [, init] of fetchImpl.mock.calls) {
       expect(init).toMatchObject({
@@ -140,6 +143,10 @@ describe("public read client", () => {
       {
         body: { ...walletClaims(), wallet: "2".repeat(32) },
         call: (c: ReturnType<typeof createHyphaeReadClient>) => c.getWalletClaims(WALLET),
+      },
+      {
+        body: { ...walletRecord(), wallet: "2".repeat(32) },
+        call: (c: ReturnType<typeof createHyphaeReadClient>) => c.getWalletRecord(WALLET),
       },
     ];
     for (const { body, call } of cases) {

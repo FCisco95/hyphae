@@ -1,6 +1,6 @@
 # Post-payout release approval sheet
 
-Prepared October 11. Original reviewed next: 1249fed. Privacy accepted at f573a68 (review record on next 9d0da9b); claim recovery accepted at main cc4f773. **No exact E0–E6 production authorization received.** Deploy cutoff: October 12 12:00Z, except single-commit link/README fixes.
+Prepared October 11. Original reviewed next: 1249fed. Privacy accepted at f573a68 (review record on next 9d0da9b); claim recovery accepted at main cc4f773. **Cisco authorized E0–E6 on October 11 with the exact sentence below. Execution in progress; see the release plan Record.** Deploy cutoff: October 12 12:00Z, except single-commit link/README fixes.
 
 ## One-screen release copy
 

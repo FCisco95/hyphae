@@ -15,6 +15,10 @@ describe("links", () => {
     }
   });
 
+  it("names the site's public address for links shared elsewhere", () => {
+    expect(links.SITE).toBe("https://hyphae-delta.vercel.app");
+  });
+
   it("sends the API docs to the API's own reference page", () => {
     expect(links.API_DOCS).toBe("https://hyphae-api.fly.dev/docs");
   });

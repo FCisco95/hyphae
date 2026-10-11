@@ -173,6 +173,25 @@ export const raidDeliveries = pgTable(
   ],
 );
 
+// One group recap per ended raid (closed, or its window over; never cancelled). The claim is
+// committed before the send, so a row left in "sending" may have been posted and is never retried.
+// A Telegram 429 is retried once: the retry's claim sets retry_used, and a second 429 is final.
+export const raidRecaps = pgTable("raid_recaps", {
+  taskId: uuid("task_id")
+    .primaryKey()
+    .references(() => tasks.id),
+  communityId: uuid("community_id")
+    .notNull()
+    .references(() => communities.id),
+  status: raidDeliveryStatus("status").notNull(),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull(),
+  retryUsed: boolean("retry_used").notNull().default(false),
+  attemptedAt: timestamp("attempted_at", { withTimezone: true }).notNull(),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  telegramMessageId: integer("telegram_message_id"),
+  reason: text("reason"),
+});
+
 export const contributionKind = pgEnum("contribution_kind", ["reply", "quote", "post", "text"]);
 
 // Append-only. Never UPDATE; a correction is a new row.
@@ -951,6 +970,8 @@ export const memberWalletLinks = pgTable(
   (t) => [
     uniqueIndex("member_wallet_links_one_current").on(t.memberId).where(sql`${t.validTo} is null`),
     index("member_wallet_links_member_from").on(t.memberId, t.validFrom),
+    // The public wallet record looks links up by wallet alone.
+    index("member_wallet_links_wallet").on(t.wallet),
     check(
       "member_wallet_links_signature_has_proof",
       sql`${t.method} <> 'signature' or ${t.proofRequestId} is not null`,

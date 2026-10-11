@@ -114,12 +114,56 @@ export const walletClaims = (offset = 0, limit = 50) => ({
   claims: [{ ...leaf(), payment: unavailable }],
 });
 
+export const walletRecord = (offset = 0, limit = 50) => {
+  const tally = {
+    contributions: 1,
+    counted: 1,
+    credited: 1,
+    average_credited_quality: 85,
+    point_units: "9007199254740993",
+    points: "90071992.54740993",
+  };
+  return {
+    wallet: WALLET,
+    as_of: TIME,
+    totals: { communities: 1, epochs: 1, ...tally },
+    communities: [{ mint: "CommunityA", name: "CommunityA", totals: { epochs: 1, ...tally } }],
+    total_epochs: 1,
+    offset,
+    limit,
+    epochs: [
+      {
+        community: { mint: "CommunityA", name: "CommunityA" },
+        index: 2,
+        opens_at: TIME,
+        closes_at: TIME,
+        status: "closed",
+        member_id: ID,
+        totals: tally,
+        contributions: [
+          {
+            id: ID,
+            kind: "text",
+            accepted_at: TIME,
+            state: "counted",
+            credited_quality: 85,
+            point_units: "9007199254740993",
+            points: "90071992.54740993",
+          },
+        ],
+        payout: unavailable,
+      },
+    ],
+  };
+};
+
 export function responseFor(url: string | URL | Request) {
   const u = new URL(String(url));
   const mint = u.pathname.split("/communities/")[1]?.split("/")[0] ?? "CommunityA";
   const offset = Number(u.searchParams.get("offset") ?? 0);
   const limit = Number(u.searchParams.get("limit") ?? 50);
   if (u.pathname.includes("/claims/")) return claim();
+  if (u.pathname.endsWith("/record")) return walletRecord(offset, limit);
   if (u.pathname.startsWith("/v1/wallets/")) return walletClaims(offset, limit);
   if (u.pathname.startsWith("/v1/contributions/")) return contribution();
   if (u.pathname.endsWith("/contributions")) return contributions(mint, offset, limit);

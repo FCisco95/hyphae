@@ -1,6 +1,6 @@
 // Usage: node --env-file=<abs .env> --import tsx scripts/amend-epoch.ts <mint> --epoch <n> \
 //   --prompt <version> --effective-at <iso with Z> --actor "<name>" --reason "<public reason>" [--plan]
-// Records a pilot amendment of the open epoch's scoring prompt or Jev scorer
+// Records a pilot amendment of the open epoch's scoring prompt, Jev scorer or Claude question scorer
 // (src/rewards/amendment.ts): from the effective time on, contributions admitted in that epoch are
 // judged by the given registered version. A later amendment may follow once the previous one is in
 // effect. --plan runs every check and prints the record, then rolls the transaction back. A
@@ -9,6 +9,7 @@ import { communities, rewardConfigs } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { db } from "../src/db.js";
 import { amendEpochPrompt } from "../src/rewards/amendment.js";
+import { CLAUDE_REGISTRY } from "../src/scoring/claude-registry.js";
 import { JEV_REGISTRY } from "../src/scoring/jev-registry.js";
 import { parseAmendArgs } from "./amend-epoch-args.js";
 
@@ -21,7 +22,7 @@ try {
   await db.transaction(async (tx) => {
     const row = await amendEpochPrompt(tx, {
       ...input,
-      registry: JEV_REGISTRY,
+      registry: new Map([...JEV_REGISTRY, ...CLAUDE_REGISTRY]),
       communityId: community.id,
     });
     const [to] = await tx

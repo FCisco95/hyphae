@@ -36,19 +36,19 @@ function requireKey(name: string, value: string | undefined): string {
   return value;
 }
 
-export function scoringModel(id: string, keys: ProviderKeys): ScoringModel {
+// tokens × $/1M tokens = µ$ exactly, so no unit conversion is needed.
+export function costMicroUsd(id: string, u: TokenUsage): number {
   const price = PRICES[id];
   if (!price) throw new Error(`scoring: unknown model ${id}`);
+  return Math.round((u.inputTokens ?? 0) * price.in + (u.outputTokens ?? 0) * price.out);
+}
+
+export function scoringModel(id: string, keys: ProviderKeys): ScoringModel {
+  if (!PRICES[id]) throw new Error(`scoring: unknown model ${id}`);
   const [provider, name] = id.split(":") as [string, string];
   const model =
     provider === "anthropic"
       ? createAnthropic({ apiKey: requireKey("ANTHROPIC_API_KEY", keys.anthropic) })(name)
       : createDeepSeek({ apiKey: requireKey("DEEPSEEK_API_KEY", keys.deepseek) })(name);
-  return {
-    id,
-    model,
-    // tokens × $/1M tokens = µ$ exactly, so no unit conversion is needed.
-    costMicroUsd: (u) =>
-      Math.round((u.inputTokens ?? 0) * price.in + (u.outputTokens ?? 0) * price.out),
-  };
+  return { id, model, costMicroUsd: (u) => costMicroUsd(id, u) };
 }

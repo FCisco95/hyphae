@@ -103,7 +103,9 @@ const BONUS_TEXT: Record<Bonus, string> = {
 
 type Request = SystemOneRequest<Questions> & { model: string };
 
-export function jevRequest(input: ScoringInput, set: JevQuestionSet): Request {
+// What the questions are asked about, under the names they use: the rubric, the task and the
+// contribution. Refuses a rubric criterion that no answer stands for.
+export function jevState(input: ScoringInput, set: JevQuestionSet): Record<string, EntryType> {
   const missing = input.rubric.criteria.filter((c) =>
     set.kind === "weighted" ? !set.criteria[c.key] : !GATED_CRITERIA.includes(c.key),
   );
@@ -130,14 +132,18 @@ export function jevRequest(input: ScoringInput, set: JevQuestionSet): Request {
     ...(contribution.url && { url: contribution.url }),
     text: contribution.text,
   };
+  return state;
+}
+
+export function jevRequest(input: ScoringInput, set: JevQuestionSet): Request {
   return {
     model: JEV_MODEL,
-    state,
+    state: jevState(input, set),
     questions: questionsOf(set),
   };
 }
 
-const questionsOf = (set: JevQuestionSet): Questions =>
+export const questionsOf = (set: JevQuestionSet): Questions =>
   set.kind === "weighted"
     ? {
         ...set.criteria,
@@ -300,7 +306,7 @@ type JevComposition =
       bonuses: Bonus[];
     };
 
-const compositionOf = (set: JevQuestionSet, rubric: Rubric): JevComposition =>
+export const compositionOf = (set: JevQuestionSet, rubric: Rubric): JevComposition =>
   set.kind === "weighted"
     ? {
         version: "1",

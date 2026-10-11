@@ -10,7 +10,7 @@ import {
   vaultAddress,
   verifyProof,
 } from "@hyphae/core";
-import { communities, leaves } from "@hyphae/db";
+import { communities, leaves, rulesTestPasses } from "@hyphae/db";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 import {
@@ -26,7 +26,7 @@ import { loadIntent, type PublicationIntent } from "../payout/intent.js";
 import { type PublishChain, publishEpoch } from "../payout/publish.js";
 import { type ReadySeed, randomAddress, seedReadyEpoch } from "../payout/ready-seed.js";
 import { createTestDb } from "../rewards/test-db.js";
-import { readClaim, readEpoch, readWalletClaims } from "./read-service.js";
+import { readClaim, readEpoch, readWalletClaims, readWalletRecord } from "./read-service.js";
 import { LOOKUPS_AT_ONCE, mapLimit, type SettlementReader } from "./settlement.js";
 
 // The deadline tests time the read path, not program-address derivation: each derivation is a
@@ -160,7 +160,11 @@ function fakeReader(network: "solana:devnet" | "solana:mainnet" = "solana:devnet
 }
 
 // A seeded ready epoch published through the real publish job, as the chain would show it.
-async function published(wallets: Partial<ReadySeed["wallets"]> = {}): Promise<{
+// `prepare` changes the seed before it is published.
+async function published(
+  wallets: Partial<ReadySeed["wallets"]> = {},
+  prepare: (seed: ReadySeed) => Promise<unknown> = async () => {},
+): Promise<{
   seed: ReadySeed;
   intent: PublicationIntent;
   community: string;
@@ -168,6 +172,7 @@ async function published(wallets: Partial<ReadySeed["wallets"]> = {}): Promise<{
 }> {
   const community = randomAddress();
   const seed = await seedReadyEpoch(t.db, { now: NOW, chainAddress: community, wallets });
+  await prepare(seed);
   const chain: PublishChain = {
     network: "solana:devnet",
     programId: HYPHAE_PROGRAM_ID,
@@ -680,5 +685,85 @@ describe("the claim route", () => {
     const c = await readClaim(t.db, p.seed.mint, 1, p.seed.wallets.floor, NOW, fake.reader);
     expect(c?.payment).toEqual({ status: "unavailable", reason: "chain_unavailable" });
     expect(c?.proof.length).toBeGreaterThan(0);
+  });
+});
+
+describe("a wallet's record", () => {
+  const all = { offset: 0, limit: 50 };
+  const record = async (wallet: string, reader?: SettlementReader) =>
+    ReadApiV1.walletRecord.parse(await readWalletRecord(t.db, wallet, all, NOW, reader));
+  const amountOf = (p: Published, wallet: string) => {
+    const leaf = p.intent.leaves.find((l) => l.wallet === wallet);
+    if (!leaf) throw new Error("no leaf for the wallet");
+    return leaf;
+  };
+
+  it("shows each epoch's allocation: claimable, or paid with the claim the chain shows", async () => {
+    const wallet = randomAddress();
+    const first = await published({ ordinary: wallet });
+    const second = await published({ effort: wallet });
+    const fake = await onChain(first, amountOf(first, wallet).amountLamports);
+    await onChain(second, 0n, PUBLISH_TX, fake);
+    await claimed(fake, first, amountOf(first, wallet));
+
+    const r = await record(wallet, fake.reader);
+    // Both epochs close together, so they are ordered by mint.
+    const ordered = [first, second].sort((x, y) => (x.seed.mint < y.seed.mint ? -1 : 1));
+    expect(r.epochs.map((e) => [e.community.mint, e.index, e.payout])).toEqual(
+      ordered.map((p) => [
+        p.seed.mint,
+        1,
+        {
+          status: "allocated",
+          network: "solana:devnet",
+          amount_lamports: amountOf(p, wallet).amountLamports.toString(),
+          payment: p === first ? { status: "paid", claim_tx: CLAIM_TX } : { status: "claimable" },
+        },
+      ]),
+    );
+    expect(r.totals).toMatchObject({ communities: 2, epochs: 2, counted: 2, points: "340" });
+    expect(r.communities.map((c) => c.mint)).toEqual(ordered.map((p) => p.seed.mint));
+  });
+
+  it("keeps the allocation when the chain cannot be read, its payment unavailable", async () => {
+    const wallet = randomAddress();
+    const p = await published({ floor: wallet });
+    const fake = await onChain(p);
+    fake.state.down = true;
+    const allocated = {
+      status: "allocated",
+      network: "solana:devnet",
+      amount_lamports: amountOf(p, wallet).amountLamports.toString(),
+    };
+    expect((await record(wallet, fake.reader)).epochs.map((e) => e.payout)).toEqual([
+      { ...allocated, payment: { status: "unavailable", reason: "chain_unavailable" } },
+    ]);
+    expect((await record(wallet)).epochs.map((e) => e.payout)).toEqual([
+      { ...allocated, payment: { status: "unavailable", reason: "chain_unconfigured" } },
+    ]);
+  });
+
+  it("says why an epoch has no payout: retained, or no allocation for the wallet", async () => {
+    const retainedWallet = randomAddress();
+    const retained = await published({ floor: retainedWallet });
+    await t.db
+      .update(communities)
+      .set({ firstPaidEpoch: 2 })
+      .where(eq(communities.id, retained.seed.communityId));
+    const fake = await onChain(retained);
+    expect((await record(retainedWallet, fake.reader)).epochs.map((e) => e.payout)).toEqual([
+      { status: "unavailable", reason: "before_first_paid_epoch" },
+    ]);
+
+    // Without a rules test pass the member is not payable, so the publication has no leaf for it.
+    const unpaidWallet = randomAddress();
+    const unpaid = await published({ floor: unpaidWallet }, (seed) =>
+      t.db.delete(rulesTestPasses).where(eq(rulesTestPasses.memberId, seed.members.floor)),
+    );
+    expect(unpaid.intent.leaves.some((l) => l.wallet === unpaidWallet)).toBe(false);
+    const r = await record(unpaidWallet, (await onChain(unpaid)).reader);
+    expect(r.epochs.map((e) => [e.totals.points, e.payout])).toEqual([
+      ["70", { status: "unavailable", reason: "no_allocation" }],
+    ]);
   });
 });

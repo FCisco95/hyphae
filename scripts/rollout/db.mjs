@@ -1,7 +1,8 @@
-// Production checks and one pinned migration release. Current release: migration 0017 for the
-// Jev live scorer release plan (docs/demo/2026-10-07-jev-live-release-plan.md). The pilot amendment
-// release used it for 0016, the earn-first release for 0015 and the 2026-10-05 API rollout for
-// 0013+0014 (see those plans and git history).
+// Production checks and one pinned migration release. Current release: migrations 0018 and 0019
+// for the 2026-10-11 release (docs/demo/2026-10-11-release-plan.md), after epoch 2's first mainnet
+// payout. The Jev live scorer release used it for 0017, the pilot amendment release for 0016, the
+// earn-first release for 0015 and the 2026-10-05 API rollout for 0013+0014 (see those plans and git
+// history).
 //
 // Run from the exact-source worktree's packages/db, so the migrations folder and drivers are the
 // ones the image was built from:
@@ -32,23 +33,58 @@ const MINT = "HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg";
 const PUBLIC_API = "https://hyphae-api.fly.dev";
 // The migrations this release applies, in order, pinned by the SHA-256 of their SQL files.
 const NEW_MIGRATIONS = {
-  "0017_reward_amendment_chain": "d630d663625392762f3889eb6dfe78966840651fbd16ae68cf1c02bd03dfc3fe",
+  "0018_member_wallet_links_wallet":
+    "79592f957d9b43805e468c97ffce066a091a68cfaebda5944f9d234282812302",
+  "0019_raid_recaps": "b81d60858828b95e89b7d2be8e0445e231eac6a3c7e43318b983affeeb56864b",
 };
 // 0015 is applied before and after: the three member columns are nullable and the check exists.
 const NULLABLE_COLUMNS = ["wallet", "link_method", "linked_at"];
 const MEMBERS_CHECK = "members_wallet_link_together";
-// What 0017 changes, read from the catalog: the amendments table keeps its three checks and its
-// rows (the epoch 2 amendment recorded on 2026-10-07) and swaps its unique index from "one per
-// epoch" to "one per (epoch, from config)". Only the amend-epoch step records a second row, after
-// the new image runs.
-const NEW_TABLE = "reward_config_amendments";
-const NEW_TABLE_CHECKS = [
+// 0017 is applied before and after: the amendments table keeps its three checks and its unique
+// index per (epoch, from config).
+const AMENDMENTS_TABLE = "reward_config_amendments";
+const AMENDMENTS_CHECKS = [
   "reward_config_amendments_future",
   "reward_config_amendments_changes",
   "reward_config_amendments_hash_format",
 ];
-const OLD_INDEX = "reward_config_amendments_epoch";
-const NEW_INDEX = "reward_config_amendments_epoch_from";
+const AMENDMENTS_INDEXES = ["reward_config_amendments_epoch_from(epoch_id,from_config_id)"];
+// 0019 reuses 0013's enum for a recap's delivery state.
+const RAID_STATUS_LABELS = ["pending", "sending", "sent", "skipped", "failed", "uncertain"];
+// What 0018 and 0019 create, read from the catalog. Types and referenced tables are
+// schema-qualified, so the comparison does not depend on the session's search_path.
+const WALLET_INDEX = "member_wallet_links_wallet";
+const WALLET_INDEX_SHAPE = {
+  table: "member_wallet_links",
+  method: "btree",
+  columns: "wallet",
+  attributes: 1,
+  key_attributes: 1,
+  expressions: false,
+  unique: false,
+  partial: false,
+  valid: true,
+};
+const RAID_RECAPS = "raid_recaps";
+const RAID_RECAPS_SHAPE = {
+  columns: [
+    "task_id pg_catalog.uuid not null",
+    "community_id pg_catalog.uuid not null",
+    "status public.raid_delivery_status not null",
+    "next_attempt_at pg_catalog.timestamptz not null",
+    "retry_used pg_catalog.bool not null default",
+    "attempted_at pg_catalog.timestamptz not null",
+    "sent_at pg_catalog.timestamptz null",
+    "telegram_message_id pg_catalog.int4 null",
+    "reason pg_catalog.text null",
+  ],
+  constraints: [
+    "raid_recaps_community_id_communities_id_fk f (community_id) -> public.communities(id) a/a",
+    "raid_recaps_pkey p (task_id)",
+    "raid_recaps_task_id_tasks_id_fk f (task_id) -> public.tasks(id) a/a",
+  ],
+  indexes: ["raid_recaps_pkey"],
+};
 const COUNTED_TABLES = [
   "members",
   "contributions",
@@ -59,6 +95,7 @@ const COUNTED_TABLES = [
   "reward_config_amendments",
   "reward_snapshot_entries",
   "leaves",
+  RAID_RECAPS,
 ];
 // Any other query parameter (host, hostaddr, port, options, ...) could redirect the connection
 // away from the host this script reports, so it is refused.
@@ -106,15 +143,30 @@ class ChannelBoundClient extends pg.Client {
   }
 }
 
+// Every mode refuses a migrations folder that does not end with exactly this release's migrations,
+// in order, at their pinned hashes.
 function expectedJournal() {
   const journal = JSON.parse(readFileSync(join(migrationsFolder, "meta/_journal.json"), "utf8"));
-  return journal.entries.map((e) => ({
+  const entries = journal.entries.map((e) => ({
     tag: e.tag,
     created_at: String(e.when),
     hash: createHash("sha256")
       .update(readFileSync(join(migrationsFolder, `${e.tag}.sql`)))
       .digest("hex"),
   }));
+  const tail = entries.slice(-Object.keys(NEW_MIGRATIONS).length);
+  if (
+    !isDeepStrictEqual(
+      tail.map((e) => [e.tag, e.hash]),
+      Object.entries(NEW_MIGRATIONS),
+    )
+  )
+    throw new Error(
+      `the migrations folder does not end with this release's pinned migrations: it ends with ${tail
+        .map((e) => `${e.tag} sha256 ${e.hash}`)
+        .join(", ")}`,
+    );
+  return entries;
 }
 
 function connectionTarget() {
@@ -199,47 +251,130 @@ async function readShape(client) {
       [MEMBERS_CHECK],
     )
   ).rows[0].n;
-  const [{ exists }] = (
-    await client.query("select to_regclass($1) is not null as exists", [`public.${NEW_TABLE}`])
-  ).rows;
-  const table = exists
+  const exists = async (name) =>
+    (await client.query("select to_regclass($1) is not null as e", [`public.${name}`])).rows[0].e;
+  const rows = async (text, name) =>
+    (await client.query(text, [`public.${name}`])).rows.map((r) => r.v);
+  const amendments = (await exists(AMENDMENTS_TABLE))
     ? {
-        checks: (
-          await client.query(
-            `select conname from pg_constraint
-              where conrelid = $1::regclass and contype = 'c' order by conname`,
-            [`public.${NEW_TABLE}`],
-          )
-        ).rows.map((r) => r.conname),
-        // Every unique index on the table with its column list, so a swap is seen exactly.
-        unique_indexes: (
-          await client.query(
-            `select c.relname as name,
-                    (select string_agg(a.attname, ',' order by k.ord)
-                       from unnest(x.indkey) with ordinality as k(attnum, ord)
-                       join pg_attribute a on a.attrelid = x.indrelid and a.attnum = k.attnum) as columns
-               from pg_index x join pg_class c on c.oid = x.indexrelid
-              where x.indrelid = $1::regclass and x.indisunique and not x.indisprimary
-              order by c.relname`,
-            [`public.${NEW_TABLE}`],
-          )
-        ).rows.map((r) => `${r.name}(${r.columns})`),
-        rows: (await client.query(`select count(*)::int as n from public.${NEW_TABLE}`)).rows[0].n,
+        checks: await rows(
+          `select conname as v from pg_constraint
+            where conrelid = $1::regclass and contype = 'c' order by conname`,
+          AMENDMENTS_TABLE,
+        ),
+        // Every unique index on the table with its column list, so a change is seen exactly.
+        unique_indexes: await rows(
+          `select c.relname || '(' || ${columnList("x.indkey", "x.indrelid")} || ')' as v
+             from pg_index x join pg_class c on c.oid = x.indexrelid
+            where x.indrelid = $1::regclass and x.indisunique and not x.indisprimary
+            order by c.relname`,
+          AMENDMENTS_TABLE,
+        ),
+        rows: (await client.query(`select count(*)::int as n from public.${AMENDMENTS_TABLE}`))
+          .rows[0].n,
       }
     : null;
-  return { nullable, members_check_exists: check === 1, amendments_table: table };
+  const [{ labels }] = (
+    await client.query(
+      `select array_agg(e.enumlabel::text order by e.enumsortorder) as labels
+         from pg_enum e join pg_type t on t.oid = e.enumtypid
+         join pg_namespace n on n.oid = t.typnamespace
+        where n.nspname = 'public' and t.typname = 'raid_delivery_status'`,
+    )
+  ).rows;
+  const walletIndex = (await exists(WALLET_INDEX))
+    ? ((
+        await client.query(
+          `select t.relname as table, am.amname as method,
+                  ${columnList("x.indkey", "x.indrelid")} as columns,
+                  x.indnatts as attributes, x.indnkeyatts as key_attributes,
+                  x.indexprs is not null as expressions,
+                  x.indisunique as unique, x.indpred is not null as partial, x.indisvalid as valid
+             from pg_index x join pg_class c on c.oid = x.indexrelid
+             join pg_class t on t.oid = x.indrelid join pg_am am on am.oid = c.relam
+            where x.indexrelid = $1::regclass`,
+          [`public.${WALLET_INDEX}`],
+        )
+      ).rows[0] ?? { not_an_index: true })
+    : null;
+  const recaps = (await exists(RAID_RECAPS))
+    ? {
+        columns: await rows(
+          `select a.attname || ' ' || tn.nspname || '.' || t.typname
+                  || case when a.attnotnull then ' not null' else ' null' end
+                  || case when a.atthasdef then ' default' else '' end as v
+             from pg_attribute a join pg_type t on t.oid = a.atttypid
+             join pg_namespace tn on tn.oid = t.typnamespace
+            where a.attrelid = $1::regclass and a.attnum > 0 and not a.attisdropped
+            order by a.attnum`,
+          RAID_RECAPS,
+        ),
+        // Not-null is read from the columns: Postgres 18 also lists it here as contype 'n'.
+        constraints: await rows(
+          `select k.conname || ' ' || k.contype::text
+                  || ' (' || ${columnList("k.conkey", "k.conrelid")} || ')'
+                  || case when k.contype = 'f'
+                       then ' -> ' || rn.nspname || '.' || r.relname
+                            || '(' || ${columnList("k.confkey", "k.confrelid")} || ') '
+                            || k.confupdtype::text || '/' || k.confdeltype::text
+                       else '' end as v
+             from pg_constraint k left join pg_class r on r.oid = k.confrelid
+             left join pg_namespace rn on rn.oid = r.relnamespace
+            where k.conrelid = $1::regclass and k.contype in ('c', 'f', 'p', 'u', 'x')
+            order by k.conname`,
+          RAID_RECAPS,
+        ),
+        indexes: await rows(
+          `select c.relname as v from pg_index x join pg_class c on c.oid = x.indexrelid
+            where x.indrelid = $1::regclass order by c.relname`,
+          RAID_RECAPS,
+        ),
+      }
+    : null;
+  return {
+    nullable,
+    members_check_exists: check === 1,
+    amendments_table: amendments,
+    raid_delivery_status: labels,
+    wallet_index: walletIndex,
+    raid_recaps: recaps,
+  };
 }
 
-const has0015 = (shape) =>
-  NULLABLE_COLUMNS.every((c) => shape.nullable[c] === true) && shape.members_check_exists;
-const withIndexes = (shape, indexes) =>
-  has0015(shape) &&
-  shape.amendments_table !== null &&
-  isDeepStrictEqual(shape.amendments_table.checks, [...NEW_TABLE_CHECKS].sort()) &&
-  isDeepStrictEqual(shape.amendments_table.unique_indexes, indexes);
-// 0016's table, with its one-per-epoch unique index, is the state before; 0017 swaps the index.
-const untouched = (shape) => withIndexes(shape, [`${OLD_INDEX}(epoch_id)`]);
-const applied = (shape) => withIndexes(shape, [`${NEW_INDEX}(epoch_id,from_config_id)`]);
+// The columns of an index or constraint, by name and in key order. An expression key has
+// attribute number 0 and no pg_attribute row, so it is named "(expression)", not dropped.
+const columnList = (keys, rel) =>
+  `(select string_agg(coalesce(col_att.attname, '(expression)'), ',' order by col_key.ord)
+      from unnest(${keys}) with ordinality as col_key(attnum, ord)
+      left join pg_attribute col_att
+        on col_att.attrelid = ${rel} and col_att.attnum = col_key.attnum)`;
+
+// Before: 0015 and 0017 applied, 0019's enum present, nothing of 0018 or 0019. After: exactly
+// 0018's index and 0019's table as well.
+function shapeProblems(shape, phase) {
+  const problems = [];
+  if (!NULLABLE_COLUMNS.every((c) => shape.nullable[c] === true) || !shape.members_check_exists)
+    problems.push("members does not have 0015's shape");
+  if (
+    !isDeepStrictEqual(shape.amendments_table?.checks, [...AMENDMENTS_CHECKS].sort()) ||
+    !isDeepStrictEqual(shape.amendments_table?.unique_indexes, AMENDMENTS_INDEXES)
+  )
+    problems.push(`${AMENDMENTS_TABLE} is not exactly 0017's table`);
+  if (!isDeepStrictEqual(shape.raid_delivery_status, RAID_STATUS_LABELS))
+    problems.push("enum raid_delivery_status is missing or its labels differ");
+  if (phase === "pre") {
+    if (shape.wallet_index !== null) problems.push(`${WALLET_INDEX} already exists`);
+    if (shape.raid_recaps !== null) problems.push(`${RAID_RECAPS} already exists`);
+  } else {
+    if (!isDeepStrictEqual(shape.wallet_index, WALLET_INDEX_SHAPE))
+      problems.push(`${WALLET_INDEX} is not exactly 0018's index`);
+    if (!isDeepStrictEqual(shape.raid_recaps, RAID_RECAPS_SHAPE))
+      problems.push(`${RAID_RECAPS} is not exactly 0019's table`);
+  }
+  return problems;
+}
+const untouched = (shape) => shapeProblems(shape, "pre").length === 0;
+const applied = (shape) => shapeProblems(shape, "post").length === 0;
 
 async function readState(client) {
   const one = async (text, values) => (await client.query(text, values)).rows;
@@ -254,7 +389,7 @@ async function readState(client) {
             reward_intake_paused_at from communities order by created_at`,
   );
   s.epochs = await one(
-    `select e.index, e.status::text, e.opens_at, e.closes_at, e.reward_config_id,
+    `select e.index, e.status::text, e.opens_at, e.closes_at, e.reward_config_id, e.publish_tx,
             (select count(*)::int from reward_epoch_snapshots r where r.epoch_id = e.id) as snapshots
        from epochs e join communities c on c.id = e.community_id
       where c.mint = $1 order by e.index`,
@@ -262,7 +397,11 @@ async function readState(client) {
   );
   s.counts = {};
   for (const t of COUNTED_TABLES) {
-    s.counts[t] = (await one(`select count(*)::int as n from public.${t}`))[0].n;
+    // Before 0019 raid_recaps does not exist and holds no rows; the shape says whether it exists.
+    s.counts[t] =
+      t === RAID_RECAPS && s.shape.raid_recaps === null
+        ? 0
+        : (await one(`select count(*)::int as n from public.${t}`))[0].n;
   }
   s.long_transactions = await one(
     `select pid, state, backend_type, now() - xact_start as age from pg_stat_activity
@@ -306,10 +445,24 @@ async function publicReads(target) {
   return {
     community: await get(`/v1/communities/${MINT}`),
     epoch2: await get(`/v1/communities/${MINT}/epochs/2`),
+    epoch3: await get(`/v1/communities/${MINT}/epochs/3`),
   };
 }
 
 const ms = (v) => new Date(v).getTime();
+
+// The read API derives an epoch's status from its snapshot, so a published epoch reads as closed.
+const publicStatus = (e) => (e.status === "open" ? "open" : "closed");
+
+// Where a public epoch, from the community list or a detail read, differs from its database row.
+function epochDifferences(de, pe) {
+  const differs = [];
+  if (pe?.index !== de.index) differs.push("index");
+  if (ms(pe?.opens_at) !== ms(de.opens_at)) differs.push("opens_at");
+  if (ms(pe?.closes_at) !== ms(de.closes_at)) differs.push("closes_at");
+  if (pe?.status !== publicStatus(de)) differs.push("status");
+  return differs;
+}
 
 function checkState(s, live, journalExpected, phase) {
   const problems = [];
@@ -323,9 +476,7 @@ function checkState(s, live, journalExpected, phase) {
     fail(
       `journal (${s.journal.length} rows) is not exactly the first ${appliedCount} expected entries`,
     );
-  if (!has0015(s.shape)) fail("members does not have 0015's shape");
-  if (phase === "pre" && !untouched(s.shape)) fail(`${NEW_TABLE} is not exactly 0016's table`);
-  if (phase === "post" && !applied(s.shape)) fail(`${NEW_TABLE} is not exactly 0017's table`);
+  problems.push(...shapeProblems(s.shape, phase));
 
   if (s.communities.length !== 1) fail(`communities has ${s.communities.length} rows, expected 1`);
   const lab = s.communities[0];
@@ -335,9 +486,29 @@ function checkState(s, live, journalExpected, phase) {
 
   const e1 = s.epochs.find((e) => e.index === 1);
   const e2 = s.epochs.find((e) => e.index === 2);
+  const e3 = s.epochs.find((e) => e.index === 3);
+  const iso = (d) => d?.toISOString();
+  if (s.epochs.length !== 3) fail(`Hyphae Lab has ${s.epochs.length} epochs, expected 3`);
   if (e1?.status !== "closed" || e1?.snapshots !== 1) fail("epoch 1 is not closed with 1 snapshot");
-  if (e2?.status !== "open" || e2?.closes_at?.toISOString() !== "2026-10-09T00:00:00.000Z")
-    fail("epoch 2 is not open until 2026-10-09T00:00Z");
+  // Publishing writes status, root and publish_tx together, so epoch 2 is closed before its
+  // publication lands and published after; either is valid here and the report records which.
+  if (
+    !["closed", "published"].includes(e2?.status) ||
+    e2?.snapshots !== 1 ||
+    iso(e2?.closes_at) !== "2026-10-10T00:00:00.000Z"
+  )
+    fail("epoch 2 is not closed at 2026-10-10T00:00Z with 1 snapshot");
+  else if ((e2.status === "published") !== (e2.publish_tx !== null))
+    fail(
+      `epoch 2 is ${e2.status} but its publish_tx is ${e2.publish_tx === null ? "null" : "set"}`,
+    );
+  if (
+    e3?.status !== "open" ||
+    e3?.snapshots !== 0 ||
+    iso(e3?.opens_at) !== "2026-10-10T00:00:00.000Z" ||
+    iso(e3?.closes_at) !== "2026-10-17T00:00:00.000Z"
+  )
+    fail("epoch 3 is not open from 2026-10-10T00:00Z to 2026-10-17T00:00Z with 0 snapshots");
 
   // Consistency with what the live API serves (identity comes from liveness, see the header).
   if (live.community.name !== lab?.name) fail("public name differs");
@@ -345,20 +516,34 @@ function checkState(s, live, journalExpected, phase) {
   if (live.community.reward_intake !== intake) fail("public intake state differs");
   for (const pe of live.community.epochs) {
     const de = s.epochs.find((e) => e.index === pe.index);
-    if (
-      !de ||
-      de.status !== pe.status ||
-      ms(de.opens_at) !== ms(pe.opens_at) ||
-      ms(de.closes_at) !== ms(pe.closes_at)
-    )
-      fail(`public epoch ${pe.index} differs`);
+    const differs = de ? epochDifferences(de, pe) : ["not in the database"];
+    if (differs.length) fail(`public epoch ${pe.index} differs: ${differs.join(", ")}`);
   }
   if (live.community.epochs.length !== s.epochs.length) fail("public epoch count differs");
-  if (live.epoch2.config?.id !== e2?.reward_config_id) fail("public epoch 2 reward config differs");
+  // Each detail read against its database epoch. The API's `closed` is its clock past closes_at
+  // and `final` is the snapshot: an epoch it shows as open has neither, a closed one has both.
+  for (const [de, pe] of [
+    [e2, live.epoch2],
+    [e3, live.epoch3],
+  ]) {
+    if (!de) continue; // its database state has already failed above
+    const differs = epochDifferences(de, pe);
+    if (pe?.closed !== (publicStatus(de) === "closed")) differs.push("closed");
+    if (pe?.final !== de.snapshots > 0) differs.push("final");
+    if (pe?.config?.id !== de.reward_config_id) differs.push("reward config");
+    if (differs.length) fail(`public epoch ${de.index} detail differs: ${differs.join(", ")}`);
+  }
+  // The API shows a publication only from the stored publish_tx, after verifying it on chain. A
+  // stored one it shows as unavailable can be a failed chain read, so only this direction fails.
+  const allocation = live.epoch2?.settlement?.allocation;
+  if (allocation?.status === "published" && allocation.publish_tx !== e2?.publish_tx)
+    fail("public epoch 2 publication is not the database's publish_tx");
 
   for (const t of COUNTED_TABLES) {
     if (!Number.isInteger(s.counts[t]) || s.counts[t] < 0) fail(`count of ${t} is invalid`);
   }
+  if (s.counts[RAID_RECAPS] !== 0)
+    fail(`${RAID_RECAPS} has ${s.counts[RAID_RECAPS]} row(s): only the new image writes recaps`);
   if (s.long_transactions.length > 0)
     fail(`${s.long_transactions.length} other transaction(s) older than 5 s`);
   if (!s.queue) fail("pgboss.job is missing or has no reward-recovery completion");
@@ -399,7 +584,7 @@ function compareToBaseline(baseline, state) {
     deltas[t] = state.counts[t] - baseline.state.counts[t];
     if (!(deltas[t] >= 0)) problems.push(`${t} lost rows or is invalid (delta ${deltas[t]})`);
   }
-  // This release records no amendment; the second one comes only after the new image runs.
+  // This release records no amendment; epoch 3's is recorded only after the new image runs.
   if (deltas.reward_config_amendments !== 0)
     problems.push(`reward_config_amendments changed by ${deltas.reward_config_amendments}`);
   const age = ms(state.reference.at) - ms(baseline.state.reference.at);
@@ -433,7 +618,17 @@ async function check(phase, baselinePath) {
   const state = await withReadOnly(conn, readState);
   const live = await publicReads(conn.target);
   const problems = checkState(state, live, journalExpected, phase);
-  const report = { phase, target: conn.target };
+  const allocation = live.epoch2?.settlement?.allocation;
+  const report = {
+    phase,
+    target: conn.target,
+    // Epoch 2's publication may or may not have landed when this runs: recorded, not required.
+    epoch2_publication: {
+      database: state.epochs.find((e) => e.index === 2)?.status ?? null,
+      public: allocation?.status ?? null,
+      public_reason: allocation?.reason ?? null,
+    },
+  };
   if (phase === "post") {
     const { baseline, problems: bp } = loadBaseline(baselinePath, conn.target);
     problems.push(...bp);
@@ -454,14 +649,7 @@ async function check(phase, baselinePath) {
 async function runMigrate(baselinePath) {
   const conn = connectionTarget();
   const journalExpected = expectedJournal();
-  for (const [tag, hash] of Object.entries(NEW_MIGRATIONS)) {
-    if (journalExpected.find((e) => e.tag === tag)?.hash !== hash)
-      throw new Error(`${tag} is missing or its hash differs from the pinned plan`);
-  }
-  const newCount = Object.keys(NEW_MIGRATIONS).length;
-  const beforeCount = journalExpected.length - newCount;
-  if (!journalExpected.slice(beforeCount).every((e) => e.tag in NEW_MIGRATIONS))
-    throw new Error("the migrations folder does not end with exactly this release's migrations");
+  const beforeCount = journalExpected.length - Object.keys(NEW_MIGRATIONS).length;
   const before = journalExpected.slice(0, beforeCount);
   const lastBefore = before.at(-1)?.tag;
   console.error(`target ${JSON.stringify(conn.target)}`);
@@ -504,7 +692,9 @@ async function runMigrate(baselinePath) {
     const message = failure?.cause?.message ?? failure?.message ?? String(failure);
     console.error(`MIGRATE FAILED code=${code} message=${message}`);
     if (code === "55P03" && unchanged) {
-      console.error("LOCK TIMEOUT: journal and schema unchanged. Retry per plan Step 5 (max 3).");
+      console.error(
+        "LOCK TIMEOUT: journal and schema unchanged. Retry per the release plan (max 3).",
+      );
       return 2;
     }
     const outcome = !after

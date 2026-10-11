@@ -14,6 +14,7 @@ const schemas = {
   Contribution: ReadApiV1.contribution,
   Claim: ReadApiV1.claim,
   WalletClaims: ReadApiV1.walletClaims,
+  WalletRecord: ReadApiV1.walletRecord,
   Error: ReadApiV1.error,
 };
 
@@ -122,7 +123,7 @@ export function openApiDocument() {
       ),
       "/v1/communities/{mint}/epochs/{index}/contributions": get(
         "An epoch's contributions",
-        "Audit rows in intake order, each with its selected judgement.",
+        "Audit rows in intake order, each with its selected judgement. Member eligibility checklists are private; published payment totals are on the epoch settlement.",
         "Contributions",
         [
           mint,
@@ -134,7 +135,7 @@ export function openApiDocument() {
       ),
       "/v1/communities/{mint}/leaderboard": get(
         "An epoch's leaderboard",
-        "Members ranked by point units; ties share a rank.",
+        "Members ranked by point units; ties share a rank. Member eligibility checklists are private.",
         "Leaderboard",
         [
           mint,
@@ -145,7 +146,7 @@ export function openApiDocument() {
       ),
       "/v1/contributions/{id}": get(
         "A contribution",
-        "One contribution with every judgement revision, correction and provenance.",
+        "One contribution with every judgement revision, correction and provenance. Member eligibility checklists are private.",
         "Contribution",
         [path("id", "The contribution id.", { type: "string", format: "uuid" })],
         "No such served contribution.",
@@ -163,6 +164,17 @@ export function openApiDocument() {
         "WalletClaims",
         [wallet, ...paging],
         null,
+      ),
+      "/v1/wallets/{wallet}/record": get(
+        "A wallet's record",
+        [
+          "Every epoch, in any community, whose public reads show this wallet for a member: the member's signed link valid at the epoch's close, or now while it is open. Newest first, paged by epoch; the totals cover every epoch.",
+          "Per epoch: each contribution with its state, credited quality and exact points (counted: it has a selected judgement; credited: counted above zero; the average is the mean credited quality of the counted contributions, to two decimals), and the payout: the amount allocated to the wallet in the recorded publication, with its payment read against the chain (paid only with the claim transaction), or why there is none.",
+          "No contribution link is served here; each contribution's own route has it.",
+        ].join("\n\n"),
+        "WalletRecord",
+        [path("wallet", "A Solana address: base58 for exactly 32 bytes.", base58), ...paging],
+        "No epoch's public reads show this wallet.",
       ),
     },
     components: {

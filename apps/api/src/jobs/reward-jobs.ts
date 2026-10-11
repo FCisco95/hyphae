@@ -9,11 +9,14 @@ import { closeEpoch, dueCloses } from "../rewards/close.js";
 import { type EvaluationTarget, type RunResult, runEvaluation } from "../rewards/evaluation.js";
 import { decisionNotified, markNotified, strandedWork } from "../rewards/recovery.js";
 import { recordRetrieval } from "../rewards/slots.js";
+import { claudeDepsFromEnv } from "../scoring/claude-client.js";
+import { CLAUDE_REGISTRY } from "../scoring/claude-registry.js";
 import { defaultModel } from "../scoring/default-model.js";
 import { jevDepsFromEnv } from "../scoring/jev-config.js";
 import { JEV_REGISTRY } from "../scoring/jev-registry.js";
 import { callRewardModel, REWARD_CALL_TIMEOUT_MS } from "../scoring/run.js";
 import { captureLimitations, fetchPost } from "../x/oembed.js";
+import { lockScoreMessages } from "./payout-hint.js";
 import { boss, QUEUES } from "./queue.js";
 import { type RewardOutcome, rewardMessage } from "./reward-message.js";
 
@@ -44,6 +47,7 @@ export interface RewardNotifyJob {
 
 // Built once at boot: a bad Jev configuration stops the worker instead of stranding dispatches.
 const jev = jevDepsFromEnv(env, JEV_REGISTRY);
+const claude = claudeDepsFromEnv(env, CLAUDE_REGISTRY);
 
 // Longer than one provider call can take, so an older dispatch cannot be a live call.
 const RECONCILIATION_HORIZON_MS = REWARD_CALL_TIMEOUT_MS + 3.5 * 60_000;
@@ -83,6 +87,7 @@ export async function evaluateReward(job: RewardEvaluationJob): Promise<void> {
     horizonMs: RECONCILIATION_HORIZON_MS,
     call: (prompt, purpose) => callRewardModel(prompt, purpose, defaultModel),
     ...(jev && { jev }),
+    ...(claude && { claude }),
   });
   console.log(JSON.stringify({ job: "reward-evaluation", ...job, status: result.status }));
   if (result.status === "in_flight") {
@@ -183,9 +188,11 @@ export async function checkEpochHolds(job: HoldCheckJob): Promise<void> {
   console.log(JSON.stringify({ job: "hold-check", ...job, ...result }));
 }
 
-// At least once: a crash between Telegram's accept and the mark sends the message again.
+// At least once: a crash between Telegram's accept and the commit of the mark sends the message
+// again. A decision's message is read, sent and marked under its member and epoch's lock.
 export async function notifyReward(job: RewardNotifyJob): Promise<void> {
-  if (job.decisionId && (await decisionNotified(db, job.decisionId))) return;
+  const { decisionId } = job;
+  if (decisionId && (await decisionNotified(db, decisionId))) return;
   const [row] = await db
     .select({
       chatId: communities.telegramChatId,
@@ -195,11 +202,22 @@ export async function notifyReward(job: RewardNotifyJob): Promise<void> {
     .innerJoin(communities, eq(communities.id, contributions.communityId))
     .where(eq(contributions.id, job.contributionId));
   if (!row) throw new Error(`reward: contribution ${job.contributionId} missing`);
-  await telegramCall(bot.token, () =>
-    bot.api.sendMessage(Number(row.chatId), job.text, {
-      reply_parameters: { message_id: row.messageId, allow_sending_without_reply: true },
-      link_preview_options: { is_disabled: true },
-    }),
-  );
-  if (job.decisionId) await markNotified(db, job.decisionId, new Date());
+  const send = () =>
+    telegramCall(bot.token, () =>
+      bot.api.sendMessage(Number(row.chatId), job.text, {
+        reply_parameters: { message_id: row.messageId, allow_sending_without_reply: true },
+        link_preview_options: { is_disabled: true },
+      }),
+    );
+  if (!decisionId) {
+    await send();
+    return;
+  }
+  await db.transaction(async (tx) => {
+    await lockScoreMessages(tx, decisionId);
+    // A copy of this job may have sent the message while this one waited for the lock.
+    if (await decisionNotified(tx, decisionId)) return;
+    await send();
+    await markNotified(tx, decisionId, new Date());
+  });
 }

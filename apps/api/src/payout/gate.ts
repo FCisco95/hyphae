@@ -100,9 +100,34 @@ export type PayoutGate =
     });
 
 type Epoch = typeof epochs.$inferSelect;
+type Community = typeof communities.$inferSelect;
 type Snapshot = typeof rewardEpochSnapshots.$inferSelect;
 type SnapshotEntry = typeof rewardSnapshotEntries.$inferSelect;
 type SnapshotMember = typeof rewardSnapshotMembers.$inferSelect;
+
+export interface PayTerms {
+  hold: HoldRequirement;
+  published: boolean;
+  // At or after the community's first paid epoch.
+  paidEpoch: boolean;
+  test: RulesTest | undefined;
+}
+
+// The epoch-level terms the gate pays under. The read API's payout status uses them too, so the
+// two cannot disagree about which epochs pay.
+export function payTerms(
+  epoch: Pick<Epoch, "index" | "status" | "root">,
+  community: Pick<Community, "mint" | "firstPaidEpoch">,
+  rubric: { community: string; version: string; minHoldUnits: string },
+  tests?: readonly RulesTest[],
+): PayTerms {
+  return {
+    hold: { mint: community.mint, thresholdRaw: BigInt(rubric.minHoldUnits) },
+    published: epoch.status === "published" || epoch.root !== null,
+    paidEpoch: community.firstPaidEpoch !== null && epoch.index >= community.firstPaidEpoch,
+    test: rulesTestFor(rubric, tests),
+  };
+}
 
 // The frozen snapshot must still be the O6 selection at closes_at: every decision accepted before
 // the close is the one it selected, and nothing accepted later claims to change the allocation.
@@ -218,28 +243,71 @@ export async function payoutGateIn(
     .where(eq(rewardConfigs.id, epoch.rewardConfigId));
   const payload = RewardConfigPayload.safeParse(config?.payload);
   if (!payload.success) return blocked(["legacy_epoch"]);
-  const hold = { mint: community.mint, thresholdRaw: BigInt(payload.data.rubric.minHoldUnits) };
+  const terms = payTerms(epoch, community, payload.data.rubric, deps.tests);
+  const { hold } = terms;
 
-  if (epoch.status === "published" || epoch.root !== null) {
-    return blocked(["already_published"], { hold });
-  }
+  if (terms.published) return blocked(["already_published"], { hold });
   const [frozen] = await tx
     .select({ snapshot: rewardEpochSnapshots, closedAt: isoUs(rewardEpochSnapshots.closedAt) })
     .from(rewardEpochSnapshots)
     .where(eq(rewardEpochSnapshots.epochId, epoch.id));
   if (!frozen || epoch.status !== "closed") return blocked(["not_final"], { hold });
-  if (community.firstPaidEpoch === null || epoch.index < community.firstPaidEpoch) {
-    return blocked(["before_first_paid_epoch"], { hold });
-  }
-  const test = rulesTestFor(payload.data.rubric, deps.tests);
+  if (!terms.paidEpoch) return blocked(["before_first_paid_epoch"], { hold });
+  const { test } = terms;
   if (!test) return blocked(["no_rules_test_defined"], { hold });
   const found = { testId: test.id, hold };
   const judged = await consistentSnapshot(tx, epoch, frozen.snapshot);
   if (!judged) return blocked(["snapshot_mismatch"], found);
 
-  const passed = await passesBefore(tx, {
-    memberIds: judged.totals.map((m) => m.memberId),
+  const members = await judgeMembers(tx, {
+    epoch,
+    totals: judged.totals,
     testId: test.id,
+    hold,
+  });
+
+  const payable = members.filter((m) => m.status === "payable");
+  const held = members.some((m) => m.status === "held");
+  const blockers: Blocker[] = [];
+  if (new Set(payable.map((m) => m.wallet)).size !== payable.length) {
+    blockers.push("duplicate_wallet");
+  }
+  if (held) blockers.push("hold_checks_pending");
+  else if (payable.length === 0) blockers.push("no_payable_members");
+  if (blockers.length > 0) return blocked(blockers, found, members);
+  return {
+    status: "ready",
+    epochIndex: epoch.index,
+    closesAt: epoch.closesAt,
+    ...found,
+    members,
+    payable: payable.length,
+    snapshot: {
+      opensAt: row.opensAt,
+      closesAt: row.closesAt,
+      closedAt: frozen.closedAt,
+      cutoffAssumption: frozen.snapshot.cutoffAssumption,
+      entries: judged.entries,
+    },
+  };
+}
+
+// The gate's member stage (P9, P16) over `totals`, in their order. The gate runs it on the frozen
+// totals; the read API runs it on an open epoch's live totals, where the link valid at closes_at
+// is the current one and no hold result can count yet.
+export async function judgeMembers(
+  tx: Db,
+  input: {
+    epoch: Pick<Epoch, "id" | "closesAt">;
+    totals: { memberId: string; pointUnits: bigint; wholePoints: bigint }[];
+    testId: string;
+    hold: HoldRequirement;
+  },
+): Promise<MemberVerdict[]> {
+  const { epoch, hold } = input;
+  const passed = await passesBefore(tx, {
+    memberIds: input.totals.map((m) => m.memberId),
+    testId: input.testId,
     before: epoch.closesAt,
   });
   const holdOf = new Map(
@@ -252,7 +320,7 @@ export async function payoutGateIn(
   );
 
   const members: MemberVerdict[] = [];
-  for (const m of judged.totals) {
+  for (const m of input.totals) {
     const reasons: MemberReason[] = [];
     if (m.pointUnits <= 0n) reasons.push("no_points");
     const link = await walletAt(tx, m.memberId, epoch.closesAt);
@@ -298,29 +366,5 @@ export async function payoutGateIn(
       holdResult: applied,
     });
   }
-
-  const payable = members.filter((m) => m.status === "payable");
-  const held = members.some((m) => m.status === "held");
-  const blockers: Blocker[] = [];
-  if (new Set(payable.map((m) => m.wallet)).size !== payable.length) {
-    blockers.push("duplicate_wallet");
-  }
-  if (held) blockers.push("hold_checks_pending");
-  else if (payable.length === 0) blockers.push("no_payable_members");
-  if (blockers.length > 0) return blocked(blockers, found, members);
-  return {
-    status: "ready",
-    epochIndex: epoch.index,
-    closesAt: epoch.closesAt,
-    ...found,
-    members,
-    payable: payable.length,
-    snapshot: {
-      opensAt: row.opensAt,
-      closesAt: row.closesAt,
-      closedAt: frozen.closedAt,
-      cutoffAssumption: frozen.snapshot.cutoffAssumption,
-      entries: judged.entries,
-    },
-  };
+  return members;
 }

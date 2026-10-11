@@ -1,22 +1,35 @@
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { promptTemplateHash, ReadApiV1 } from "@hyphae/core";
-import { epochs, members, schema } from "@hyphae/db";
-import { and, eq } from "drizzle-orm";
+import {
+  communities,
+  type Db,
+  epochs,
+  members,
+  memberWalletLinks,
+  rulesTestPasses,
+  schema,
+} from "@hyphae/db";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { randomAddress } from "../payout/ready-seed.js";
 import { amendEpochPrompt } from "../rewards/amendment.js";
+import { closeEpoch } from "../rewards/close.js";
 import { buildRewardConfigPayload } from "../rewards/config.js";
 import { beginDispatch, completeDispatch, runEvaluation } from "../rewards/evaluation.js";
-import { createTestDb, later, rubric, seedRewardLane, T0 } from "../rewards/test-db.js";
-import { type AuditDemo, seedAuditDemo } from "./demo-seed.js";
+import { at, createTestDb, later, rubric, seedRewardLane, T0 } from "../rewards/test-db.js";
+import { type AuditDemo, fakeModel, seedAuditDemo, seedSignedLink } from "./demo-seed.js";
 import {
+  readClaim,
   readCommunity,
   readContribution,
   readContributions,
   readEpoch,
   readLeaderboard,
+  readWalletClaims,
+  readWalletRecord,
 } from "./read-service.js";
 
 const NOW = new Date("2026-11-20T12:00:00.000Z");
@@ -412,6 +425,303 @@ describe("readContribution", () => {
   });
 });
 
+// A paid epoch 1 under the MYCEL rubric: `ready` signed a wallet and passed the rules test,
+// `unlinked` has only a pasted wallet and no pass. Both have 85-point replies.
+async function seedPaidLane(db: Db) {
+  const lane = await seedRewardLane(db);
+  const communityId = lane.community.id;
+  await db.update(communities).set({ firstPaidEpoch: 1 }).where(eq(communities.id, communityId));
+  const [epoch] = await db
+    .select()
+    .from(epochs)
+    .where(and(eq(epochs.communityId, communityId), eq(epochs.index, 1)));
+  if (!epoch) throw new Error("no epoch 1");
+  const wallet = `ReadyWallet${communityId.slice(0, 8)}`;
+  const [ready] = await db
+    .insert(members)
+    .values({ communityId, telegramUserId: 77n, wallet, linkMethod: "signature" })
+    .returning();
+  if (!ready) throw new Error("seed: member");
+  await seedSignedLink(db, {
+    communityId,
+    memberId: ready.id,
+    telegramUserId: 77n,
+    wallet,
+    tokenDigest: `paid-${communityId}`,
+    linkedAt: T0,
+  });
+  await db.insert(rulesTestPasses).values({
+    communityId,
+    memberId: ready.id,
+    testId: "mycel-rules-1",
+    passedAt: new Date(T0.getTime() + 60_000),
+  });
+  const contributions: Record<"ready" | "unlinked", string> = { ready: "", unlinked: "" };
+  for (const [label, memberId] of [
+    ["ready", ready.id],
+    ["unlinked", lane.member.id],
+  ] as const) {
+    const intake = await lane.admitOne(undefined, memberId);
+    await runEvaluation(
+      db,
+      { communityId, target: { contributionId: intake.contributionId } },
+      { model: "test:fake", call: fakeModel(85), horizonMs: 300_000, clock: later(120_000) },
+    );
+    contributions[label] = intake.contributionId;
+  }
+  return {
+    communityId,
+    mint: lane.community.mint,
+    epoch,
+    members: { ready: ready.id, unlinked: lane.member.id },
+    wallet,
+    contributions,
+  };
+}
+
+describe("public eligibility privacy", () => {
+  const page = { offset: 0, limit: 50 };
+  const assertPrivate = async (lane: Awaited<ReturnType<typeof seedPaidLane>>, now: Date) => {
+    const list = await readContributions(t.db, lane.mint, 1, page, now);
+    const board = await readLeaderboard(t.db, lane.mint, 1, page, now);
+    strict(ReadApiV1.contributions, list);
+    strict(ReadApiV1.leaderboard, board);
+    for (const label of ["ready", "unlinked"] as const) {
+      const one = await readContribution(t.db, lane.contributions[label], now);
+      strict(ReadApiV1.contribution, one);
+      for (const body of [list, board, one]) {
+        expect(JSON.stringify(body)).not.toMatch(
+          /"payout"|"hold"|no_rules_test|no_verified_wallet|hold_pending|below_hold/,
+        );
+      }
+    }
+  };
+  it("omits individual eligibility while open, after the close, and after publication", async () => {
+    const lane = await seedPaidLane(t.db);
+    await assertPrivate(lane, new Date(T0.getTime() + 3_600_000));
+    const after = new Date(lane.epoch.closesAt.getTime() + 60_000);
+    await closeEpoch(
+      t.db,
+      { communityId: lane.communityId, epochId: lane.epoch.id },
+      { clock: at(after) },
+    );
+    await assertPrivate(lane, after);
+    await t.db.update(epochs).set({ status: "published" }).where(eq(epochs.id, lane.epoch.id));
+    await assertPrivate(lane, after);
+  });
+});
+
+describe("readWalletRecord", () => {
+  const all = { offset: 0, limit: 50 };
+  const DAY = 86_400_000;
+
+  // A member's open link ends where the next one starts, as a relink records it.
+  async function relink(
+    lane: AuditDemo,
+    member: "signed" | "pasted",
+    wallet: string,
+    at: Date,
+    telegramUserId: bigint,
+  ) {
+    await t.db
+      .update(memberWalletLinks)
+      .set({ validTo: at })
+      .where(
+        and(
+          eq(memberWalletLinks.memberId, lane.members[member]),
+          isNull(memberWalletLinks.validTo),
+        ),
+      );
+    await seedSignedLink(t.db, {
+      communityId: lane.communityId,
+      memberId: lane.members[member],
+      telegramUserId,
+      wallet,
+      tokenDigest: `relink-${wallet}`,
+      linkedAt: at,
+    });
+  }
+
+  it("lists every epoch that shows the wallet, newest first, each contribution with its state", async () => {
+    const r = strict(
+      ReadApiV1.walletRecord,
+      await readWalletRecord(t.db, demo.signedWallet, all, NOW),
+    );
+    expect([r.wallet, r.as_of, r.total_epochs]).toEqual([
+      demo.signedWallet,
+      "2026-11-20T12:00:00.000000Z",
+      2,
+    ]);
+    expect(r.epochs.map((e) => [e.community.mint, e.index, e.status, e.member_id])).toEqual([
+      [demo.mint, 2, "open", demo.members.signed],
+      [demo.mint, 1, "closed", demo.members.signed],
+    ]);
+    const [open, closed] = r.epochs;
+    expect(
+      closed?.contributions.map((c) => [c.id, c.kind, c.state, c.credited_quality, c.points]),
+    ).toEqual([
+      [demo.contributions.upgraded, "post", "counted", 85, "255"],
+      [demo.contributions.offTopic, "text", "counted", 0, "0"],
+    ]);
+    expect(closed?.totals).toEqual({
+      contributions: 2,
+      counted: 2,
+      credited: 1,
+      average_credited_quality: 42.5,
+      point_units: "25500000000",
+      points: "255",
+    });
+    expect(open?.totals).toMatchObject({ contributions: 1, counted: 1, credited: 1, points: "70" });
+    // Neither epoch has a recorded publication, so neither shows a payout.
+    expect(r.epochs.map((e) => e.payout)).toEqual([
+      { status: "unavailable", reason: "no_settlement" },
+      { status: "unavailable", reason: "no_settlement" },
+    ]);
+    const totals = {
+      contributions: 3,
+      counted: 3,
+      credited: 2,
+      average_credited_quality: 51.67,
+      point_units: "32500000000",
+      points: "325",
+    };
+    expect(r.totals).toEqual({ communities: 1, epochs: 2, ...totals });
+    expect(r.communities).toEqual([
+      { mint: demo.mint, name: "Hyphae Demo", totals: { epochs: 2, ...totals } },
+    ]);
+  });
+
+  it("pages the epochs and keeps the totals of all of them", async () => {
+    const r = strict(
+      ReadApiV1.walletRecord,
+      await readWalletRecord(t.db, demo.signedWallet, { offset: 1, limit: 1 }, NOW),
+    );
+    expect([r.total_epochs, r.offset, r.limit, r.totals.points]).toEqual([2, 1, 1, "325"]);
+    expect(r.epochs.map((e) => e.index)).toEqual([1]);
+  });
+
+  it("lists pending, unresolved and late contributions without a score", async () => {
+    const lane = await seedAuditDemo(t.db, NOW);
+    const wallet = randomAddress();
+    // Signed before epoch 1 opened: both epochs show it.
+    await relink(
+      lane,
+      "pasted",
+      wallet,
+      new Date(NOW.getTime() - 8 * DAY - 30 * 60_000),
+      987654321988n,
+    );
+    const r = strict(ReadApiV1.walletRecord, await readWalletRecord(t.db, wallet, all, NOW));
+    const closed = r.epochs.find((e) => e.index === 1);
+    expect(closed?.contributions.map((c) => [c.state, c.credited_quality, c.point_units])).toEqual([
+      ["pending_at_close", null, null],
+      ["pending_reconciliation", null, null],
+      ["excluded", null, null],
+    ]);
+    expect(closed?.totals).toMatchObject({
+      contributions: 3,
+      counted: 0,
+      credited: 0,
+      average_credited_quality: null,
+      points: "0",
+    });
+    expect(r.epochs.find((e) => e.index === 2)?.contributions.map((c) => c.state)).toEqual([
+      "pending",
+    ]);
+  });
+
+  it("an epoch belongs to the wallet signed at its close, or now while it is open", async () => {
+    const lane = await seedAuditDemo(t.db, NOW);
+    const next = randomAddress();
+    await relink(lane, "signed", next, new Date(NOW.getTime() - 60_000), 987654321987n);
+    const before = await readWalletRecord(t.db, lane.signedWallet, all, NOW);
+    expect(before?.epochs.map((e) => e.index)).toEqual([1]);
+    const after = await readWalletRecord(t.db, next, all, NOW);
+    expect(after?.epochs.map((e) => e.index)).toEqual([2]);
+  });
+
+  it("has no record for an unknown wallet, a pasted one, or a signed one without contributions", async () => {
+    // A member of a new lane, signed at T0, who never contributes; `until` ends the link.
+    const quiet = async (wallet: string, until?: Date) => {
+      const lane = await seedRewardLane(t.db);
+      await seedSignedLink(t.db, {
+        communityId: lane.community.id,
+        memberId: lane.member.id,
+        telegramUserId: 42n,
+        wallet,
+        tokenDigest: `quiet-${lane.community.mint}`,
+        linkedAt: T0,
+      });
+      if (until) {
+        await t.db
+          .update(memberWalletLinks)
+          .set({ validTo: until })
+          .where(eq(memberWalletLinks.memberId, lane.member.id));
+      }
+    };
+    const active = randomAddress();
+    await quiet(active);
+    const expired = randomAddress();
+    await quiet(expired, new Date(T0.getTime() + 3_600_000));
+    const several = randomAddress();
+    await quiet(several);
+    await quiet(several);
+    // A contributor's wallet for one hour of epoch 1, replaced before its close.
+    const lane = await seedAuditDemo(t.db, NOW);
+    const close = (await epochClose(1)).getTime();
+    const replaced = randomAddress();
+    await relink(lane, "pasted", replaced, new Date(close - 2 * 3_600_000), 987654321988n);
+    await relink(lane, "pasted", randomAddress(), new Date(close - 3_600_000), 987654321988n);
+
+    // The same statements for each, so the work done cannot tell a signed wallet from an unknown one.
+    const queries: string[] = [];
+    const logged = drizzle(t.db.$client, {
+      schema,
+      logger: { logQuery: (q) => void queries.push(q) },
+    });
+    const missing = [randomAddress(), demo.pastedWallet, active, expired, several, replaced];
+    const sequences: string[][] = [];
+    for (const wallet of missing) {
+      queries.length = 0;
+      expect(await readWalletRecord(logged, wallet, all, NOW), wallet).toBeNull();
+      sequences.push([...queries]);
+    }
+    expect(sequences).toEqual(missing.map(() => sequences[0]));
+    expect(sequences[0]?.filter((q) => /^select\b/i.test(q))).toHaveLength(1);
+  });
+});
+
+describe("a read's clock", () => {
+  it("is read inside the read's own snapshot, and the read is as of it", async () => {
+    const seen: string[] = [];
+    const clock = async (tx: Db) => {
+      const result = await tx.execute(
+        sql`select current_setting('transaction_isolation') as iso, current_setting('transaction_read_only') as ro`,
+      );
+      const rows = (Array.isArray(result) ? result : (result as { rows: unknown[] }).rows) as {
+        iso: string;
+        ro: string;
+      }[];
+      seen.push(`${rows[0]?.iso}/${rows[0]?.ro}`);
+      return NOW;
+    };
+    const all = { offset: 0, limit: 50 };
+    const asOf = [
+      (await readCommunity(t.db, demo.mint, clock))?.as_of,
+      (await readEpoch(t.db, demo.mint, 2, clock))?.as_of,
+      (await readContributions(t.db, demo.mint, 2, all, clock))?.as_of,
+      (await readLeaderboard(t.db, demo.mint, 2, all, clock))?.as_of,
+      (await readWalletRecord(t.db, demo.signedWallet, all, clock))?.as_of,
+      (await readWalletClaims(t.db, demo.signedWallet, all, clock)).as_of,
+    ];
+    // A contribution names no as_of; nothing is published, so there is no claim.
+    expect(await readContribution(t.db, demo.contributions.openCounted, clock)).not.toBeNull();
+    expect(await readClaim(t.db, demo.mint, 1, demo.signedWallet, clock)).toBeNull();
+    expect(asOf).toEqual(asOf.map(() => "2026-11-20T12:00:00.000000Z"));
+    expect(seen).toEqual(Array.from({ length: 8 }, () => "repeatable read/on"));
+  });
+});
+
 describe("public reads and the community lock", () => {
   // Migrates a fresh database inside the test, so it gets the 0008 backfill test's timeout.
   it("never lock a row", async () => {
@@ -425,12 +735,16 @@ describe("public reads and the community lock", () => {
       migrationsFolder: fileURLToPath(new URL("../../../../packages/db/drizzle", import.meta.url)),
     });
     const d = await seedAuditDemo(db, NOW);
+    const paid = await seedPaidLane(db);
     queries.length = 0;
+    await readContributions(db, paid.mint, 1, { offset: 0, limit: 50 }, T0);
+    await readLeaderboard(db, paid.mint, 1, { offset: 0, limit: 50 }, T0);
     await readCommunity(db, d.mint, NOW);
     await readEpoch(db, d.mint, 2, NOW);
     await readContributions(db, d.mint, 2, { offset: 0, limit: 50 }, NOW);
     await readLeaderboard(db, d.mint, 2, { offset: 0, limit: 50 }, NOW);
     await readContribution(db, d.contributions.openCounted, NOW);
+    await readWalletRecord(db, d.signedWallet, { offset: 0, limit: 50 }, NOW);
     expect(queries.length).toBeGreaterThan(5);
     expect(
       queries.filter((q) => /\bfor (update|share|no key update|key share)\b/i.test(q)),

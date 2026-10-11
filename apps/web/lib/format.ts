@@ -37,7 +37,7 @@ export function creditSentence(d: Credit): string {
 }
 
 export const STATE: Record<ContributionRowV1["state"], string> = {
-  counted: "Counted.",
+  counted: "Scored.",
   pending: "Not scored yet.",
   pending_at_close: "Not scored before the epoch closed; it earns nothing in this epoch.",
   pending_reconciliation:
@@ -63,3 +63,8 @@ export const explorerTx = (signature: string, network: "solana:devnet" | "solana
 
 export const explorerAddress = (account: string, network: "solana:devnet" | "solana:mainnet") =>
   `https://explorer.solana.com/address/${account}${network === "solana:devnet" ? "?cluster=devnet" : ""}`;
+
+// Scoring is public; member eligibility checklists are private.
+export function rowState(r: Pick<ContributionRowV1, "state">): string {
+  return STATE[r.state];
+}

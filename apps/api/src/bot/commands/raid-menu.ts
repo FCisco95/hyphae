@@ -4,6 +4,7 @@ import { type CommandContext, type Context, InlineKeyboard } from "grammy";
 import { db } from "../../db.js";
 import { transitionRaid } from "../../member-journey/lifecycle.js";
 import { MAX_OPEN_RAIDS, openRaid } from "../../raid-alerts/alerts.js";
+import { raidStats, span, statsLine } from "../../raid-alerts/stats.js";
 import { fetchPost } from "../../x/oembed.js";
 import { reply } from "../reply.js";
 import { announceRaid, LIMIT_REACHED, MAX_STATUS_ID_DIGITS, RAID_HOUR_CHOICES } from "./raid.js";
@@ -28,16 +29,22 @@ const clearButtons = (ctx: Context) =>
 export async function raidsMenu(ctx: CommandContext<Context>) {
   const community = await adminContext(ctx);
   if (!community) return reply(ctx, "Admins only, in the registered community group.");
+  const now = new Date();
   const open = await db.query.tasks.findMany({
     where: and(
       eq(tasks.communityId, community.id),
       eq(tasks.status, "open"),
-      gt(tasks.closesAt, new Date()),
+      gt(tasks.closesAt, now),
     ),
     orderBy: [desc(tasks.opensAt)],
     limit: MAX_OPEN_RAIDS,
   });
   if (!open.length) return reply(ctx, "No open raids. Start one with /raid <post link>.");
+  const stats = await raidStats(
+    db,
+    open.map((t) => t.id),
+    now,
+  );
   const keyboard = open.reduce(
     (kb, t, i) => kb.text(`Close #${i + 1}`, `cr:${t.id}`),
     new InlineKeyboard(),
@@ -45,10 +52,14 @@ export async function raidsMenu(ctx: CommandContext<Context>) {
   return ctx.reply(
     [
       `Open raids (${open.length} of ${MAX_OPEN_RAIDS}):`,
-      ...open.map(
-        (t, i) =>
-          `#${i + 1} @${t.targetAuthor ?? "?"} · ends ${utc(t.closesAt)}\n${t.targetUrl ?? "No target"}`,
-      ),
+      ...open.map((t, i) => {
+        const s = stats.get(t.id);
+        return [
+          `#${i + 1} @${t.targetAuthor ?? "?"} · ends ${utc(t.closesAt)} (${span(t.closesAt.getTime() - now.getTime())} left)`,
+          t.targetUrl ?? "No target",
+          ...(s ? [statsLine(s)] : []),
+        ].join("\n");
+      }),
       "Closing stops new submissions; existing work and credit stay.",
     ].join("\n\n"),
     {
@@ -82,9 +93,15 @@ export async function pickRaidHours(ctx: Context) {
   });
   if (opened.status === "unauthorized") return ctx.reply("Admins only in the registered group.");
   if (opened.status === "limit_reached") return ctx.reply(LIMIT_REACHED(opened.open));
-  await clearButtons(ctx);
-  if (opened.status === "existing")
+  if (opened.status === "existing") {
+    await clearButtons(ctx);
     return ctx.reply("That raid was already opened. No extra alerts were queued.");
+  }
+  await ctx
+    .editMessageText(`Raid set for ${hours}h. Ends ${utc(opened.task.closesAt)}.`, {
+      reply_markup: { inline_keyboard: [] },
+    })
+    .catch(() => clearButtons(ctx));
   return announceRaid(ctx, community, post, opened.task, hours);
 }
 
