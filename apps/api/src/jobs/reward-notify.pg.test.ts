@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
-import { communities, createDb } from "@hyphae/db";
-import { eq, sql } from "drizzle-orm";
+import { communities, createDb, rewardDecisions } from "@hyphae/db";
+import { eq, inArray, sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { fakeModel } from "../http/demo-seed.js";
@@ -66,8 +66,6 @@ afterAll(async () => {
 });
 
 const MIN = 60_000;
-const HINT =
-  "Not payable yet: link a wallet by signing and pass the rules test before the epoch closes.";
 
 // Sessions blocked on an advisory lock, seen from another connection.
 const lockWaiters = async () => {
@@ -78,7 +76,7 @@ const lockWaiters = async () => {
 };
 
 describe("notifyReward, two jobs of one member at once", () => {
-  it("puts the payout hint on exactly one of the two messages", async () => {
+  it("serializes public score sends and marks both without eligibility hints", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date(T0.getTime() + 10 * MIN));
     const lane = await seedRewardLane(db);
@@ -118,6 +116,18 @@ describe("notifyReward, two jobs of one member at once", () => {
     vi.useRealTimers();
 
     expect(m.sent).toHaveLength(2);
-    expect(m.sent.filter((t) => t.endsWith(HINT))).toHaveLength(1);
+    expect([...m.sent].sort()).toEqual(["scored 1", "scored 2"]);
+    expect(m.sent.join("\n")).not.toMatch(/rules test|hold|payable/i);
+    const marks = await observer
+      .select({ notifiedAt: rewardDecisions.notifiedAt })
+      .from(rewardDecisions)
+      .where(
+        inArray(
+          rewardDecisions.id,
+          jobs.map((job) => job.decisionId),
+        ),
+      );
+    expect(marks).toHaveLength(2);
+    expect(marks.every((mark) => mark.notifiedAt !== null)).toBe(true);
   });
 });

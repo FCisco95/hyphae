@@ -55,8 +55,8 @@ const { notifyReward } = await import("./reward-jobs.js");
 
 const MIN = 60_000;
 
-// A paid epoch 1 whose member has only a pasted wallet and no rules test pass, so their first
-// score message carries the hint.
+// A paid epoch 1 whose member has only a pasted wallet and no rules-test pass.
+// The group must still receive only the public score.
 async function paidLane() {
   const lane = await seedRewardLane(db);
   await db
