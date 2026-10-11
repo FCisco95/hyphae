@@ -1551,3 +1551,88 @@ td:first-child {
     gap: 28px;
   }
 }
+
+/* Claim recovery keeps the wallet visible beside every outcome. */
+.connected-wallet {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--verified);
+  border-radius: var(--radius);
+  background: var(--wash);
+  padding: 20px 24px;
+  margin: 24px 0;
+}
+.connected-wallet strong {
+  color: var(--verified);
+}
+.wallet-address {
+  overflow-wrap: anywhere;
+  margin: 6px 0 0;
+  font-size: 0.9375rem;
+}
+.wallet-picker {
+  width: min(480px, calc(100% - 32px));
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: 24px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.wallet-picker::backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+.wallet-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.wallet-picker-head h2 {
+  margin: 0;
+}
+.wallet-options {
+  display: grid;
+  gap: 12px;
+}
+.wallet-options button {
+  justify-content: flex-start;
+  width: 100%;
+}
+.wallet-wait {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.wallet-wait::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--rule);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: wallet-wait 1s linear infinite;
+  flex: none;
+}
+@keyframes wallet-wait {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wallet-wait::before {
+    animation: none;
+  }
+}
+@media (max-width: 640px) {
+  .connected-wallet {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 18px;
+  }
+}

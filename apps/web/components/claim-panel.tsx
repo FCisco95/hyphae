@@ -1,14 +1,16 @@
 "use client";
 
 import { ReadApiV1Loose } from "@hyphae/core";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { afterSendRead, attemptClaim, awaitReceipt, type ClaimRead } from "../lib/claim.js";
-import { shortWallet, sol } from "../lib/format.js";
+import { sol } from "../lib/format.js";
 import {
   type Account,
   type ClaimWallet,
   claimWallets,
   connect,
+  disconnectWallet,
+  onAccountChange,
   onWalletRegister,
   signAndSend,
 } from "../lib/wallet.js";
@@ -19,8 +21,11 @@ type Load = { state: "idle" | "loading" } | ClaimRead;
 type Send =
   | { state: "idle" | "signing" }
   | { state: "sent" | "unresolved"; signature: string }
+  | { state: "wallet_timeout" }
   | { state: "failed"; message: string };
 
+const WALLET_MS = 60_000;
+const READ_MS = 10_000;
 const POLLS = 20;
 const POLL_MS = 3_000;
 const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -30,47 +35,121 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
   const [linked, setLinked] = useState<{ w: ClaimWallet; account: Account } | null>(null);
   const [load, setLoad] = useState<Load>({ state: "idle" });
   const [send, setSend] = useState<Send>({ state: "idle" });
+  const [picker, setPicker] = useState(false);
+  const [connecting, setConnecting] = useState<string | null>(null);
+  const generation = useRef(0);
+  const activeClaim = useRef<number | null>(null);
+  const timers = useRef(new Set<ReturnType<typeof setTimeout>>());
+
+  useEffect(
+    () => () => {
+      generation.current += 1;
+      activeClaim.current = null;
+      for (const timer of timers.current) clearTimeout(timer);
+    },
+    [],
+  );
 
   useEffect(() => {
     setWallets(claimWallets());
     return onWalletRegister(() => setWallets(claimWallets()));
   }, []);
 
+  const clearWallet = useCallback(() => {
+    generation.current += 1;
+    activeClaim.current = null;
+    for (const timer of timers.current) clearTimeout(timer);
+    timers.current.clear();
+    setLinked(null);
+    setLoad({ state: "idle" });
+    setSend({ state: "idle" });
+    setConnecting(null);
+  }, []);
+
+  useEffect(() => {
+    if (!linked) return;
+    return onAccountChange(linked.w, (accounts) => {
+      if (accounts[0]?.address !== linked.account.address) clearWallet();
+    });
+  }, [linked, clearWallet]);
+
   async function read(wallet: string): Promise<ClaimRead> {
     const path = `/api/claims/${encodeURIComponent(mint)}/${index}/${encodeURIComponent(wallet)}`;
+    const abort = new AbortController();
+    const timer = setTimeout(() => abort.abort(), READ_MS);
     try {
-      const r = await fetch(path, { cache: "no-store" });
+      const r = await fetch(path, { cache: "no-store", signal: abort.signal });
       if (r.status === 404) return { state: "none" };
       if (!r.ok) return { state: "unavailable" };
       const parsed = ReadApiV1Loose.claim.safeParse(await r.json());
       return parsed.success ? { state: "ready", claim: parsed.data } : { state: "unavailable" };
     } catch {
       return { state: "unavailable" };
+    } finally {
+      clearTimeout(timer);
     }
   }
 
   async function choose(w: ClaimWallet) {
+    const id = ++generation.current;
+    setPicker(false);
+    setConnecting(w.name);
+    setSend({ state: "idle" });
+    const timer = setTimeout(() => {
+      if (id !== generation.current) return;
+      generation.current += 1;
+      setConnecting(null);
+      setSend({
+        state: "failed",
+        message: "Your wallet did not respond. Close its pending request and try again.",
+      });
+    }, WALLET_MS);
+    timers.current.add(timer);
     try {
       const account = await connect(w);
+      if (id !== generation.current) return;
+      clearTimeout(timer);
       setLinked({ w, account });
-      setSend({ state: "idle" });
+      setConnecting(null);
       setLoad({ state: "loading" });
-      setLoad(await read(account.address));
+      const fresh = await read(account.address);
+      if (id === generation.current) setLoad(fresh);
     } catch (e) {
+      if (id !== generation.current) return;
+      setConnecting(null);
       setSend({ state: "failed", message: messageOf(e) });
+    } finally {
+      clearTimeout(timer);
+      timers.current.delete(timer);
     }
   }
 
+  function disconnect() {
+    clearWallet();
+    if (linked) void disconnectWallet(linked.w).catch(() => {});
+  }
+
   async function claim() {
-    if (!linked || load.state !== "ready") return;
+    if (!linked || load.state !== "ready" || activeClaim.current !== null) return;
     const wallet = linked.account.address;
+    const id = ++generation.current;
+    activeClaim.current = id;
     setSend({ state: "signing" });
+    const timer = setTimeout(() => {
+      if (id === generation.current) setSend({ state: "wallet_timeout" });
+    }, WALLET_MS);
+    timers.current.add(timer);
     try {
       const { read: fresh, signature } = await attemptClaim(
         wallet,
         () => read(wallet),
-        (c, transaction) => signAndSend(linked.w, linked.account, c.network, transaction),
+        (c, transaction) => {
+          if (id !== generation.current) throw new Error("This claim attempt was cancelled.");
+          return signAndSend(linked.w, linked.account, c.network, transaction);
+        },
       );
+      if (id !== generation.current) return;
+      clearTimeout(timer);
       setLoad(fresh);
       if (!signature) {
         setSend({ state: "idle" });
@@ -83,10 +162,15 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
         POLLS,
         () => new Promise((resolve) => setTimeout(resolve, POLL_MS)),
       );
+      if (id !== generation.current) return;
       setLoad(afterSendRead(fresh, receipt.read).shown);
       if (receipt.state === "unresolved") setSend({ state: "unresolved", signature });
     } catch (e) {
-      setSend({ state: "failed", message: messageOf(e) });
+      if (id === generation.current) setSend({ state: "failed", message: messageOf(e) });
+    } finally {
+      if (activeClaim.current === id) activeClaim.current = null;
+      clearTimeout(timer);
+      timers.current.delete(timer);
     }
   }
 
@@ -94,40 +178,80 @@ export function ClaimPanel({ mint, index }: { mint: string; index: number }) {
   // attempt reads it once more first, so a receipt that has appeared meanwhile signs nothing.
   async function recheck() {
     if (!linked || load.state !== "ready") return;
+    const id = ++generation.current;
+    activeClaim.current = null;
     const next = afterSendRead(load, await read(linked.account.address));
+    if (id !== generation.current) return;
     setLoad(next.shown);
     if (next.resolved) setSend({ state: "idle" });
   }
 
   if (!linked) {
-    if (wallets === null) return <p className="muted">Looking for a wallet…</p>;
-    if (wallets.length === 0) return <NoWallet back={`/c/${mint}/e/${index}`} />;
     return (
       <section className="panel">
         <h2>Connect the wallet you verified</h2>
-        {wallets.map((w) => (
-          <p key={w.name}>
-            <button type="button" onClick={() => choose(w)}>
-              Connect {w.name}
-            </button>
+        <p className="muted">
+          Choose your wallet to read its allocation. Connecting moves no funds.
+        </p>
+        <button
+          type="button"
+          disabled={wallets === null || connecting !== null}
+          onClick={() => setPicker(true)}
+        >
+          Connect wallet
+        </button>
+        {connecting && (
+          <p className="wallet-wait" role="status">
+            Waiting for {connecting}…
           </p>
-        ))}
-        {send.state === "failed" && <p className="notice">{send.message}</p>}
+        )}
+        {send.state === "failed" && (
+          <p className="notice" role="alert">
+            {send.message}
+          </p>
+        )}
+        {picker && wallets && (
+          <WalletPicker
+            wallets={wallets}
+            back={`/c/${mint}/e/${index}`}
+            onChoose={choose}
+            onClose={() => setPicker(false)}
+          />
+        )}
       </section>
     );
   }
 
   return (
     <>
-      <p className="muted">
-        Connected <span className="mono">{shortWallet(linked.account.address)}</span>.
-      </p>
+      <section className="connected-wallet" aria-label="Connected wallet">
+        <div>
+          <strong>{linked.w.name} connected</strong>
+          <p className="mono wallet-address">{linked.account.address}</p>
+        </div>
+        <button className="button-secondary" type="button" onClick={disconnect}>
+          Disconnect
+        </button>
+      </section>
       {load.state === "loading" && <p className="muted">Reading your allocation…</p>}
       {load.state === "none" && (
         <p className="banner">No allocation for this wallet in epoch {index}.</p>
       )}
       {load.state === "unavailable" && (
-        <p className="notice">Your allocation can't be read right now. Nothing here is a zero.</p>
+        <div className="notice" role="alert">
+          <p>Your allocation can't be read right now. Nothing here is a zero.</p>
+          <button
+            type="button"
+            onClick={async () => {
+              const id = ++generation.current;
+              setLoad({ state: "loading" });
+              const fresh = await read(linked.account.address);
+              if (id === generation.current) setLoad(fresh);
+            }}
+          >
+            Try again
+          </button>
+        </div>
       )}
       {load.state === "ready" && (
         <>
@@ -174,7 +298,23 @@ export function SendStatus({
 }) {
   switch (send.state) {
     case "signing":
-      return <p className="muted">Waiting for your wallet…</p>;
+      return (
+        <p className="wallet-wait" role="status">
+          Waiting for your wallet… Check its approval window.
+        </p>
+      );
+    case "wallet_timeout":
+      return (
+        <div className="notice" role="alert">
+          <p>
+            Your wallet has not returned a signature after 60 seconds. Cancel the pending request in
+            your wallet before retrying. A late approval may still send it.
+          </p>
+          <button type="button" onClick={onRecheck}>
+            I cancelled it — check again
+          </button>
+        </div>
+      );
     case "sent":
       return (
         <p className="muted">
@@ -197,4 +337,47 @@ export function SendStatus({
     default:
       return null;
   }
+}
+
+function WalletPicker({
+  wallets,
+  back,
+  onChoose,
+  onClose,
+}: {
+  wallets: ClaimWallet[];
+  back: string;
+  onChoose: (wallet: ClaimWallet) => void;
+  onClose: () => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    dialog.current?.showModal();
+  }, []);
+  return (
+    <dialog
+      ref={dialog}
+      className="wallet-picker"
+      aria-labelledby="wallet-picker-title"
+      onCancel={onClose}
+    >
+      <div className="wallet-picker-head">
+        <h2 id="wallet-picker-title">Choose your wallet</h2>
+        <button type="button" className="button-secondary" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      {wallets.length === 0 ? (
+        <NoWallet back={back} />
+      ) : (
+        <div className="wallet-options">
+          {wallets.map((wallet) => (
+            <button type="button" key={wallet.name} onClick={() => onChoose(wallet)}>
+              {wallet.name}
+            </button>
+          ))}
+        </div>
+      )}
+    </dialog>
+  );
 }

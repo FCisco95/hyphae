@@ -14,6 +14,13 @@ export type ClaimWallet = {
   features: Record<string, unknown>;
 };
 type Connect = { connect(): Promise<{ accounts: readonly Account[] }> };
+type Events = {
+  on(
+    event: "change",
+    listener: (properties: { accounts?: readonly Account[] }) => void,
+  ): () => void;
+};
+type Disconnect = { disconnect(): Promise<void> };
 type SignAndSend = {
   signAndSendTransaction(
     ...inputs: { account: Account; chain: string; transaction: Uint8Array }[]
@@ -25,6 +32,22 @@ const SEND = "solana:signAndSendTransaction";
 
 // Wallets can register after first paint.
 export const onWalletRegister = (fn: () => void) => getWallets().on("register", fn);
+
+export function onAccountChange(
+  w: ClaimWallet,
+  listener: (accounts: readonly Account[]) => void,
+): () => void {
+  const events = w.features["standard:events"] as Events | undefined;
+  return (
+    events?.on("change", (properties) => {
+      if (properties.accounts !== undefined) listener(properties.accounts);
+    }) ?? (() => {})
+  );
+}
+
+export async function disconnectWallet(w: ClaimWallet): Promise<void> {
+  await (w.features["standard:disconnect"] as Disconnect | undefined)?.disconnect();
+}
 
 export function claimWallets(): ClaimWallet[] {
   return (getWallets().get() as unknown as ClaimWallet[]).filter(
