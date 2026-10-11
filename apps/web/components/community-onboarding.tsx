@@ -62,6 +62,7 @@ export function CommunityOnboarding() {
                       alt: "",
                       unoptimized: true,
                     }).props}
+                    alt=""
                   />
                 </span>
               ))}
