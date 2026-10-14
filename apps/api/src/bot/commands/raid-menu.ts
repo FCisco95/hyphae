@@ -71,7 +71,7 @@ export async function raidsMenu(ctx: CommandContext<Context>) {
 }
 
 // Tapped under "How long should this raid run?": opens the raid for the chosen hours.
-export async function pickRaidHours(ctx: Context) {
+export async function pickRaidHours(ctx: Context, webUrl: string) {
   const m = PICK.exec(ctx.callbackQuery?.data ?? "");
   const message = ctx.callbackQuery?.message;
   const hours = Number(m?.[1]);
@@ -102,7 +102,7 @@ export async function pickRaidHours(ctx: Context) {
       reply_markup: { inline_keyboard: [] },
     })
     .catch(() => clearButtons(ctx));
-  return announceRaid(ctx, community, post, opened.task, hours);
+  return announceRaid(ctx, community, post, opened.task, hours, webUrl);
 }
 
 // Tapped under /raids: closes that raid with a fixed reason and the usual lifecycle receipt.

@@ -1,8 +1,8 @@
-import { communities, raidLifecycleEvents, tasks } from "@hyphae/db";
+import { communities, raidCards, raidLifecycleEvents, tasks } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { Bot } from "grammy";
 import type { Update, UserFromGetMe } from "grammy/types";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_OPEN_RAIDS } from "../../raid-alerts/alerts.js";
 import { claimRaidRecap, deliverRaidRecap } from "../../raid-alerts/recap.js";
 import { createTestDb, seedCommunity } from "../../rewards/test-db.js";
@@ -80,13 +80,21 @@ beforeAll(async () => {
   bot = new Bot("123:fixture", {
     botInfo: { id: 1, is_bot: true, first_name: "T", username: "t_bot" } as UserFromGetMe,
   });
-  bot.command("raid", raid);
+  bot.command("raid", (ctx) => raid(ctx, "https://hyphae.test"));
   bot.command("raids", raidsMenu);
-  bot.callbackQuery(/^rn:/, pickRaidHours);
+  bot.callbackQuery(/^rn:/, (ctx) => pickRaidHours(ctx, "https://hyphae.test"));
   bot.callbackQuery(/^cr:/, closeRaidButton);
   bot.api.config.use(async (_previous, method, payload) => {
     calls.push({ method, payload: payload as Record<string, unknown> });
-    return { ok: true, result: true } as never;
+    const result =
+      method === "sendMessage" || method === "sendPhoto"
+        ? {
+            message_id: 500 + calls.length,
+            date: 0,
+            chat: { id: (payload as { chat_id: number }).chat_id, type: "group" },
+          }
+        : true;
+    return { ok: true, result } as never;
   });
 });
 afterAll(async () => {
@@ -231,5 +239,33 @@ describe("/raids menu", () => {
       .where(eq(communities.id, community.id));
     await bot.handleUpdate(tap("rn:6:owner:401", chatId, 980));
     expect(await tasksOf(community.id)).toHaveLength(0);
+  });
+});
+
+describe("raid cards", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("opens the tapped raid as a pinned HTML card with coloured buttons when RAID_CARDS is on", async () => {
+    vi.stubEnv("RAID_CARDS", "on");
+    vi.stubGlobal("fetch", async () => new Response("missing", { status: 404 }));
+    const { community } = await seedCommunity(t.db);
+    const chatId = Number(community.telegramChatId);
+    await bot.handleUpdate(tap("rn:24:owner:140", chatId, 901));
+    const card = calls.find((c) => c.method === "sendMessage" && c.payload.parse_mode === "HTML");
+    expect(String(card?.payload.text)).toContain("🔴 <b>Raid live</b>: @owner");
+    expect(JSON.stringify(card?.payload.reply_markup)).toContain('"style":"success"');
+    expect(calls.find((c) => c.method === "pinChatMessage")?.payload).toMatchObject({
+      disable_notification: true,
+    });
+    const [task] = await tasksOf(community.id);
+    expect(
+      await t.db
+        .select()
+        .from(raidCards)
+        .where(eq(raidCards.taskId, task?.id ?? "")),
+    ).toHaveLength(1);
   });
 });

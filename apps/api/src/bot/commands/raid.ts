@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { type CommandContext, type Context, InlineKeyboard } from "grammy";
 import { db } from "../../db.js";
 import { alertLink, MAX_OPEN_RAIDS, openRaid } from "../../raid-alerts/alerts.js";
+import { announceCard, telegramCardSender, webCardImage } from "../../raid-cards/announce.js";
+import { raidCardsOn } from "../../raid-cards/flag.js";
 import { fetchPost, parsePostUrl, type XPost } from "../../x/oembed.js";
 import { raidKeyboard } from "../raid-keyboard.js";
 import { reply } from "../reply.js";
@@ -27,7 +29,14 @@ export async function announceRaid(
   post: XPost,
   task: typeof tasks.$inferSelect,
   hours: number,
+  webUrl: string,
 ) {
+  if (raidCardsOn())
+    return announceCard(
+      db,
+      { community, task, botUsername: ctx.me.username, now: task.opensAt },
+      telegramCardSender(ctx.api, webCardImage(webUrl, community.mint, task.id)),
+    );
   const rubric = RubricSchema.parse(community.rubric);
   return ctx.reply(
     [
@@ -51,7 +60,7 @@ export async function announceRaid(
 export const LIMIT_REACHED = (open: { id: string }[]) =>
   `${MAX_OPEN_RAIDS} raids are already open (${open.map((t) => t.id).join(", ")}). Close one before opening another. /raids lists them with a Close button.`;
 
-export async function raid(ctx: CommandContext<Context>) {
+export async function raid(ctx: CommandContext<Context>, webUrl: string) {
   const from = ctx.from;
   if (!from || !ctx.msg) return;
   const community = await db.query.communities.findFirst({
@@ -93,5 +102,5 @@ export async function raid(ctx: CommandContext<Context>) {
   if (opened.status === "existing")
     return reply(ctx, "That raid was already opened. No extra alerts were queued.");
   if (opened.status === "limit_reached") return reply(ctx, LIMIT_REACHED(opened.open));
-  return announceRaid(ctx, community, post, opened.task, args.hours);
+  return announceRaid(ctx, community, post, opened.task, args.hours, webUrl);
 }
