@@ -57,6 +57,19 @@ const failure = (code: number, description: string, parameters = {}) =>
     {},
   );
 
+// The database clock reads clockAt while a test moves it to stand for slow reads or requests.
+let clockAt = new Date();
+async function withSlowClock(run: () => Promise<void>) {
+  const { dbClock: real } =
+    await vi.importActual<typeof import("../rewards/config.js")>("../rewards/config.js");
+  vi.mocked(dbClock).mockImplementation(async () => clockAt);
+  try {
+    await run();
+  } finally {
+    vi.mocked(dbClock).mockImplementation(real);
+  }
+}
+
 function editor(fail?: () => unknown) {
   const calls: { method: string; caption?: string; keyboard?: unknown }[] = [];
   const edit =
@@ -241,47 +254,62 @@ describe("raid card refresh", { timeout: 30_000 }, () => {
     expect(renewed?.getTime()).toBeGreaterThan(claimed?.getTime() ?? Number.POSITIVE_INFINITY);
   });
 
-  it("counts its back-offs from the clock of its latest lease renewal, not its claim", async () => {
-    const clock = vi.mocked(dbClock);
-    // Unpin 429 after reads slow enough that the renewals read 25 s and 40 s after the claim.
-    {
-      const { db, task } = await liveCard(new Date(Date.now() - 49 * HOUR));
-      const claimed = new Date();
-      clock
-        .mockResolvedValueOnce(claimed)
-        .mockResolvedValueOnce(new Date(claimed.getTime() + 25_000))
-        .mockResolvedValueOnce(new Date(claimed.getTime() + 40_000));
-      const e = editor();
-      let unpins = 0;
-      const limited: CardEditor = {
-        ...e.api,
-        unpin: async () => {
-          e.calls.push({ method: "unpin" });
-          if (++unpins === 1) throw failure(429, "Too Many Requests", { retry_after: 60 });
-        },
-      };
-      expect(await refreshDueCard(db, limited)).toBe("final");
-      const until = new Date(claimed.getTime() + 40_000 + MIN);
-      expect(await cardOf(db, task.id)).toMatchObject({ unpinnedAt: null, holdUntil: until });
-      expect(await refreshDueCard(db, limited, new Date(until.getTime() - 1000))).toBeUndefined();
-      expect(await refreshDueCard(db, limited, until)).toBe("final");
-      expect(e.calls.map((c) => c.method)).toEqual(["editCaption", "unpin", "unpin"]);
-    }
-    // Edit 429 after a renewal that read 25 s after the claim.
-    {
-      const { db, task } = await liveCard(new Date(Date.now() - HOUR));
-      const claimed = new Date();
-      clock
-        .mockResolvedValueOnce(claimed)
-        .mockResolvedValueOnce(new Date(claimed.getTime() + 25_000));
-      const limited = editor(() => failure(429, "Too Many Requests", { retry_after: 30 }));
-      expect(await refreshDueCard(db, limited.api)).toBe("rate_limited");
-      const until = new Date(claimed.getTime() + 55_000);
-      expect((await cardOf(db, task.id))?.holdUntil).toEqual(until);
-      expect(
-        await refreshDueCard(db, editor().api, new Date(until.getTime() - 1000)),
-      ).toBeUndefined();
-    }
+  it("starts an unpin back-off when Telegram answers, however slow the reads and the request", async () => {
+    await withSlowClock(async () => {
+      // A final card: its reads take 25 s, then its unpin answers 15 s late.
+      for (const fail of [
+        () => failure(429, "Too Many Requests", { retry_after: 60 }),
+        () => new Error("socket hang up"),
+      ]) {
+        const { db, task } = await liveCard(new Date(Date.now() - 49 * HOUR));
+        const claimed = new Date();
+        clockAt = claimed;
+        const e = editor();
+        const slow: CardEditor = {
+          ...e.api,
+          botUsername: async () => {
+            clockAt = new Date(claimed.getTime() + 25_000);
+            return "hyphae_bot";
+          },
+          unpin: async () => {
+            e.calls.push({ method: "unpin" });
+            if (e.calls.length > 2) return;
+            clockAt = new Date(clockAt.getTime() + 15_000);
+            throw fail();
+          },
+        };
+        expect(await refreshDueCard(db, slow)).toBe("final");
+        const until = new Date(claimed.getTime() + 40_000 + MIN);
+        expect(await cardOf(db, task.id)).toMatchObject({ unpinnedAt: null, holdUntil: until });
+        expect(await refreshDueCard(db, slow, new Date(until.getTime() - 1000))).toBeUndefined();
+        expect(await refreshDueCard(db, slow, until)).toBe("final");
+        expect(e.calls.map((c) => c.method)).toEqual(["editCaption", "unpin", "unpin"]);
+      }
+    });
+  });
+
+  it("starts an edit back-off when Telegram answers, however slow the request", async () => {
+    await withSlowClock(async () => {
+      // An open card: its edit answers 15 s late.
+      for (const [fail, outcome] of [
+        [() => failure(429, "Too Many Requests", { retry_after: 60 }), "rate_limited"],
+        [() => new Error("socket hang up"), "failed"],
+      ] as const) {
+        const { db, task } = await liveCard(new Date(Date.now() - HOUR));
+        const claimed = new Date();
+        clockAt = claimed;
+        const slow = editor(() => {
+          clockAt = new Date(claimed.getTime() + 15_000);
+          return fail();
+        });
+        expect(await refreshDueCard(db, slow.api)).toBe(outcome);
+        const until = new Date(claimed.getTime() + 15_000 + MIN);
+        expect((await cardOf(db, task.id))?.holdUntil).toEqual(until);
+        expect(
+          await refreshDueCard(db, editor().api, new Date(until.getTime() - 1000)),
+        ).toBeUndefined();
+      }
+    });
   });
 
   it("keeps the unpin back-off when a results request lands during the final edit", async () => {

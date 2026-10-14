@@ -116,23 +116,18 @@ export async function refreshDueCard(
   // Every write after the claim is fenced on its latest lease, and the lease is renewed (compare and
   // set) right before each Telegram call: a claim whose reads outlasted its lease, and so may have
   // been overtaken, sends nothing and writes nothing. The lease is a JS Date, never SQL's clock, so
-  // the fence compares exact milliseconds. Back-offs count from the clock of the latest renewal,
-  // read just before the Telegram call that asked for them, so slow reads cannot shorten them.
+  // the fence compares exact milliseconds.
   let lease = claim.lease;
-  let renewedAt = at;
   const leased = () => and(eq(raidCards.taskId, card.taskId), eq(raidCards.holdUntil, lease));
+  const clock = async () => now ?? (await dbClock(db, card.communityId));
   const renew = async () => {
-    const clock = now ?? (await dbClock(db, card.communityId));
-    const fresh = new Date(clock.getTime() + HOLD_MS);
+    const fresh = new Date((await clock()).getTime() + HOLD_MS);
     const [kept] = await db
       .update(raidCards)
       .set({ holdUntil: fresh })
       .where(leased())
       .returning({ taskId: raidCards.taskId });
-    if (kept) {
-      lease = fresh;
-      renewedAt = clock;
-    }
+    if (kept) lease = fresh;
     return kept !== undefined;
   };
   const cancel = events.find((e) => e.action === "cancelled");
@@ -184,11 +179,15 @@ export async function refreshDueCard(
       return { retryMs: REFRESH_MS };
     }
   };
-  const hold = (ms: number, marks: { unpinnedAt?: Date; pinError?: string } = {}) =>
-    db
+  // A back-off starts once Telegram has answered, read from the clock then, so neither slow reads
+  // nor a slow request shortens a retry_after.
+  const hold = async (ms: number, marks: { unpinnedAt?: Date; pinError?: string } = {}) => {
+    const answered = await clock();
+    await db
       .update(raidCards)
-      .set({ holdUntil: new Date(renewedAt.getTime() + ms), ...marks })
+      .set({ holdUntil: new Date(answered.getTime() + ms), ...marks })
       .where(leased());
+  };
   let outcome: CardOutcome = hash === card.renderedHash ? "unchanged" : "edited";
   if (outcome === "edited") {
     if (!(await renew())) return "lost";
@@ -236,7 +235,7 @@ export async function refreshDueCard(
     .set({
       state,
       renderedHash: hash,
-      holdUntil: retryMs === undefined ? null : new Date(renewedAt.getTime() + retryMs),
+      holdUntil: retryMs === undefined ? null : new Date((await clock()).getTime() + retryMs),
       nextRefreshAt: !final
         ? new Date(at.getTime() + REFRESH_MS)
         : retryMs === undefined
