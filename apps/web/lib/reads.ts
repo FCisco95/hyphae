@@ -5,7 +5,7 @@ const enc = encodeURIComponent;
 
 export const readCommunity = (mint: string) =>
   getJson(`/v1/communities/${enc(mint)}`, ReadApiV1Loose.community);
-export async function readRaids(mint: string) {
+export async function readRaids(mint: string, { fresh = false }: { fresh?: boolean } = {}) {
   // Explicit local production-build preview; Vercel never uses the loopback override.
   const preview =
     process.env.HYPHAE_LOCAL_PREVIEW === "on" &&
@@ -14,6 +14,7 @@ export async function readRaids(mint: string) {
   const result = await getJson(`/v1/communities/${enc(mint)}/raids`, PublicRaidsSchema, fetch, {
     anonymous: true,
     visitor: null,
+    fresh,
     ...(preview ? { baseUrl: "http://127.0.0.1:3011" } : {}),
   });
   if (result.ok && result.data.community.mint !== mint)

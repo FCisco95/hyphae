@@ -56,3 +56,11 @@ it("allows only the explicit loopback preview and still sends no token", async (
     expect.objectContaining({ headers: { accept: "application/json" } }),
   );
 });
+it("reads from no cache when asked, and still sends no token", async () => {
+  const fetchMock = response();
+  await readRaids("MintA", { fresh: true });
+  const init = fetchMock.mock.calls[0]?.[1] as RequestInit & { next?: unknown };
+  expect(init.cache).toBe("no-store");
+  expect(init.next).toBeUndefined();
+  expect(init.headers).toEqual({ accept: "application/json" });
+});
