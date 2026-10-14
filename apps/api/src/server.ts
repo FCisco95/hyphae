@@ -1,7 +1,9 @@
 import { serve } from "@hono/node-server";
+import { communities } from "@hyphae/db";
 import { createSolanaRpc } from "@solana/kit";
 import { Api, webhookCallback } from "grammy";
 import { Hono } from "hono";
+import { registerCommandMenus } from "./bot/command-menus.js";
 import { bot } from "./bot/index.js";
 import { db } from "./db.js";
 import { env } from "./env.js";
@@ -26,6 +28,13 @@ await startQueue();
 const notifyApi = new Api(env.TELEGRAM_BOT_TOKEN, { timeoutSeconds: 4 });
 const raidNotifier = startRaidNotifier(db, notifyApi, env.PUBLIC_WEB_URL);
 stopApiOnSignals(raidNotifier.stop);
+// Telegram's "/" menus, best effort; start-up never waits on them.
+void db
+  .select({ chatId: communities.telegramChatId, adminId: communities.adminTelegramUserId })
+  .from(communities)
+  .then((admins) => registerCommandMenus(notifyApi, admins))
+  .then((results) => console.log(JSON.stringify({ commands: results })))
+  .catch(() => console.error("commands: menu registration failed"));
 
 const app = new Hono();
 
