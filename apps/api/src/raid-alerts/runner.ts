@@ -2,6 +2,7 @@ import { setTimeout } from "node:timers/promises";
 import type { Db } from "@hyphae/db";
 import { type Api, InlineKeyboard } from "grammy";
 import { isMemberStatus } from "../bot/membership.js";
+import { raidCardsOn } from "../raid-cards/flag.js";
 import { engageLinks } from "../x/intents.js";
 import { claimRaidAlert, deliverRaidAlert } from "./alerts.js";
 import { claimRaidRecap, deliverRaidRecap } from "./recap.js";
@@ -49,14 +50,23 @@ export function startRaidNotifier(db: Db, api: Api, webBase: string) {
         console.error("raid-notifier: operation failed; check delivery state and connectivity");
       }
       try {
-        const recap = await claimRaidRecap(db, webBase);
+        const recap = await claimRaidRecap(db, webBase, undefined, { results: raidCardsOn() });
         if (recap) {
           const status = await deliverRaidRecap(db, recap, {
-            send: (chat, text) =>
+            send: (chat, text, options) =>
               api.sendMessage(
                 Number(chat),
                 text,
-                { link_preview_options: { is_disabled: true } },
+                {
+                  link_preview_options: { is_disabled: true },
+                  ...(options.html && { parse_mode: "HTML" as const }),
+                  ...(options.replyTo !== null && {
+                    reply_parameters: {
+                      message_id: options.replyTo,
+                      allow_sending_without_reply: true,
+                    },
+                  }),
+                },
                 AbortSignal.timeout(4_000) as unknown as Parameters<Api["sendMessage"]>[3],
               ),
           });

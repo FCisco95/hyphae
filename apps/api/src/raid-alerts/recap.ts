@@ -1,8 +1,10 @@
 import { communities, type Db, raidLifecycleEvents, raidRecaps, tasks } from "@hyphae/db";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { GrammyError } from "grammy";
+import { rankResults, resultsText } from "../raid-cards/results.js";
+import { cardOf, markResults } from "../raid-cards/store.js";
 import { type Clock, dbClock } from "../rewards/config.js";
-import { plural, type RaidStats, raidStats, span } from "./stats.js";
+import { plural, type RaidStats, raidContributions, raidStats, span } from "./stats.js";
 
 export interface RecapInput {
   closed: boolean;
@@ -42,24 +44,32 @@ export interface RecapClaim {
   chatId: bigint;
   text: string;
   retryUsed: boolean;
+  html: boolean;
+  // The raid card the results answer, when the raid has one.
+  replyTo: number | null;
 }
 
 const closedAt = sql`(select ${raidLifecycleEvents.createdAt} from ${raidLifecycleEvents} where ${raidLifecycleEvents.taskId} = ${tasks.id} and ${raidLifecycleEvents.action} = 'closed')`;
 // least() skips the null of a raid nobody closed, leaving its window end.
 const endedAt = sql`least(${tasks.closesAt}, ${closedAt})`;
 
+// Results wait for scoring to finish, but never more than this after the raid ends.
+export const RESULTS_WAIT_MS = 15 * 60_000;
+
 // Claims one raid that ended (admin close or window over) within the last hour and is not
 // cancelled. Older raids never get a recap, so a release or an outage does not replay history.
+// In results mode a raid with work still being scored waits up to RESULTS_WAIT_MS.
 export async function claimRaidRecap(
   db: Db,
   webBase: string,
   now?: Date,
+  options: { results?: boolean } = {},
 ): Promise<RecapClaim | undefined> {
   return db.transaction(async (tx) => {
     const due = now ? sql`${now.toISOString()}::timestamptz` : sql`clock_timestamp()`;
     // A close or cancel in flight holds NO KEY UPDATE on the task: skip it and read its outcome
     // on the next pass, so a raid being cancelled is never recapped.
-    const [task] = await tx
+    const candidates = await tx
       .select()
       .from(tasks)
       .where(
@@ -73,63 +83,85 @@ export async function claimRaidRecap(
         ),
       )
       .orderBy(asc(endedAt), asc(tasks.id))
-      .limit(1)
+      .limit(options.results ? 5 : 1)
       .for("share", { of: tasks, skipLocked: true });
-    if (!task) return;
-    const [claimed] = await tx
-      .insert(raidRecaps)
-      .values({
+    for (const task of candidates) {
+      const [close] = await tx
+        .select({ at: raidLifecycleEvents.createdAt })
+        .from(raidLifecycleEvents)
+        .where(
+          and(eq(raidLifecycleEvents.taskId, task.id), eq(raidLifecycleEvents.action, "closed")),
+        );
+      const closed = close !== undefined && close.at < task.closesAt;
+      const ended = closed ? close.at : task.closesAt;
+      const at = now ?? (await dbClock(tx, task.communityId));
+      const stats = (await raidStats(tx, [task.id], at)).get(task.id);
+      if (!stats) throw new Error("Raid recap stats missing");
+      if (options.results && stats.scoring > 0 && at.getTime() - ended.getTime() < RESULTS_WAIT_MS)
+        continue;
+      const [claimed] = await tx
+        .insert(raidRecaps)
+        .values({
+          taskId: task.id,
+          communityId: task.communityId,
+          status: "sending",
+          nextAttemptAt: due,
+          attemptedAt: due,
+        })
+        .onConflictDoUpdate({
+          target: raidRecaps.taskId,
+          // Only a 429 leaves a row pending, so this claim is its one retry. The deadline is
+          // rechecked on the conflicting row: another process may have deferred it after our SELECT.
+          set: { status: "sending", attemptedAt: due, retryUsed: true },
+          setWhere: sql`${raidRecaps.status} = 'pending' and ${raidRecaps.nextAttemptAt} <= ${due}`,
+        })
+        .returning({ taskId: raidRecaps.taskId, retryUsed: raidRecaps.retryUsed });
+      if (!claimed) continue;
+      const [community] = await tx
+        .select({ chatId: communities.telegramChatId, mint: communities.mint })
+        .from(communities)
+        .where(eq(communities.id, task.communityId));
+      if (!community) throw new Error("Raid recap community missing");
+      const ranMs = ended.getTime() - task.opensAt.getTime();
+      const card = options.results ? await cardOf(tx, task.id) : undefined;
+      return {
         taskId: task.id,
         communityId: task.communityId,
-        status: "sending",
-        nextAttemptAt: due,
-        attemptedAt: due,
-      })
-      .onConflictDoUpdate({
-        target: raidRecaps.taskId,
-        // Only a 429 leaves a row pending, so this claim is its one retry. The deadline is
-        // rechecked on the conflicting row: another process may have deferred it after our SELECT.
-        set: { status: "sending", attemptedAt: due, retryUsed: true },
-        setWhere: sql`${raidRecaps.status} = 'pending' and ${raidRecaps.nextAttemptAt} <= ${due}`,
-      })
-      .returning({ taskId: raidRecaps.taskId, retryUsed: raidRecaps.retryUsed });
-    if (!claimed) return;
-    const [community] = await tx
-      .select({ chatId: communities.telegramChatId, mint: communities.mint })
-      .from(communities)
-      .where(eq(communities.id, task.communityId));
-    if (!community) throw new Error("Raid recap community missing");
-    const [close] = await tx
-      .select({ at: raidLifecycleEvents.createdAt })
-      .from(raidLifecycleEvents)
-      .where(
-        and(eq(raidLifecycleEvents.taskId, task.id), eq(raidLifecycleEvents.action, "closed")),
-      );
-    const closed = close !== undefined && close.at < task.closesAt;
-    const at = now ?? (await dbClock(tx, task.communityId));
-    const stats = (await raidStats(tx, [task.id], at)).get(task.id);
-    if (!stats) throw new Error("Raid recap stats missing");
-    return {
-      taskId: task.id,
-      communityId: task.communityId,
-      chatId: community.chatId,
-      retryUsed: claimed.retryUsed,
-      text: recapText({
-        closed,
-        handle: task.targetAuthor,
-        url: task.targetUrl,
-        ranMs: (closed ? close.at : task.closesAt).getTime() - task.opensAt.getTime(),
-        stats,
-        webBase,
-        mint: community.mint,
-      }),
-    };
+        chatId: community.chatId,
+        retryUsed: claimed.retryUsed,
+        html: options.results === true,
+        replyTo: card?.telegramMessageId ?? null,
+        text: options.results
+          ? resultsText({
+              handle: task.targetAuthor,
+              ranMs,
+              stats,
+              rows: rankResults(await raidContributions(tx, [task.id], at)),
+              webBase,
+              mint: community.mint,
+            })
+          : recapText({
+              closed,
+              handle: task.targetAuthor,
+              url: task.targetUrl,
+              ranMs,
+              stats,
+              webBase,
+              mint: community.mint,
+            }),
+      };
+    }
+    return undefined;
   });
 }
 
 export interface RecapSender {
   clock?: Clock;
-  send(chatId: bigint, text: string): Promise<{ message_id: number }>;
+  send(
+    chatId: bigint,
+    text: string,
+    options: { html: boolean; replyTo: number | null },
+  ): Promise<{ message_id: number }>;
 }
 export async function deliverRaidRecap(db: Db, claim: RecapClaim, deps: RecapSender) {
   return db.transaction(async (tx) => {
@@ -159,8 +191,13 @@ export async function deliverRaidRecap(db: Db, claim: RecapClaim, deps: RecapSen
       );
     if (cancelled) return finish("skipped", "raid_cancelled");
     try {
-      const message = await deps.send(claim.chatId, claim.text);
-      return finish("sent", null, { sentAt: await clock(), telegramMessageId: message.message_id });
+      const message = await deps.send(claim.chatId, claim.text, {
+        html: claim.html,
+        replyTo: claim.replyTo,
+      });
+      const sentAt = await clock();
+      if (claim.replyTo !== null) await markResults(tx, claim.taskId, message.message_id, sentAt);
+      return finish("sent", null, { sentAt, telegramMessageId: message.message_id });
     } catch (err) {
       if (err instanceof GrammyError && err.error_code === 429) {
         if (claim.retryUsed) return finish("failed", "rate_limit_retry_exhausted");
