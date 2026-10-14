@@ -4,7 +4,7 @@ import { GrammyError } from "grammy";
 import { rankResults, resultsText } from "../raid-cards/results.js";
 import { cardOf, markResults } from "../raid-cards/store.js";
 import { type Clock, dbClock } from "../rewards/config.js";
-import { plural, type RaidStats, raidContributions, raidStats, span } from "./stats.js";
+import { plural, type RaidStats, raidContributions, span, statsOf } from "./stats.js";
 
 export interface RecapInput {
   closed: boolean;
@@ -95,7 +95,9 @@ export async function claimRaidRecap(
       const closed = close !== undefined && close.at < task.closesAt;
       const ended = closed ? close.at : task.closesAt;
       const at = now ?? (await dbClock(tx, task.communityId));
-      const stats = (await raidStats(tx, [task.id], at)).get(task.id);
+      // One read: a decision landing between two reads would let the totals contradict the names.
+      const rows = await raidContributions(tx, [task.id], at);
+      const stats = statsOf(rows, [task.id]).get(task.id);
       if (!stats) throw new Error("Raid recap stats missing");
       if (options.results && stats.scoring > 0 && at.getTime() - ended.getTime() < RESULTS_WAIT_MS)
         continue;
@@ -136,7 +138,7 @@ export async function claimRaidRecap(
               handle: task.targetAuthor,
               ranMs,
               stats,
-              rows: rankResults(await raidContributions(tx, [task.id], at)),
+              rows: rankResults(rows),
               webBase,
               mint: community.mint,
             })

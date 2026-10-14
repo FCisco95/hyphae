@@ -26,10 +26,12 @@ export async function cardOf(db: Db, taskId: string): Promise<RaidCard | undefin
   return (await db.select().from(raidCards).where(eq(raidCards.taskId, taskId)))[0];
 }
 
-// The results message exists: draw the card once more, now with its Results button.
+// The results message exists: draw the card once more, now with its Results button. A claim in
+// flight keeps its hold, so no second process edits the card alongside it; the card is drawn
+// when that claim settles or its hold ends.
 export async function markResults(db: Db, taskId: string, messageId: number, now: Date) {
   await db
     .update(raidCards)
-    .set({ resultsMessageId: messageId, nextRefreshAt: now, holdUntil: null })
+    .set({ resultsMessageId: messageId, nextRefreshAt: now })
     .where(eq(raidCards.taskId, taskId));
 }

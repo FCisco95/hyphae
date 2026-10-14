@@ -1,11 +1,19 @@
+import { POINT_UNITS_PER_POINT } from "@hyphae/core";
 import { contributions, members, raidCards } from "@hyphae/db";
 import { eq } from "drizzle-orm";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fakeModel } from "../http/demo-seed.js";
 import { claimRaidRecap, deliverRaidRecap } from "../raid-alerts/recap.js";
+import { raidContributions } from "../raid-alerts/stats.js";
 import { runEvaluation } from "../rewards/evaluation.js";
 import { createTestDb, later, seedRewardLane, seedTask, T0 } from "../rewards/test-db.js";
 import { recordCard } from "./store.js";
+
+// Passes through to the real read unless a test replaces one call.
+vi.mock("../raid-alerts/stats.js", async (original) => {
+  const real = await original<typeof import("../raid-alerts/stats.js")>();
+  return { ...real, raidContributions: vi.fn(real.raidContributions) };
+});
 
 const MIN = 60_000;
 const WEB = "https://hyphae.test";
@@ -110,5 +118,31 @@ describe("results at a raid's close", { timeout: 30_000 }, () => {
     const claim = await claimRaidRecap(db, WEB, new Date(end.getTime() + MIN), { results: true });
     expect(claim?.text).toContain("2 took part · 2 contributions · 1 credited · 1 without credit");
     expect(claim?.text).not.toContain("@bob");
+  });
+
+  it("takes its counts and its named members from one read", async () => {
+    const { db, end } = await raidWithReply(null);
+    const read = vi.mocked(raidContributions);
+    const { raidContributions: real } =
+      await vi.importActual<typeof import("../raid-alerts/stats.js")>("../raid-alerts/stats.js");
+    // Alice's reply is still being scored in the database; a decision crediting it lands before
+    // the next read.
+    read.mockImplementationOnce(async (...args) =>
+      (await real(...args)).map((r) => ({
+        ...r,
+        credited: true,
+        scoring: false,
+        pointUnits: 85n * POINT_UNITS_PER_POINT,
+        creditedQuality: 85,
+      })),
+    );
+    read.mockClear();
+    const claim = await claimRaidRecap(db, WEB, new Date(end.getTime() + 16 * MIN), {
+      results: true,
+    });
+    expect(claim?.text).toContain("🥇 @alice: 85 pts");
+    expect(claim?.text).toContain("1 took part · 1 contribution · 1 credited · 0 without credit");
+    expect(claim?.text).not.toContain("still being scored");
+    expect(read).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,10 +1,15 @@
-import { communities } from "@hyphae/db";
+import { communities, raidCards } from "@hyphae/db";
 import { eq } from "drizzle-orm";
-import { GrammyError, type InlineKeyboard } from "grammy";
-import { afterEach, describe, expect, it } from "vitest";
+import { type Api, GrammyError, InlineKeyboard } from "grammy";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { transitionRaid } from "../member-journey/lifecycle.js";
 import { at, createTestDb, seedCommunity, seedTask } from "../rewards/test-db.js";
-import { type CardEditor, refreshDueCard } from "./refresh.js";
+import {
+  type CardEditor,
+  type CardOutcome,
+  refreshDueCard,
+  telegramCardEditor,
+} from "./refresh.js";
 import { cardOf, markResults, recordCard } from "./store.js";
 
 const MIN = 60_000;
@@ -130,6 +135,54 @@ describe("raid card refresh", { timeout: 30_000 }, () => {
     expect(await cardOf(db, task.id)).toMatchObject({ nextRefreshAt: null, holdUntil: null });
   });
 
+  it("lets no other claim draw the card while the results request lands, then adds the button", async () => {
+    const { db, task } = await liveCard();
+    const after = new Date(task.closesAt.getTime() + 1000);
+    const second = editor();
+    let during: CardOutcome | undefined | null = null;
+    const first: CardEditor = {
+      ...editor().api,
+      editCaption: async () => {
+        await markResults(db, task.id, 99, after);
+        during = await refreshDueCard(db, second.api, new Date(after.getTime() + 1000));
+      },
+    };
+    expect(await refreshDueCard(db, first, after)).toBe("final");
+    expect(during).toBeUndefined();
+    expect(second.calls).toEqual([]);
+    expect(await refreshDueCard(db, second.api, new Date(after.getTime() + 2000))).toBe("final");
+    expect(second.calls.map((c) => c.keyboard)).toEqual([
+      [[{ text: "📊 Results", url: "https://t.me/c/1234567890/99" }]],
+    ]);
+  });
+
+  it("writes nothing once another claim has replaced its lease", async () => {
+    for (const fail of [
+      undefined,
+      () => failure(429, "Too Many Requests", { retry_after: 30 }),
+      () => failure(403, "Forbidden: bot was kicked"),
+      () => new Error("socket hang up"),
+    ]) {
+      const { db, task } = await liveCard();
+      const after = new Date(task.closesAt.getTime() + 1000);
+      const replaced = new Date(after.getTime() + 5000);
+      const before = await cardOf(db, task.id);
+      const stale: CardEditor = {
+        ...editor().api,
+        editCaption: async () => {
+          // Another process claimed the card while this edit was in flight.
+          await db
+            .update(raidCards)
+            .set({ holdUntil: replaced })
+            .where(eq(raidCards.taskId, task.id));
+          if (fail) throw fail();
+        },
+      };
+      await refreshDueCard(db, stale, after);
+      expect(await cardOf(db, task.id)).toEqual({ ...before, holdUntil: replaced });
+    }
+  });
+
   it("shows a cancelled raid with its reason", async () => {
     const { db, community, task, opens } = await liveCard();
     const when = new Date(opens.getTime() + 10 * MIN);
@@ -150,6 +203,71 @@ describe("raid card refresh", { timeout: 30_000 }, () => {
     expect(await refreshDueCard(db, e.api, new Date(when.getTime() + 1000))).toBe("final");
     expect(e.calls[0]?.caption).toBe("Raid cancelled: this post\nWrong post");
     expect((await cardOf(db, task.id))?.state).toBe("cancelled");
+  });
+
+  it("shows a cancellation that lands after the card went final, then stops", async () => {
+    const { db, community, task } = await liveCard();
+    const after = new Date(task.closesAt.getTime() + 1000);
+    const e = editor();
+    expect(await refreshDueCard(db, e.api, after)).toBe("final");
+    expect(await cardOf(db, task.id)).toMatchObject({ state: "ended", nextRefreshAt: null });
+    // /cancel_raid accepts a raid whose window is over but that nobody closed.
+    const when = new Date(after.getTime() + 5 * MIN);
+    const cancelled = await transitionRaid(
+      db,
+      {
+        communityId: community.id,
+        taskId: task.id,
+        chatId: community.telegramChatId,
+        actorId: 7n,
+        messageId: 1,
+        action: "cancelled",
+        reason: "Wrong post",
+      },
+      at(when),
+    );
+    expect(cancelled.status).toBe("changed");
+    expect(await refreshDueCard(db, e.api, new Date(when.getTime() + 1000))).toBe("final");
+    expect(e.calls.map((c) => c.method)).toEqual(["editCaption", "unpin", "editCaption"]);
+    expect(e.calls.at(-1)?.caption).toBe("Raid cancelled: this post\nWrong post");
+    expect(await cardOf(db, task.id)).toMatchObject({
+      state: "cancelled",
+      nextRefreshAt: null,
+      holdUntil: null,
+    });
+    expect(await refreshDueCard(db, e.api, new Date(when.getTime() + HOUR))).toBeUndefined();
+  });
+
+  it("shows a cancellation that lands while the final edit is in flight", async () => {
+    const { db, community, task } = await liveCard();
+    const after = new Date(task.closesAt.getTime() + 1000);
+    const captions: string[] = [];
+    const racing: CardEditor = {
+      ...editor().api,
+      editCaption: async (_c, _m, caption) => {
+        captions.push(caption);
+        if (captions.length === 1)
+          await transitionRaid(
+            db,
+            {
+              communityId: community.id,
+              taskId: task.id,
+              chatId: community.telegramChatId,
+              actorId: 7n,
+              messageId: 1,
+              action: "cancelled",
+              reason: "Wrong post",
+            },
+            at(after),
+          );
+      },
+    };
+    expect(await refreshDueCard(db, racing, after)).toBe("final");
+    expect((await cardOf(db, task.id))?.state).toBe("ended");
+    expect(await refreshDueCard(db, racing, new Date(after.getTime() + 1000))).toBe("final");
+    expect(captions.at(-1)).toBe("Raid cancelled: this post\nWrong post");
+    expect((await cardOf(db, task.id))?.state).toBe("cancelled");
+    expect(await refreshDueCard(db, racing, new Date(after.getTime() + HOUR))).toBeUndefined();
   });
 
   it("stops for good when the card was deleted or the bot removed", async () => {
@@ -220,6 +338,114 @@ describe("raid card refresh", { timeout: 30_000 }, () => {
     expect(await cardOf(db, task.id)).toMatchObject({ state: "ended", nextRefreshAt: null });
   });
 
+  it("records an unpin only once Telegram confirms it, and retries it without another edit", async () => {
+    for (const [error, wait] of [
+      [failure(429, "Too Many Requests", { retry_after: 30 }), 30_000],
+      [failure(429, "Too Many Requests"), MIN],
+      [new Error("The operation was aborted due to timeout"), MIN],
+    ] as const) {
+      const { db, task } = await liveCard();
+      const after = new Date(task.closesAt.getTime() + 1000);
+      const e = editor();
+      const unconfirmed: CardEditor = {
+        ...e.api,
+        unpin: async () => {
+          e.calls.push({ method: "unpin" });
+          throw error;
+        },
+      };
+      expect(await refreshDueCard(db, unconfirmed, after)).toBe("final");
+      const drawn = await cardOf(db, task.id);
+      expect(drawn).toMatchObject({
+        state: "ended",
+        unpinnedAt: null,
+        pinError: null,
+        holdUntil: null,
+        nextRefreshAt: new Date(after.getTime() + wait),
+      });
+      expect(drawn?.renderedHash).not.toBe("first");
+      expect(
+        await refreshDueCard(db, e.api, new Date(after.getTime() + wait - 1000)),
+      ).toBeUndefined();
+      const retry = new Date(after.getTime() + wait);
+      expect(await refreshDueCard(db, e.api, retry)).toBe("final");
+      expect(e.calls.map((c) => c.method)).toEqual(["editCaption", "unpin", "unpin"]);
+      expect(await cardOf(db, task.id)).toMatchObject({ unpinnedAt: retry, nextRefreshAt: null });
+    }
+  });
+
+  it("records an unpin Telegram refuses and never tries it again", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const { db, task } = await liveCard();
+      const after = new Date(task.closesAt.getTime() + 1000);
+      const e = editor();
+      const refused: CardEditor = {
+        ...e.api,
+        unpin: async () => {
+          e.calls.push({ method: "unpin" });
+          throw failure(400, "Bad Request: message to unpin not found");
+        },
+      };
+      expect(await refreshDueCard(db, refused, after)).toBe("final");
+      expect(await cardOf(db, task.id)).toMatchObject({
+        state: "ended",
+        unpinnedAt: null,
+        pinError: "unpin_400",
+        nextRefreshAt: null,
+      });
+      expect(warn).toHaveBeenCalledWith(
+        JSON.stringify({
+          card: "unpin_failed",
+          description: "Bad Request: message to unpin not found",
+        }),
+      );
+      await markResults(db, task.id, 99, new Date(after.getTime() + MIN));
+      expect(await refreshDueCard(db, refused, new Date(after.getTime() + MIN))).toBe("final");
+      expect(e.calls.map((c) => c.method)).toEqual(["editCaption", "unpin", "editCaption"]);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("handles the unpin the same way when the final edit fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      for (const [error, recorded, hold] of [
+        [failure(429, "Too Many Requests", { retry_after: 90 }), null, 90_000],
+        [failure(403, "Forbidden: not enough rights to unpin a message"), "unpin_403", MIN],
+      ] as const) {
+        const { db, task } = await liveCard();
+        const after = new Date(task.closesAt.getTime() + 1000);
+        const stuck = editor(() => failure(400, "Bad Request: message can't be edited"));
+        const failing: CardEditor = {
+          ...stuck.api,
+          unpin: async () => {
+            stuck.calls.push({ method: "unpin" });
+            throw error;
+          },
+        };
+        expect(await refreshDueCard(db, failing, after)).toBe("failed");
+        expect(await cardOf(db, task.id)).toMatchObject({
+          state: "open",
+          unpinnedAt: null,
+          pinError: recorded,
+          holdUntil: new Date(after.getTime() + hold),
+        });
+        expect(
+          await refreshDueCard(db, editor().api, new Date(after.getTime() + hold - 1000)),
+        ).toBeUndefined();
+        const fixed = editor();
+        expect(await refreshDueCard(db, fixed.api, new Date(after.getTime() + hold))).toBe("final");
+        expect(fixed.calls.map((c) => c.method)).toEqual(
+          recorded ? ["editCaption"] : ["editCaption", "unpin"],
+        );
+      }
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
   it("keeps an open card pinned when an edit fails", async () => {
     const { db, task, opens } = await liveCard();
     const e = editor(() => new Error("socket hang up"));
@@ -268,5 +494,32 @@ describe("raid card refresh", { timeout: 30_000 }, () => {
     expect(e.calls).toHaveLength(1);
     expect(await refreshDueCard(db, e.api, new Date(now.getTime() + 2000))).toBeUndefined();
     await expect(refreshDueCard(db, e.api, new Date(now.getTime() + 31_000))).rejects.toThrow();
+  });
+});
+
+describe("raid card Telegram calls", () => {
+  it("gives up on each call after 20 seconds, inside the claim's 30-second hold", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout");
+    const calls: unknown[][] = [];
+    const record = async (...args: unknown[]) => {
+      calls.push(args);
+      return true;
+    };
+    const cards = telegramCardEditor({
+      editMessageCaption: record,
+      editMessageText: record,
+      unpinChatMessage: record,
+    } as unknown as Api);
+    try {
+      await cards.editCaption(CHAT, 50, "caption", new InlineKeyboard());
+      await cards.editText(CHAT, 50, "text", new InlineKeyboard());
+      await cards.unpin(CHAT, 50);
+      // The signal is each grammY method's last parameter.
+      expect(calls.map((c) => c.length)).toEqual([4, 5, 4]);
+      for (const c of calls) expect(c.at(-1)).toBeInstanceOf(AbortSignal);
+      expect(timeout.mock.calls).toEqual([[20_000], [20_000], [20_000]]);
+    } finally {
+      timeout.mockRestore();
+    }
   });
 });

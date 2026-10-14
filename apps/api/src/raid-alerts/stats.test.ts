@@ -4,7 +4,14 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { seedAuditDemo } from "../http/demo-seed.js";
 import { readContribution } from "../http/read-service.js";
 import { createTestDb, seedCommunity, seedTask } from "../rewards/test-db.js";
-import { raidContributions, raidStats, span, statsLine } from "./stats.js";
+import {
+  type RaidContribution,
+  raidContributions,
+  raidStats,
+  span,
+  statsLine,
+  statsOf,
+} from "./stats.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -30,6 +37,55 @@ describe("raid stats text", () => {
     expect(span(42 * 60_000)).toBe("42m");
     expect(span(59_000)).toBe("under a minute");
     expect(span(-1)).toBe("under a minute");
+  });
+});
+
+describe("raid stats from contribution rows", () => {
+  const row = (over: Partial<RaidContribution>): RaidContribution => ({
+    taskId: "a",
+    contributionId: "c",
+    memberId: "alice",
+    kind: "reply",
+    url: null,
+    handle: null,
+    submittedAt: new Date(0),
+    epochIndex: 1,
+    credited: false,
+    scoring: false,
+    pointUnits: 0n,
+    creditedQuality: null,
+    ...over,
+  });
+  it("counts each asked raid's rows and ignores the rest", () => {
+    const stats = statsOf(
+      [
+        row({ epochIndex: 2, credited: true, creditedQuality: 80, pointUnits: 1n }),
+        row({ kind: "quote", credited: true, creditedQuality: 71, pointUnits: 1n }),
+        row({ memberId: "bob", epochIndex: null, scoring: true }),
+        row({ memberId: "carol" }),
+        row({ taskId: "other" }),
+      ],
+      ["a", "quiet"],
+    );
+    expect(stats.get("a")).toEqual({
+      members: 3,
+      replies: 3,
+      quotes: 1,
+      credited: 2,
+      averageCredited: 76,
+      scoring: 1,
+      epochs: [1, 2],
+    });
+    expect(stats.get("quiet")).toEqual({
+      members: 0,
+      replies: 0,
+      quotes: 0,
+      credited: 0,
+      averageCredited: null,
+      scoring: 0,
+      epochs: [],
+    });
+    expect(stats.has("other")).toBe(false);
   });
 });
 

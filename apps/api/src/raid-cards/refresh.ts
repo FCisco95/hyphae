@@ -1,6 +1,6 @@
 import { RubricSchema } from "@hyphae/core";
 import { communities, type Db, raidCards, raidLifecycleEvents, tasks } from "@hyphae/db";
-import { and, asc, eq, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 import { type Api, GrammyError, type InlineKeyboard } from "grammy";
 import { raidStats } from "../raid-alerts/stats.js";
 import { dbClock } from "../rewards/config.js";
@@ -28,9 +28,16 @@ export type CardOutcome = "edited" | "unchanged" | "final" | "gone" | "rate_limi
 const HOLD_MS = 30_000;
 const REFRESH_MS = 60_000;
 
+const retryAfter = (e: GrammyError) => {
+  const wait = e.parameters.retry_after;
+  return (typeof wait === "number" && wait > 0 ? wait : 60) * 1000;
+};
+
 const cancelled = sql`exists (select 1 from ${raidLifecycleEvents} where ${raidLifecycleEvents.taskId} = ${tasks.id} and ${raidLifecycleEvents.action} = 'cancelled')`;
 
-// Due when its minute is up, or at once when an open card's raid has ended or been cancelled.
+// Due when its minute is up, at once when an open card's raid has ended, and at once when an open
+// or ended card's raid was cancelled: /cancel_raid accepts a raid whose window is over but that
+// nobody closed, so a cancel can land after the card was drawn as ended.
 // The claim's hold keeps a crashed or failing card from being retried every second, so it commits
 // before anything else is read: a throw after it (a rubric that no longer parses) leaves the hold
 // in place instead of rolling it back and starving every other card. It locks only the card row
@@ -45,14 +52,19 @@ async function claimDueCard(db: Db, now?: Date) {
       .innerJoin(tasks, eq(tasks.id, raidCards.taskId))
       .where(
         and(
-          isNotNull(raidCards.nextRefreshAt),
           or(isNull(raidCards.holdUntil), lte(raidCards.holdUntil, due)),
           or(
-            lte(raidCards.nextRefreshAt, due),
             and(
-              eq(raidCards.state, "open"),
-              or(lte(tasks.closesAt, due), eq(tasks.status, "closed"), cancelled),
+              isNotNull(raidCards.nextRefreshAt),
+              or(
+                lte(raidCards.nextRefreshAt, due),
+                and(
+                  eq(raidCards.state, "open"),
+                  or(lte(tasks.closesAt, due), eq(tasks.status, "closed")),
+                ),
+              ),
             ),
+            and(inArray(raidCards.state, ["open", "ended"]), cancelled),
           ),
         ),
       )
@@ -61,11 +73,12 @@ async function claimDueCard(db: Db, now?: Date) {
       .for("update", { of: raidCards, skipLocked: true });
     if (!row) return;
     const at = now ?? (await dbClock(tx, row.card.communityId));
+    const lease = new Date(at.getTime() + HOLD_MS);
     await tx
       .update(raidCards)
-      .set({ holdUntil: new Date(at.getTime() + HOLD_MS) })
+      .set({ holdUntil: lease })
       .where(eq(raidCards.taskId, row.card.taskId));
-    return { ...row, at };
+    return { ...row, at, lease };
   });
   if (!claimed) return;
   const [community] = await db
@@ -92,7 +105,10 @@ export async function refreshDueCard(
 ): Promise<CardOutcome | undefined> {
   const claim = await claimDueCard(db, now);
   if (!claim) return;
-  const { card, task, at, rubric, events, stats } = claim;
+  const { card, task, at, lease, rubric, events, stats } = claim;
+  // Every write after the claim is fenced on its lease: once another process has claimed the card
+  // again, this one writes nothing.
+  const leased = and(eq(raidCards.taskId, card.taskId), eq(raidCards.holdUntil, lease));
   const cancel = events.find((e) => e.action === "cancelled");
   const close = events.find((e) => e.action === "closed");
   const state: CardState = cancel
@@ -121,15 +137,33 @@ export async function refreshDueCard(
   );
   const hash = renderHash(caption, keyboard);
   const final = state !== "open";
-  const unpin = final && card.pinnedAt !== null && card.unpinnedAt === null;
-  // Unpinning is best effort; the card itself already says the raid is over.
-  const unpinCard = () =>
-    editor.unpin(card.telegramChatId, card.telegramMessageId).catch(() => undefined);
-  const hold = (ms: number, unpinned = false) =>
+  const unpin =
+    final && card.pinnedAt !== null && card.unpinnedAt === null && card.pinError === null;
+  // An unpin is recorded only once Telegram confirms it. A refusal no retry can change (message
+  // gone, no rights, bot removed) is recorded instead; anything else keeps the card due.
+  const unpinCard = async (): Promise<{
+    unpinnedAt?: Date;
+    pinError?: string;
+    retryMs?: number;
+  }> => {
+    if (!unpin) return {};
+    try {
+      await editor.unpin(card.telegramChatId, card.telegramMessageId);
+      return { unpinnedAt: at };
+    } catch (e) {
+      if (e instanceof GrammyError && e.error_code === 429) return { retryMs: retryAfter(e) };
+      if (e instanceof GrammyError && (e.error_code === 400 || e.error_code === 403)) {
+        console.warn(JSON.stringify({ card: "unpin_failed", description: e.description }));
+        return { pinError: `unpin_${e.error_code}` };
+      }
+      return { retryMs: REFRESH_MS };
+    }
+  };
+  const hold = (ms: number, marks: { unpinnedAt?: Date; pinError?: string } = {}) =>
     db
       .update(raidCards)
-      .set({ holdUntil: new Date(at.getTime() + ms), ...(unpinned && { unpinnedAt: at }) })
-      .where(eq(raidCards.taskId, card.taskId));
+      .set({ holdUntil: new Date(at.getTime() + ms), ...marks })
+      .where(leased);
   let outcome: CardOutcome = hash === card.renderedHash ? "unchanged" : "edited";
   if (outcome === "edited") {
     try {
@@ -148,25 +182,26 @@ export async function refreshDueCard(
         await db
           .update(raidCards)
           .set({ state: "gone", nextRefreshAt: null, holdUntil: null })
-          .where(eq(raidCards.taskId, card.taskId));
+          .where(leased);
         return "gone";
       } else if (error?.error_code === 429) {
-        const wait = error.parameters.retry_after;
-        await hold((typeof wait === "number" && wait > 0 ? wait : 60) * 1000);
+        await hold(retryAfter(error));
         return "rate_limited";
       } else {
         // A persistent edit error must not leave a finished card pinned with live buttons.
-        if (unpin) await unpinCard();
-        await hold(REFRESH_MS, unpin);
+        const { retryMs = 0, ...marks } = await unpinCard();
+        await hold(Math.max(REFRESH_MS, retryMs), marks);
         return "failed";
       }
     }
   }
-  if (unpin) await unpinCard();
+  const { retryMs, ...marks } = await unpinCard();
   // The recap may have posted the results message while this edit was in flight (markResults asks
-  // for another draw). A final card stops only if no such request arrived since the claim read it.
+  // for another draw). A final card stops only if no such request arrived since the claim read it
+  // and no unpin waits to be retried.
   const settledAt = at.toISOString();
-  const stopOrAgain = sql`case when ${raidCards.resultsMessageId} is not distinct from ${card.resultsMessageId}::integer then null else ${settledAt}::timestamptz end`;
+  const retryAt = retryMs === undefined ? null : new Date(at.getTime() + retryMs).toISOString();
+  const stopOrAgain = sql`case when ${raidCards.resultsMessageId} is not distinct from ${card.resultsMessageId}::integer then ${retryAt}::timestamptz else ${settledAt}::timestamptz end`;
   await db
     .update(raidCards)
     .set({
@@ -174,28 +209,35 @@ export async function refreshDueCard(
       renderedHash: hash,
       holdUntil: null,
       nextRefreshAt: final ? stopOrAgain : new Date(at.getTime() + REFRESH_MS),
-      ...(unpin && { unpinnedAt: at }),
+      ...marks,
     })
-    .where(eq(raidCards.taskId, card.taskId));
+    .where(leased);
   return final ? "final" : outcome;
 }
+
+// Each call ends inside the claim's 30-second hold, so a hung request cannot outlive its lease.
+const signal = () =>
+  AbortSignal.timeout(20_000) as unknown as Parameters<Api["unpinChatMessage"]>[3];
 
 export function telegramCardEditor(api: Api): CardEditor {
   let username: string | undefined;
   return {
     editCaption: (chat, message, caption, keyboard) =>
-      api.editMessageCaption(Number(chat), message, {
-        caption,
-        parse_mode: "HTML",
-        reply_markup: keyboard,
-      }),
+      api.editMessageCaption(
+        Number(chat),
+        message,
+        { caption, parse_mode: "HTML", reply_markup: keyboard },
+        signal(),
+      ),
     editText: (chat, message, text, keyboard) =>
-      api.editMessageText(Number(chat), message, text, {
-        parse_mode: "HTML",
-        reply_markup: keyboard,
-        link_preview_options: { is_disabled: true },
-      }),
-    unpin: (chat, message) => api.unpinChatMessage(Number(chat), message),
+      api.editMessageText(
+        Number(chat),
+        message,
+        text,
+        { parse_mode: "HTML", reply_markup: keyboard, link_preview_options: { is_disabled: true } },
+        signal(),
+      ),
+    unpin: (chat, message) => api.unpinChatMessage(Number(chat), message, undefined, signal()),
     botUsername: async () => {
       username ??= (await api.getMe()).username;
       return username;

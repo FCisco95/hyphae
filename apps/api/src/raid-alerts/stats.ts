@@ -164,10 +164,14 @@ export async function raidStats(
   taskIds: string[],
   now: Date,
 ): Promise<Map<string, RaidStats>> {
+  return statsOf(await raidContributions(db, taskIds, now), taskIds);
+}
+
+export function statsOf(rows: RaidContribution[], taskIds: string[]): Map<string, RaidStats> {
   const stats = new Map(taskIds.map((id) => [id, empty()]));
   const members = new Map<string, Set<string>>();
   const qualitySum = new Map<string, number>();
-  for (const r of await raidContributions(db, taskIds, now)) {
+  for (const r of rows) {
     const s = stats.get(r.taskId);
     if (!s) continue;
     if (r.kind === "reply") s.replies += 1;

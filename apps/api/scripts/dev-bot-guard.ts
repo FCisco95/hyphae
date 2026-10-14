@@ -21,6 +21,10 @@ function localDatabaseUrl(raw: string | undefined): string | null {
   }
 }
 
+// @hyphaeprotocol_bot, linked publicly in README.md. A token's prefix is its bot's user id, so the
+// production bot is refused even when the root .env is missing or stale.
+const PRODUCTION_BOT_ID = "8927990203";
+
 // The root .env holds production values. The dev runner may only reach a database on this machine
 // and a bot that is not the production bot: polling with the production token deletes its webhook.
 export function checkDevBotEnv(
@@ -37,8 +41,9 @@ export function checkDevBotEnv(
   const token = dev.TELEGRAM_BOT_TOKEN ?? "";
   if (!/^\d+:[A-Za-z0-9_-]{30,}$/.test(token))
     return { ok: false, reason: "TELEGRAM_BOT_TOKEN in .env.dev-bot must be the test bot's token" };
+  const bot = token.split(":")[0];
   const productionBot = production.TELEGRAM_BOT_TOKEN?.split(":")[0];
-  if (productionBot && token.split(":")[0] === productionBot)
+  if (bot === PRODUCTION_BOT_ID || (productionBot && bot === productionBot))
     return { ok: false, reason: "that is the production bot; use the test bot's token" };
   if (!/^-\d{5,}$/.test(dev.DEV_CHAT_ID ?? ""))
     return { ok: false, reason: "DEV_CHAT_ID must be the test group's id (negative)" };

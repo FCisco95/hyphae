@@ -82,6 +82,16 @@ describe("dev-bot guard", () => {
     ).toMatchObject({ ok: false });
   });
 
+  it("refuses the production bot by its public id when the root .env is missing or stale", () => {
+    const refused = {
+      ok: false,
+      reason: "that is the production bot; use the test bot's token",
+    };
+    const token = `8927990203:${"D".repeat(35)}`;
+    expect(checkDevBotEnv({ ...dev, TELEGRAM_BOT_TOKEN: token }, {})).toEqual(refused);
+    expect(checkDevBotEnv({ ...dev, TELEGRAM_BOT_TOKEN: token }, production)).toEqual(refused);
+  });
+
   it("refuses a missing token or malformed ids", () => {
     expect(checkDevBotEnv({ ...dev, TELEGRAM_BOT_TOKEN: undefined }, production)).toMatchObject({
       ok: false,
