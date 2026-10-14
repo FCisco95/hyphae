@@ -203,7 +203,7 @@ function resultLines(audit: ContributionV1): string[] {
   ];
 }
 
-export function receiptText(row: MemberReceipt, webBase = ""): string {
+export function receiptText(row: MemberReceipt, webBase = "", privateScores = false): string {
   const { receipt, audit } = row;
   const base = webBase.replace(/\/$/, "");
   return [
@@ -213,7 +213,9 @@ export function receiptText(row: MemberReceipt, webBase = ""): string {
     `Raid: ${row.task.id} (${row.raidState})`,
     `Target: ${clip(row.task.targetUrl ?? "not recorded", 250)}`,
     `Your submission: ${clip(row.contribution.url ?? "not recorded", 250)}`,
-    "The existing scorer may post this result publicly in the group, replying to the raid message.",
+    privateScores
+      ? "Your score arrives here, in private."
+      : "The existing scorer may post this result publicly in the group, replying to the raid message.",
     ...(audit
       ? resultLines(audit)
       : row.legacy

@@ -138,6 +138,13 @@ describe("private member receipts", () => {
     );
   });
 
+  it("says the score arrives privately once raid cards are on", async () => {
+    const l = await lane();
+    const text = receiptText(required(await l.read()), "https://hyphae.test", true);
+    expect(text).toContain("Your score arrives here, in private.");
+    expect(text).not.toContain("publicly in the group");
+  });
+
   it("fails closed on cross-community receipt links even for a Telegram user in both communities", async () => {
     const l = await lane();
     const other = await seedCommunity(t.db);

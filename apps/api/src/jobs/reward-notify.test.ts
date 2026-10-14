@@ -1,5 +1,5 @@
 import { inspect } from "node:util";
-import { HttpError } from "grammy";
+import { GrammyError, HttpError } from "grammy";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PayoutVerdictV1 } from "../payout/readiness.js";
 
@@ -7,8 +7,16 @@ const TOKEN = "1234567890:AAH-worker-token-that-must-never-be-stored";
 const CLOSES_AT = new Date("2026-10-10T00:00:00.000Z");
 const m = vi.hoisted(() => ({
   marked: [] as string[],
-  sent: [] as { text: string; other: Record<string, unknown> }[],
+  sent: [] as { chat: number; text: string; other: Record<string, unknown> }[],
   fail: false,
+  blocked: false,
+  target: {
+    chatId: -100n,
+    messageId: 5,
+    kind: "reply" as "reply" | "quote" | "post" | "text",
+    memberUserId: 42n,
+    raidHandle: "owner" as string | null,
+  },
   hint: null as PayoutVerdictV1 | null,
   inited: true,
   init: async (_signal?: AbortSignal) => {},
@@ -31,6 +39,10 @@ vi.mock("../db.js", () => {
     },
   };
 });
+vi.mock("./score-route.js", async (importActual) => ({
+  ...(await importActual<typeof import("./score-route.js")>()),
+  loadScoreTarget: async () => m.target,
+}));
 vi.mock("../rewards/recovery.js", () => ({
   strandedWork: async () => ({ evaluations: [], retrievals: [], notifications: [] }),
   decisionNotified: async () => false,
@@ -54,14 +66,21 @@ vi.mock("../bot/index.js", () => ({
     },
     botInfo: { username: "t_bot" },
     api: {
-      sendMessage: async (_chat: number, text: string, other: Record<string, unknown>) => {
+      sendMessage: async (chat: number, text: string, other: Record<string, unknown>) => {
+        if (m.blocked)
+          throw new GrammyError(
+            "Forbidden: bot was blocked by the user",
+            { ok: false, error_code: 403, description: "Forbidden: bot was blocked by the user" },
+            "sendMessage",
+            {},
+          );
         if (m.fail) {
           throw new HttpError(
             "Network request for 'sendMessage' failed!",
             new Error(`request to https://api.telegram.org/bot${TOKEN}/sendMessage failed`),
           );
         }
-        m.sent.push({ text, other });
+        m.sent.push({ chat, text, other });
       },
     },
   },
@@ -80,6 +99,8 @@ beforeEach(() => {
   m.marked = [];
   m.sent = [];
   m.fail = false;
+  m.blocked = false;
+  m.target = { chatId: -100n, messageId: 5, kind: "reply", memberUserId: 42n, raidHandle: "owner" };
   m.hint = null;
   m.inited = true;
   m.init = async () => {};
@@ -90,6 +111,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
 });
 
 describe("notifyReward", () => {
@@ -144,6 +166,39 @@ describe("notifyReward without bot initialization", () => {
     await notifyReward(job);
     expect(m.initSignals).toEqual([]);
     expect(m.sent.map((s) => [s.text, s.other.reply_markup])).toEqual([["scored", undefined]]);
+    expect(m.marked).toEqual(["d1"]);
+  });
+});
+
+describe("notifyReward with raid cards on", () => {
+  beforeEach(() => {
+    vi.stubEnv("RAID_CARDS", "on");
+  });
+
+  it("sends a reply's score to the member privately, naming the raid, with no group thread", async () => {
+    await notifyReward(job);
+    expect(m.sent).toEqual([
+      {
+        chat: 42,
+        text: "Your reply on the @owner raid:\nscored",
+        other: { link_preview_options: { is_disabled: true } },
+      },
+    ]);
+    expect(m.marked).toEqual(["d1"]);
+  });
+
+  it("keeps a text submission's score in the group thread", async () => {
+    m.target = { ...m.target, kind: "text" };
+    await notifyReward(job);
+    expect(m.sent.map((s) => [s.chat, s.text, s.other.reply_parameters])).toEqual([
+      [-100, "scored", { message_id: 5, allow_sending_without_reply: true }],
+    ]);
+  });
+
+  it("marks the decision notified when the member blocked the bot, and posts nothing in the group", async () => {
+    m.blocked = true;
+    await expect(notifyReward(job)).resolves.toBeUndefined();
+    expect(m.sent).toEqual([]);
     expect(m.marked).toEqual(["d1"]);
   });
 });

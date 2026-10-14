@@ -1,10 +1,12 @@
-import { communities, contributions, rewardNominations } from "@hyphae/db";
+import { contributions, rewardNominations } from "@hyphae/db";
 import { eq } from "drizzle-orm";
+import { GrammyError } from "grammy";
 import { telegramCall } from "../bot/errors.js";
 import { bot } from "../bot/index.js";
 import { db } from "../db.js";
 import { env } from "../env.js";
 import { dueHoldChecks, holdCheckerFromEnv, runHoldChecks } from "../payout/hold-gate.js";
+import { raidCardsOn } from "../raid-cards/flag.js";
 import { closeEpoch, dueCloses } from "../rewards/close.js";
 import { type EvaluationTarget, type RunResult, runEvaluation } from "../rewards/evaluation.js";
 import { decisionNotified, markNotified, strandedWork } from "../rewards/recovery.js";
@@ -19,6 +21,7 @@ import { captureLimitations, fetchPost } from "../x/oembed.js";
 import { lockScoreMessages } from "./payout-hint.js";
 import { boss, QUEUES } from "./queue.js";
 import { type RewardOutcome, rewardMessage } from "./reward-message.js";
+import { loadScoreTarget, scoreTarget, scoreText } from "./score-route.js";
 
 export interface RewardEvaluationJob {
   communityId: string;
@@ -193,22 +196,32 @@ export async function checkEpochHolds(job: HoldCheckJob): Promise<void> {
 export async function notifyReward(job: RewardNotifyJob): Promise<void> {
   const { decisionId } = job;
   if (decisionId && (await decisionNotified(db, decisionId))) return;
-  const [row] = await db
-    .select({
-      chatId: communities.telegramChatId,
-      messageId: contributions.telegramMessageId,
-    })
-    .from(contributions)
-    .innerJoin(communities, eq(communities.id, contributions.communityId))
-    .where(eq(contributions.id, job.contributionId));
-  if (!row) throw new Error(`reward: contribution ${job.contributionId} missing`);
+  const target = scoreTarget(await loadScoreTarget(db, job.contributionId), raidCardsOn());
   const send = () =>
-    telegramCall(bot.token, () =>
-      bot.api.sendMessage(Number(row.chatId), job.text, {
-        reply_parameters: { message_id: row.messageId, allow_sending_without_reply: true },
-        link_preview_options: { is_disabled: true },
-      }),
-    );
+    telegramCall(bot.token, async () => {
+      try {
+        await bot.api.sendMessage(target.chatId, scoreText(target, job.text), {
+          ...(target.replyTo !== null && {
+            reply_parameters: { message_id: target.replyTo, allow_sending_without_reply: true },
+          }),
+          link_preview_options: { is_disabled: true },
+        });
+      } catch (e) {
+        // A member who blocked the bot cannot be reached privately; the score stays on its public
+        // page, and a retry would only hit the same wall.
+        if (target.private && e instanceof GrammyError && e.error_code === 403) {
+          console.log(
+            JSON.stringify({
+              job: "reward-notify",
+              contributionId: job.contributionId,
+              status: "private_unreachable",
+            }),
+          );
+          return;
+        }
+        throw e;
+      }
+    });
   if (!decisionId) {
     await send();
     return;

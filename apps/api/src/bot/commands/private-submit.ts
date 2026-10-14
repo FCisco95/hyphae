@@ -11,6 +11,7 @@ import {
   REFUSALS,
   type SubmissionDeps,
 } from "../../member-journey/submissions.js";
+import { raidCardsOn } from "../../raid-cards/flag.js";
 import { fetchPost } from "../../x/oembed.js";
 import { isMemberStatus } from "../membership.js";
 import { sendReceipt } from "./receipts.js";
@@ -48,7 +49,9 @@ async function prompt(db: Db, ctx: Context, taskId: string, kind: "reply" | "quo
       `Raid: ${session.taskId}`,
       result.target,
       "Reply to THIS message with one URL of your own work. This declares authorship and engagement; neither is independently verified by X oEmbed.",
-      "Your post and score have a public audit receipt. The existing scorer may announce the result in the group. Points are provisional; they do not establish payout eligibility or payment.",
+      raidCardsOn()
+        ? "Your post and score have a public audit receipt. Your score arrives here, in private. Points are provisional; they do not establish payout eligibility or payment."
+        : "Your post and score have a public audit receipt. The existing scorer may announce the result in the group. Points are provisional; they do not establish payout eligibility or payment.",
       `Prompt expires ${session.expiresAt.toISOString()}.`,
       `If reply mode is lost: /submit ${session.id} <URL>`,
       `To abandon this prompt: /cancel_submission ${session.id}`,

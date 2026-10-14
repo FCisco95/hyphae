@@ -5,10 +5,12 @@ import { telegramCall } from "../bot/errors.js";
 import { bot } from "../bot/index.js";
 import { db } from "../db.js";
 import { env } from "../env.js";
+import { raidCardsOn } from "../raid-cards/flag.js";
 import { defaultModel as model } from "../scoring/default-model.js";
 import { runScoring } from "../scoring/run.js";
 import type { XPost } from "../x/oembed.js";
 import { scoreMessage } from "./score-message.js";
+import { loadScoreTarget, scoreTarget, scoreText } from "./score-route.js";
 
 export interface ScoreJob {
   contributionId: string;
@@ -97,14 +99,33 @@ export async function scoreContribution({ contributionId, force }: ScoreJob): Pr
   );
   if (!run) return;
 
+  const target = scoreTarget(
+    {
+      chatId: community.telegramChatId,
+      messageId: c.telegramMessageId,
+      kind: c.kind,
+      memberUserId: member.telegramUserId,
+      raidHandle: task?.targetAuthor ?? null,
+    },
+    raidCardsOn(),
+  );
   // The score is stored; a Telegram hiccup must not fail the job into a second paid run.
   try {
     await telegramCall(bot.token, () =>
       bot.api.sendMessage(
-        Number(community.telegramChatId),
-        scoreMessage({ output: result.output, multiplier, url: `${env.PUBLIC_WEB_URL}/x/${c.id}` }),
+        target.chatId,
+        scoreText(
+          target,
+          scoreMessage({
+            output: result.output,
+            multiplier,
+            url: `${env.PUBLIC_WEB_URL}/x/${c.id}`,
+          }),
+        ),
         {
-          reply_parameters: { message_id: c.telegramMessageId, allow_sending_without_reply: true },
+          ...(target.replyTo !== null && {
+            reply_parameters: { message_id: target.replyTo, allow_sending_without_reply: true },
+          }),
           link_preview_options: { is_disabled: true },
         },
       ),
@@ -115,12 +136,17 @@ export async function scoreContribution({ contributionId, force }: ScoreJob): Pr
 }
 
 export async function notifyScoringFailed(contributionId: string): Promise<void> {
-  const { c, community } = await loadContribution(contributionId);
+  const target = scoreTarget(await loadScoreTarget(db, contributionId), raidCardsOn());
   await telegramCall(bot.token, () =>
     bot.api.sendMessage(
-      Number(community.telegramChatId),
-      "Scoring failed for this submission. It is saved; an admin will re-run it.",
-      { reply_parameters: { message_id: c.telegramMessageId, allow_sending_without_reply: true } },
+      target.chatId,
+      scoreText(
+        target,
+        "Scoring failed for this submission. It is saved; an admin will re-run it.",
+      ),
+      target.replyTo === null
+        ? {}
+        : { reply_parameters: { message_id: target.replyTo, allow_sending_without_reply: true } },
     ),
   );
 }

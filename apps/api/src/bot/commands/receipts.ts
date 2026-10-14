@@ -8,6 +8,7 @@ import {
   receiptText,
   reportSubmissionIssue,
 } from "../../member-journey/receipts.js";
+import { raidCardsOn } from "../../raid-cards/flag.js";
 
 export const RECEIPT_PREFIX = "receipt_";
 
@@ -32,7 +33,7 @@ export async function sendReceipt(db: Db, ctx: Context, receiptId: string, webUr
     return ctx.reply(
       "Receipt not found for your account. Use the receipt ID from your submission confirmation.",
     );
-  return ctx.reply(receiptText(receipt, webUrl), {
+  return ctx.reply(receiptText(receipt, webUrl, raidCardsOn()), {
     reply_markup: new InlineKeyboard().text("Refresh receipt", `${RECEIPT_PREFIX}${receiptId}`),
     link_preview_options: { is_disabled: true },
   });
