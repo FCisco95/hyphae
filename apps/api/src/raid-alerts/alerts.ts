@@ -369,3 +369,16 @@ export async function deliverRaidAlert(db: Db, id: string, deps: AlertSender) {
     return finish("sent", null);
   });
 }
+
+export async function alertsEnabled(db: Db, communityId: string, telegramUserId: bigint) {
+  const [row] = await db
+    .select({ enabled: raidSubscriptions.enabled })
+    .from(raidSubscriptions)
+    .where(
+      and(
+        eq(raidSubscriptions.communityId, communityId),
+        eq(raidSubscriptions.telegramUserId, telegramUserId),
+      ),
+    );
+  return row?.enabled === true;
+}

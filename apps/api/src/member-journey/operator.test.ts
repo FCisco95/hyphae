@@ -14,7 +14,8 @@ import {
   tasks,
 } from "@hyphae/db";
 import { eq, sql } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { recordCard } from "../raid-cards/store.js";
 import { nominate } from "../rewards/slots.js";
 import {
   createTestDb,
@@ -39,6 +40,9 @@ beforeAll(async () => {
 });
 afterAll(async () => {
   await t.close();
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 type Seed = Awaited<ReturnType<typeof seedCommunity>>;
@@ -606,5 +610,50 @@ describe("community operator summary", () => {
     } finally {
       await t.db.execute(sql`alter table pgboss.unavailable_job rename to job`);
     }
+  });
+
+  it("counts unpinned and uneditable raid cards while raid cards are on", async () => {
+    vi.stubEnv("RAID_CARDS", "on");
+    const { community } = await seedCommunity(t.db);
+    const open = await seedTask(t.db, community.id, new Date());
+    const gone = await seedTask(t.db, community.id, new Date());
+    const base = {
+      communityId: community.id,
+      telegramChatId: community.telegramChatId,
+      format: "photo" as const,
+      renderedHash: "h",
+    };
+    await recordCard(t.db, {
+      ...base,
+      taskId: open.id,
+      telegramMessageId: 1,
+      state: "open",
+      pinError: "pin_400",
+    });
+    await recordCard(t.db, { ...base, taskId: gone.id, telegramMessageId: 2, state: "gone" });
+    const result = await readOperatorSummary(t.db, { communityId: community.id, actorId: 7n });
+    if (result.status !== "ok") throw new Error("unauthorized");
+    expect(result.summary.cards).toEqual({ pinFailed: 1, gone: 1 });
+    expect(operatorMessage(result.summary)).toContain(
+      'Raid cards: 1 open card not pinned (give the bot "Pin messages"), 1 no longer editable.',
+    );
+  });
+
+  it("reports no card problems while raid cards are off, even with a stored card", async () => {
+    const { community } = await seedCommunity(t.db);
+    const task = await seedTask(t.db, community.id, new Date());
+    await recordCard(t.db, {
+      communityId: community.id,
+      telegramChatId: community.telegramChatId,
+      format: "photo",
+      renderedHash: "h",
+      taskId: task.id,
+      telegramMessageId: 1,
+      state: "gone",
+    });
+    const result = await readOperatorSummary(t.db, { communityId: community.id, actorId: 7n });
+    if (result.status !== "ok") throw new Error("unauthorized");
+    expect(result.summary.cards).toEqual({ pinFailed: 0, gone: 0 });
+    expect(operatorMessage(result.summary)).not.toContain("Raid cards:");
   });
 });

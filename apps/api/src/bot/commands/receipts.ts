@@ -8,6 +8,7 @@ import {
   receiptText,
   reportSubmissionIssue,
 } from "../../member-journey/receipts.js";
+import { alertsEnabled, ENABLE_PREFIX } from "../../raid-alerts/alerts.js";
 import { raidCardsOn } from "../../raid-cards/flag.js";
 
 export const RECEIPT_PREFIX = "receipt_";
@@ -33,8 +34,13 @@ export async function sendReceipt(db: Db, ctx: Context, receiptId: string, webUr
     return ctx.reply(
       "Receipt not found for your account. Use the receipt ID from your submission confirmation.",
     );
+  const keyboard = new InlineKeyboard().text("Refresh receipt", `${RECEIPT_PREFIX}${receiptId}`);
+  const communityId = receipt.receipt.communityId;
+  // The raid card no longer carries the alerts link, so the private receipt offers it instead.
+  if (raidCardsOn() && !(await alertsEnabled(db, communityId, caller)))
+    keyboard.row().text("🔔 Alert me about new raids", `${ENABLE_PREFIX}${communityId}`);
   return ctx.reply(receiptText(receipt, webUrl, raidCardsOn()), {
-    reply_markup: new InlineKeyboard().text("Refresh receipt", `${RECEIPT_PREFIX}${receiptId}`),
+    reply_markup: keyboard,
     link_preview_options: { is_disabled: true },
   });
 }

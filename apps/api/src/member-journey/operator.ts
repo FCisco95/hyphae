@@ -3,6 +3,7 @@ import {
   contributions,
   type Db,
   raidAnnouncements,
+  raidCards,
   raidDeliveries,
   raidLifecycleEvents,
   raidSubmissionReceipts,
@@ -15,6 +16,8 @@ import {
 } from "@hyphae/db";
 import { and, count, desc, eq, sql } from "drizzle-orm";
 import { COMMUNITY_ID, MAX_OPEN_RAIDS } from "../raid-alerts/alerts.js";
+import { plural } from "../raid-alerts/stats.js";
+import { raidCardsOn } from "../raid-cards/flag.js";
 import type { RaidState } from "./lifecycle.js";
 
 export type OperatorSummary = {
@@ -46,6 +49,7 @@ export type OperatorSummary = {
     unresolvedRewardCalls: number;
     zeroCostRecords: number;
   };
+  cards: { pinFailed: number; gone: number };
 };
 
 // The queue has retention, and legacy scoring has no pre-call dispatch ledger. These rows
@@ -231,6 +235,16 @@ export async function readOperatorSummary(
       ),
     );
   const jobs = await readJobs(db, communityId);
+  // raid_cards exists only once its migration is applied, which the rollout does before the flag.
+  const [cards] = raidCardsOn()
+    ? await db
+        .select({
+          pinFailed: sql<number>`(count(*) filter (where ${raidCards.pinError} is not null and ${raidCards.state} = 'open'))::int`,
+          gone: sql<number>`(count(*) filter (where ${raidCards.state} = 'gone'))::int`,
+        })
+        .from(raidCards)
+        .where(eq(raidCards.communityId, communityId))
+    : [];
   // A role changed while collecting the summary must not receive the completed response.
   if (!(await authorized())[0]) return { status: "unauthorized" };
   const scoringMicroUsd = BigInt(scoringSpend?.cost ?? "0");
@@ -257,6 +271,7 @@ export async function readOperatorSummary(
         unresolvedRewardCalls: rewardSpend?.unknown ?? 0,
         zeroCostRecords: (scoringSpend?.zero ?? 0) + (rewardSpend?.zero ?? 0),
       },
+      cards: cards ?? { pinFailed: 0, gone: 0 },
     },
   };
 }
@@ -303,6 +318,9 @@ export function operatorMessage(s: OperatorSummary): string {
       (r) => `  ${r.status}: ${safeLine(r.reason ?? "Reason unavailable", 60)} (${r.count})`,
     ),
     "Uncertain sends may have arrived; this view does not resend them.",
+    s.cards.pinFailed || s.cards.gone
+      ? `Raid cards: ${plural(s.cards.pinFailed, "open card", "open cards")} not pinned (give the bot "Pin messages"), ${s.cards.gone} no longer editable.`
+      : "",
     `Scoring backlog: ${s.unscoredContributions} saved contributions without a score/decision; ${s.unqueuedReceipts} private receipts awaiting queue confirmation.`,
     `Effort nominations: evidence pending ${countState(s.pendingNominations, "pending_evidence")}, ready ${countState(s.pendingNominations, "ready")}, evaluating ${countState(s.pendingNominations, "evaluating")}, reconciliation pending ${countState(s.pendingNominations, "pending_reconciliation")}.`,
     `Scoring issue reports: ${s.issues.count} saved; latest ${s.issues.recent.length} shown. Reports do not change scores.`,

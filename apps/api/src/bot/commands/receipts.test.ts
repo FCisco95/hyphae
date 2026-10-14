@@ -8,13 +8,15 @@ import {
 import { eq } from "drizzle-orm";
 import { Bot } from "grammy";
 import type { Update, UserFromGetMe } from "grammy/types";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { setRaidSubscription } from "../../raid-alerts/alerts.js";
 import { createTestDb, seedCommunity, seedTask, T0 } from "../../rewards/test-db.js";
 import { issueCommand, receiptCommand, refreshReceipt } from "./receipts.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 let bot: Bot;
 let receiptId: string;
+let communityId: string;
 let updates = 100;
 let toastFails = false;
 const output: { method: string; payload: Record<string, unknown> }[] = [];
@@ -39,6 +41,7 @@ function command(text: string, from = 42, group = false, chatId = from): Update 
 beforeAll(async () => {
   t = await createTestDb();
   const { community, member } = await seedCommunity(t.db);
+  communityId = community.id;
   const task = await seedTask(t.db, community.id, T0);
   const [contribution] = await t.db
     .insert(contributions)
@@ -98,6 +101,9 @@ afterAll(async () => {
 beforeEach(() => {
   output.length = 0;
   toastFails = false;
+});
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 describe("receipt and scoring-issue bot commands", () => {
@@ -185,5 +191,21 @@ describe("receipt and scoring-issue bot commands", () => {
     expect(texts()[0]).toContain("Scored in the legacy lane: 0/100 credited quality");
     expect(texts()[0]).not.toContain("0/100 raw quality");
     expect(texts()[0]).not.toContain("85/100 credited quality");
+  });
+
+  it("offers raid alerts on a receipt while the member has none, once raid cards are on", async () => {
+    vi.stubEnv("RAID_CARDS", "on");
+    await bot.handleUpdate(command(`/receipt ${receiptId}`));
+    const first = JSON.stringify(
+      output.find((o) => o.method === "sendMessage")?.payload.reply_markup,
+    );
+    expect(first).toContain(`raids_on_${communityId}`);
+    await setRaidSubscription(t.db, communityId, 42n, true);
+    output.length = 0;
+    await bot.handleUpdate(command(`/receipt ${receiptId}`));
+    const second = JSON.stringify(
+      output.find((o) => o.method === "sendMessage")?.payload.reply_markup,
+    );
+    expect(second).not.toContain("raids_on_");
   });
 });
