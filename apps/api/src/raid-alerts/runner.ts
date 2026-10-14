@@ -3,15 +3,17 @@ import type { Db } from "@hyphae/db";
 import { type Api, InlineKeyboard } from "grammy";
 import { isMemberStatus } from "../bot/membership.js";
 import { raidCardsOn } from "../raid-cards/flag.js";
+import { refreshDueCard, telegramCardEditor } from "../raid-cards/refresh.js";
 import { engageLinks } from "../x/intents.js";
 import { claimRaidAlert, deliverRaidAlert } from "./alerts.js";
 import { claimRaidRecap, deliverRaidRecap } from "./recap.js";
 
-// One private alert and one group recap per second per API process. Outbox claims serialize
-// concurrent processes; Telegram 429 responses defer retry. No scoring/reward worker or pg-boss
-// queue is changed.
+// One private alert, one group recap and one raid card edit per second per API process. Outbox
+// claims serialize concurrent processes; Telegram 429 responses defer retry. No scoring/reward
+// worker or pg-boss queue is changed.
 export function startRaidNotifier(db: Db, api: Api, webBase: string) {
   const controller = new AbortController();
+  const cards = telegramCardEditor(api);
   const done = (async () => {
     while (!controller.signal.aborted) {
       try {
@@ -74,6 +76,14 @@ export function startRaidNotifier(db: Db, api: Api, webBase: string) {
         }
       } catch {
         console.error("raid-notifier: recap failed; check raid_recaps and connectivity");
+      }
+      try {
+        if (raidCardsOn()) {
+          const status = await refreshDueCard(db, cards);
+          if (status) console.log(JSON.stringify({ notifier: "card", status }));
+        }
+      } catch {
+        console.error("raid-notifier: card refresh failed; check raid_cards and connectivity");
       }
       await setTimeout(1000, undefined, { signal: controller.signal }).catch(() => {});
     }
