@@ -1,3 +1,4 @@
+import { publicXPost } from "@hyphae/core";
 import {
   contributions,
   type Db,
@@ -32,21 +33,46 @@ const empty = (): RaidStats => ({
   epochs: [],
 });
 
+export interface RaidContribution {
+  taskId: string;
+  contributionId: string;
+  memberId: string;
+  kind: "reply" | "quote";
+  url: string | null;
+  // The handle the post was captured under, else the one in its link; never ownership proof.
+  handle: string | null;
+  submittedAt: Date;
+  epochIndex: number | null;
+  credited: boolean;
+  // In an open epoch with no selected decision yet, so it may still be credited.
+  scoring: boolean;
+  pointUnits: bigint;
+  creditedQuality: number | null;
+}
+
+function postHandle(oembed: unknown, url: string | null): string | null {
+  const captured = (oembed as { handle?: unknown } | null)?.handle;
+  if (typeof captured === "string" && /^[A-Za-z0-9_]{1,15}$/.test(captured)) return captured;
+  return publicXPost(url)?.handle ?? null;
+}
+
 // Credited means the decision the read API selects (the snapshot's once frozen, else the last
 // revision accepted before the epoch cutoff) has positive points, as the member receipt says.
-export async function raidStats(
+export async function raidContributions(
   db: Db,
   taskIds: string[],
   now: Date,
-): Promise<Map<string, RaidStats>> {
-  const stats = new Map(taskIds.map((id) => [id, empty()]));
-  if (!taskIds.length) return stats;
+): Promise<RaidContribution[]> {
+  if (!taskIds.length) return [];
   const rows = await db
     .select({
       taskId: tasks.id,
       contributionId: contributions.id,
       memberId: contributions.memberId,
       kind: contributions.kind,
+      url: contributions.url,
+      oembed: contributions.oembed,
+      submittedAt: contributions.submittedAt,
       epochIndex: epochs.index,
       epochClosesAt: epochs.closesAt,
       snapshotId: rewardEpochSnapshots.id,
@@ -100,26 +126,58 @@ export async function raidStats(
   for (const d of decisions)
     lineages.set(d.contributionId, [...(lineages.get(d.contributionId) ?? []), d]);
 
+  return rows.map((r) => {
+    const cutoff = r.epochClosesAt?.getTime();
+    const frozen = r.snapshotId !== null;
+    const selected =
+      cutoff === undefined
+        ? undefined
+        : frozen
+          ? byId.get(r.frozenDecisionId ?? "")
+          : lineages.get(r.contributionId)?.findLast((d) => d.acceptedAt.getTime() < cutoff);
+    const points =
+      cutoff === undefined
+        ? 0n
+        : frozen
+          ? (r.frozenPointUnits ?? 0n)
+          : (selected?.pointUnits ?? 0n);
+    const credited = selected !== undefined && points > 0n;
+    return {
+      taskId: r.taskId,
+      contributionId: r.contributionId,
+      memberId: r.memberId,
+      kind: r.kind as "reply" | "quote",
+      url: r.url,
+      handle: postHandle(r.oembed, r.url),
+      submittedAt: r.submittedAt,
+      epochIndex: r.epochIndex,
+      credited,
+      scoring: cutoff !== undefined && !selected && !frozen && now.getTime() < cutoff,
+      pointUnits: credited ? points : 0n,
+      creditedQuality: credited ? (selected?.creditedQuality ?? null) : null,
+    };
+  });
+}
+
+export async function raidStats(
+  db: Db,
+  taskIds: string[],
+  now: Date,
+): Promise<Map<string, RaidStats>> {
+  const stats = new Map(taskIds.map((id) => [id, empty()]));
   const members = new Map<string, Set<string>>();
   const qualitySum = new Map<string, number>();
-  for (const r of rows) {
+  for (const r of await raidContributions(db, taskIds, now)) {
     const s = stats.get(r.taskId);
     if (!s) continue;
     if (r.kind === "reply") s.replies += 1;
     else s.quotes += 1;
     members.set(r.taskId, (members.get(r.taskId) ?? new Set()).add(r.memberId));
     if (r.epochIndex !== null && !s.epochs.includes(r.epochIndex)) s.epochs.push(r.epochIndex);
-    const cutoff = r.epochClosesAt?.getTime();
-    if (cutoff === undefined) continue;
-    const frozen = r.snapshotId !== null;
-    const selected = frozen
-      ? byId.get(r.frozenDecisionId ?? "")
-      : lineages.get(r.contributionId)?.findLast((d) => d.acceptedAt.getTime() < cutoff);
-    const points = frozen ? (r.frozenPointUnits ?? 0n) : (selected?.pointUnits ?? 0n);
-    if (selected && points > 0n) {
+    if (r.credited) {
       s.credited += 1;
-      qualitySum.set(r.taskId, (qualitySum.get(r.taskId) ?? 0) + selected.creditedQuality);
-    } else if (!selected && !frozen && now.getTime() < cutoff) s.scoring += 1;
+      qualitySum.set(r.taskId, (qualitySum.get(r.taskId) ?? 0) + (r.creditedQuality ?? 0));
+    } else if (r.scoring) s.scoring += 1;
   }
   for (const [id, s] of stats) {
     s.members = members.get(id)?.size ?? 0;

@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { seedAuditDemo } from "../http/demo-seed.js";
 import { readContribution } from "../http/read-service.js";
 import { createTestDb, seedCommunity, seedTask } from "../rewards/test-db.js";
-import { raidStats, span, statsLine } from "./stats.js";
+import { raidContributions, raidStats, span, statsLine } from "./stats.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -93,5 +93,51 @@ describe("raid stats query", () => {
     });
     expect(stats.get(busy.id)).toMatchObject({ members: 1, replies: 1, credited: 0, scoring: 0 });
     expect(await raidStats(t.db, [], new Date())).toEqual(new Map());
+  });
+});
+
+describe("raid contributions", () => {
+  it("lists each contribution with the points the public read selects and its captured handle", async () => {
+    const now = new Date();
+    const demo = await seedAuditDemo(t.db, now);
+    const raid = await seedTask(t.db, demo.communityId, new Date(now.getTime() - 9 * 86_400_000));
+    const ids = Object.values(demo.contributions);
+    for (const id of ids)
+      await t.db
+        .update(contributions)
+        .set({ taskId: raid.id, kind: "reply", oembed: { handle: "alice" } })
+        .where(eq(contributions.id, id));
+    const rows = await raidContributions(t.db, [raid.id], now);
+    const reads = new Map(
+      await Promise.all(
+        ids.map(async (id) => [id, await readContribution(t.db, id, now)] as const),
+      ),
+    );
+    expect(rows).toHaveLength(ids.length);
+    for (const r of rows) {
+      const read = reads.get(r.contributionId);
+      const selected = read?.selected && read.selected.point_units !== "0" ? read.selected : null;
+      expect(r.credited).toBe(selected !== null);
+      expect(r.pointUnits).toBe(selected ? BigInt(selected.point_units) : 0n);
+      expect(r.creditedQuality).toBe(selected ? selected.credited_quality : null);
+      expect(r.handle).toBe("alice");
+    }
+  });
+
+  it("falls back to the handle in the post link", async () => {
+    const { community, member } = await seedCommunity(t.db);
+    const raid = await seedTask(t.db, community.id, new Date());
+    await t.db.insert(contributions).values({
+      communityId: community.id,
+      memberId: member.id,
+      taskId: raid.id,
+      kind: "quote",
+      url: "https://x.com/bob/status/9",
+      text: "legacy quote",
+      telegramMessageId: 1,
+    });
+    const [row] = await raidContributions(t.db, [raid.id], new Date());
+    expect(row).toMatchObject({ handle: "bob", kind: "quote", credited: false, scoring: false });
+    expect(await raidContributions(t.db, [], new Date())).toEqual([]);
   });
 });
