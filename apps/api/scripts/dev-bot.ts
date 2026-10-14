@@ -9,11 +9,14 @@ import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
 import { parseEnv } from "node:util";
-import { checkDevBotEnv } from "./dev-bot-guard.js";
+import { checkDevBotEnv, refuseWebhookBot } from "./dev-bot-guard.js";
 
 const read = (name: string): Record<string, string | undefined> => {
   const file = new URL(`../../../${name}`, import.meta.url);
-  return existsSync(file) ? parseEnv(readFileSync(file, "utf8").replace(/^﻿/, "")) : {};
+  if (!existsSync(file)) return {};
+  const text = readFileSync(file, "utf8");
+  // A byte order mark (PowerShell writes one) would hide the first key.
+  return parseEnv(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
 };
 const dev = read(".env.dev-bot");
 const checked = checkDevBotEnv(dev, read(".env"));
@@ -21,6 +24,26 @@ if (!checked.ok) {
   console.error(`dev-bot: ${checked.reason}`);
   process.exit(1);
 }
+
+// The production bot is the only one with a webhook, whether or not the root .env is here to
+// compare. Nothing else talks to Telegram, connects to a database or serves before this passes.
+async function webhookRefusal(token: string): Promise<string | null> {
+  const { Api, GrammyError } = await import("grammy");
+  try {
+    return refuseWebhookBot(await new Api(token).getWebhookInfo());
+  } catch (error) {
+    // Network errors carry the request url, which holds the token: say only what Telegram said.
+    return error instanceof GrammyError
+      ? `Telegram refused the token (${error.error_code}: ${error.description})`
+      : "could not reach Telegram to check the bot's webhook";
+  }
+}
+const refusal = await webhookRefusal(dev.TELEGRAM_BOT_TOKEN as string);
+if (refusal) {
+  console.error(`dev-bot: ${refusal}`);
+  process.exit(1);
+}
+
 // Stands in for the web's card route, so the photo path runs without a deployed raid.
 const image = dev.DEV_CARD_IMAGE ? readFileSync(dev.DEV_CARD_IMAGE) : null;
 const server = createServer((request, response) => {
@@ -29,14 +52,32 @@ const server = createServer((request, response) => {
   response.end(card ? image : undefined);
 }).listen(0, "127.0.0.1");
 await once(server, "listening");
+
+// Configured only from .env.dev-bot: keys that spend money or read production are dropped from
+// the inherited environment unless that file sets them.
+const OPTIONAL = [
+  "ANTHROPIC_API_KEY",
+  "DEEPSEEK_API_KEY",
+  "SCORING_MODEL",
+  "JEV_SCORING",
+  "TYPESAFE_API_KEY",
+  "HOLD_RPC_HELIUS_URL",
+  "HOLD_RPC_FALLBACK_URL",
+  "READ_RPC_URL",
+  "READ_API_WEB_TOKEN",
+  "PRIVY_APP_ID",
+  "PRIVY_APP_SECRET",
+  "PRIVY_VERIFICATION_KEY",
+];
+for (const key of OPTIONAL) delete process.env[key];
 Object.assign(process.env, {
-  DATABASE_URL: dev.DATABASE_URL,
+  DATABASE_URL: checked.databaseUrl,
   TELEGRAM_BOT_TOKEN: dev.TELEGRAM_BOT_TOKEN,
   TELEGRAM_WEBHOOK_SECRET: "dev-bot-local-webhook-unused",
   LINK_ORIGIN: "https://dev-bot.invalid",
   PUBLIC_WEB_URL: `http://127.0.0.1:${(server.address() as AddressInfo).port}`,
   RAID_CARDS: "on",
-  ...(dev.ANTHROPIC_API_KEY ? { ANTHROPIC_API_KEY: dev.ANTHROPIC_API_KEY } : {}),
+  ...Object.fromEntries(OPTIONAL.filter((key) => dev[key]).map((key) => [key, dev[key]])),
 });
 
 const { db } = await import("../src/db.js");
