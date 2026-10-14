@@ -2,7 +2,7 @@ import { RubricSchema } from "@hyphae/core";
 import type { communities, Db, tasks } from "@hyphae/db";
 import { type Api, GrammyError, type InlineKeyboard, InputFile } from "grammy";
 import { cardCaption, cardKeyboard, EMPTY_STATS, renderHash } from "./render.js";
-import { recordCard } from "./store.js";
+import { markPinned, recordCard } from "./store.js";
 
 export interface CardSender {
   image(): Promise<Uint8Array | null>;
@@ -53,15 +53,12 @@ export async function announceCard(
       format = "photo";
     } catch (e) {
       if (!(e instanceof GrammyError && e.error_code === 400)) throw e;
+      console.warn(JSON.stringify({ announce: "photo_rejected", description: e.description }));
     }
   }
   sent ??= await deps.sendText(chatId, caption, keyboard);
-  let pinError: string | null = null;
-  try {
-    await deps.pin(chatId, sent.message_id);
-  } catch (e) {
-    pinError = e instanceof GrammyError ? `pin_${e.error_code}` : "pin_failed";
-  }
+  // Recorded before it is pinned: a card that cannot be recorded is never pinned, so nothing stays
+  // pinned that the refresher does not know to close and unpin.
   await recordCard(db, {
     taskId: task.id,
     communityId: community.id,
@@ -71,9 +68,16 @@ export async function announceCard(
     state: "open",
     renderedHash: renderHash(caption, keyboard),
     nextRefreshAt: new Date(now.getTime() + 60_000),
-    pinnedAt: pinError ? null : now,
-    pinError,
+    pinnedAt: null,
+    pinError: null,
   });
+  let pinError: string | null = null;
+  try {
+    await deps.pin(chatId, sent.message_id);
+  } catch (e) {
+    pinError = e instanceof GrammyError ? `pin_${e.error_code}` : "pin_failed";
+  }
+  await markPinned(db, task.id, sent.message_id, { pinnedAt: pinError ? null : now, pinError });
   return { messageId: sent.message_id, format };
 }
 

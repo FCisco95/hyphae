@@ -1,3 +1,5 @@
+import { communities } from "@hyphae/db";
+import { eq } from "drizzle-orm";
 import { GrammyError, type InlineKeyboard } from "grammy";
 import { afterEach, describe, expect, it } from "vitest";
 import { transitionRaid } from "../member-journey/lifecycle.js";
@@ -200,6 +202,32 @@ describe("raid card refresh", { timeout: 30_000 }, () => {
     expect(await refreshDueCard(db, editor().api, new Date(now.getTime() + 92_000))).toBe("edited");
   });
 
+  it("unpins a finished card even when its last edit keeps failing, and retries the edit later", async () => {
+    const { db, task } = await liveCard();
+    const after = new Date(task.closesAt.getTime() + 1000);
+    const stuck = editor(() => failure(400, "Bad Request: message can't be edited"));
+    expect(await refreshDueCard(db, stuck.api, after)).toBe("failed");
+    expect(stuck.calls.map((c) => c.method)).toEqual(["editCaption", "unpin"]);
+    expect(await cardOf(db, task.id)).toMatchObject({
+      state: "open",
+      unpinnedAt: after,
+      holdUntil: new Date(after.getTime() + MIN),
+    });
+    expect(await refreshDueCard(db, stuck.api, new Date(after.getTime() + 30_000))).toBeUndefined();
+    const fixed = editor();
+    expect(await refreshDueCard(db, fixed.api, new Date(after.getTime() + 61_000))).toBe("final");
+    expect(fixed.calls.map((c) => c.method)).toEqual(["editCaption"]);
+    expect(await cardOf(db, task.id)).toMatchObject({ state: "ended", nextRefreshAt: null });
+  });
+
+  it("keeps an open card pinned when an edit fails", async () => {
+    const { db, task, opens } = await liveCard();
+    const e = editor(() => new Error("socket hang up"));
+    expect(await refreshDueCard(db, e.api, new Date(opens.getTime() + MIN + 1000))).toBe("failed");
+    expect(e.calls.map((c) => c.method)).toEqual(["editCaption"]);
+    expect((await cardOf(db, task.id))?.unpinnedAt).toBeNull();
+  });
+
   it("retries a crashed refresh after its 30-second hold, not every second", async () => {
     const { db, opens } = await liveCard();
     const now = new Date(opens.getTime() + MIN + 1000);
@@ -212,5 +240,33 @@ describe("raid card refresh", { timeout: 30_000 }, () => {
     await expect(refreshDueCard(db, crashing, now)).rejects.toThrow("getMe failed");
     expect(await refreshDueCard(db, editor().api, new Date(now.getTime() + 1000))).toBeUndefined();
     expect(await refreshDueCard(db, editor().api, new Date(now.getTime() + 31_000))).toBe("edited");
+  });
+
+  it("holds a card whose community rubric cannot be read, and still draws the others", async () => {
+    const { db, community, opens } = await liveCard();
+    await db
+      .update(communities)
+      .set({ rubric: { broken: true } })
+      .where(eq(communities.id, community.id));
+    const { community: other } = await seedCommunity(db);
+    const otherTask = await seedTask(db, other.id, opens);
+    await recordCard(db, {
+      taskId: otherTask.id,
+      communityId: other.id,
+      telegramChatId: -1009876543210n,
+      telegramMessageId: 60,
+      format: "photo",
+      state: "open",
+      renderedHash: "first",
+      nextRefreshAt: new Date(opens.getTime() + 2 * MIN),
+      pinnedAt: opens,
+    });
+    const now = new Date(opens.getTime() + 3 * MIN);
+    await expect(refreshDueCard(db, editor().api, now)).rejects.toThrow();
+    const e = editor();
+    expect(await refreshDueCard(db, e.api, new Date(now.getTime() + 1000))).toBe("edited");
+    expect(e.calls).toHaveLength(1);
+    expect(await refreshDueCard(db, e.api, new Date(now.getTime() + 2000))).toBeUndefined();
+    await expect(refreshDueCard(db, e.api, new Date(now.getTime() + 31_000))).rejects.toThrow();
   });
 });

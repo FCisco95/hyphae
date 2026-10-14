@@ -1,5 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { GrammyError, type InputFile } from "grammy";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createTestDb, seedCommunity, seedTask } from "../rewards/test-db.js";
 import { announceCard, type CardSender } from "./announce.js";
 import { cardOf } from "./store.js";
@@ -101,5 +102,44 @@ describe("announceCard", () => {
     });
     await announceCard(t.db, input, deps);
     expect(await cardOf(t.db, task.id)).toMatchObject({ pinnedAt: null, pinError: "pin_400" });
+  });
+
+  it("records the card before pinning it, so a pinned card always has a row", async () => {
+    const { task, input } = await raid();
+    let atPin: Awaited<ReturnType<typeof cardOf>>;
+    const { deps } = sender({
+      pin: async () => {
+        atPin = await cardOf(t.db, task.id);
+        return true;
+      },
+    });
+    await announceCard(t.db, input, deps);
+    expect(atPin).toMatchObject({ telegramMessageId: 31, pinnedAt: null, pinError: null });
+    expect(await cardOf(t.db, task.id)).toMatchObject({ pinnedAt: task.opensAt, pinError: null });
+  });
+
+  it("does not pin a card it could not record", async () => {
+    const { task, input } = await raid();
+    const { deps, calls } = sender();
+    await expect(
+      announceCard(t.db, { ...input, task: { ...task, id: randomUUID() } }, deps),
+    ).rejects.toThrow();
+    expect(calls.map((c) => c.method)).toEqual(["sendPhoto"]);
+  });
+
+  it("logs why Telegram rejected the picture before sending the text card", async () => {
+    const { input } = await raid();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const { deps } = sender({
+      sendPhoto: async () => Promise.reject(rejected(400, "Bad Request: IMAGE_PROCESS_FAILED")),
+    });
+    await announceCard(t.db, input, deps);
+    expect(warn).toHaveBeenCalledWith(
+      JSON.stringify({
+        announce: "photo_rejected",
+        description: "Bad Request: IMAGE_PROCESS_FAILED",
+      }),
+    );
+    warn.mockRestore();
   });
 });

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb, seedCommunity, seedTask } from "../rewards/test-db.js";
-import { cardOf, markResults, recordCard } from "./store.js";
+import { cardOf, markPinned, markResults, recordCard } from "./store.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -39,5 +39,27 @@ describe("raid card store", () => {
       holdUntil: null,
     });
     expect(await cardOf(t.db, "00000000-0000-4000-8000-000000000000")).toBeUndefined();
+  });
+
+  it("marks a pin only on the message that was recorded", async () => {
+    const { community } = await seedCommunity(t.db);
+    const task = await seedTask(t.db, community.id, new Date("2031-01-01T00:00:00.000Z"));
+    await recordCard(t.db, {
+      taskId: task.id,
+      communityId: community.id,
+      telegramChatId: community.telegramChatId,
+      telegramMessageId: 50,
+      format: "photo",
+      state: "open",
+      renderedHash: "first",
+      nextRefreshAt: new Date("2031-01-01T00:01:00.000Z"),
+    });
+    const pinnedAt = new Date("2031-01-01T00:00:01.000Z");
+    await markPinned(t.db, task.id, 51, { pinnedAt, pinError: null });
+    expect(await cardOf(t.db, task.id)).toMatchObject({ pinnedAt: null, pinError: null });
+    await markPinned(t.db, task.id, 50, { pinnedAt: null, pinError: "pin_403" });
+    expect(await cardOf(t.db, task.id)).toMatchObject({ pinnedAt: null, pinError: "pin_403" });
+    await markPinned(t.db, task.id, 50, { pinnedAt, pinError: null });
+    expect(await cardOf(t.db, task.id)).toMatchObject({ pinnedAt, pinError: null });
   });
 });

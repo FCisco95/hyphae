@@ -5,6 +5,7 @@ import { Api, webhookCallback } from "grammy";
 import { Hono } from "hono";
 import { registerCommandMenus } from "./bot/command-menus.js";
 import { bot } from "./bot/index.js";
+import { webhookOptions } from "./bot/webhook-options.js";
 import { db } from "./db.js";
 import { env } from "./env.js";
 import { settlementReader } from "./http/chain-reader.js";
@@ -39,7 +40,7 @@ void db
 const app = new Hono();
 
 app.get("/health", (c) => c.json({ ok: true }));
-app.post("/telegram", webhookCallback(bot, "hono", { secretToken: env.TELEGRAM_WEBHOOK_SECRET }));
+app.post("/telegram", webhookCallback(bot, "hono", webhookOptions(env.TELEGRAM_WEBHOOK_SECRET)));
 app.route(
   "/link",
   linkRoutes({ db, tenant: proofConfig(), notify: telegramLinkedNotifier(notifyApi) }),

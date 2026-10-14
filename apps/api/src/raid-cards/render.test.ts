@@ -135,6 +135,7 @@ describe("card keyboard", () => {
   it("links a supergroup message, and nothing in a basic group", () => {
     expect(messageLink(-1001234567890n, 77)).toBe("https://t.me/c/1234567890/77");
     expect(messageLink(-4567n, 1)).toBeNull();
+    expect(messageLink(-1005678901n, 1)).toBeNull();
   });
 
   it("hashes what was drawn", () => {

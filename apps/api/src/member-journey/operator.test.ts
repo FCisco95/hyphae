@@ -612,31 +612,51 @@ describe("community operator summary", () => {
     }
   });
 
-  it("counts unpinned and uneditable raid cards while raid cards are on", async () => {
+  async function cardsWith(states: { state: "open" | "gone"; pinError?: string }[]) {
     vi.stubEnv("RAID_CARDS", "on");
     const { community } = await seedCommunity(t.db);
-    const open = await seedTask(t.db, community.id, new Date());
-    const gone = await seedTask(t.db, community.id, new Date());
-    const base = {
-      communityId: community.id,
-      telegramChatId: community.telegramChatId,
-      format: "photo" as const,
-      renderedHash: "h",
-    };
-    await recordCard(t.db, {
-      ...base,
-      taskId: open.id,
-      telegramMessageId: 1,
-      state: "open",
-      pinError: "pin_400",
-    });
-    await recordCard(t.db, { ...base, taskId: gone.id, telegramMessageId: 2, state: "gone" });
+    for (const [i, card] of states.entries()) {
+      const task = await seedTask(t.db, community.id, new Date());
+      await recordCard(t.db, {
+        communityId: community.id,
+        telegramChatId: community.telegramChatId,
+        format: "photo",
+        renderedHash: "h",
+        taskId: task.id,
+        telegramMessageId: i + 1,
+        ...card,
+      });
+    }
     const result = await readOperatorSummary(t.db, { communityId: community.id, actorId: 7n });
     if (result.status !== "ok") throw new Error("unauthorized");
-    expect(result.summary.cards).toEqual({ pinFailed: 1, gone: 1 });
-    expect(operatorMessage(result.summary)).toContain(
-      'Raid cards: 1 open card not pinned (give the bot "Pin messages"), 1 no longer editable.',
+    return result.summary;
+  }
+
+  it("counts open cards the bot lacks the rights to pin, and uneditable cards, while raid cards are on", async () => {
+    const summary = await cardsWith([
+      { state: "open", pinError: "pin_400" },
+      { state: "open", pinError: "pin_403" },
+      { state: "gone" },
+    ]);
+    expect(summary.cards).toEqual({ pinRights: 2, pinOther: 0, gone: 1 });
+    expect(operatorMessage(summary)).toContain(
+      'Raid cards: 2 open cards not pinned (give the bot "Pin messages"), 1 no longer editable.',
     );
+  });
+
+  it("words other pin failures neutrally and leaves out empty clauses", async () => {
+    const summary = await cardsWith([{ state: "open", pinError: "pin_failed" }]);
+    expect(summary.cards).toEqual({ pinRights: 0, pinOther: 1, gone: 0 });
+    const line = operatorMessage(summary)
+      .split("\n")
+      .find((l) => l.startsWith("Raid cards:"));
+    expect(line).toBe("Raid cards: 1 open card not pinned for another reason.");
+  });
+
+  it("says nothing about cards that are pinned or finished", async () => {
+    const summary = await cardsWith([{ state: "open" }]);
+    expect(summary.cards).toEqual({ pinRights: 0, pinOther: 0, gone: 0 });
+    expect(operatorMessage(summary)).not.toContain("Raid cards:");
   });
 
   it("reports no card problems while raid cards are off, even with a stored card", async () => {
@@ -653,7 +673,7 @@ describe("community operator summary", () => {
     });
     const result = await readOperatorSummary(t.db, { communityId: community.id, actorId: 7n });
     if (result.status !== "ok") throw new Error("unauthorized");
-    expect(result.summary.cards).toEqual({ pinFailed: 0, gone: 0 });
+    expect(result.summary.cards).toEqual({ pinRights: 0, pinOther: 0, gone: 0 });
     expect(operatorMessage(result.summary)).not.toContain("Raid cards:");
   });
 });

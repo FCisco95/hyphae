@@ -5,6 +5,7 @@ import { db } from "../../db.js";
 import { transitionRaid } from "../../member-journey/lifecycle.js";
 import { MAX_OPEN_RAIDS, openRaid } from "../../raid-alerts/alerts.js";
 import { raidStats, span, statsLine } from "../../raid-alerts/stats.js";
+import { raidCardsOn } from "../../raid-cards/flag.js";
 import { fetchPost } from "../../x/oembed.js";
 import { reply } from "../reply.js";
 import { announceRaid, LIMIT_REACHED, MAX_STATUS_ID_DIGITS, RAID_HOUR_CHOICES } from "./raid.js";
@@ -97,11 +98,14 @@ export async function pickRaidHours(ctx: Context, webUrl: string) {
     await clearButtons(ctx);
     return ctx.reply("That raid was already opened. No extra alerts were queued.");
   }
-  await ctx
-    .editMessageText(`Raid set for ${hours}h. Ends ${utc(opened.task.closesAt)}.`, {
-      reply_markup: { inline_keyboard: [] },
-    })
-    .catch(() => clearButtons(ctx));
+  // With cards on, the group keeps only the card and the results, so the picker goes.
+  if (raidCardsOn()) await ctx.deleteMessage().catch(() => clearButtons(ctx));
+  else
+    await ctx
+      .editMessageText(`Raid set for ${hours}h. Ends ${utc(opened.task.closesAt)}.`, {
+        reply_markup: { inline_keyboard: [] },
+      })
+      .catch(() => clearButtons(ctx));
   return announceRaid(ctx, community, post, opened.task, hours, webUrl);
 }
 

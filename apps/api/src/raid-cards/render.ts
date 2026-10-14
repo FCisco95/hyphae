@@ -117,8 +117,8 @@ export function cardKeyboard(
 
 // Only a supergroup's messages have t.me links.
 export function messageLink(chatId: bigint, messageId: number): string | null {
-  const id = chatId.toString();
-  return id.startsWith("-100") ? `https://t.me/c/${id.slice(4)}/${messageId}` : null;
+  const SUPERGROUPS = 1_000_000_000_000n;
+  return chatId <= -SUPERGROUPS ? `https://t.me/c/${-chatId - SUPERGROUPS}/${messageId}` : null;
 }
 
 export const renderHash = (caption: string, keyboard: InlineKeyboard) =>

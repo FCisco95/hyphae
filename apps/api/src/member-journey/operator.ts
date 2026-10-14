@@ -49,7 +49,8 @@ export type OperatorSummary = {
     unresolvedRewardCalls: number;
     zeroCostRecords: number;
   };
-  cards: { pinFailed: number; gone: number };
+  // pinRights: open cards Telegram refused to pin for want of the right (pin_400/pin_403).
+  cards: { pinRights: number; pinOther: number; gone: number };
 };
 
 // The queue has retention, and legacy scoring has no pre-call dispatch ledger. These rows
@@ -239,7 +240,8 @@ export async function readOperatorSummary(
   const [cards] = raidCardsOn()
     ? await db
         .select({
-          pinFailed: sql<number>`(count(*) filter (where ${raidCards.pinError} is not null and ${raidCards.state} = 'open'))::int`,
+          pinRights: sql<number>`(count(*) filter (where ${raidCards.pinError} in ('pin_400', 'pin_403') and ${raidCards.state} = 'open'))::int`,
+          pinOther: sql<number>`(count(*) filter (where ${raidCards.pinError} is not null and ${raidCards.pinError} not in ('pin_400', 'pin_403') and ${raidCards.state} = 'open'))::int`,
           gone: sql<number>`(count(*) filter (where ${raidCards.state} = 'gone'))::int`,
         })
         .from(raidCards)
@@ -271,9 +273,22 @@ export async function readOperatorSummary(
         unresolvedRewardCalls: rewardSpend?.unknown ?? 0,
         zeroCostRecords: (scoringSpend?.zero ?? 0) + (rewardSpend?.zero ?? 0),
       },
-      cards: cards ?? { pinFailed: 0, gone: 0 },
+      cards: cards ?? { pinRights: 0, pinOther: 0, gone: 0 },
     },
   };
+}
+
+function cardProblems(cards: OperatorSummary["cards"]) {
+  const problems = [
+    cards.pinRights
+      ? `${plural(cards.pinRights, "open card", "open cards")} not pinned (give the bot "Pin messages")`
+      : "",
+    cards.pinOther
+      ? `${plural(cards.pinOther, "open card", "open cards")} not pinned for another reason`
+      : "",
+    cards.gone ? `${cards.gone} no longer editable` : "",
+  ].filter(Boolean);
+  return problems.length ? `Raid cards: ${problems.join(", ")}.` : "";
 }
 
 const usd = (micro: bigint) =>
@@ -318,9 +333,7 @@ export function operatorMessage(s: OperatorSummary): string {
       (r) => `  ${r.status}: ${safeLine(r.reason ?? "Reason unavailable", 60)} (${r.count})`,
     ),
     "Uncertain sends may have arrived; this view does not resend them.",
-    s.cards.pinFailed || s.cards.gone
-      ? `Raid cards: ${plural(s.cards.pinFailed, "open card", "open cards")} not pinned (give the bot "Pin messages"), ${s.cards.gone} no longer editable.`
-      : "",
+    cardProblems(s.cards),
     `Scoring backlog: ${s.unscoredContributions} saved contributions without a score/decision; ${s.unqueuedReceipts} private receipts awaiting queue confirmation.`,
     `Effort nominations: evidence pending ${countState(s.pendingNominations, "pending_evidence")}, ready ${countState(s.pendingNominations, "ready")}, evaluating ${countState(s.pendingNominations, "evaluating")}, reconciliation pending ${countState(s.pendingNominations, "pending_reconciliation")}.`,
     `Scoring issue reports: ${s.issues.count} saved; latest ${s.issues.recent.length} shown. Reports do not change scores.`,

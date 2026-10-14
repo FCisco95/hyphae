@@ -24,6 +24,7 @@ vi.mock("../../x/oembed.js", async (importActual) => ({
 let t: Awaited<ReturnType<typeof createTestDb>>;
 let bot: Bot;
 let sequence = 0;
+let failing: string | undefined;
 let calls: { method: string; payload: Record<string, unknown> }[] = [];
 const sent = () =>
   calls.filter((c) => c.method === "sendMessage").map((c) => String(c.payload.text));
@@ -86,6 +87,8 @@ beforeAll(async () => {
   bot.callbackQuery(/^cr:/, closeRaidButton);
   bot.api.config.use(async (_previous, method, payload) => {
     calls.push({ method, payload: payload as Record<string, unknown> });
+    if (method === failing)
+      return { ok: false, error_code: 400, description: "Bad Request: can't be deleted" } as never;
     const result =
       method === "sendMessage" || method === "sendPhoto"
         ? {
@@ -102,6 +105,7 @@ afterAll(async () => {
 });
 beforeEach(() => {
   calls = [];
+  failing = undefined;
 });
 
 describe("raid buttons", () => {
@@ -267,5 +271,23 @@ describe("raid cards", () => {
         .from(raidCards)
         .where(eq(raidCards.taskId, task?.id ?? "")),
     ).toHaveLength(1);
+    expect(calls.find((c) => c.method === "deleteMessage")?.payload).toMatchObject({
+      chat_id: chatId,
+      message_id: 901,
+    });
+    expect(calls.filter((c) => c.method === "editMessageText")).toEqual([]);
+  });
+
+  it("clears the picker's buttons when the picker cannot be deleted", async () => {
+    vi.stubEnv("RAID_CARDS", "on");
+    vi.stubGlobal("fetch", async () => new Response("missing", { status: 404 }));
+    failing = "deleteMessage";
+    const { community } = await seedCommunity(t.db);
+    await bot.handleUpdate(tap("rn:24:owner:141", Number(community.telegramChatId), 902));
+    expect(calls.find((c) => c.method === "editMessageReplyMarkup")?.payload).toMatchObject({
+      reply_markup: { inline_keyboard: [] },
+    });
+    expect(calls.filter((c) => c.method === "editMessageText")).toEqual([]);
+    expect(await tasksOf(community.id)).toHaveLength(1);
   });
 });

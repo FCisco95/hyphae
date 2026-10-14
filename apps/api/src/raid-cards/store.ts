@@ -1,11 +1,25 @@
 import { type Db, raidCards } from "@hyphae/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 export type RaidCard = typeof raidCards.$inferSelect;
 
 // A webhook retry may announce twice; the first card stays the raid's card.
 export async function recordCard(db: Db, card: typeof raidCards.$inferInsert) {
   await db.insert(raidCards).values(card).onConflictDoNothing({ target: raidCards.taskId });
+}
+
+// The message id keeps a second announce, whose card was not recorded, from marking the first
+// card's row.
+export async function markPinned(
+  db: Db,
+  taskId: string,
+  messageId: number,
+  pin: { pinnedAt: Date | null; pinError: string | null },
+) {
+  await db
+    .update(raidCards)
+    .set(pin)
+    .where(and(eq(raidCards.taskId, taskId), eq(raidCards.telegramMessageId, messageId)));
 }
 
 export async function cardOf(db: Db, taskId: string): Promise<RaidCard | undefined> {

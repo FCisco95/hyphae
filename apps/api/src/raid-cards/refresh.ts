@@ -31,11 +31,13 @@ const REFRESH_MS = 60_000;
 const cancelled = sql`exists (select 1 from ${raidLifecycleEvents} where ${raidLifecycleEvents.taskId} = ${tasks.id} and ${raidLifecycleEvents.action} = 'cancelled')`;
 
 // Due when its minute is up, or at once when an open card's raid has ended or been cancelled.
-// The claim's hold keeps a crashed or failing card from being retried every second. It locks only
-// the card row and commits before any Telegram call; tasks is read unlocked because the recap
-// holds a share lock on a task while it updates the card.
+// The claim's hold keeps a crashed or failing card from being retried every second, so it commits
+// before anything else is read: a throw after it (a rubric that no longer parses) leaves the hold
+// in place instead of rolling it back and starving every other card. It locks only the card row
+// and commits before any Telegram call; tasks is read unlocked because the recap holds a share
+// lock on a task while it updates the card.
 async function claimDueCard(db: Db, now?: Date) {
-  return db.transaction(async (tx) => {
+  const claimed = await db.transaction(async (tx) => {
     const due = now ? sql`${now.toISOString()}::timestamptz` : sql`clock_timestamp()`;
     const [row] = await tx
       .select({ card: raidCards, task: tasks })
@@ -63,22 +65,24 @@ async function claimDueCard(db: Db, now?: Date) {
       .update(raidCards)
       .set({ holdUntil: new Date(at.getTime() + HOLD_MS) })
       .where(eq(raidCards.taskId, row.card.taskId));
-    const [community] = await tx
-      .select({ rubric: communities.rubric })
-      .from(communities)
-      .where(eq(communities.id, row.card.communityId));
-    const events = await tx
-      .select({
-        action: raidLifecycleEvents.action,
-        reason: raidLifecycleEvents.reason,
-        at: raidLifecycleEvents.createdAt,
-      })
-      .from(raidLifecycleEvents)
-      .where(eq(raidLifecycleEvents.taskId, row.task.id));
-    const stats = (await raidStats(tx, [row.task.id], at)).get(row.task.id);
-    if (!community || !stats) throw new Error("raid card: community or stats missing");
-    return { ...row, at, rubric: RubricSchema.parse(community.rubric), events, stats };
+    return { ...row, at };
   });
+  if (!claimed) return;
+  const [community] = await db
+    .select({ rubric: communities.rubric })
+    .from(communities)
+    .where(eq(communities.id, claimed.card.communityId));
+  const events = await db
+    .select({
+      action: raidLifecycleEvents.action,
+      reason: raidLifecycleEvents.reason,
+      at: raidLifecycleEvents.createdAt,
+    })
+    .from(raidLifecycleEvents)
+    .where(eq(raidLifecycleEvents.taskId, claimed.task.id));
+  const stats = (await raidStats(db, [claimed.task.id], claimed.at)).get(claimed.task.id);
+  if (!community || !stats) throw new Error("raid card: community or stats missing");
+  return { ...claimed, rubric: RubricSchema.parse(community.rubric), events, stats };
 }
 
 export async function refreshDueCard(
@@ -116,10 +120,15 @@ export async function refreshDueCard(
     card.resultsMessageId === null ? null : messageLink(card.telegramChatId, card.resultsMessageId),
   );
   const hash = renderHash(caption, keyboard);
-  const hold = (ms: number) =>
+  const final = state !== "open";
+  const unpin = final && card.pinnedAt !== null && card.unpinnedAt === null;
+  // Unpinning is best effort; the card itself already says the raid is over.
+  const unpinCard = () =>
+    editor.unpin(card.telegramChatId, card.telegramMessageId).catch(() => undefined);
+  const hold = (ms: number, unpinned = false) =>
     db
       .update(raidCards)
-      .set({ holdUntil: new Date(at.getTime() + ms) })
+      .set({ holdUntil: new Date(at.getTime() + ms), ...(unpinned && { unpinnedAt: at }) })
       .where(eq(raidCards.taskId, card.taskId));
   let outcome: CardOutcome = hash === card.renderedHash ? "unchanged" : "edited";
   if (outcome === "edited") {
@@ -146,15 +155,14 @@ export async function refreshDueCard(
         await hold((typeof wait === "number" && wait > 0 ? wait : 60) * 1000);
         return "rate_limited";
       } else {
-        await hold(REFRESH_MS);
+        // A persistent edit error must not leave a finished card pinned with live buttons.
+        if (unpin) await unpinCard();
+        await hold(REFRESH_MS, unpin);
         return "failed";
       }
     }
   }
-  const final = state !== "open";
-  const unpin = final && card.pinnedAt !== null && card.unpinnedAt === null;
-  // Unpinning is best effort; the card itself already says the raid is over.
-  if (unpin) await editor.unpin(card.telegramChatId, card.telegramMessageId).catch(() => undefined);
+  if (unpin) await unpinCard();
   // The recap may have posted the results message while this edit was in flight (markResults asks
   // for another draw). A final card stops only if no such request arrived since the claim read it.
   const settledAt = at.toISOString();

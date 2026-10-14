@@ -201,4 +201,25 @@ describe("notifyReward with raid cards on", () => {
     expect(m.sent).toEqual([]);
     expect(m.marked).toEqual(["d1"]);
   });
+
+  it("still fails a group score's send when the bot was blocked, and marks nothing", async () => {
+    m.target = { ...m.target, kind: "text" };
+    m.blocked = true;
+    await expect(notifyReward(job)).rejects.toThrow("telegram:");
+    expect(m.sent).toEqual([]);
+    expect(m.marked).toEqual([]);
+  });
+
+  it("fails a private send on any other error without the token, and marks nothing", async () => {
+    m.fail = true;
+    const err = await notifyReward(job).then(
+      () => null,
+      (e: unknown) => e as Error,
+    );
+    expect(err).toBeInstanceOf(Error);
+    expect(err?.cause).toBeUndefined();
+    expect(inspect(err, { depth: null })).not.toContain(TOKEN);
+    expect(JSON.stringify(err, Object.getOwnPropertyNames(err))).not.toContain(TOKEN);
+    expect(m.marked).toEqual([]);
+  });
 });
