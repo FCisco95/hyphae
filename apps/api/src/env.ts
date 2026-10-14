@@ -9,6 +9,8 @@ const Env = z.object({
   SCORING_MODEL: z.string().default("anthropic:claude-haiku-5-5"),
   // Jev reward scoring stays off until an operator turns it on, and needs the TypeSafe key.
   JEV_SCORING: z.enum(["on", "off"]).default("off"),
+  // Raid cards, private scores and the results table, together. Off keeps the earlier messages.
+  RAID_CARDS: z.enum(["on", "off"]).default("off"),
   TYPESAFE_API_KEY: z.string().min(1).optional(),
   PUBLIC_WEB_URL: z.url().default("https://hyphae.fun"),
   PORT: z.coerce.number().default(8080),
