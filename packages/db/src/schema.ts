@@ -192,6 +192,37 @@ export const raidRecaps = pgTable("raid_recaps", {
   reason: text("reason"),
 });
 
+export const raidCardFormat = pgEnum("raid_card_format", ["photo", "text"]);
+export const raidCardState = pgEnum("raid_card_state", ["open", "ended", "cancelled", "gone"]);
+
+// A raid's live group card: what was last drawn on it and when to look again.
+export const raidCards = pgTable(
+  "raid_cards",
+  {
+    taskId: uuid("task_id")
+      .primaryKey()
+      .references(() => tasks.id),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    telegramChatId: bigint("telegram_chat_id", { mode: "bigint" }).notNull(),
+    telegramMessageId: integer("telegram_message_id").notNull(),
+    format: raidCardFormat("format").notNull(),
+    state: raidCardState("state").notNull(),
+    renderedHash: text("rendered_hash").notNull(),
+    // Null once the card is final.
+    nextRefreshAt: timestamp("next_refresh_at", { withTimezone: true }),
+    // A claim's lease, and the back-off after a failed edit.
+    holdUntil: timestamp("hold_until", { withTimezone: true }),
+    pinnedAt: timestamp("pinned_at", { withTimezone: true }),
+    unpinnedAt: timestamp("unpinned_at", { withTimezone: true }),
+    pinError: text("pin_error"),
+    resultsMessageId: integer("results_message_id"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("raid_cards_due").on(t.nextRefreshAt)],
+);
+
 export const contributionKind = pgEnum("contribution_kind", ["reply", "quote", "post", "text"]);
 
 // Append-only. Never UPDATE; a correction is a new row.

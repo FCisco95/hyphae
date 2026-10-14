@@ -141,6 +141,13 @@
       "when": 1791484538691,
       "tag": "0019_raid_recaps",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1792002193064,
+      "tag": "0020_raid_cards",
+      "breakpoints": true
     }
   ]
 }
