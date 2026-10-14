@@ -116,17 +116,23 @@ export async function refreshDueCard(
   // Every write after the claim is fenced on its latest lease, and the lease is renewed (compare and
   // set) right before each Telegram call: a claim whose reads outlasted its lease, and so may have
   // been overtaken, sends nothing and writes nothing. The lease is a JS Date, never SQL's clock, so
-  // the fence compares exact milliseconds.
+  // the fence compares exact milliseconds. Back-offs count from the clock of the latest renewal,
+  // read just before the Telegram call that asked for them, so slow reads cannot shorten them.
   let lease = claim.lease;
+  let renewedAt = at;
   const leased = () => and(eq(raidCards.taskId, card.taskId), eq(raidCards.holdUntil, lease));
   const renew = async () => {
-    const fresh = new Date((now ?? (await dbClock(db, card.communityId))).getTime() + HOLD_MS);
+    const clock = now ?? (await dbClock(db, card.communityId));
+    const fresh = new Date(clock.getTime() + HOLD_MS);
     const [kept] = await db
       .update(raidCards)
       .set({ holdUntil: fresh })
       .where(leased())
       .returning({ taskId: raidCards.taskId });
-    if (kept) lease = fresh;
+    if (kept) {
+      lease = fresh;
+      renewedAt = clock;
+    }
     return kept !== undefined;
   };
   const cancel = events.find((e) => e.action === "cancelled");
@@ -181,7 +187,7 @@ export async function refreshDueCard(
   const hold = (ms: number, marks: { unpinnedAt?: Date; pinError?: string } = {}) =>
     db
       .update(raidCards)
-      .set({ holdUntil: new Date(at.getTime() + ms), ...marks })
+      .set({ holdUntil: new Date(renewedAt.getTime() + ms), ...marks })
       .where(leased());
   let outcome: CardOutcome = hash === card.renderedHash ? "unchanged" : "edited";
   if (outcome === "edited") {
@@ -230,7 +236,7 @@ export async function refreshDueCard(
     .set({
       state,
       renderedHash: hash,
-      holdUntil: retryMs === undefined ? null : new Date(at.getTime() + retryMs),
+      holdUntil: retryMs === undefined ? null : new Date(renewedAt.getTime() + retryMs),
       nextRefreshAt: !final
         ? new Date(at.getTime() + REFRESH_MS)
         : retryMs === undefined

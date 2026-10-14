@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { type Api, GrammyError, InlineKeyboard } from "grammy";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { transitionRaid } from "../member-journey/lifecycle.js";
+import { dbClock } from "../rewards/config.js";
 import { at, createTestDb, seedCommunity, seedTask } from "../rewards/test-db.js";
 import {
   type CardEditor,
@@ -11,6 +12,12 @@ import {
   telegramCardEditor,
 } from "./refresh.js";
 import { cardOf, markResults, recordCard } from "./store.js";
+
+// The database clock, unless a test makes it read a set time to stand for slow reads.
+vi.mock("../rewards/config.js", async (original) => {
+  const real = await original<typeof import("../rewards/config.js")>();
+  return { ...real, dbClock: vi.fn(real.dbClock) };
+});
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -232,6 +239,49 @@ describe("raid card refresh", { timeout: 30_000 }, () => {
     expect(await refreshDueCard(db, api)).toBe("edited");
     expect(claimed).toBeInstanceOf(Date);
     expect(renewed?.getTime()).toBeGreaterThan(claimed?.getTime() ?? Number.POSITIVE_INFINITY);
+  });
+
+  it("counts its back-offs from the clock of its latest lease renewal, not its claim", async () => {
+    const clock = vi.mocked(dbClock);
+    // Unpin 429 after reads slow enough that the renewals read 25 s and 40 s after the claim.
+    {
+      const { db, task } = await liveCard(new Date(Date.now() - 49 * HOUR));
+      const claimed = new Date();
+      clock
+        .mockResolvedValueOnce(claimed)
+        .mockResolvedValueOnce(new Date(claimed.getTime() + 25_000))
+        .mockResolvedValueOnce(new Date(claimed.getTime() + 40_000));
+      const e = editor();
+      let unpins = 0;
+      const limited: CardEditor = {
+        ...e.api,
+        unpin: async () => {
+          e.calls.push({ method: "unpin" });
+          if (++unpins === 1) throw failure(429, "Too Many Requests", { retry_after: 60 });
+        },
+      };
+      expect(await refreshDueCard(db, limited)).toBe("final");
+      const until = new Date(claimed.getTime() + 40_000 + MIN);
+      expect(await cardOf(db, task.id)).toMatchObject({ unpinnedAt: null, holdUntil: until });
+      expect(await refreshDueCard(db, limited, new Date(until.getTime() - 1000))).toBeUndefined();
+      expect(await refreshDueCard(db, limited, until)).toBe("final");
+      expect(e.calls.map((c) => c.method)).toEqual(["editCaption", "unpin", "unpin"]);
+    }
+    // Edit 429 after a renewal that read 25 s after the claim.
+    {
+      const { db, task } = await liveCard(new Date(Date.now() - HOUR));
+      const claimed = new Date();
+      clock
+        .mockResolvedValueOnce(claimed)
+        .mockResolvedValueOnce(new Date(claimed.getTime() + 25_000));
+      const limited = editor(() => failure(429, "Too Many Requests", { retry_after: 30 }));
+      expect(await refreshDueCard(db, limited.api)).toBe("rate_limited");
+      const until = new Date(claimed.getTime() + 55_000);
+      expect((await cardOf(db, task.id))?.holdUntil).toEqual(until);
+      expect(
+        await refreshDueCard(db, editor().api, new Date(until.getTime() - 1000)),
+      ).toBeUndefined();
+    }
   });
 
   it("keeps the unpin back-off when a results request lands during the final edit", async () => {
