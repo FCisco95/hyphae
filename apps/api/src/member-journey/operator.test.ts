@@ -653,6 +653,18 @@ describe("community operator summary", () => {
     expect(line).toBe("Raid cards: 1 open card not pinned for another reason.");
   });
 
+  it("does not count a refused unpin as a pin problem", async () => {
+    // A finished card whose final edit keeps failing stays open in its row. "pinned" would match
+    // an unescaped pin_% pattern.
+    const summary = await cardsWith([
+      { state: "open", pinError: "unpin_400" },
+      { state: "open", pinError: "unpin_403" },
+      { state: "open", pinError: "pinned" },
+    ]);
+    expect(summary.cards).toEqual({ pinRights: 0, pinOther: 0, gone: 0 });
+    expect(operatorMessage(summary)).not.toContain("Raid cards:");
+  });
+
   it("says nothing about cards that are pinned or finished", async () => {
     const summary = await cardsWith([{ state: "open" }]);
     expect(summary.cards).toEqual({ pinRights: 0, pinOther: 0, gone: 0 });

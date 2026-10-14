@@ -23,7 +23,14 @@ export interface CardEditor {
   botUsername(): Promise<string>;
 }
 
-export type CardOutcome = "edited" | "unchanged" | "final" | "gone" | "rate_limited" | "failed";
+export type CardOutcome =
+  | "edited"
+  | "unchanged"
+  | "final"
+  | "gone"
+  | "rate_limited"
+  | "failed"
+  | "lost";
 
 const HOLD_MS = 30_000;
 const REFRESH_MS = 60_000;
@@ -105,10 +112,23 @@ export async function refreshDueCard(
 ): Promise<CardOutcome | undefined> {
   const claim = await claimDueCard(db, now);
   if (!claim) return;
-  const { card, task, at, lease, rubric, events, stats } = claim;
-  // Every write after the claim is fenced on its lease: once another process has claimed the card
-  // again, this one writes nothing.
-  const leased = and(eq(raidCards.taskId, card.taskId), eq(raidCards.holdUntil, lease));
+  const { card, task, at, rubric, events, stats } = claim;
+  // Every write after the claim is fenced on its latest lease, and the lease is renewed (compare and
+  // set) right before each Telegram call: a claim whose reads outlasted its lease, and so may have
+  // been overtaken, sends nothing and writes nothing. The lease is a JS Date, never SQL's clock, so
+  // the fence compares exact milliseconds.
+  let lease = claim.lease;
+  const leased = () => and(eq(raidCards.taskId, card.taskId), eq(raidCards.holdUntil, lease));
+  const renew = async () => {
+    const fresh = new Date((now ?? (await dbClock(db, card.communityId))).getTime() + HOLD_MS);
+    const [kept] = await db
+      .update(raidCards)
+      .set({ holdUntil: fresh })
+      .where(leased())
+      .returning({ taskId: raidCards.taskId });
+    if (kept) lease = fresh;
+    return kept !== undefined;
+  };
   const cancel = events.find((e) => e.action === "cancelled");
   const close = events.find((e) => e.action === "closed");
   const state: CardState = cancel
@@ -141,12 +161,11 @@ export async function refreshDueCard(
     final && card.pinnedAt !== null && card.unpinnedAt === null && card.pinError === null;
   // An unpin is recorded only once Telegram confirms it. A refusal no retry can change (message
   // gone, no rights, bot removed) is recorded instead; anything else keeps the card due.
-  const unpinCard = async (): Promise<{
-    unpinnedAt?: Date;
-    pinError?: string;
-    retryMs?: number;
-  }> => {
+  const unpinCard = async (): Promise<
+    { unpinnedAt?: Date; pinError?: string; retryMs?: number } | "lost"
+  > => {
     if (!unpin) return {};
+    if (!(await renew())) return "lost";
     try {
       await editor.unpin(card.telegramChatId, card.telegramMessageId);
       return { unpinnedAt: at };
@@ -163,9 +182,10 @@ export async function refreshDueCard(
     db
       .update(raidCards)
       .set({ holdUntil: new Date(at.getTime() + ms), ...marks })
-      .where(leased);
+      .where(leased());
   let outcome: CardOutcome = hash === card.renderedHash ? "unchanged" : "edited";
   if (outcome === "edited") {
+    if (!(await renew())) return "lost";
     try {
       if (card.format === "photo")
         await editor.editCaption(card.telegramChatId, card.telegramMessageId, caption, keyboard);
@@ -182,40 +202,48 @@ export async function refreshDueCard(
         await db
           .update(raidCards)
           .set({ state: "gone", nextRefreshAt: null, holdUntil: null })
-          .where(leased);
+          .where(leased());
         return "gone";
       } else if (error?.error_code === 429) {
         await hold(retryAfter(error));
         return "rate_limited";
       } else {
         // A persistent edit error must not leave a finished card pinned with live buttons.
-        const { retryMs = 0, ...marks } = await unpinCard();
+        const unpinned = await unpinCard();
+        if (unpinned === "lost") return "lost";
+        const { retryMs = 0, ...marks } = unpinned;
         await hold(Math.max(REFRESH_MS, retryMs), marks);
         return "failed";
       }
     }
   }
-  const { retryMs, ...marks } = await unpinCard();
+  const unpinned = await unpinCard();
+  if (unpinned === "lost") return "lost";
+  const { retryMs, ...marks } = unpinned;
   // The recap may have posted the results message while this edit was in flight (markResults asks
-  // for another draw). A final card stops only if no such request arrived since the claim read it
-  // and no unpin waits to be retried.
+  // for another draw). A final card stops only if no such request arrived since the claim read it.
+  // An unpin still to retry keeps the card due behind a hold, which no Results request cuts short.
   const settledAt = at.toISOString();
-  const retryAt = retryMs === undefined ? null : new Date(at.getTime() + retryMs).toISOString();
-  const stopOrAgain = sql`case when ${raidCards.resultsMessageId} is not distinct from ${card.resultsMessageId}::integer then ${retryAt}::timestamptz else ${settledAt}::timestamptz end`;
+  const stopOrAgain = sql`case when ${raidCards.resultsMessageId} is not distinct from ${card.resultsMessageId}::integer then null else ${settledAt}::timestamptz end`;
   await db
     .update(raidCards)
     .set({
       state,
       renderedHash: hash,
-      holdUntil: null,
-      nextRefreshAt: final ? stopOrAgain : new Date(at.getTime() + REFRESH_MS),
+      holdUntil: retryMs === undefined ? null : new Date(at.getTime() + retryMs),
+      nextRefreshAt: !final
+        ? new Date(at.getTime() + REFRESH_MS)
+        : retryMs === undefined
+          ? stopOrAgain
+          : at,
       ...marks,
     })
-    .where(leased);
+    .where(leased());
   return final ? "final" : outcome;
 }
 
-// Each call ends inside the claim's 30-second hold, so a hung request cannot outlive its lease.
+// Each call ends inside the 30-second lease renewed just before it, so a hung request cannot
+// outlive its lease.
 const signal = () =>
   AbortSignal.timeout(20_000) as unknown as Parameters<Api["unpinChatMessage"]>[3];
 

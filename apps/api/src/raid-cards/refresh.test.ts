@@ -22,11 +22,10 @@ afterEach(async () => {
   t = undefined;
 });
 
-async function liveCard() {
+async function liveCard(opens = new Date("2032-01-01T00:00:00.000Z")) {
   await t?.close();
   t = await createTestDb();
   const db = t.db;
-  const opens = new Date("2032-01-01T00:00:00.000Z");
   const { community } = await seedCommunity(db);
   const task = await seedTask(db, community.id, opens);
   await recordCard(db, {
@@ -156,19 +155,20 @@ describe("raid card refresh", { timeout: 30_000 }, () => {
     ]);
   });
 
-  it("writes nothing once another claim has replaced its lease", async () => {
-    for (const fail of [
-      undefined,
-      () => failure(429, "Too Many Requests", { retry_after: 30 }),
-      () => failure(403, "Forbidden: bot was kicked"),
-      () => new Error("socket hang up"),
-    ]) {
+  it("writes nothing and sends no unpin once another claim has replaced its lease", async () => {
+    for (const [fail, outcome] of [
+      [undefined, "lost"],
+      [() => failure(429, "Too Many Requests", { retry_after: 30 }), "rate_limited"],
+      [() => failure(403, "Forbidden: bot was kicked"), "gone"],
+      [() => new Error("socket hang up"), "lost"],
+    ] as const) {
       const { db, task } = await liveCard();
       const after = new Date(task.closesAt.getTime() + 1000);
       const replaced = new Date(after.getTime() + 5000);
       const before = await cardOf(db, task.id);
+      const e = editor();
       const stale: CardEditor = {
-        ...editor().api,
+        ...e.api,
         editCaption: async () => {
           // Another process claimed the card while this edit was in flight.
           await db
@@ -178,9 +178,99 @@ describe("raid card refresh", { timeout: 30_000 }, () => {
           if (fail) throw fail();
         },
       };
-      await refreshDueCard(db, stale, after);
+      expect(await refreshDueCard(db, stale, after)).toBe(outcome);
       expect(await cardOf(db, task.id)).toEqual({ ...before, holdUntil: replaced });
+      expect(e.calls).toEqual([]);
     }
+  });
+
+  it("sends nothing once its lease ran out and another claim drew the card with Results", async () => {
+    const { db, task } = await liveCard();
+    const after = new Date(task.closesAt.getTime() + 1000);
+    const stale = editor();
+    const other = editor();
+    let drawn: Awaited<ReturnType<typeof cardOf>>;
+    const slow: CardEditor = {
+      ...stale.api,
+      // This claim's reads outlast its 30-second lease. Meanwhile the results message lands and
+      // another process claims the card, draws its Results button and settles it final.
+      botUsername: async () => {
+        await markResults(db, task.id, 99, after);
+        expect(await refreshDueCard(db, other.api, new Date(after.getTime() + 31_000))).toBe(
+          "final",
+        );
+        drawn = await cardOf(db, task.id);
+        return "hyphae_bot";
+      },
+    };
+    expect(await refreshDueCard(db, slow, after)).toBe("lost");
+    expect(stale.calls).toEqual([]);
+    expect(other.calls.map((c) => c.method)).toEqual(["editCaption", "unpin"]);
+    expect(other.calls[0]?.keyboard).toEqual([
+      [{ text: "📊 Results", url: "https://t.me/c/1234567890/99" }],
+    ]);
+    expect(await cardOf(db, task.id)).toEqual(drawn);
+    expect(drawn).toMatchObject({ state: "ended", nextRefreshAt: null, resultsMessageId: 99 });
+  });
+
+  it("renews its lease from the database clock right before the edit", async () => {
+    const { db, task } = await liveCard(new Date(Date.now() - HOUR));
+    let claimed: Date | null | undefined;
+    let renewed: Date | null | undefined;
+    const e = editor();
+    const api: CardEditor = {
+      ...e.api,
+      botUsername: async () => {
+        claimed = (await cardOf(db, task.id))?.holdUntil;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        return "hyphae_bot";
+      },
+      editCaption: async () => {
+        renewed = (await cardOf(db, task.id))?.holdUntil;
+      },
+    };
+    expect(await refreshDueCard(db, api)).toBe("edited");
+    expect(claimed).toBeInstanceOf(Date);
+    expect(renewed?.getTime()).toBeGreaterThan(claimed?.getTime() ?? Number.POSITIVE_INFINITY);
+  });
+
+  it("keeps the unpin back-off when a results request lands during the final edit", async () => {
+    const { db, task } = await liveCard();
+    const after = new Date(task.closesAt.getTime() + 1000);
+    const calls: { method: string; keyboard?: unknown }[] = [];
+    const api: CardEditor = {
+      ...editor().api,
+      editCaption: async (_c, _m, _caption, keyboard) => {
+        calls.push({ method: "editCaption", keyboard: keyboard.inline_keyboard });
+        if (calls.length === 1) await markResults(db, task.id, 99, after);
+      },
+      unpin: async () => {
+        calls.push({ method: "unpin" });
+        if (calls.length === 2) throw failure(429, "Too Many Requests", { retry_after: 60 });
+      },
+    };
+    expect(await refreshDueCard(db, api, after)).toBe("final");
+    expect(await cardOf(db, task.id)).toMatchObject({
+      unpinnedAt: null,
+      holdUntil: new Date(after.getTime() + MIN),
+    });
+    expect(await refreshDueCard(db, api, new Date(after.getTime() + 1000))).toBeUndefined();
+    const retry = new Date(after.getTime() + MIN);
+    expect(await refreshDueCard(db, api, retry)).toBe("final");
+    expect(calls).toEqual([
+      { method: "editCaption", keyboard: [] },
+      { method: "unpin" },
+      {
+        method: "editCaption",
+        keyboard: [[{ text: "📊 Results", url: "https://t.me/c/1234567890/99" }]],
+      },
+      { method: "unpin" },
+    ]);
+    expect(await cardOf(db, task.id)).toMatchObject({
+      unpinnedAt: retry,
+      nextRefreshAt: null,
+      holdUntil: null,
+    });
   });
 
   it("shows a cancelled raid with its reason", async () => {
@@ -360,8 +450,8 @@ describe("raid card refresh", { timeout: 30_000 }, () => {
         state: "ended",
         unpinnedAt: null,
         pinError: null,
-        holdUntil: null,
-        nextRefreshAt: new Date(after.getTime() + wait),
+        holdUntil: new Date(after.getTime() + wait),
+        nextRefreshAt: after,
       });
       expect(drawn?.renderedHash).not.toBe("first");
       expect(

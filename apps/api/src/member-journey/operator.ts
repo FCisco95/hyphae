@@ -241,7 +241,8 @@ export async function readOperatorSummary(
     ? await db
         .select({
           pinRights: sql<number>`(count(*) filter (where ${raidCards.pinError} in ('pin_400', 'pin_403') and ${raidCards.state} = 'open'))::int`,
-          pinOther: sql<number>`(count(*) filter (where ${raidCards.pinError} is not null and ${raidCards.pinError} not in ('pin_400', 'pin_403') and ${raidCards.state} = 'open'))::int`,
+          // pin_error also records a refused unpin (unpin_<code>), which is not a pin problem.
+          pinOther: sql<number>`(count(*) filter (where ${raidCards.pinError} like 'pin\\_%' and ${raidCards.pinError} not in ('pin_400', 'pin_403') and ${raidCards.state} = 'open'))::int`,
           gone: sql<number>`(count(*) filter (where ${raidCards.state} = 'gone'))::int`,
         })
         .from(raidCards)
