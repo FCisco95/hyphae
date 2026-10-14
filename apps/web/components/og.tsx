@@ -63,10 +63,12 @@ export async function card({
   context,
   title,
   footer,
+  size = "headline",
 }: {
   context: string;
   title: string;
   footer: string;
+  size?: "headline" | "post";
 }) {
   return new ImageResponse(
     <div
@@ -104,7 +106,13 @@ export async function card({
           <div style={{ fontSize: 26, fontWeight: 500, color: MUTED, marginBottom: 18 }}>
             {context}
           </div>
-          <div style={{ fontSize: 60, fontWeight: 800, lineHeight: 1.06, letterSpacing: -1.5 }}>
+          <div
+            style={
+              size === "post"
+                ? { fontSize: 40, fontWeight: 800, lineHeight: 1.2, letterSpacing: -0.5 }
+                : { fontSize: 60, fontWeight: 800, lineHeight: 1.06, letterSpacing: -1.5 }
+            }
+          >
             {title}
           </div>
         </div>
