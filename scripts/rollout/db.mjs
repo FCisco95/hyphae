@@ -19,11 +19,14 @@
 // than the precheck's, which only the database the live worker writes to can show.
 //
 // Precheck and migrate refuse once the database clock is past 2 hours before epoch 3's close, so
-// the release cannot run into the close and the payout hold window after it.
+// the release cannot run into the close and the payout hold window after it. The clock is read
+// at the state read, again after the public reads, and inside the migration before every
+// statement and the commit; a migration that crosses the deadline rolls back.
 //
 // Rehearsal: against a loopback database only, ROLLOUT_LIVE_FIXTURE=<json> replaces the live API
-// reads with a file, so a disposable Postgres can be checked and migrated. A non-loopback target
-// always reads the live API.
+// reads with a file and ROLLOUT_DEADLINE=<ISO time> replaces the deadline, so a disposable
+// Postgres can be checked and migrated. A non-loopback target always reads the live API and keeps
+// the pinned deadline.
 //
 // Exit codes: 0 pass/applied, 1 fail or unexpected error (stop), 2 lock timeout (nothing applied).
 import { createHash } from "node:crypto";
@@ -40,6 +43,9 @@ const NEW_MIGRATIONS = {
 };
 const EPOCH3_CLOSES_AT = "2026-10-17T00:00:00.000Z";
 const RELEASE_DEADLINE = new Date(Date.parse(EPOCH3_CLOSES_AT) - 2 * 60 * 60_000).toISOString();
+// Schema-qualified so no function in the session's search_path can stand in for the clock.
+const CLOCK = "select pg_catalog.clock_timestamp() as at";
+const PAST_DEADLINE = "PAST_DEADLINE";
 // No amendment is recorded for epoch 3, so its own config's prompt scores it.
 const EPOCH3_PROMPT = "reward-eval/2";
 // 0015 is applied before and after: the three member columns are nullable and the check exists.
@@ -296,7 +302,8 @@ async function readShape(client) {
   const check = (
     await client.query(
       `select count(*)::int as n from pg_constraint
-        where conname = $1 and conrelid = 'public.members'::regclass and contype = 'c'`,
+        where conname = $1 and conrelid = 'public.members'::regclass and contype = 'c'
+          and convalidated`,
       [MEMBERS_CHECK],
     )
   ).rows[0].n;
@@ -307,7 +314,7 @@ async function readShape(client) {
   const amendments = (await exists(AMENDMENTS_TABLE))
     ? {
         checks: await rows(
-          `select conname as v from pg_constraint
+          `select conname || ${constraintFlags("pg_constraint")} as v from pg_constraint
             where conrelid = $1::regclass and contype = 'c' order by conname`,
           AMENDMENTS_TABLE,
         ),
@@ -372,7 +379,8 @@ async function readShape(client) {
                          then ' -> ' || rn.nspname || '.' || r.relname
                               || '(' || ${columnList("k.confkey", "k.confrelid")} || ') '
                               || k.confupdtype::text || '/' || k.confdeltype::text
-                         else '' end as v
+                         else '' end
+                    || ${constraintFlags("k")} as v
                from pg_constraint k left join pg_class r on r.oid = k.confrelid
                left join pg_namespace rn on rn.oid = r.relnamespace
               where k.conrelid = $1::regclass and k.contype in ('c', 'f', 'p', 'u', 'x')
@@ -408,6 +416,13 @@ const columnList = (keys, rel) =>
       from unnest(${keys}) with ordinality as col_key(attnum, ord)
       left join pg_attribute col_att
         on col_att.attrelid = ${rel} and col_att.attnum = col_key.attnum)`;
+
+// A constraint that is NOT VALID or deferrable reads with that suffix, so it never equals the
+// expected shape, which lists only validated, immediate constraints.
+const constraintFlags = (k) =>
+  `case when ${k}.convalidated then '' else ' not valid' end
+   || case when ${k}.condeferrable then ' deferrable' else '' end
+   || case when ${k}.condeferred then ' initially deferred' else '' end`;
 
 // Before and after: 0015, 0017, 0018 and 0019 applied. Before: nothing of 0020. After: exactly
 // 0020's two enums, table and index as well.
@@ -479,8 +494,8 @@ async function readState(client) {
         : (await one(`select count(*)::int as n from public.${t}`))[0].n;
   }
   s.long_transactions = await one(
-    `select pid, state, backend_type, now() - xact_start as age from pg_stat_activity
-      where xact_start < now() - interval '5 seconds' and pid <> pg_backend_pid()
+    `select pid, state, backend_type, pg_catalog.now() - xact_start as age from pg_stat_activity
+      where xact_start < pg_catalog.now() - interval '5 seconds' and pid <> pg_backend_pid()
         and backend_type = 'client backend'`,
   );
   const last = await lastRecovery(client);
@@ -495,16 +510,63 @@ async function readState(client) {
           stale_pending: (
             await one(
               `select count(*)::int as n from pgboss.job
-                where state in ('created', 'retry') and created_on < now() - interval '10 minutes'`,
+                where state in ('created', 'retry')
+                  and created_on < pg_catalog.now() - interval '10 minutes'`,
             )
           )[0].n,
           last_reward_recovery_completed: last,
         };
-  s.reference = (await one("select now() as at, pg_current_wal_lsn()::text as lsn"))[0];
+  s.reference = (
+    await one("select pg_catalog.clock_timestamp() as at, pg_current_wal_lsn()::text as lsn")
+  )[0];
   return s;
 }
 
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+
+function releaseDeadline(target) {
+  const override = process.env.ROLLOUT_DEADLINE;
+  if (!override) return RELEASE_DEADLINE;
+  if (!LOOPBACK.has(target.host)) throw new Error("ROLLOUT_DEADLINE is for loopback only");
+  return new Date(override).toISOString();
+}
+
+// One problem when the database clock `at` is past the deadline, none otherwise.
+const lateness = (at, deadline, when) =>
+  ms(at) <= ms(deadline)
+    ? []
+    : [`${when}, the database clock ${new Date(at).toISOString()} is past ${deadline}`];
+
+// The deadline at the state read, and again after the public reads, which can be slow.
+async function deadlineProblems(conn, state, deadline) {
+  const after = await withReadOnly(conn, async (c) => (await c.query(CLOCK)).rows[0].at);
+  return [
+    ...lateness(state.reference.at, deadline, "at the state read"),
+    ...lateness(after, deadline, "after the public reads"),
+  ];
+}
+
+// The migration's connection reads the database clock before every statement the migrator sends,
+// commit included, so a migration that crosses the deadline rolls back with nothing applied.
+function deadlineClient(Client, deadline) {
+  return class extends Client {
+    query(config, values, callback) {
+      if (typeof values === "function") return this.query(config, undefined, values);
+      const text = typeof config === "string" ? config : config.text;
+      const run = async () => {
+        if (text !== "rollback") {
+          const [{ at }] = (await super.query(CLOCK)).rows;
+          const before = text.replace(/\s+/g, " ").trim().slice(0, 60);
+          const late = lateness(at, deadline, `inside the migration, before "${before}"`);
+          if (late.length) throw Object.assign(new Error(late[0]), { code: PAST_DEADLINE });
+        }
+        return super.query(config, values);
+      };
+      if (!callback) return run();
+      run().then((res) => callback(null, res), callback);
+    }
+  };
+}
 
 async function publicReads(target) {
   const fixture = process.env.ROLLOUT_LIVE_FIXTURE;
@@ -548,10 +610,6 @@ function checkState(s, live, journalExpected, phase) {
   const iso = (d) => d?.toISOString();
   if (s.read_only !== "on") fail(`transaction_read_only is ${s.read_only}`);
   if (s.lock_timeout !== "3s") fail(`lock_timeout is ${s.lock_timeout}, not 3s`);
-  if (phase === "pre" && !(ms(s.reference.at) <= ms(RELEASE_DEADLINE)))
-    fail(
-      `the database clock ${iso(s.reference.at)} is past ${RELEASE_DEADLINE}, 2 hours before epoch 3's close`,
-    );
   if (!journalMatches(s.journal, journalExpected.slice(0, appliedCount)))
     fail(
       `journal (${s.journal.length} rows) is not exactly the first ${appliedCount} expected entries`,
@@ -694,9 +752,11 @@ async function withReadOnly(conn, fn) {
 async function check(phase, baselinePath) {
   const conn = connectionTarget();
   const journalExpected = expectedJournal();
+  const deadline = releaseDeadline(conn.target);
   const state = await withReadOnly(conn, readState);
   const live = await publicReads(conn.target);
   const problems = checkState(state, live, journalExpected, phase);
+  if (phase === "pre") problems.push(...(await deadlineProblems(conn, state, deadline)));
   const allocation = live.epoch2?.settlement?.allocation;
   const report = {
     phase,
@@ -728,6 +788,7 @@ async function check(phase, baselinePath) {
 async function runMigrate(baselinePath) {
   const conn = connectionTarget();
   const journalExpected = expectedJournal();
+  const deadline = releaseDeadline(conn.target);
   const beforeCount = journalExpected.length - Object.keys(NEW_MIGRATIONS).length;
   const before = journalExpected.slice(0, beforeCount);
   const lastBefore = before.at(-1)?.tag;
@@ -741,6 +802,7 @@ async function runMigrate(baselinePath) {
   if (problems.length === 0) problems.push(...compareToBaseline(baseline, gate.state).problems);
   // Every precheck condition must still hold now, not only when the baseline was taken.
   problems.push(...checkState(gate.state, await publicReads(conn.target), journalExpected, "pre"));
+  problems.push(...(await deadlineProblems(conn, gate.state, deadline)));
   if (!journalMatches(gate.journal, before))
     problems.push(`journal is not exactly the ${beforeCount} migrations up to ${lastBefore}`);
   if (problems.length) {
@@ -748,7 +810,8 @@ async function runMigrate(baselinePath) {
     return 1;
   }
 
-  const pool = new pg.Pool({ ...conn.config, max: 1 });
+  const Client = deadlineClient(conn.config.Client ?? pg.Client, deadline);
+  const pool = new pg.Pool({ ...conn.config, Client, max: 1 });
   let failure;
   try {
     await migrate(drizzle(pool), { migrationsFolder });
@@ -775,6 +838,12 @@ async function runMigrate(baselinePath) {
         "LOCK TIMEOUT: journal and schema unchanged. Retry per the release plan (max 3).",
       );
       return 2;
+    }
+    if (code === PAST_DEADLINE && unchanged) {
+      console.error(
+        "PAST DEADLINE: rolled back, journal and schema unchanged. STOP: do not retry.",
+      );
+      return 1;
     }
     const outcome = !after
       ? "UNKNOWN: the database could not be read back"
