@@ -24,7 +24,7 @@
 // statement and the commit; a migration that crosses the deadline rolls back.
 //
 // Rehearsal: against a loopback database only, ROLLOUT_LIVE_FIXTURE=<json> replaces the live API
-// reads with a file and ROLLOUT_DEADLINE=<ISO time> replaces the deadline, so a disposable
+// reads with a file and ROLLOUT_DEADLINE=<ISO time> brings the deadline earlier, so a disposable
 // Postgres can be checked and migrated. A non-loopback target always reads the live API and keeps
 // the pinned deadline.
 //
@@ -524,11 +524,14 @@ async function readState(client) {
 
 const LOOPBACK = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 
+// The override can only bring the deadline earlier, so no target that merely looks local gets a
+// later one.
 function releaseDeadline(target) {
   const override = process.env.ROLLOUT_DEADLINE;
   if (!override) return RELEASE_DEADLINE;
   if (!LOOPBACK.has(target.host)) throw new Error("ROLLOUT_DEADLINE is for loopback only");
-  return new Date(override).toISOString();
+  const at = new Date(override).toISOString();
+  return ms(at) < ms(RELEASE_DEADLINE) ? at : RELEASE_DEADLINE;
 }
 
 // One problem when the database clock `at` is past the deadline, none otherwise.
@@ -547,14 +550,18 @@ async function deadlineProblems(conn, state, deadline) {
 }
 
 // The migration's connection reads the database clock before every statement the migrator sends,
-// commit included, so a migration that crosses the deadline rolls back with nothing applied.
+// commit included, so a migration that crosses the deadline rolls back with nothing applied. The
+// deadline holds to within one round trip. BEGIN is not checked: drizzle sends it outside its
+// try/finally, so a throw there would never release the pool's client and pool.end() would hang;
+// the first statement after it is checked instead.
+const UNCHECKED = new Set(["begin", "rollback"]);
 function deadlineClient(Client, deadline) {
   return class extends Client {
     query(config, values, callback) {
       if (typeof values === "function") return this.query(config, undefined, values);
       const text = typeof config === "string" ? config : config.text;
       const run = async () => {
-        if (text !== "rollback") {
+        if (!UNCHECKED.has(text)) {
           const [{ at }] = (await super.query(CLOCK)).rows;
           const before = text.replace(/\s+/g, " ").trim().slice(0, 60);
           const late = lateness(at, deadline, `inside the migration, before "${before}"`);
@@ -768,6 +775,7 @@ async function check(phase, baselinePath) {
       public_reason: allocation?.reason ?? null,
     },
   };
+  if (phase === "pre") report.deadline = deadline;
   if (phase === "post") {
     const { baseline, problems: bp } = loadBaseline(baselinePath, conn.target);
     problems.push(...bp);
@@ -792,7 +800,7 @@ async function runMigrate(baselinePath) {
   const beforeCount = journalExpected.length - Object.keys(NEW_MIGRATIONS).length;
   const before = journalExpected.slice(0, beforeCount);
   const lastBefore = before.at(-1)?.tag;
-  console.error(`target ${JSON.stringify(conn.target)}`);
+  console.error(`target ${JSON.stringify(conn.target)} deadline ${deadline}`);
 
   const { baseline, problems } = loadBaseline(baselinePath, conn.target);
   const gate = await withReadOnly(conn, async (c) => ({
