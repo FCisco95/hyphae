@@ -1,8 +1,8 @@
-// Production checks and one pinned migration release. Current release: migrations 0018 and 0019
-// for the 2026-10-11 release (docs/demo/2026-10-11-release-plan.md), after epoch 2's first mainnet
-// payout. The Jev live scorer release used it for 0017, the pilot amendment release for 0016, the
-// earn-first release for 0015 and the 2026-10-05 API rollout for 0013+0014 (see those plans and git
-// history).
+// Production checks and one pinned migration release. Current release: migration 0020 for the
+// 2026-10-16 raid cards release (docs/demo/2026-10-16-raid-cards-release.md, private), while epoch 3
+// is open. The 2026-10-11 release used it for 0018+0019, the Jev live scorer release for 0017, the
+// pilot amendment release for 0016, the earn-first release for 0015 and the 2026-10-05 API rollout
+// for 0013+0014 (see those plans and git history).
 //
 // Run from the exact-source worktree's packages/db, so the migrations folder and drivers are the
 // ones the image was built from:
@@ -17,6 +17,9 @@
 // Matching public data only shows consistency: a recent Neon branch or copy would match too. The
 // identity proof is liveness: migrate and postcheck require a reward-recovery completion newer
 // than the precheck's, which only the database the live worker writes to can show.
+//
+// Precheck and migrate refuse once the database clock is past 2 hours before epoch 3's close, so
+// the release cannot run into the close and the payout hold window after it.
 //
 // Rehearsal: against a loopback database only, ROLLOUT_LIVE_FIXTURE=<json> replaces the live API
 // reads with a file, so a disposable Postgres can be checked and migrated. A non-loopback target
@@ -33,10 +36,12 @@ const MINT = "HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg";
 const PUBLIC_API = "https://hyphae-api.fly.dev";
 // The migrations this release applies, in order, pinned by the SHA-256 of their SQL files.
 const NEW_MIGRATIONS = {
-  "0018_member_wallet_links_wallet":
-    "79592f957d9b43805e468c97ffce066a091a68cfaebda5944f9d234282812302",
-  "0019_raid_recaps": "b81d60858828b95e89b7d2be8e0445e231eac6a3c7e43318b983affeeb56864b",
+  "0020_raid_cards": "0ac80d10678a605d8051aac31177560d452403f640ba33ab1295937d573db17e",
 };
+const EPOCH3_CLOSES_AT = "2026-10-17T00:00:00.000Z";
+const RELEASE_DEADLINE = new Date(Date.parse(EPOCH3_CLOSES_AT) - 2 * 60 * 60_000).toISOString();
+// No amendment is recorded for epoch 3, so its own config's prompt scores it.
+const EPOCH3_PROMPT = "reward-eval/2";
 // 0015 is applied before and after: the three member columns are nullable and the check exists.
 const NULLABLE_COLUMNS = ["wallet", "link_method", "linked_at"];
 const MEMBERS_CHECK = "members_wallet_link_together";
@@ -51,8 +56,9 @@ const AMENDMENTS_CHECKS = [
 const AMENDMENTS_INDEXES = ["reward_config_amendments_epoch_from(epoch_id,from_config_id)"];
 // 0019 reuses 0013's enum for a recap's delivery state.
 const RAID_STATUS_LABELS = ["pending", "sending", "sent", "skipped", "failed", "uncertain"];
-// What 0018 and 0019 create, read from the catalog. Types and referenced tables are
-// schema-qualified, so the comparison does not depend on the session's search_path.
+// 0018 and 0019 are applied before and after: exactly the index and the table they create, read
+// from the catalog. Types and referenced tables are schema-qualified, so the comparison does not
+// depend on the session's search_path.
 const WALLET_INDEX = "member_wallet_links_wallet";
 const WALLET_INDEX_SHAPE = {
   table: "member_wallet_links",
@@ -72,7 +78,7 @@ const RAID_RECAPS_SHAPE = {
     "community_id pg_catalog.uuid not null",
     "status public.raid_delivery_status not null",
     "next_attempt_at pg_catalog.timestamptz not null",
-    "retry_used pg_catalog.bool not null default",
+    "retry_used pg_catalog.bool not null default false",
     "attempted_at pg_catalog.timestamptz not null",
     "sent_at pg_catalog.timestamptz null",
     "telegram_message_id pg_catalog.int4 null",
@@ -85,6 +91,48 @@ const RAID_RECAPS_SHAPE = {
   ],
   indexes: ["raid_recaps_pkey"],
 };
+// What 0020 creates.
+const CARD_ENUMS = {
+  raid_card_format: ["photo", "text"],
+  raid_card_state: ["open", "ended", "cancelled", "gone"],
+};
+const RAID_CARDS = "raid_cards";
+const RAID_CARDS_SHAPE = {
+  columns: [
+    "task_id pg_catalog.uuid not null",
+    "community_id pg_catalog.uuid not null",
+    "telegram_chat_id pg_catalog.int8 not null",
+    "telegram_message_id pg_catalog.int4 not null",
+    "format public.raid_card_format not null",
+    "state public.raid_card_state not null",
+    "rendered_hash pg_catalog.text not null",
+    "next_refresh_at pg_catalog.timestamptz null",
+    "hold_until pg_catalog.timestamptz null",
+    "pinned_at pg_catalog.timestamptz null",
+    "unpinned_at pg_catalog.timestamptz null",
+    "pin_error pg_catalog.text null",
+    "results_message_id pg_catalog.int4 null",
+    "created_at pg_catalog.timestamptz not null default now()",
+  ],
+  constraints: [
+    "raid_cards_community_id_communities_id_fk f (community_id) -> public.communities(id) a/a",
+    "raid_cards_pkey p (task_id)",
+    "raid_cards_task_id_tasks_id_fk f (task_id) -> public.tasks(id) a/a",
+  ],
+  indexes: ["raid_cards_due", "raid_cards_pkey"],
+};
+const CARDS_INDEX = "raid_cards_due";
+const CARDS_INDEX_SHAPE = {
+  table: RAID_CARDS,
+  method: "btree",
+  columns: "next_refresh_at",
+  attributes: 1,
+  key_attributes: 1,
+  expressions: false,
+  unique: false,
+  partial: false,
+  valid: true,
+};
 const COUNTED_TABLES = [
   "members",
   "contributions",
@@ -96,6 +144,7 @@ const COUNTED_TABLES = [
   "reward_snapshot_entries",
   "leaves",
   RAID_RECAPS,
+  RAID_CARDS,
 ];
 // Any other query parameter (host, hostaddr, port, options, ...) could redirect the connection
 // away from the host this script reports, so it is refused.
@@ -274,70 +323,81 @@ async function readShape(client) {
           .rows[0].n,
       }
     : null;
-  const [{ labels }] = (
-    await client.query(
-      `select array_agg(e.enumlabel::text order by e.enumsortorder) as labels
-         from pg_enum e join pg_type t on t.oid = e.enumtypid
-         join pg_namespace n on n.oid = t.typnamespace
-        where n.nspname = 'public' and t.typname = 'raid_delivery_status'`,
-    )
-  ).rows;
-  const walletIndex = (await exists(WALLET_INDEX))
-    ? ((
-        await client.query(
-          `select t.relname as table, am.amname as method,
-                  ${columnList("x.indkey", "x.indrelid")} as columns,
-                  x.indnatts as attributes, x.indnkeyatts as key_attributes,
-                  x.indexprs is not null as expressions,
-                  x.indisunique as unique, x.indpred is not null as partial, x.indisvalid as valid
-             from pg_index x join pg_class c on c.oid = x.indexrelid
-             join pg_class t on t.oid = x.indrelid join pg_am am on am.oid = c.relam
-            where x.indexrelid = $1::regclass`,
-          [`public.${WALLET_INDEX}`],
-        )
-      ).rows[0] ?? { not_an_index: true })
-    : null;
-  const recaps = (await exists(RAID_RECAPS))
-    ? {
-        columns: await rows(
-          `select a.attname || ' ' || tn.nspname || '.' || t.typname
-                  || case when a.attnotnull then ' not null' else ' null' end
-                  || case when a.atthasdef then ' default' else '' end as v
-             from pg_attribute a join pg_type t on t.oid = a.atttypid
-             join pg_namespace tn on tn.oid = t.typnamespace
-            where a.attrelid = $1::regclass and a.attnum > 0 and not a.attisdropped
-            order by a.attnum`,
-          RAID_RECAPS,
-        ),
-        // Not-null is read from the columns: Postgres 18 also lists it here as contype 'n'.
-        constraints: await rows(
-          `select k.conname || ' ' || k.contype::text
-                  || ' (' || ${columnList("k.conkey", "k.conrelid")} || ')'
-                  || case when k.contype = 'f'
-                       then ' -> ' || rn.nspname || '.' || r.relname
-                            || '(' || ${columnList("k.confkey", "k.confrelid")} || ') '
-                            || k.confupdtype::text || '/' || k.confdeltype::text
-                       else '' end as v
-             from pg_constraint k left join pg_class r on r.oid = k.confrelid
-             left join pg_namespace rn on rn.oid = r.relnamespace
-            where k.conrelid = $1::regclass and k.contype in ('c', 'f', 'p', 'u', 'x')
-            order by k.conname`,
-          RAID_RECAPS,
-        ),
-        indexes: await rows(
-          `select c.relname as v from pg_index x join pg_class c on c.oid = x.indexrelid
-            where x.indrelid = $1::regclass order by c.relname`,
-          RAID_RECAPS,
-        ),
-      }
-    : null;
+  // Null when the enum does not exist.
+  const enumLabels = async (name) =>
+    (
+      await client.query(
+        `select array_agg(e.enumlabel::text order by e.enumsortorder) as labels
+           from pg_enum e join pg_type t on t.oid = e.enumtypid
+           join pg_namespace n on n.oid = t.typnamespace
+          where n.nspname = 'public' and t.typname = $1`,
+        [name],
+      )
+    ).rows[0].labels;
+  const indexShape = async (name) =>
+    (await exists(name))
+      ? ((
+          await client.query(
+            `select t.relname as table, am.amname as method,
+                    ${columnList("x.indkey", "x.indrelid")} as columns,
+                    x.indnatts as attributes, x.indnkeyatts as key_attributes,
+                    x.indexprs is not null as expressions,
+                    x.indisunique as unique, x.indpred is not null as partial, x.indisvalid as valid
+               from pg_index x join pg_class c on c.oid = x.indexrelid
+               join pg_class t on t.oid = x.indrelid join pg_am am on am.oid = c.relam
+              where x.indexrelid = $1::regclass`,
+            [`public.${name}`],
+          )
+        ).rows[0] ?? { not_an_index: true })
+      : null;
+  const tableShape = async (name) =>
+    (await exists(name))
+      ? {
+          columns: await rows(
+            `select a.attname || ' ' || tn.nspname || '.' || t.typname
+                    || case when a.attnotnull then ' not null' else ' null' end
+                    || coalesce(' default ' || pg_get_expr(d.adbin, d.adrelid), '') as v
+               from pg_attribute a join pg_type t on t.oid = a.atttypid
+               join pg_namespace tn on tn.oid = t.typnamespace
+               left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+              where a.attrelid = $1::regclass and a.attnum > 0 and not a.attisdropped
+              order by a.attnum`,
+            name,
+          ),
+          // Not-null is read from the columns: Postgres 18 also lists it here as contype 'n'.
+          constraints: await rows(
+            `select k.conname || ' ' || k.contype::text
+                    || ' (' || ${columnList("k.conkey", "k.conrelid")} || ')'
+                    || case when k.contype = 'f'
+                         then ' -> ' || rn.nspname || '.' || r.relname
+                              || '(' || ${columnList("k.confkey", "k.confrelid")} || ') '
+                              || k.confupdtype::text || '/' || k.confdeltype::text
+                         else '' end as v
+               from pg_constraint k left join pg_class r on r.oid = k.confrelid
+               left join pg_namespace rn on rn.oid = r.relnamespace
+              where k.conrelid = $1::regclass and k.contype in ('c', 'f', 'p', 'u', 'x')
+              order by k.conname`,
+            name,
+          ),
+          indexes: await rows(
+            `select c.relname as v from pg_index x join pg_class c on c.oid = x.indexrelid
+              where x.indrelid = $1::regclass order by c.relname`,
+            name,
+          ),
+        }
+      : null;
+  const cardEnums = {};
+  for (const name of Object.keys(CARD_ENUMS)) cardEnums[name] = await enumLabels(name);
   return {
     nullable,
     members_check_exists: check === 1,
     amendments_table: amendments,
-    raid_delivery_status: labels,
-    wallet_index: walletIndex,
-    raid_recaps: recaps,
+    raid_delivery_status: await enumLabels("raid_delivery_status"),
+    wallet_index: await indexShape(WALLET_INDEX),
+    raid_recaps: await tableShape(RAID_RECAPS),
+    card_enums: cardEnums,
+    cards_index: await indexShape(CARDS_INDEX),
+    raid_cards: await tableShape(RAID_CARDS),
   };
 }
 
@@ -349,8 +409,8 @@ const columnList = (keys, rel) =>
       left join pg_attribute col_att
         on col_att.attrelid = ${rel} and col_att.attnum = col_key.attnum)`;
 
-// Before: 0015 and 0017 applied, 0019's enum present, nothing of 0018 or 0019. After: exactly
-// 0018's index and 0019's table as well.
+// Before and after: 0015, 0017, 0018 and 0019 applied. Before: nothing of 0020. After: exactly
+// 0020's two enums, table and index as well.
 function shapeProblems(shape, phase) {
   const problems = [];
   if (!NULLABLE_COLUMNS.every((c) => shape.nullable[c] === true) || !shape.members_check_exists)
@@ -362,14 +422,25 @@ function shapeProblems(shape, phase) {
     problems.push(`${AMENDMENTS_TABLE} is not exactly 0017's table`);
   if (!isDeepStrictEqual(shape.raid_delivery_status, RAID_STATUS_LABELS))
     problems.push("enum raid_delivery_status is missing or its labels differ");
+  if (!isDeepStrictEqual(shape.wallet_index, WALLET_INDEX_SHAPE))
+    problems.push(`${WALLET_INDEX} is not exactly 0018's index`);
+  if (!isDeepStrictEqual(shape.raid_recaps, RAID_RECAPS_SHAPE))
+    problems.push(`${RAID_RECAPS} is not exactly 0019's table`);
   if (phase === "pre") {
-    if (shape.wallet_index !== null) problems.push(`${WALLET_INDEX} already exists`);
-    if (shape.raid_recaps !== null) problems.push(`${RAID_RECAPS} already exists`);
+    for (const name of Object.keys(CARD_ENUMS)) {
+      if (shape.card_enums[name] !== null) problems.push(`enum ${name} already exists`);
+    }
+    if (shape.cards_index !== null) problems.push(`${CARDS_INDEX} already exists`);
+    if (shape.raid_cards !== null) problems.push(`${RAID_CARDS} already exists`);
   } else {
-    if (!isDeepStrictEqual(shape.wallet_index, WALLET_INDEX_SHAPE))
-      problems.push(`${WALLET_INDEX} is not exactly 0018's index`);
-    if (!isDeepStrictEqual(shape.raid_recaps, RAID_RECAPS_SHAPE))
-      problems.push(`${RAID_RECAPS} is not exactly 0019's table`);
+    for (const [name, labels] of Object.entries(CARD_ENUMS)) {
+      if (!isDeepStrictEqual(shape.card_enums[name], labels))
+        problems.push(`enum ${name} is missing or its labels differ`);
+    }
+    if (!isDeepStrictEqual(shape.cards_index, CARDS_INDEX_SHAPE))
+      problems.push(`${CARDS_INDEX} is not exactly 0020's index`);
+    if (!isDeepStrictEqual(shape.raid_cards, RAID_CARDS_SHAPE))
+      problems.push(`${RAID_CARDS} is not exactly 0020's table`);
   }
   return problems;
 }
@@ -390,16 +461,20 @@ async function readState(client) {
   );
   s.epochs = await one(
     `select e.index, e.status::text, e.opens_at, e.closes_at, e.reward_config_id, e.publish_tx,
-            (select count(*)::int from reward_epoch_snapshots r where r.epoch_id = e.id) as snapshots
+            rc.payload->'scoring'->>'promptVersion' as prompt_version,
+            (select count(*)::int from reward_epoch_snapshots r where r.epoch_id = e.id) as snapshots,
+            (select count(*)::int from reward_config_amendments a where a.epoch_id = e.id)
+              as amendments
        from epochs e join communities c on c.id = e.community_id
+       left join reward_configs rc on rc.id = e.reward_config_id
       where c.mint = $1 order by e.index`,
     [MINT],
   );
   s.counts = {};
   for (const t of COUNTED_TABLES) {
-    // Before 0019 raid_recaps does not exist and holds no rows; the shape says whether it exists.
+    // Before 0020 raid_cards does not exist and holds no rows; the shape says whether it exists.
     s.counts[t] =
-      t === RAID_RECAPS && s.shape.raid_recaps === null
+      t === RAID_CARDS && s.shape.raid_cards === null
         ? 0
         : (await one(`select count(*)::int as n from public.${t}`))[0].n;
   }
@@ -470,8 +545,13 @@ function checkState(s, live, journalExpected, phase) {
   const newCount = Object.keys(NEW_MIGRATIONS).length;
   const appliedCount = phase === "pre" ? journalExpected.length - newCount : journalExpected.length;
 
+  const iso = (d) => d?.toISOString();
   if (s.read_only !== "on") fail(`transaction_read_only is ${s.read_only}`);
   if (s.lock_timeout !== "3s") fail(`lock_timeout is ${s.lock_timeout}, not 3s`);
+  if (phase === "pre" && !(ms(s.reference.at) <= ms(RELEASE_DEADLINE)))
+    fail(
+      `the database clock ${iso(s.reference.at)} is past ${RELEASE_DEADLINE}, 2 hours before epoch 3's close`,
+    );
   if (!journalMatches(s.journal, journalExpected.slice(0, appliedCount)))
     fail(
       `journal (${s.journal.length} rows) is not exactly the first ${appliedCount} expected entries`,
@@ -487,28 +567,25 @@ function checkState(s, live, journalExpected, phase) {
   const e1 = s.epochs.find((e) => e.index === 1);
   const e2 = s.epochs.find((e) => e.index === 2);
   const e3 = s.epochs.find((e) => e.index === 3);
-  const iso = (d) => d?.toISOString();
   if (s.epochs.length !== 3) fail(`Hyphae Lab has ${s.epochs.length} epochs, expected 3`);
   if (e1?.status !== "closed" || e1?.snapshots !== 1) fail("epoch 1 is not closed with 1 snapshot");
-  // Publishing writes status, root and publish_tx together, so epoch 2 is closed before its
-  // publication lands and published after; either is valid here and the report records which.
+  // Epoch 2's payout ran: publishing writes status, root and publish_tx together.
   if (
-    !["closed", "published"].includes(e2?.status) ||
-    e2?.snapshots !== 1 ||
-    iso(e2?.closes_at) !== "2026-10-10T00:00:00.000Z"
+    e2?.status !== "published" ||
+    !e2.publish_tx ||
+    e2.snapshots !== 1 ||
+    iso(e2.closes_at) !== "2026-10-10T00:00:00.000Z"
   )
-    fail("epoch 2 is not closed at 2026-10-10T00:00Z with 1 snapshot");
-  else if ((e2.status === "published") !== (e2.publish_tx !== null))
-    fail(
-      `epoch 2 is ${e2.status} but its publish_tx is ${e2.publish_tx === null ? "null" : "set"}`,
-    );
+    fail("epoch 2 is not published, closed at 2026-10-10T00:00Z with 1 snapshot");
   if (
     e3?.status !== "open" ||
     e3?.snapshots !== 0 ||
     iso(e3?.opens_at) !== "2026-10-10T00:00:00.000Z" ||
-    iso(e3?.closes_at) !== "2026-10-17T00:00:00.000Z"
+    iso(e3?.closes_at) !== EPOCH3_CLOSES_AT
   )
     fail("epoch 3 is not open from 2026-10-10T00:00Z to 2026-10-17T00:00Z with 0 snapshots");
+  if (e3?.prompt_version !== EPOCH3_PROMPT || e3?.amendments !== 0)
+    fail(`epoch 3 is not scored by ${EPOCH3_PROMPT} with no amendment`);
 
   // Consistency with what the live API serves (identity comes from liveness, see the header).
   if (live.community.name !== lab?.name) fail("public name differs");
@@ -531,6 +608,8 @@ function checkState(s, live, journalExpected, phase) {
     if (pe?.closed !== (publicStatus(de) === "closed")) differs.push("closed");
     if (pe?.final !== de.snapshots > 0) differs.push("final");
     if (pe?.config?.id !== de.reward_config_id) differs.push("reward config");
+    if (pe?.config?.prompt_version !== de.prompt_version) differs.push("prompt version");
+    if (pe?.amendments?.length !== de.amendments) differs.push("amendments");
     if (differs.length) fail(`public epoch ${de.index} detail differs: ${differs.join(", ")}`);
   }
   // The API shows a publication only from the stored publish_tx, after verifying it on chain. A
@@ -542,8 +621,8 @@ function checkState(s, live, journalExpected, phase) {
   for (const t of COUNTED_TABLES) {
     if (!Number.isInteger(s.counts[t]) || s.counts[t] < 0) fail(`count of ${t} is invalid`);
   }
-  if (s.counts[RAID_RECAPS] !== 0)
-    fail(`${RAID_RECAPS} has ${s.counts[RAID_RECAPS]} row(s): only the new image writes recaps`);
+  if (s.counts[RAID_CARDS] !== 0)
+    fail(`${RAID_CARDS} has ${s.counts[RAID_CARDS]} row(s): only the new image writes cards`);
   if (s.long_transactions.length > 0)
     fail(`${s.long_transactions.length} other transaction(s) older than 5 s`);
   if (!s.queue) fail("pgboss.job is missing or has no reward-recovery completion");
@@ -584,7 +663,7 @@ function compareToBaseline(baseline, state) {
     deltas[t] = state.counts[t] - baseline.state.counts[t];
     if (!(deltas[t] >= 0)) problems.push(`${t} lost rows or is invalid (delta ${deltas[t]})`);
   }
-  // This release records no amendment; epoch 3's is recorded only after the new image runs.
+  // This release records no amendment: epoch 3 stays on its own config's prompt.
   if (deltas.reward_config_amendments !== 0)
     problems.push(`reward_config_amendments changed by ${deltas.reward_config_amendments}`);
   const age = ms(state.reference.at) - ms(baseline.state.reference.at);
@@ -622,7 +701,7 @@ async function check(phase, baselinePath) {
   const report = {
     phase,
     target: conn.target,
-    // Epoch 2's publication may or may not have landed when this runs: recorded, not required.
+    // The public side needs the API's chain read, which can fail: recorded, not required.
     epoch2_publication: {
       database: state.epochs.find((e) => e.index === 2)?.status ?? null,
       public: allocation?.status ?? null,
