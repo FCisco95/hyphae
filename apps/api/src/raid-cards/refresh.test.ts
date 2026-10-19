@@ -120,6 +120,28 @@ describe("raid card refresh", { timeout: 30_000 }, () => {
     expect(await refreshDueCard(db, e.api, new Date(after.getTime() + HOUR))).toBeUndefined();
   });
 
+  it("unpins a card whose pin was sent but never recorded (a crash before markPinned)", async () => {
+    const { db, task } = await liveCard();
+    await db.update(raidCards).set({ pinnedAt: null }).where(eq(raidCards.taskId, task.id));
+    const e = editor();
+    const after = new Date(task.closesAt.getTime() + 1000);
+    expect(await refreshDueCard(db, e.api, after)).toBe("final");
+    expect(e.calls.map((c) => c.method)).toEqual(["editCaption", "unpin"]);
+    expect(await cardOf(db, task.id)).toMatchObject({ unpinnedAt: after, pinError: null });
+  });
+
+  it("never tries to unpin a card whose pin Telegram refused", async () => {
+    const { db, task } = await liveCard();
+    await db
+      .update(raidCards)
+      .set({ pinnedAt: null, pinError: "pin_403" })
+      .where(eq(raidCards.taskId, task.id));
+    const e = editor();
+    const after = new Date(task.closesAt.getTime() + 1000);
+    expect(await refreshDueCard(db, e.api, after)).toBe("final");
+    expect(e.calls.map((c) => c.method)).toEqual(["editCaption"]);
+  });
+
   it("adds the Results button once the results message exists", async () => {
     const { db, task } = await liveCard();
     const e = editor();

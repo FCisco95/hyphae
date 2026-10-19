@@ -158,8 +158,9 @@ export async function refreshDueCard(
   );
   const hash = renderHash(caption, keyboard);
   const final = state !== "open";
-  const unpin =
-    final && card.pinnedAt !== null && card.unpinnedAt === null && card.pinError === null;
+  // pinnedAt is not required: a crash after the pin and before markPinned leaves a pinned card
+  // without it, and a refused pin is already recorded in pinError.
+  const unpin = final && card.unpinnedAt === null && card.pinError === null;
   // An unpin is recorded only once Telegram confirms it. A refusal no retry can change (message
   // gone, no rights, bot removed) is recorded instead; anything else keeps the card due.
   const unpinCard = async (): Promise<
