@@ -1,9 +1,19 @@
 #!/bin/sh
 # The local gate, run by git on every push (AGENTS.md: the hook is the gate; CI repeats it).
-# Docs-only pushes skip it. Postgres suites run in CI only, since they need Docker.
+# Docs-only pushes skip it, and so does a push of nothing but refs/ms/ (the /leave carrier refs).
+# Postgres suites run in CI only, since they need Docker.
 set -e
 
 zero=0000000000000000000000000000000000000000
+refs=$(cat)
+
+# At least one ref and every remote ref under refs/ms/: no docs check, no gate. Any other remote
+# ref, or no ref at all, goes on to both.
+if [ -n "$refs" ] && printf '%s\n' "$refs" | awk '$3 !~ /^refs\/ms\// { other = 1 } END { exit other }'; then
+  echo "pre-push: refs/ms only, gate skipped"
+  exit 0
+fi
+
 changed=""
 while read -r local_ref local_sha remote_ref remote_sha; do
   [ "$local_sha" = "$zero" ] && continue
@@ -19,10 +29,12 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     changed="$changed
 $(git diff --name-only "$base" "$local_sha")"
   fi
-done
+done <<EOF
+$refs
+EOF
 
 code=$(printf '%s\n' "$changed" | grep -v '^$' | grep -vE '^docs/|\.md$' || true)
-if [ -z "$code" ]; then
+if [ -z "$code" ] && [ -n "$refs" ]; then
   echo "pre-push: docs only, gate skipped"
   exit 0
 fi
