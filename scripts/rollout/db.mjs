@@ -1,6 +1,7 @@
-// Production checks and one pinned migration release. Current release: migration 0020 for the
-// 2026-10-16 raid cards release (docs/demo/2026-10-16-raid-cards-release.md, private), while epoch 3
-// is open. The 2026-10-11 release used it for 0018+0019, the Jev live scorer release for 0017, the
+// Production checks and one pinned migration release. Current release: migration 0021 for the
+// 2026-10-21 shared-handle payout hold (docs/demo/2026-10-21-shared-handle-release.md, private),
+// while epoch 4 is open. The raid cards release used it for 0020, the 2026-10-11 release for
+// 0018+0019, the Jev live scorer release for 0017, the
 // pilot amendment release for 0016, the earn-first release for 0015 and the 2026-10-05 API rollout
 // for 0013+0014 (see those plans and git history).
 //
@@ -18,7 +19,7 @@
 // identity proof is liveness: migrate and postcheck require a reward-recovery completion newer
 // than the precheck's, which only the database the live worker writes to can show.
 //
-// Precheck and migrate refuse once the database clock is past 2 hours before epoch 3's close, so
+// Precheck and migrate refuse once the database clock is past 2 hours before epoch 4's close, so
 // the release cannot run into the close and the payout hold window after it. The clock is read
 // at the state read, again after the public reads, and inside the migration before every
 // statement and the commit; a migration that crosses the deadline rolls back.
@@ -39,15 +40,16 @@ const MINT = "HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg";
 const PUBLIC_API = "https://hyphae-api.fly.dev";
 // The migrations this release applies, in order, pinned by the SHA-256 of their SQL files.
 const NEW_MIGRATIONS = {
-  "0020_raid_cards": "0ac80d10678a605d8051aac31177560d452403f640ba33ab1295937d573db17e",
+  "0021_shared_handle_clearances":
+    "e049aa17d986e9447ec7e784e92639ac6a09977323db1de2e5cc32b585ccaf68",
 };
-const EPOCH3_CLOSES_AT = "2026-10-17T00:00:00.000Z";
-const RELEASE_DEADLINE = new Date(Date.parse(EPOCH3_CLOSES_AT) - 2 * 60 * 60_000).toISOString();
+const EPOCH4_CLOSES_AT = "2026-10-24T00:00:00.000Z";
+const RELEASE_DEADLINE = new Date(Date.parse(EPOCH4_CLOSES_AT) - 2 * 60 * 60_000).toISOString();
 // Schema-qualified so no function in the session's search_path can stand in for the clock.
 const CLOCK = "select pg_catalog.clock_timestamp() as at";
 const PAST_DEADLINE = "PAST_DEADLINE";
-// No amendment is recorded for epoch 3, so its own config's prompt scores it.
-const EPOCH3_PROMPT = "reward-eval/2";
+// No amendment is recorded for epoch 4, so its own config's prompt scores it.
+const EPOCH4_PROMPT = "reward-eval/2";
 // 0015 is applied before and after: the three member columns are nullable and the check exists.
 const NULLABLE_COLUMNS = ["wallet", "link_method", "linked_at"];
 const MEMBERS_CHECK = "members_wallet_link_together";
@@ -97,7 +99,7 @@ const RAID_RECAPS_SHAPE = {
   ],
   indexes: ["raid_recaps_pkey"],
 };
-// What 0020 creates.
+// 0020 is applied before and after: exactly its two enums, table and index.
 const CARD_ENUMS = {
   raid_card_format: ["photo", "text"],
   raid_card_state: ["open", "ended", "cancelled", "gone"],
@@ -139,6 +141,37 @@ const CARDS_INDEX_SHAPE = {
   partial: false,
   valid: true,
 };
+// What 0021 creates.
+const SHARED = "shared_handle_clearances";
+const SHARED_SHAPE = {
+  columns: [
+    "id pg_catalog.uuid not null default gen_random_uuid()",
+    "community_id pg_catalog.uuid not null",
+    "epoch_id pg_catalog.uuid not null",
+    "member_id pg_catalog.uuid not null",
+    "note pg_catalog.text not null",
+    "cleared_at pg_catalog.timestamptz not null default now()",
+  ],
+  constraints: [
+    "shared_handle_clearances_community_id_communities_id_fk f (community_id) -> public.communities(id) a/a",
+    "shared_handle_clearances_epoch_id_epochs_id_fk f (epoch_id) -> public.epochs(id) a/a",
+    "shared_handle_clearances_member_id_members_id_fk f (member_id) -> public.members(id) a/a",
+    "shared_handle_clearances_pkey p (id)",
+  ],
+  indexes: ["shared_handle_clearances_epoch_member", "shared_handle_clearances_pkey"],
+};
+const SHARED_INDEX = "shared_handle_clearances_epoch_member";
+const SHARED_INDEX_SHAPE = {
+  table: SHARED,
+  method: "btree",
+  columns: "epoch_id,member_id",
+  attributes: 2,
+  key_attributes: 2,
+  expressions: false,
+  unique: true,
+  partial: false,
+  valid: true,
+};
 const COUNTED_TABLES = [
   "members",
   "contributions",
@@ -151,6 +184,7 @@ const COUNTED_TABLES = [
   "leaves",
   RAID_RECAPS,
   RAID_CARDS,
+  SHARED,
 ];
 // Any other query parameter (host, hostaddr, port, options, ...) could redirect the connection
 // away from the host this script reports, so it is refused.
@@ -406,6 +440,8 @@ async function readShape(client) {
     card_enums: cardEnums,
     cards_index: await indexShape(CARDS_INDEX),
     raid_cards: await tableShape(RAID_CARDS),
+    shared_index: await indexShape(SHARED_INDEX),
+    shared: await tableShape(SHARED),
   };
 }
 
@@ -424,8 +460,8 @@ const constraintFlags = (k) =>
    || case when ${k}.condeferrable then ' deferrable' else '' end
    || case when ${k}.condeferred then ' initially deferred' else '' end`;
 
-// Before and after: 0015, 0017, 0018 and 0019 applied. Before: nothing of 0020. After: exactly
-// 0020's two enums, table and index as well.
+// Before and after: 0015, 0017, 0018, 0019 and 0020 applied. Before: nothing of 0021. After:
+// exactly 0021's table and unique index as well.
 function shapeProblems(shape, phase) {
   const problems = [];
   if (!NULLABLE_COLUMNS.every((c) => shape.nullable[c] === true) || !shape.members_check_exists)
@@ -441,21 +477,22 @@ function shapeProblems(shape, phase) {
     problems.push(`${WALLET_INDEX} is not exactly 0018's index`);
   if (!isDeepStrictEqual(shape.raid_recaps, RAID_RECAPS_SHAPE))
     problems.push(`${RAID_RECAPS} is not exactly 0019's table`);
+  for (const [name, labels] of Object.entries(CARD_ENUMS)) {
+    if (!isDeepStrictEqual(shape.card_enums[name], labels))
+      problems.push(`enum ${name} is missing or its labels differ`);
+  }
+  if (!isDeepStrictEqual(shape.cards_index, CARDS_INDEX_SHAPE))
+    problems.push(`${CARDS_INDEX} is not exactly 0020's index`);
+  if (!isDeepStrictEqual(shape.raid_cards, RAID_CARDS_SHAPE))
+    problems.push(`${RAID_CARDS} is not exactly 0020's table`);
   if (phase === "pre") {
-    for (const name of Object.keys(CARD_ENUMS)) {
-      if (shape.card_enums[name] !== null) problems.push(`enum ${name} already exists`);
-    }
-    if (shape.cards_index !== null) problems.push(`${CARDS_INDEX} already exists`);
-    if (shape.raid_cards !== null) problems.push(`${RAID_CARDS} already exists`);
+    if (shape.shared_index !== null) problems.push(`${SHARED_INDEX} already exists`);
+    if (shape.shared !== null) problems.push(`${SHARED} already exists`);
   } else {
-    for (const [name, labels] of Object.entries(CARD_ENUMS)) {
-      if (!isDeepStrictEqual(shape.card_enums[name], labels))
-        problems.push(`enum ${name} is missing or its labels differ`);
-    }
-    if (!isDeepStrictEqual(shape.cards_index, CARDS_INDEX_SHAPE))
-      problems.push(`${CARDS_INDEX} is not exactly 0020's index`);
-    if (!isDeepStrictEqual(shape.raid_cards, RAID_CARDS_SHAPE))
-      problems.push(`${RAID_CARDS} is not exactly 0020's table`);
+    if (!isDeepStrictEqual(shape.shared_index, SHARED_INDEX_SHAPE))
+      problems.push(`${SHARED_INDEX} is not exactly 0021's index`);
+    if (!isDeepStrictEqual(shape.shared, SHARED_SHAPE))
+      problems.push(`${SHARED} is not exactly 0021's table`);
   }
   return problems;
 }
@@ -487,9 +524,9 @@ async function readState(client) {
   );
   s.counts = {};
   for (const t of COUNTED_TABLES) {
-    // Before 0020 raid_cards does not exist and holds no rows; the shape says whether it exists.
+    // Before 0021 its table does not exist and holds no rows; the shape says whether it exists.
     s.counts[t] =
-      t === RAID_CARDS && s.shape.raid_cards === null
+      t === SHARED && s.shape.shared === null
         ? 0
         : (await one(`select count(*)::int as n from public.${t}`))[0].n;
   }
@@ -588,8 +625,8 @@ async function publicReads(target) {
   };
   return {
     community: await get(`/v1/communities/${MINT}`),
-    epoch2: await get(`/v1/communities/${MINT}/epochs/2`),
     epoch3: await get(`/v1/communities/${MINT}/epochs/3`),
+    epoch4: await get(`/v1/communities/${MINT}/epochs/4`),
   };
 }
 
@@ -632,25 +669,31 @@ function checkState(s, live, journalExpected, phase) {
   const e1 = s.epochs.find((e) => e.index === 1);
   const e2 = s.epochs.find((e) => e.index === 2);
   const e3 = s.epochs.find((e) => e.index === 3);
-  if (s.epochs.length !== 3) fail(`Hyphae Lab has ${s.epochs.length} epochs, expected 3`);
+  const e4 = s.epochs.find((e) => e.index === 4);
+  if (s.epochs.length !== 4) fail(`Hyphae Lab has ${s.epochs.length} epochs, expected 4`);
   if (e1?.status !== "closed" || e1?.snapshots !== 1) fail("epoch 1 is not closed with 1 snapshot");
-  // Epoch 2's payout ran: publishing writes status, root and publish_tx together.
+  // Epochs 2 and 3 were paid: publishing writes status, root and publish_tx together.
+  for (const [index, e, closes] of [
+    [2, e2, "2026-10-10T00:00:00.000Z"],
+    [3, e3, "2026-10-17T00:00:00.000Z"],
+  ]) {
+    if (
+      e?.status !== "published" ||
+      !e.publish_tx ||
+      e.snapshots !== 1 ||
+      iso(e.closes_at) !== closes
+    )
+      fail(`epoch ${index} is not published, closed at ${closes} with 1 snapshot`);
+  }
   if (
-    e2?.status !== "published" ||
-    !e2.publish_tx ||
-    e2.snapshots !== 1 ||
-    iso(e2.closes_at) !== "2026-10-10T00:00:00.000Z"
+    e4?.status !== "open" ||
+    e4?.snapshots !== 0 ||
+    iso(e4?.opens_at) !== "2026-10-17T00:00:00.000Z" ||
+    iso(e4?.closes_at) !== EPOCH4_CLOSES_AT
   )
-    fail("epoch 2 is not published, closed at 2026-10-10T00:00Z with 1 snapshot");
-  if (
-    e3?.status !== "open" ||
-    e3?.snapshots !== 0 ||
-    iso(e3?.opens_at) !== "2026-10-10T00:00:00.000Z" ||
-    iso(e3?.closes_at) !== EPOCH3_CLOSES_AT
-  )
-    fail("epoch 3 is not open from 2026-10-10T00:00Z to 2026-10-17T00:00Z with 0 snapshots");
-  if (e3?.prompt_version !== EPOCH3_PROMPT || e3?.amendments !== 0)
-    fail(`epoch 3 is not scored by ${EPOCH3_PROMPT} with no amendment`);
+    fail("epoch 4 is not open from 2026-10-17T00:00Z to 2026-10-24T00:00Z with 0 snapshots");
+  if (e4?.prompt_version !== EPOCH4_PROMPT || e4?.amendments !== 0)
+    fail(`epoch 4 is not scored by ${EPOCH4_PROMPT} with no amendment`);
 
   // Consistency with what the live API serves (identity comes from liveness, see the header).
   if (live.community.name !== lab?.name) fail("public name differs");
@@ -665,8 +708,8 @@ function checkState(s, live, journalExpected, phase) {
   // Each detail read against its database epoch. The API's `closed` is its clock past closes_at
   // and `final` is the snapshot: an epoch it shows as open has neither, a closed one has both.
   for (const [de, pe] of [
-    [e2, live.epoch2],
     [e3, live.epoch3],
+    [e4, live.epoch4],
   ]) {
     if (!de) continue; // its database state has already failed above
     const differs = epochDifferences(de, pe);
@@ -679,15 +722,17 @@ function checkState(s, live, journalExpected, phase) {
   }
   // The API shows a publication only from the stored publish_tx, after verifying it on chain. A
   // stored one it shows as unavailable can be a failed chain read, so only this direction fails.
-  const allocation = live.epoch2?.settlement?.allocation;
-  if (allocation?.status === "published" && allocation.publish_tx !== e2?.publish_tx)
-    fail("public epoch 2 publication is not the database's publish_tx");
+  const allocation = live.epoch3?.settlement?.allocation;
+  if (allocation?.status === "published" && allocation.publish_tx !== e3?.publish_tx)
+    fail("public epoch 3 publication is not the database's publish_tx");
 
   for (const t of COUNTED_TABLES) {
     if (!Number.isInteger(s.counts[t]) || s.counts[t] < 0) fail(`count of ${t} is invalid`);
   }
-  if (s.counts[RAID_CARDS] !== 0)
-    fail(`${RAID_CARDS} has ${s.counts[RAID_CARDS]} row(s): only the new image writes cards`);
+  if (s.counts[SHARED] !== 0)
+    fail(
+      `${SHARED} has ${s.counts[SHARED]} row(s): clearances are recorded only after this release`,
+    );
   if (s.long_transactions.length > 0)
     fail(`${s.long_transactions.length} other transaction(s) older than 5 s`);
   if (!s.queue) fail("pgboss.job is missing or has no reward-recovery completion");
@@ -728,7 +773,7 @@ function compareToBaseline(baseline, state) {
     deltas[t] = state.counts[t] - baseline.state.counts[t];
     if (!(deltas[t] >= 0)) problems.push(`${t} lost rows or is invalid (delta ${deltas[t]})`);
   }
-  // This release records no amendment: epoch 3 stays on its own config's prompt.
+  // This release records no amendment: epoch 4 stays on its own config's prompt.
   if (deltas.reward_config_amendments !== 0)
     problems.push(`reward_config_amendments changed by ${deltas.reward_config_amendments}`);
   const age = ms(state.reference.at) - ms(baseline.state.reference.at);
@@ -764,13 +809,13 @@ async function check(phase, baselinePath) {
   const live = await publicReads(conn.target);
   const problems = checkState(state, live, journalExpected, phase);
   if (phase === "pre") problems.push(...(await deadlineProblems(conn, state, deadline)));
-  const allocation = live.epoch2?.settlement?.allocation;
+  const allocation = live.epoch3?.settlement?.allocation;
   const report = {
     phase,
     target: conn.target,
     // The public side needs the API's chain read, which can fail: recorded, not required.
-    epoch2_publication: {
-      database: state.epochs.find((e) => e.index === 2)?.status ?? null,
+    epoch3_publication: {
+      database: state.epochs.find((e) => e.index === 3)?.status ?? null,
       public: allocation?.status ?? null,
       public_reason: allocation?.reason ?? null,
     },
