@@ -5,10 +5,11 @@ import {
   MemberEpochManifest,
   memberEpochHash,
 } from "@hyphae/core";
-import { type Db, epochPublicationMembers, epochPublications } from "@hyphae/db";
+import { type Db, epochPublicationMembers, epochPublications, epochs } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import type { z } from "zod";
 import { leavesOf, type Publication, type PublishedLeaf } from "./publication.js";
+import { clearedMembers } from "./shared-handles.js";
 
 // The publication intent (migration 0011): the exact bytes a publish sends, stored before the
 // send. Every later run sends or records these bytes; nothing is taken from a rebuild after a send.
@@ -96,6 +97,14 @@ export async function storeIntent(
   built: Ready,
 ): Promise<PublicationIntent> {
   await db.transaction(async (tx) => {
+    // Under the lock clearSharedHandle takes: a clearance the build did not see refuses the store,
+    // and none can be recorded once the intent exists.
+    await tx.select({ id: epochs.id }).from(epochs).where(eq(epochs.id, ref.epochId)).for("update");
+    if ((await clearedMembers(tx, ref.epochId)).join() !== built.clearedMembers.join()) {
+      throw new Error(
+        `publish: a shared-handle clearance for epoch ${ref.epochId} was recorded during planning; plan again`,
+      );
+    }
     const [inserted] = await tx
       .insert(epochPublications)
       .values({

@@ -552,6 +552,24 @@ describe("payout gate on a MYCEL epoch", () => {
     });
   });
 
+  it("holds the epoch while a shared member's balance is unread, so a stored plan cannot change", async () => {
+    const { ref, memberIds } = await closedLane(["LaneWalletP1", "LaneWalletP2", "LaneWalletP3"]);
+    const [a = "", b = ""] = memberIds;
+    for (const id of [a, b]) {
+      await t.db
+        .update(members)
+        .set({ xHandles: ["pairhandle"] })
+        .where(eq(members.id, id));
+    }
+    await t.db.delete(holdChecks).where(eq(holdChecks.memberId, a));
+    const gate = await evaluatePayoutGate(t.db, ref);
+    expect(gate).toMatchObject({ status: "blocked", blockers: ["hold_checks_pending"] });
+    expect(gate.members.find((m) => m.memberId === a)).toMatchObject({
+      status: "held",
+      reasons: ["hold_pending", "shared_handle"],
+    });
+  });
+
   it("ignores a handle shared with a member of another community", async () => {
     const one = await closedLane(["LaneWalletX1"]);
     const two = await closedLane(["LaneWalletX2"]);

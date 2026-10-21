@@ -140,8 +140,7 @@ export async function runHoldChecks(
   if (started < closesAt) return { status: "too_early" };
   if (started > deadline) return { status: "window_closed" };
   const counts = { holder: 0, below: 0, uncertain: 0 };
-  // Held members, and members waiting only for shared-handle clearance besides the balance.
-  const held = gate.members.filter((m) => m.reasons.includes("hold_pending"));
+  const held = gate.members.filter((m) => m.status === "held");
   if (held.length === 0 || !gate.hold) return { status: "checked", ...counts };
   const { mint, thresholdRaw } = gate.hold;
 

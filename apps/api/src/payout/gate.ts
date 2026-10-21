@@ -53,7 +53,9 @@ export interface MemberVerdict {
   wholePoints: string;
   // walletAt(closes_at) when it is signed, the only wallet a payout may use (D3).
   wallet: string | null;
-  // held: every other condition holds and the hold result is not confirmed yet.
+  // held: the hold result is not confirmed yet and nothing else but a missing shared-handle
+  // clearance stands in the way. A held member blocks the epoch, so a ready epoch's evidence can
+  // no longer change.
   status: "payable" | "not_payable" | "held";
   reasons: MemberReason[];
   // The evidence behind the verdict, which publication commits as it is: the pass that counted
@@ -381,7 +383,8 @@ export async function judgeMembers(
       status:
         reasons.length === 0
           ? "payable"
-          : reasons.length === 1 && reasons[0] === "hold_pending"
+          : reasons[0] === "hold_pending" &&
+              reasons.every((r) => r === "hold_pending" || r === "shared_handle")
             ? "held"
             : "not_payable",
       reasons,

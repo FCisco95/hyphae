@@ -1,12 +1,14 @@
 import { fileURLToPath } from "node:url";
 import { HYPHAE_PROGRAM_ID } from "@hyphae/core";
-import { createDb, epochPublications, epochs, leaves } from "@hyphae/db";
+import { createDb, epochPublications, epochs, leaves, members } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { storeIntent } from "./intent.js";
 import { buildPublication } from "./publication.js";
 import { type OnChainEpoch, type PublishChain, publishEpoch } from "./publish.js";
 import { randomAddress, seedReadyEpoch } from "./ready-seed.js";
+import { clearSharedHandle } from "./shared-handles.js";
 
 // R6 publication and the publish job on Postgres 17 through postgres-js, the production driver
 // (scripts/test-pg.sh): microsecond timestamps, numeric and bigint columns, jsonb proofs.
@@ -69,6 +71,36 @@ describe("publication and publish on Postgres", () => {
     expect(p.allocation.allocatedLamports).toBe(304_603_658n);
     expect(p.audit.epoch.closes_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/);
     expect(p.leaves).toHaveLength(3);
+  });
+
+  it("a clearance racing the intent store: one wins, and the other refuses", async () => {
+    const community = randomAddress();
+    const seed = await seedReadyEpoch(a, { now: NOW, chainAddress: community });
+    const ref = { communityId: seed.communityId, epochId: seed.epochId };
+    for (const id of [seed.members.effort, seed.members.ordinary]) {
+      await a
+        .update(members)
+        .set({ xHandles: ["SameOne"] })
+        .where(eq(members.id, id));
+    }
+    const built = await buildPublication(a, ref, { grossLamports: GROSS, ...SETTINGS });
+    if (built.status !== "ready") throw new Error("not ready");
+    const [stored, cleared] = await Promise.allSettled([
+      storeIntent(a, ref, community, built),
+      clearSharedHandle(b, { ...ref, memberId: seed.members.effort, note: "race" }),
+    ]);
+    const intents = await a
+      .select()
+      .from(epochPublications)
+      .where(eq(epochPublications.epochId, seed.epochId));
+    if (stored.status === "fulfilled") {
+      expect(cleared).toMatchObject({ status: "fulfilled", value: { status: "planned" } });
+      expect(intents).toHaveLength(1);
+    } else {
+      expect(String(stored.reason)).toMatch(/clearance/);
+      expect(cleared).toMatchObject({ status: "fulfilled", value: { status: "cleared" } });
+      expect(intents).toHaveLength(0);
+    }
   });
 
   it("records one publication when two runs race", async () => {

@@ -6,14 +6,17 @@ import {
   epochs,
   holdChecks,
   leaves,
+  members,
   rewardDecisions,
 } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb } from "../rewards/test-db.js";
+import { storeIntent } from "./intent.js";
 import { buildPublication } from "./publication.js";
 import { type OnChainEpoch, type PublishChain, planPublication, publishEpoch } from "./publish.js";
 import { randomAddress, seedReadyEpoch } from "./ready-seed.js";
+import { clearSharedHandle } from "./shared-handles.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -425,6 +428,47 @@ describe("the stored publication intent", () => {
     expect(fake.calls.publish[0]).toMatchObject({
       root: plan.intent.root,
       auditHash: plan.intent.auditHash,
+    });
+  });
+
+  describe("with members sharing an X handle", () => {
+    async function sharedSeed() {
+      const { seed, ref } = await seeded();
+      for (const id of [seed.members.effort, seed.members.ordinary]) {
+        await t.db
+          .update(members)
+          .set({ xHandles: ["SameOne"] })
+          .where(eq(members.id, id));
+      }
+      const community = await communityOf(seed.communityId);
+      return { seed, ref, address: community.chainAddress as string };
+    }
+    const clear = (ref: { communityId: string; epochId: string }, memberId: string) =>
+      clearSharedHandle(t.db, { ...ref, memberId, note: "test: two people" });
+
+    it("refuses a clearance once the epoch is planned, and the plan still publishes", async () => {
+      const { seed, ref, address } = await sharedSeed();
+      const fake = fakeChain(address);
+      const plan = await planPublication(t.db, fake.chain, input(ref));
+      if (plan.status !== "planned") throw new Error(`not planned: ${plan.status}`);
+      expect(plan.intent.leaves).toHaveLength(1);
+      expect(await clear(ref, seed.members.effort)).toEqual({ status: "planned" });
+      expect(await publishEpoch(t.db, fake.chain, input(ref))).toMatchObject({
+        status: "published",
+        auditHash: plan.intent.auditHash,
+      });
+    });
+
+    it("a clearance recorded between build and store stores nothing; the next plan includes it", async () => {
+      const { seed, ref, address } = await sharedSeed();
+      const built = await buildPublication(t.db, ref, settings);
+      if (built.status !== "ready") throw new Error("not ready");
+      expect(await clear(ref, seed.members.effort)).toMatchObject({ status: "cleared" });
+      await expect(storeIntent(t.db, ref, address, built)).rejects.toThrow(/clearance/);
+      expect((await intentOf(seed.epochId)).publication).toBeUndefined();
+      const plan = await planPublication(t.db, fakeChain(address).chain, input(ref));
+      if (plan.status !== "planned") throw new Error(`not planned: ${plan.status}`);
+      expect(plan.intent.leaves).toHaveLength(2);
     });
   });
 

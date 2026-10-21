@@ -19,6 +19,7 @@ import { amendmentsOf } from "../rewards/amendment.js";
 import { storedEpochCommitments } from "./commitment-store.js";
 import { type Blocker, type MemberVerdict, payoutGateIn } from "./gate.js";
 import type { RulesTest } from "./rules-test.js";
+import { clearedMembers } from "./shared-handles.js";
 
 // R6: from a ready payout gate to what publish commits on-chain. The gate alone decides who is
 // payable; this module only turns that verdict into exact lamports (P6–P11), the member-epoch
@@ -52,6 +53,8 @@ export type Publication =
       root: string;
       audit: EpochAuditManifest;
       auditHash: string;
+      // The shared-handle clearances the verdicts used, by member id in order.
+      clearedMembers: string[];
     };
 
 const byKey = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
@@ -259,6 +262,7 @@ export async function buildPublication(
       root,
       audit,
       auditHash: epochAuditHash(audit),
+      clearedMembers: await clearedMembers(tx, ref.epochId),
     };
   });
 }

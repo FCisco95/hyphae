@@ -1,5 +1,5 @@
-import { type Db, epochs, members, sharedHandleClearances } from "@hyphae/db";
-import { and, eq } from "drizzle-orm";
+import { type Db, epochPublications, epochs, members, sharedHandleClearances } from "@hyphae/db";
+import { and, asc, eq } from "drizzle-orm";
 import { sharedHandleMembers } from "../bot/commands/handles.js";
 import { readOnly } from "../pg.js";
 
@@ -43,11 +43,23 @@ export async function sharedHandleReport(
   });
 }
 
+// The members cleared for the epoch, in id order.
+export async function clearedMembers(tx: Db, epochId: string): Promise<string[]> {
+  const rows = await tx
+    .select({ memberId: sharedHandleClearances.memberId })
+    .from(sharedHandleClearances)
+    .where(eq(sharedHandleClearances.epochId, epochId))
+    .orderBy(asc(sharedHandleClearances.memberId));
+  return rows.map((r) => r.memberId);
+}
+
 export type ClearResult =
   | { status: "cleared"; clearedAt: Date }
-  | { status: "already_cleared" | "not_shared" | "published" | "not_found" };
+  | { status: "already_cleared" | "not_shared" | "planned" | "published" | "not_found" };
 
-// Records an admin's clearance of one member for one unpublished epoch. Insert-only.
+// Records an admin's clearance of one member for one epoch with no stored publication intent:
+// a planned epoch publishes exactly its stored bytes. The epoch row lock orders this against
+// storeIntent, which takes the same lock. Insert-only.
 export async function clearSharedHandle(
   db: Db,
   input: { communityId: string; epochId: string; memberId: string; note: string },
@@ -58,13 +70,18 @@ export async function clearSharedHandle(
       .select()
       .from(epochs)
       .where(and(eq(epochs.id, input.epochId), eq(epochs.communityId, input.communityId)))
-      .for("share");
+      .for("update");
     const [member] = await tx
       .select({ id: members.id })
       .from(members)
       .where(and(eq(members.id, input.memberId), eq(members.communityId, input.communityId)));
     if (!epoch || !member) return { status: "not_found" };
     if (epoch.status === "published" || epoch.root !== null) return { status: "published" };
+    const [planned] = await tx
+      .select({ id: epochPublications.id })
+      .from(epochPublications)
+      .where(eq(epochPublications.epochId, input.epochId));
+    if (planned) return { status: "planned" };
     const rows = await tx
       .select({ id: members.id, xHandles: members.xHandles })
       .from(members)
