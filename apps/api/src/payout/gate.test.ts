@@ -22,6 +22,7 @@ import { runEvaluation } from "../rewards/evaluation.js";
 import { at, createTestDb, later, rubric, seedRewardLane, T0 } from "../rewards/test-db.js";
 import { evaluatePayoutGate } from "./gate.js";
 import type { RulesTest } from "./rules-test.js";
+import { clearSharedHandle } from "./shared-handles.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -552,21 +553,57 @@ describe("payout gate on a MYCEL epoch", () => {
     });
   });
 
-  it("holds the epoch while a shared member's balance is unread, so a stored plan cannot change", async () => {
-    const { ref, memberIds } = await closedLane(["LaneWalletP1", "LaneWalletP2", "LaneWalletP3"]);
-    const [a = "", b = ""] = memberIds;
-    for (const id of [a, b]) {
-      await t.db
-        .update(members)
-        .set({ xHandles: ["pairhandle"] })
-        .where(eq(members.id, id));
+  describe("a shared member whose balance is unread", () => {
+    async function unreadPair() {
+      const { ref, memberIds } = await closedLane(["LaneWalletP1", "LaneWalletP2", "LaneWalletP3"]);
+      const [a = "", b = ""] = memberIds;
+      for (const id of [a, b]) {
+        await t.db
+          .update(members)
+          .set({ xHandles: ["pairhandle"] })
+          .where(eq(members.id, id));
+      }
+      await t.db.delete(holdChecks).where(eq(holdChecks.memberId, a));
+      const [epoch] = await t.db.select().from(epochs).where(eq(epochs.id, ref.epochId));
+      const closesAt = epoch?.closesAt.getTime() ?? 0;
+      const inWindow = () => new Date(closesAt + 60 * MIN);
+      const afterWindow = () => new Date(closesAt + 24 * 60 * MIN + 1);
+      return { ref, a, inWindow, afterWindow };
     }
-    await t.db.delete(holdChecks).where(eq(holdChecks.memberId, a));
-    const gate = await evaluatePayoutGate(t.db, ref);
-    expect(gate).toMatchObject({ status: "blocked", blockers: ["hold_checks_pending"] });
-    expect(gate.members.find((m) => m.memberId === a)).toMatchObject({
-      status: "held",
-      reasons: ["hold_pending", "shared_handle"],
+
+    it("holds the epoch inside the hold window, so a stored plan cannot change", async () => {
+      const { ref, a, inWindow } = await unreadPair();
+      const gate = await evaluatePayoutGate(t.db, ref, { clock: inWindow });
+      expect(gate).toMatchObject({ status: "blocked", blockers: ["hold_checks_pending"] });
+      expect(gate.members.find((m) => m.memberId === a)).toMatchObject({
+        status: "held",
+        reasons: ["hold_pending", "shared_handle"],
+      });
+    });
+
+    it("after the window no result can count: the member is not paid and the epoch goes on", async () => {
+      const { ref, a, afterWindow } = await unreadPair();
+      const gate = await evaluatePayoutGate(t.db, ref, { clock: afterWindow });
+      expect(gate).toMatchObject({ status: "ready", payable: 1 });
+      expect(gate.members.find((m) => m.memberId === a)).toMatchObject({
+        status: "not_payable",
+        reasons: ["hold_pending", "shared_handle"],
+      });
+    });
+
+    it("can be cleared inside the window, but never after it", async () => {
+      const { ref, a, inWindow, afterWindow } = await unreadPair();
+      const input = { ...ref, memberId: a, note: "test" };
+      expect(await clearSharedHandle(t.db, input, { clock: afterWindow })).toEqual({
+        status: "hold_unresolved",
+      });
+      expect(await evaluatePayoutGate(t.db, ref, { clock: afterWindow })).toMatchObject({
+        status: "ready",
+        payable: 1,
+      });
+      expect(await clearSharedHandle(t.db, input, { clock: inWindow })).toMatchObject({
+        status: "cleared",
+      });
     });
   });
 

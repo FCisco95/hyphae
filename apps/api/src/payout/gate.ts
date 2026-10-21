@@ -199,11 +199,17 @@ async function consistentSnapshot(
   return { entries, totals };
 }
 
+export interface GateDeps {
+  tests?: readonly RulesTest[];
+  // Only decides whether the hold window is over for a member waiting for clearance.
+  clock?: () => Date;
+}
+
 // Read-only and lock-free: the snapshot is frozen, and passes and hold results only move forward.
 export async function evaluatePayoutGate(
   db: Db,
   ref: { communityId: string; epochId: string },
-  deps: { tests?: readonly RulesTest[] } = {},
+  deps: GateDeps = {},
 ): Promise<PayoutGate> {
   return readOnly(db, (tx) => payoutGateIn(tx, ref, deps));
 }
@@ -212,7 +218,7 @@ export async function evaluatePayoutGate(
 export async function payoutGateIn(
   tx: Db,
   ref: { communityId: string; epochId: string },
-  deps: { tests?: readonly RulesTest[] } = {},
+  deps: GateDeps = {},
 ): Promise<PayoutGate> {
   const [row] = await tx
     .select({
@@ -270,6 +276,7 @@ export async function payoutGateIn(
     totals: judged.totals,
     testId: test.id,
     hold,
+    now: (deps.clock ?? (() => new Date()))(),
   });
 
   const payable = members.filter((m) => m.status === "payable");
@@ -308,9 +315,14 @@ export async function judgeMembers(
     totals: { memberId: string; pointUnits: bigint; wholePoints: bigint }[];
     testId: string;
     hold: HoldRequirement;
+    now?: Date;
   },
 ): Promise<MemberVerdict[]> {
   const { epoch, hold } = input;
+  // After the window no hold result can be recorded, so waiting for one would hold the epoch for
+  // ever; a member waiting for clearance is then simply not paid.
+  const windowOver =
+    (input.now ?? new Date()).getTime() > epoch.closesAt.getTime() + HOLD_WINDOW_MS;
   const passed = await passesBefore(tx, {
     memberIds: input.totals.map((m) => m.memberId),
     testId: input.testId,
@@ -384,6 +396,7 @@ export async function judgeMembers(
         reasons.length === 0
           ? "payable"
           : reasons[0] === "hold_pending" &&
+              !(windowOver && reasons.includes("shared_handle")) &&
               reasons.every((r) => r === "hold_pending" || r === "shared_handle")
             ? "held"
             : "not_payable",

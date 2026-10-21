@@ -2,6 +2,7 @@ import { type Db, epochPublications, epochs, members, sharedHandleClearances } f
 import { and, asc, eq } from "drizzle-orm";
 import { sharedHandleMembers } from "../bot/commands/handles.js";
 import { readOnly } from "../pg.js";
+import { type GateDeps, HOLD_WINDOW_MS, payoutGateIn } from "./gate.js";
 
 export interface SharedGroup {
   handle: string;
@@ -55,14 +56,24 @@ export async function clearedMembers(tx: Db, epochId: string): Promise<string[]>
 
 export type ClearResult =
   | { status: "cleared"; clearedAt: Date }
-  | { status: "already_cleared" | "not_shared" | "planned" | "published" | "not_found" };
+  | {
+      status:
+        | "already_cleared"
+        | "not_shared"
+        | "planned"
+        | "published"
+        | "hold_unresolved"
+        | "not_found";
+    };
 
 // Records an admin's clearance of one member for one epoch with no stored publication intent:
 // a planned epoch publishes exactly its stored bytes. The epoch row lock orders this against
-// storeIntent, which takes the same lock. Insert-only.
+// storeIntent, which takes the same lock. A member whose balance was never read in the hold
+// window cannot be cleared: it would hold the epoch for ever. Insert-only.
 export async function clearSharedHandle(
   db: Db,
   input: { communityId: string; epochId: string; memberId: string; note: string },
+  deps: GateDeps = {},
 ): Promise<ClearResult> {
   if (input.note.trim() === "") throw new Error("shared-handles: a clearance needs a note");
   return db.transaction(async (tx) => {
@@ -87,6 +98,16 @@ export async function clearSharedHandle(
       .from(members)
       .where(eq(members.communityId, input.communityId));
     if (!sharedHandleMembers(rows).has(input.memberId)) return { status: "not_shared" };
+    const now = (deps.clock ?? (() => new Date()))();
+    if (now.getTime() > epoch.closesAt.getTime() + HOLD_WINDOW_MS) {
+      const gate = await payoutGateIn(
+        tx,
+        { communityId: input.communityId, epochId: epoch.id },
+        deps,
+      );
+      const verdict = gate.members.find((m) => m.memberId === input.memberId);
+      if (verdict?.reasons.includes("hold_pending")) return { status: "hold_unresolved" };
+    }
     const [row] = await tx
       .insert(sharedHandleClearances)
       .values({ ...input, note: input.note.trim() })
