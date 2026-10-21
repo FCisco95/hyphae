@@ -76,43 +76,54 @@ export async function clearSharedHandle(
   deps: GateDeps = {},
 ): Promise<ClearResult> {
   if (input.note.trim() === "") throw new Error("shared-handles: a clearance needs a note");
-  return db.transaction(async (tx) => {
-    const [epoch] = await tx
-      .select()
-      .from(epochs)
-      .where(and(eq(epochs.id, input.epochId), eq(epochs.communityId, input.communityId)))
-      .for("update");
-    const [member] = await tx
-      .select({ id: members.id })
-      .from(members)
-      .where(and(eq(members.id, input.memberId), eq(members.communityId, input.communityId)));
-    if (!epoch || !member) return { status: "not_found" };
-    if (epoch.status === "published" || epoch.root !== null) return { status: "published" };
-    const [planned] = await tx
-      .select({ id: epochPublications.id })
-      .from(epochPublications)
-      .where(eq(epochPublications.epochId, input.epochId));
-    if (planned) return { status: "planned" };
-    const rows = await tx
-      .select({ id: members.id, xHandles: members.xHandles })
-      .from(members)
-      .where(eq(members.communityId, input.communityId));
-    if (!sharedHandleMembers(rows).has(input.memberId)) return { status: "not_shared" };
-    const now = (deps.clock ?? (() => new Date()))();
-    if (now.getTime() > epoch.closesAt.getTime() + HOLD_WINDOW_MS) {
-      const gate = await payoutGateIn(
-        tx,
-        { communityId: input.communityId, epochId: epoch.id },
-        deps,
-      );
-      const verdict = gate.members.find((m) => m.memberId === input.memberId);
-      if (verdict?.reasons.includes("hold_pending")) return { status: "hold_unresolved" };
-    }
-    const [row] = await tx
-      .insert(sharedHandleClearances)
-      .values({ ...input, note: input.note.trim() })
-      .onConflictDoNothing()
-      .returning();
-    return row ? { status: "cleared", clearedAt: row.clearedAt } : { status: "already_cleared" };
-  });
+  return db
+    .transaction(async (tx): Promise<ClearResult> => {
+      const [epoch] = await tx
+        .select()
+        .from(epochs)
+        .where(and(eq(epochs.id, input.epochId), eq(epochs.communityId, input.communityId)))
+        .for("update");
+      const [member] = await tx
+        .select({ id: members.id })
+        .from(members)
+        .where(and(eq(members.id, input.memberId), eq(members.communityId, input.communityId)));
+      if (!epoch || !member) return { status: "not_found" };
+      if (epoch.status === "published" || epoch.root !== null) return { status: "published" };
+      const [planned] = await tx
+        .select({ id: epochPublications.id })
+        .from(epochPublications)
+        .where(eq(epochPublications.epochId, input.epochId));
+      if (planned) return { status: "planned" };
+      const rows = await tx
+        .select({ id: members.id, xHandles: members.xHandles })
+        .from(members)
+        .where(eq(members.communityId, input.communityId));
+      if (!sharedHandleMembers(rows).has(input.memberId)) return { status: "not_shared" };
+      const [row] = await tx
+        .insert(sharedHandleClearances)
+        .values({ ...input, note: input.note.trim() })
+        .onConflictDoNothing()
+        .returning();
+      if (!row) return { status: "already_cleared" };
+      // After the window no balance can be read any more: a clearance that leaves the member waiting
+      // for one would hold the epoch for ever, so it is undone.
+      const now = (deps.clock ?? (() => new Date()))();
+      if (now.getTime() > epoch.closesAt.getTime() + HOLD_WINDOW_MS) {
+        const gate = await payoutGateIn(
+          tx,
+          { communityId: input.communityId, epochId: epoch.id },
+          deps,
+        );
+        if (gate.members.find((m) => m.memberId === input.memberId)?.status === "held") {
+          throw new HoldUnresolved();
+        }
+      }
+      return { status: "cleared", clearedAt: row.clearedAt };
+    })
+    .catch((e: unknown) => {
+      if (e instanceof HoldUnresolved) return { status: "hold_unresolved" } as ClearResult;
+      throw e;
+    });
 }
+
+class HoldUnresolved extends Error {}

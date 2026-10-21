@@ -529,11 +529,11 @@ describe("payout gate on a MYCEL epoch", () => {
     const verdict = (id: string) => gate.members.find((m) => m.memberId === id);
     expect(gate).toMatchObject({ status: "ready", payable: 1 });
     for (const id of [a, b]) {
-      // The balance is still applied: clearance may come after the hold window.
+      // No balance evidence while uncleared, so a result landing late cannot change a plan.
       expect(verdict(id)).toMatchObject({
         status: "not_payable",
         reasons: ["shared_handle"],
-        holdResult: { check: expect.objectContaining({ status: "holder" }) },
+        holdResult: null,
       });
     }
     expect(verdict(c)).toMatchObject({ status: "payable", reasons: [] });
@@ -585,9 +585,44 @@ describe("payout gate on a MYCEL epoch", () => {
       const { ref, a, afterWindow } = await unreadPair();
       const gate = await evaluatePayoutGate(t.db, ref, { clock: afterWindow });
       expect(gate).toMatchObject({ status: "ready", payable: 1 });
-      expect(gate.members.find((m) => m.memberId === a)).toMatchObject({
+      const excluded = gate.members.find((m) => m.memberId === a);
+      expect(excluded).toMatchObject({
         status: "not_payable",
-        reasons: ["hold_pending", "shared_handle"],
+        reasons: ["shared_handle"],
+        holdResult: null,
+      });
+      // A result read inside the window but committed after it leaves the verdict as it was.
+      await t.db.insert(holdChecks).values(
+        holder({
+          communityId: ref.communityId,
+          epochId: ref.epochId,
+          memberId: a,
+          wallet: excluded?.wallet ?? "",
+          mint: gate.hold?.mint ?? "",
+          observedAt: new Date(afterWindow().getTime() - 2),
+        }),
+      );
+      const late = await evaluatePayoutGate(t.db, ref, { clock: afterWindow });
+      expect(late.members.find((m) => m.memberId === a)).toEqual(excluded);
+    });
+
+    it("a member whose balance was read can still be cleared after the window", async () => {
+      const { ref, memberIds } = await closedLane(["LaneWalletR1", "LaneWalletR2"]);
+      const [a = "", b = ""] = memberIds;
+      for (const id of [a, b]) {
+        await t.db
+          .update(members)
+          .set({ xHandles: ["readpair"] })
+          .where(eq(members.id, id));
+      }
+      const [epoch] = await t.db.select().from(epochs).where(eq(epochs.id, ref.epochId));
+      const after = () => new Date((epoch?.closesAt.getTime() ?? 0) + 25 * 60 * MIN);
+      expect(
+        await clearSharedHandle(t.db, { ...ref, memberId: a, note: "test" }, { clock: after }),
+      ).toMatchObject({ status: "cleared" });
+      expect(await evaluatePayoutGate(t.db, ref, { clock: after })).toMatchObject({
+        status: "ready",
+        payable: 1,
       });
     });
 

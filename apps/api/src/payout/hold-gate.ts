@@ -128,15 +128,19 @@ export async function runHoldChecks(
   | { status: "window_closed" }
   | { status: "checked"; holder: number; below: number; uncertain: number }
 > {
-  const gate = await evaluatePayoutGate(db, ref, deps.tests ? { tests: deps.tests } : {});
+  const clock = deps.clock ?? (() => new Date());
+  const started = clock().getTime();
+  // The gate judges who waits for a balance at the same instant this run starts.
+  const gate = await evaluatePayoutGate(db, ref, {
+    ...(deps.tests ? { tests: deps.tests } : {}),
+    clock: () => new Date(started),
+  });
   if (gate.status === "blocked" && gate.blockers.some((b) => STRUCTURAL.has(b))) {
     return { status: "skipped", blockers: gate.blockers };
   }
   // A balance read outside [closesAt, closesAt + window] could not count, so none is started.
-  const clock = deps.clock ?? (() => new Date());
   const closesAt = gate.closesAt.getTime();
   const deadline = closesAt + HOLD_WINDOW_MS;
-  const started = clock().getTime();
   if (started < closesAt) return { status: "too_early" };
   if (started > deadline) return { status: "window_closed" };
   const counts = { holder: 0, below: 0, uncertain: 0 };

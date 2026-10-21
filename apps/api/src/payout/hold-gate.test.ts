@@ -276,8 +276,8 @@ function scripted(...answers: (HoldResult | (() => Promise<HoldResult>))[]) {
 }
 
 // The demo's closed epoch, first paid, with the signed member's pass: a candidate with no hold yet.
-async function candidateDemo() {
-  const demo = await seedAuditDemo(t.db, NOW);
+async function candidateDemo(now = NOW) {
+  const demo = await seedAuditDemo(t.db, now);
   const [e1] = await t.db
     .select()
     .from(epochs)
@@ -326,6 +326,22 @@ describe("runHoldChecks", () => {
       note: "test",
     });
     expect(await statusOf(ref, demo.members.signed)).toEqual(["ready", "payable"]);
+  });
+
+  it("judges candidates by its own clock, not the wall clock", async () => {
+    // An epoch whose window ended long ago by the wall clock, run with a clock inside it.
+    const { demo, e1, ref, rows } = await candidateDemo(new Date("2026-01-20T12:00:00.000Z"));
+    for (const id of [demo.members.signed, demo.members.pasted]) {
+      await t.db
+        .update(members)
+        .set({ xHandles: ["PastPair"] })
+        .where(eq(members.id, id));
+    }
+    const answer = scripted(observed("holder", 150_000_000_000n, sinceClose(e1, 5 * 60_000)));
+    expect(
+      await runHoldChecks(t.db, ref, { check: answer.check, tests, clock: inWindow(e1) }),
+    ).toEqual({ status: "checked", holder: 1, below: 0, uncertain: 0 });
+    expect((await rows()).map((r) => r.status)).toEqual(["holder"]);
   });
 
   it("checks only candidates; an uncertain result holds, a confirmed retry releases the claim", async () => {

@@ -355,7 +355,7 @@ export async function judgeMembers(
 
   const members: MemberVerdict[] = [];
   for (const m of input.totals) {
-    const reasons: MemberReason[] = [];
+    let reasons: MemberReason[] = [];
     if (m.pointUnits <= 0n) reasons.push("no_points");
     const link = await walletAt(tx, m.memberId, epoch.closesAt);
     const wallet = link?.method === "signature" ? link.wallet : null;
@@ -384,22 +384,29 @@ export async function judgeMembers(
       if (applied?.check.status === "below") reasons.push("below_hold");
       else if (!applied) reasons.push("hold_pending");
     }
-    // After the hold, so the balance of a member waiting for clearance is still read inside the
-    // window: clearance may come later, and a result read after the window can never count.
-    if (shared.has(m.memberId) && !cleared.has(m.memberId)) reasons.push("shared_handle");
+    let status: MemberVerdict["status"] =
+      reasons.length === 0
+        ? "payable"
+        : reasons.length === 1 && reasons[0] === "hold_pending"
+          ? "held"
+          : "not_payable";
+    if (shared.has(m.memberId) && !cleared.has(m.memberId)) {
+      // Uncleared, the balance only decides whether to wait: inside the window an unread one holds
+      // the epoch, so the hold job reads it and a clearance can still pay the member. It never
+      // enters the verdict, so a result committed at the window's edge cannot change a stored plan.
+      const waiting = status === "held" && !windowOver;
+      reasons = waiting
+        ? ["hold_pending", "shared_handle"]
+        : [...reasons.filter((r) => r !== "hold_pending" && r !== "below_hold"), "shared_handle"];
+      status = waiting ? "held" : "not_payable";
+      applied = null;
+    }
     members.push({
       memberId: m.memberId,
       pointUnits: m.pointUnits.toString(),
       wholePoints: m.wholePoints.toString(),
       wallet,
-      status:
-        reasons.length === 0
-          ? "payable"
-          : reasons[0] === "hold_pending" &&
-              !(windowOver && reasons.includes("shared_handle")) &&
-              reasons.every((r) => r === "hold_pending" || r === "shared_handle")
-            ? "held"
-            : "not_payable",
+      status,
       reasons,
       rulesTestPassedAt,
       holdResult: applied,
