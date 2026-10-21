@@ -39,6 +39,7 @@ const MISSED: [Reason, string][] = [
   ["no_verified_wallet", "no wallet was signed by the close"],
   ["no_rules_test", "the rules test was not passed by the close"],
   ["no_points", "no points"],
+  ["shared_handle", "an X account is shared with another member and not cleared"],
 ];
 
 // The /me payout checklist: the payout gate's status for this member, three checks and the one
@@ -97,6 +98,9 @@ export function payoutChecklist(c: {
         ? "➖ Hold: not checked, since the wallet or rules test was missing"
         : "➖ Hold: not checked, since there were no points",
   }[p.hold];
+  const shared = has("shared_handle")
+    ? ["❌ X account: another member also submits from one of yours; an admin must clear it"]
+    : [];
   const step = c.closed ? null : nextStep(p);
   const next = c.closed
     ? []
@@ -106,17 +110,21 @@ export function payoutChecklist(c: {
         ? ["Next: take the rules test. Every answer must be right."]
         : has("no_points")
           ? ["Next: earn points by replying to a raid."]
-          : ["Nothing else to do now."];
+          : shared.length > 0
+            ? ["Nothing else to do now. An admin reviews shared X accounts before the payout."]
+            : ["Nothing else to do now."];
   const verdict =
     !c.closed || p.status !== "not_payable"
       ? []
       : has("below_hold")
         ? ["Not payable: the wallet held less than the minimum after the close."]
-        : [
-            `Not payable: ${MISSED.filter(([r]) => has(r))
-              .map(([, why]) => why)
-              .join("; ")}.`,
-          ];
+        : p.reasons.length === 1 && shared.length > 0
+          ? ["Not payable unless an admin clears the shared X account before the payout."]
+          : [
+              `Not payable: ${MISSED.filter(([r]) => has(r))
+                .map(([, why]) => why)
+                .join("; ")}.`,
+            ];
   return {
     lines: [
       `To be paid for epoch ${c.epochIndex}${c.closed ? " (closed)" : ""}:`,
@@ -124,6 +132,7 @@ export function payoutChecklist(c: {
       ...current,
       rules,
       hold,
+      ...shared,
       ...next,
       ...verdict,
     ],

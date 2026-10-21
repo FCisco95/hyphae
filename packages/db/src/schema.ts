@@ -1032,6 +1032,27 @@ export const rulesTestPasses = pgTable(
   (t) => [uniqueIndex("rules_test_passes_member_test").on(t.memberId, t.testId)],
 );
 
+// Insert-only. A member who shares a bound X handle with another member of the community is not
+// paid for an epoch until an admin clears them for it (ruled 2026-10-21).
+export const sharedHandleClearances = pgTable(
+  "shared_handle_clearances",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    epochId: uuid("epoch_id")
+      .notNull()
+      .references(() => epochs.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    note: text("note").notNull(),
+    clearedAt: timestamp("cleared_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("shared_handle_clearances_epoch_member").on(t.epochId, t.memberId)],
+);
+
 export const holdCheckStatus = pgEnum("hold_check_status", [
   "pending",
   "holder",

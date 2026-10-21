@@ -3,13 +3,16 @@ import {
   type Db,
   epochs,
   holdChecks,
+  members as membersTable,
   rewardConfigs,
   rewardDecisions,
   rewardEpochSnapshots,
   rewardSnapshotEntries,
   rewardSnapshotMembers,
+  sharedHandleClearances,
 } from "@hyphae/db";
 import { and, eq, sql } from "drizzle-orm";
+import { sharedHandleMembers } from "../bot/commands/handles.js";
 import { walletAt } from "../link/wallet-links.js";
 import { isoUs, readOnly } from "../pg.js";
 import { RewardConfigPayload } from "../rewards/config.js";
@@ -33,6 +36,7 @@ export type MemberReason =
   | "no_points"
   | "no_verified_wallet"
   | "no_rules_test"
+  | "shared_handle"
   | "below_hold"
   | "hold_pending";
 
@@ -298,7 +302,7 @@ export async function payoutGateIn(
 export async function judgeMembers(
   tx: Db,
   input: {
-    epoch: Pick<Epoch, "id" | "closesAt">;
+    epoch: Pick<Epoch, "id" | "communityId" | "closesAt">;
     totals: { memberId: string; pointUnits: bigint; wholePoints: bigint }[];
     testId: string;
     hold: HoldRequirement;
@@ -317,6 +321,22 @@ export async function judgeMembers(
         .from(holdChecks)
         .where(eq(holdChecks.epochId, epoch.id))
     ).map((h) => [h.check.memberId, h]),
+  );
+  // Handles are bound for good and a new bind is refused when another member holds the handle,
+  // so the current bindings are the ones the epoch was earned under.
+  const shared = sharedHandleMembers(
+    await tx
+      .select({ id: membersTable.id, xHandles: membersTable.xHandles })
+      .from(membersTable)
+      .where(eq(membersTable.communityId, epoch.communityId)),
+  );
+  const cleared = new Set(
+    (
+      await tx
+        .select({ memberId: sharedHandleClearances.memberId })
+        .from(sharedHandleClearances)
+        .where(eq(sharedHandleClearances.epochId, epoch.id))
+    ).map((c) => c.memberId),
   );
 
   const members: MemberVerdict[] = [];
@@ -350,6 +370,9 @@ export async function judgeMembers(
       if (applied?.check.status === "below") reasons.push("below_hold");
       else if (!applied) reasons.push("hold_pending");
     }
+    // After the hold, so the balance of a member waiting for clearance is still read inside the
+    // window: clearance may come later, and a result read after the window can never count.
+    if (shared.has(m.memberId) && !cleared.has(m.memberId)) reasons.push("shared_handle");
     members.push({
       memberId: m.memberId,
       pointUnits: m.pointUnits.toString(),

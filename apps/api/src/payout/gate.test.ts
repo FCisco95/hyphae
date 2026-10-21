@@ -10,6 +10,7 @@ import {
   rewardSnapshotEntries,
   rewardSnapshotMembers,
   rulesTestPasses,
+  sharedHandleClearances,
 } from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -510,6 +511,57 @@ describe("payout gate on a MYCEL epoch", () => {
       status: "blocked",
       blockers: ["duplicate_wallet"],
     });
+  });
+
+  it("does not pay members sharing an X handle, in any case, until cleared for the epoch", async () => {
+    const { ref, memberIds } = await closedLane(["LaneWalletS1", "LaneWalletS2", "LaneWalletS3"]);
+    const [a = "", b = "", c = ""] = memberIds;
+    const handles: [string, string[]][] = [
+      [a, ["SharedOne", "own_a"]],
+      [b, ["sharedone"]],
+      [c, ["own_c"]],
+    ];
+    for (const [id, xHandles] of handles) {
+      await t.db.update(members).set({ xHandles }).where(eq(members.id, id));
+    }
+    const gate = await evaluatePayoutGate(t.db, ref);
+    const verdict = (id: string) => gate.members.find((m) => m.memberId === id);
+    expect(gate).toMatchObject({ status: "ready", payable: 1 });
+    for (const id of [a, b]) {
+      // The balance is still applied: clearance may come after the hold window.
+      expect(verdict(id)).toMatchObject({
+        status: "not_payable",
+        reasons: ["shared_handle"],
+        holdResult: { check: expect.objectContaining({ status: "holder" }) },
+      });
+    }
+    expect(verdict(c)).toMatchObject({ status: "payable", reasons: [] });
+
+    await t.db.insert(sharedHandleClearances).values({
+      communityId: ref.communityId,
+      epochId: ref.epochId,
+      memberId: a,
+      note: "test: confirmed separate people",
+    });
+    const cleared = await evaluatePayoutGate(t.db, ref);
+    expect(cleared).toMatchObject({ status: "ready", payable: 2 });
+    expect(cleared.members.find((m) => m.memberId === a)).toMatchObject({ status: "payable" });
+    expect(cleared.members.find((m) => m.memberId === b)).toMatchObject({
+      status: "not_payable",
+      reasons: ["shared_handle"],
+    });
+  });
+
+  it("ignores a handle shared with a member of another community", async () => {
+    const one = await closedLane(["LaneWalletX1"]);
+    const two = await closedLane(["LaneWalletX2"]);
+    for (const id of [...one.memberIds, ...two.memberIds]) {
+      await t.db
+        .update(members)
+        .set({ xHandles: ["samehandle"] })
+        .where(eq(members.id, id));
+    }
+    expect(await evaluatePayoutGate(t.db, one.ref)).toMatchObject({ status: "ready", payable: 1 });
   });
 
   it("with a zero threshold has no hold condition", async () => {

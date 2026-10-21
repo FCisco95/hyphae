@@ -1,5 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { communities, epochs, holdChecks, rulesTestPasses } from "@hyphae/db";
+import {
+  communities,
+  epochs,
+  holdChecks,
+  members,
+  rulesTestPasses,
+  sharedHandleClearances,
+} from "@hyphae/db";
 import { getAddressDecoder } from "@solana/kit";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -296,6 +303,31 @@ const statusOf = async (ref: { communityId: string; epochId: string }, memberId:
 };
 
 describe("runHoldChecks", () => {
+  it("reads the balance of a member waiting for shared-handle clearance", async () => {
+    const { demo, e1, ref, rows } = await candidateDemo();
+    for (const id of [demo.members.signed, demo.members.pasted]) {
+      await t.db
+        .update(members)
+        .set({ xHandles: ["SameAccount"] })
+        .where(eq(members.id, id));
+    }
+    const answer = scripted(observed("holder", 150_000_000_000n, sinceClose(e1, 5 * 60_000)));
+    expect(
+      await runHoldChecks(t.db, ref, { check: answer.check, tests, clock: inWindow(e1) }),
+    ).toEqual({ status: "checked", holder: 1, below: 0, uncertain: 0 });
+    expect((await rows()).map((r) => [r.memberId, r.status])).toEqual([
+      [demo.members.signed, "holder"],
+    ]);
+    expect(await statusOf(ref, demo.members.signed)).toEqual(["blocked", "not_payable"]);
+    await t.db.insert(sharedHandleClearances).values({
+      communityId: demo.communityId,
+      epochId: e1.id,
+      memberId: demo.members.signed,
+      note: "test",
+    });
+    expect(await statusOf(ref, demo.members.signed)).toEqual(["ready", "payable"]);
+  });
+
   it("checks only candidates; an uncertain result holds, a confirmed retry releases the claim", async () => {
     const { demo, e1, ref, rows } = await candidateDemo();
     const first = scripted({ kind: "uncertain", reason: "outage" });

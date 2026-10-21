@@ -16,6 +16,18 @@ export function bindHandle(handles: string[], handle: string): BindResult {
   return { ok: true, handles: [...handles, handle], bound: true };
 }
 
+// The members (of one community) who share a bound handle with another member, case-insensitive.
+export function sharedHandleMembers(rows: { id: string; xHandles: string[] }[]): Set<string> {
+  const owners = new Map<string, Set<string>>();
+  for (const r of rows) {
+    for (const h of r.xHandles) {
+      const key = h.toLowerCase();
+      owners.set(key, (owners.get(key) ?? new Set()).add(r.id));
+    }
+  }
+  return new Set([...owners.values()].filter((ids) => ids.size > 1).flatMap((ids) => [...ids]));
+}
+
 // Binds against the stored handles with the member row locked, so two submissions binding new
 // handles at once cannot overwrite each other or pass the cap. NO KEY UPDATE leaves foreign-key
 // inserts that reference the member (contributions) unblocked.

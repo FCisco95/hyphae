@@ -8,7 +8,7 @@ import {
   raidSubmissionSessions,
   tasks,
 } from "@hyphae/db";
-import { and, count, eq, gte, isNull, like } from "drizzle-orm";
+import { and, count, eq, gte, isNull, like, ne, sql } from "drizzle-orm";
 import { bindHandle } from "../bot/commands/handles.js";
 import { COMMUNITY_ID } from "../raid-alerts/alerts.js";
 import { type Clock, dbClock, withCommunityLock } from "../rewards/config.js";
@@ -43,6 +43,8 @@ export const REFUSALS = {
     "Could not read that public post. Nothing new was accepted; retry the same prompt.",
   handle_limit:
     "You have reached the existing three-account submission limit. Those recorded handles are not ownership proof.",
+  handle_taken:
+    "Another member already submits from that X account. Each X account counts for one member only. Nothing new was accepted.",
   duplicate_artifact:
     "That post was already submitted in this community. No new work was accepted.",
   kind_taken: "You already submitted this kind of work for this raid. Use the original receipt.",
@@ -354,6 +356,22 @@ export async function acceptSubmission(
     if (!lockedMember) return { error: "link_required" };
     const binding = bindHandle(lockedMember.xHandles, post.handle);
     if (!binding.ok) return { error: "handle_limit" };
+    // One handle, one member per community (ruled 2026-10-21). The community lock serializes this
+    // check with every other bind in the community.
+    if (binding.bound) {
+      const [taken] = await tx
+        .select({ id: members.id })
+        .from(members)
+        .where(
+          and(
+            eq(members.communityId, community.id),
+            ne(members.id, caller.member.id),
+            sql`exists (select 1 from jsonb_array_elements_text(${members.xHandles}) h where lower(h) = lower(${post.handle}))`,
+          ),
+        )
+        .limit(1);
+      if (taken) return { error: "handle_taken" };
+    }
     // The frozen worker replies in the group. Never give it a private-chat message identifier.
     const captured = capturedEvidence({ post }, current.telegramMessageId, now);
     const admission = {

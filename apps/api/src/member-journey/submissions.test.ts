@@ -213,6 +213,56 @@ describe("explicit private raid submissions", () => {
       }),
     ).toBeUndefined();
   });
+  it("refuses a new handle another member of the community already bound, in any case", async () => {
+    const { d, member, input, community } = await setup(true);
+    const [other] = await t.db
+      .insert(members)
+      .values({
+        communityId: community.id,
+        telegramUserId: 4242n,
+        xHandles: ["MEMBER"],
+        linkedAt: null,
+      })
+      .returning();
+    expect(await acceptSubmission(t.db, input, d)).toEqual({ error: "handle_taken" });
+    expect(await t.db.query.members.findFirst({ where: eq(members.id, member.id) })).toMatchObject({
+      xHandles: [],
+    });
+    expect(
+      await t.db.query.members.findFirst({ where: eq(members.id, other?.id ?? "") }),
+    ).toMatchObject({ xHandles: ["MEMBER"] });
+    expect(
+      await t.db.query.raidSubmissionReceipts.findFirst({
+        where: eq(raidSubmissionReceipts.sessionId, input.sessionId),
+      }),
+    ).toBeUndefined();
+  });
+  it("still accepts a handle the caller bound before another member did", async () => {
+    const { d, member, input, community } = await setup(true);
+    await t.db
+      .update(members)
+      .set({ xHandles: ["member"] })
+      .where(eq(members.id, member.id));
+    await t.db.insert(members).values({
+      communityId: community.id,
+      telegramUserId: 4343n,
+      xHandles: ["member"],
+      linkedAt: null,
+    });
+    expect(await acceptSubmission(t.db, input, d)).toHaveProperty("receipt");
+  });
+  it("binds a handle a member of another community uses", async () => {
+    const { d, member, input } = await setup(true);
+    const elsewhere = await seedCommunity(t.db);
+    await t.db
+      .update(members)
+      .set({ xHandles: ["member"] })
+      .where(eq(members.id, elsewhere.member.id));
+    expect(await acceptSubmission(t.db, input, d)).toHaveProperty("receipt");
+    expect(await t.db.query.members.findFirst({ where: eq(members.id, member.id) })).toMatchObject({
+      xHandles: ["member"],
+    });
+  });
   it("preserves handle cap as an unverified claim", async () => {
     const { d, member, input } = await setup();
     await t.db

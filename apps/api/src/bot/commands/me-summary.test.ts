@@ -357,6 +357,31 @@ describe("payoutChecklist", () => {
     });
   });
 
+  it("names an X account shared with another member, before and after the close", () => {
+    const before = checklist({
+      ...open,
+      member: signed,
+      payout: v("not_payable", ["shared_handle"], "at_close"),
+    });
+    expect(before.step).toBeNull();
+    expect(before.lines.slice(3)).toEqual([
+      "⏳ Hold: read once after the close; needs at least 100,000 MYCEL in that wallet",
+      "❌ X account: another member also submits from one of yours; an admin must clear it",
+      "Nothing else to do now. An admin reviews shared X accounts before the payout.",
+    ]);
+    const after = checklist({
+      ...open,
+      closed: true,
+      member: signed,
+      payout: v("not_payable", ["shared_handle"], "holder"),
+    });
+    expect(after.lines.slice(3)).toEqual([
+      "✅ Hold: confirmed",
+      "❌ X account: another member also submits from one of yours; an admin must clear it",
+      "Not payable unless an admin clears the shared X account before the payout.",
+    ]);
+  });
+
   it("after the close, a member with no points is told so, never shown an all-green list", () => {
     const closed = { ...open, closed: true, member: signed };
     expect(

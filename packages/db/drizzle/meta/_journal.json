@@ -148,6 +148,13 @@
       "when": 1792002193064,
       "tag": "0020_raid_cards",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1792574612144,
+      "tag": "0021_shared_handle_clearances",
+      "breakpoints": true
     }
   ]
 }

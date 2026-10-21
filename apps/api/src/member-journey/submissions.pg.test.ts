@@ -150,6 +150,35 @@ describe("private journey on two real PostgreSQL pools", () => {
       await a.select().from(contributions).where(eq(contributions.communityId, community.id)),
     ).toHaveLength(1);
   });
+  it("two members racing to bind one new handle: exactly one gets it", async () => {
+    const { submit, community, task } = await setup();
+    const [rival] = await a
+      .insert(members)
+      .values({ communityId: community.id, telegramUserId: 43n, linkedAt: null })
+      .returning();
+    if (!rival) throw new Error("rival");
+    const rivalPost = { ...evidence, id: "333", url: "https://x.com/member/status/333" };
+    const rivalDeps = { ...deps, fetchPost: async () => rivalPost };
+    const begun = await beginSubmission(a, task.id, 43n, "reply", rivalDeps);
+    if (!("session" in begun)) throw new Error("rival prompt");
+    const results = await Promise.all([
+      acceptSubmission(a, submit, deps),
+      acceptSubmission(
+        b,
+        { sessionId: begun.session.id, userId: 43n, url: rivalPost.url },
+        rivalDeps,
+      ),
+    ]);
+    expect(results.map((r) => ("receipt" in r ? "receipt" : r.error)).sort()).toEqual([
+      "handle_taken",
+      "receipt",
+    ]);
+    const bound = await a
+      .select({ xHandles: members.xHandles })
+      .from(members)
+      .where(eq(members.communityId, community.id));
+    expect(bound.filter((m) => m.xHandles.includes("member"))).toHaveLength(1);
+  });
   it("racing distinct create events cannot exceed the open raid limit", async () => {
     const { community } = await seedJourneyCommunity();
     const input = {
