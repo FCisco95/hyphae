@@ -11,8 +11,8 @@ Hyphae was independently reviewed by AI reviewers, not a third-party audit. Thes
 | October 6 | Wallet linking page | Codex accepted with one advisory, subsequently fixed. Linking requires the wallet's signature. |
 | October 6 | reward-eval/2 | Codex found scoring clean and two evaluation-script defects. Both were fixed; the fix was not independently reviewed again. |
 | October 11 | Claim recovery, cc4f773 | Claude Opus 5.5 ACCEPT. One picker, visible connected address, bounded waits, cancellation and recheck before retry, and stale-account/epoch guards. Transaction construction unchanged. |
-| October 21 | Shared X handle hold, 1273b94..8980899 | Codex: three rejections, fourth round ACCEPT. One X handle per member per community; members already sharing one are not payable for an epoch until an admin clears them. Fixes keep a stored publication intent unchangeable by late hold results or clearances, and end the wait when the hold window closes. A member whose hold stays uncertain past the window still blocks the epoch, as before. |
 | October 11 | Private eligibility, f573a68 | Claude Opus 5.5 ACCEPT after correcting stale OpenAPI and Postgres race tests. Public eligibility verdicts removed; private checklist access bound to caller and community membership. Payout and scoring rules unchanged. |
+| October 21 | Shared X handle hold, 1273b94..8980899 | Codex: three rejections, fourth round ACCEPT. One X handle per member per community; members already sharing one are not payable for an epoch until an admin clears them. Fixes keep a stored publication intent unchangeable by late hold results or clearances, and end the wait when the hold window closes. A member whose hold stays uncertain past the window still blocks the epoch, as before. |
 
 ## Tests are not reviews
 
