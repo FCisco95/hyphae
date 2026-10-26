@@ -50,6 +50,8 @@ const EPOCH5_CLOSES_AT = "2026-10-31T00:00:00.000Z";
 const RELEASE_DEADLINE = new Date(Date.parse(EPOCH5_CLOSES_AT) - 2 * 60 * 60_000).toISOString();
 // Schema-qualified so no function in the session's search_path can stand in for the clock.
 const CLOCK = "select pg_catalog.clock_timestamp() as at";
+// Microsecond-exact UTC text: pg's JS Date would round a timestamp to milliseconds.
+const TS_US = `'YYYY-MM-DD"T"HH24:MI:SS.US'`;
 const PAST_DEADLINE = "PAST_DEADLINE";
 // No amendment is recorded for epochs 4 and 5, so their own config's prompt scores them.
 const EPOCH_PROMPT = "reward-eval/2";
@@ -63,7 +65,13 @@ const EPOCH4_FROZEN = {
   snapshot_members: 17,
   hold_checks: 14,
   hold_holder: 14,
+  // Counts alone would not notice an edited total or a moved observation, so the evidence itself
+  // is pinned as a SHA-256 over every row in a fixed order (see readState).
+  snapshot_digest: "e93d8b40aca66c49ab1cdfc89c965fd24bce837f3f03d38cd44dc6355f9db1b3",
+  hold_digest: "be09a24846a90d3589fa42bf08a7e693f00977049ff7b2a5cdcd9728d17de5be",
 };
+// payout/gate.ts HOLD_WINDOW_MS: a balance counts only if read within this long after the close.
+const HOLD_WINDOW_HOURS = 24;
 // 0015 is applied before and after: the three member columns are nullable and the check exists.
 const NULLABLE_COLUMNS = ["wallet", "link_method", "linked_at"];
 const MEMBERS_CHECK = "members_wallet_link_together";
@@ -306,7 +314,17 @@ function connectionTarget() {
     effective.database !== target.database
   )
     throw new Error("pg's effective connection target differs from the reported one");
-  return { config, target };
+  return { config, target, frozen: frozenPins(target) };
+}
+
+// A loopback rehearsal seeds its own evidence, so its two digests can be supplied; production keeps
+// the pinned ones.
+function frozenPins(target) {
+  const override = process.env.ROLLOUT_EPOCH4_DIGESTS;
+  if (!override) return EPOCH4_FROZEN;
+  if (!LOOPBACK.has(target.host)) throw new Error("ROLLOUT_EPOCH4_DIGESTS is for loopback only");
+  const [snapshot_digest, hold_digest] = override.split(",");
+  return { ...EPOCH4_FROZEN, snapshot_digest, hold_digest };
 }
 
 function newClient({ config }) {
@@ -545,6 +563,34 @@ async function readState(client) {
             (select count(*)::int from hold_checks h where h.epoch_id = e.id) as hold_checks,
             (select count(*)::int from hold_checks h where h.epoch_id = e.id
                 and h.status = 'holder') as hold_holder,
+            (select count(*)::int from hold_checks h where h.epoch_id = e.id
+                and h.observed_at >= e.closes_at
+                and h.observed_at <= e.closes_at + make_interval(hours => ${HOLD_WINDOW_HOURS}))
+              as hold_in_window,
+            (select encode(sha256(convert_to(
+                to_char(r.closes_at at time zone 'UTC', ${TS_US}) || chr(10) ||
+                to_char(r.closed_at at time zone 'UTC', ${TS_US}) || chr(10) ||
+                r.cutoff_assumption || chr(10) ||
+                coalesce((select string_agg(
+                    x.contribution_id::text || '|' || x.member_id::text || '|' ||
+                    coalesce(x.decision_id::text, '') || '|' || coalesce(x.decision_hash, '') || '|' ||
+                    coalesce(x.revision::text, '') || '|' || coalesce(x.reason::text, '') || '|' ||
+                    x.point_units::text, chr(10) order by x.contribution_id)
+                  from reward_snapshot_entries x where x.snapshot_id = r.id), '') || chr(10) ||
+                coalesce((select string_agg(
+                    m.member_id::text || '|' || m.point_units::text || '|' || m.whole_points::text,
+                    chr(10) order by m.member_id)
+                  from reward_snapshot_members m where m.snapshot_id = r.id), ''),
+              'UTF8')), 'hex')
+               from reward_epoch_snapshots r where r.epoch_id = e.id) as snapshot_digest,
+            (select encode(sha256(convert_to(coalesce(string_agg(
+                h.member_id::text || '|' || h.wallet || '|' || h.mint || '|' ||
+                h.threshold_raw::text || '|' || h.status::text || '|' ||
+                coalesce(h.raw_amount::text, '') || '|' || coalesce(h.decimals::text, '') || '|' ||
+                coalesce(h.provider, '') || '|' || coalesce(h.slot::text, '') || '|' ||
+                coalesce(to_char(h.observed_at at time zone 'UTC', ${TS_US}), ''),
+                chr(10) order by h.member_id), ''), 'UTF8')), 'hex')
+               from hold_checks h where h.epoch_id = e.id) as hold_digest,
             (select count(*)::int from reward_config_amendments a where a.epoch_id = e.id)
               as amendments
        from epochs e join communities c on c.id = e.community_id
@@ -676,7 +722,7 @@ function epochDifferences(de, pe) {
   return differs;
 }
 
-function checkState(s, live, journalExpected, phase) {
+function checkState(s, live, journalExpected, phase, frozen) {
   const problems = [];
   const fail = (msg) => problems.push(msg);
   const newCount = Object.keys(NEW_MIGRATIONS).length;
@@ -728,19 +774,23 @@ function checkState(s, live, journalExpected, phase) {
   )
     fail("epoch 4 is not closed from 2026-10-17T00:00Z to 2026-10-24T00:00Z with 1 snapshot");
   if (
-    iso(e4?.snapshot_closed_at) !== EPOCH4_FROZEN.snapshot_closed_at ||
-    e4?.snapshot_entries !== EPOCH4_FROZEN.snapshot_entries ||
-    e4?.snapshot_members !== EPOCH4_FROZEN.snapshot_members ||
-    e4?.reward_config_id !== EPOCH4_FROZEN.reward_config_id
+    iso(e4?.snapshot_closed_at) !== frozen.snapshot_closed_at ||
+    e4?.snapshot_entries !== frozen.snapshot_entries ||
+    e4?.snapshot_members !== frozen.snapshot_members ||
+    e4?.snapshot_digest !== frozen.snapshot_digest ||
+    e4?.reward_config_id !== frozen.reward_config_id
   )
     fail("epoch 4's frozen snapshot or reward config differs from the one read on 2026-10-26");
   if (
-    e4?.hold_checks !== EPOCH4_FROZEN.hold_checks ||
-    e4?.hold_holder !== EPOCH4_FROZEN.hold_holder
+    e4?.hold_checks !== frozen.hold_checks ||
+    e4?.hold_holder !== frozen.hold_holder ||
+    e4?.hold_in_window !== frozen.hold_checks
   )
     fail(
-      `epoch 4 has ${e4?.hold_holder}/${e4?.hold_checks} holder checks, expected ${EPOCH4_FROZEN.hold_holder}/${EPOCH4_FROZEN.hold_checks}`,
+      `epoch 4 has ${e4?.hold_holder} holder checks, ${e4?.hold_in_window} read in the window, of ${e4?.hold_checks}; expected ${frozen.hold_checks} of each`,
     );
+  if (e4?.hold_digest !== frozen.hold_digest)
+    fail("epoch 4's hold results (wallet, mint, threshold, balance, slot, read time) changed");
   if (
     e4?.intents !== 0 ||
     e4?.leaves !== 0 ||
@@ -886,7 +936,7 @@ async function check(phase, baselinePath) {
   const deadline = releaseDeadline(conn.target);
   const state = await withReadOnly(conn, readState);
   const live = await publicReads(conn.target);
-  const problems = checkState(state, live, journalExpected, phase);
+  const problems = checkState(state, live, journalExpected, phase, conn.frozen);
   if (phase === "pre") problems.push(...(await deadlineProblems(conn, state, deadline)));
   const allocation = live.epoch3?.settlement?.allocation;
   const report = {
@@ -933,7 +983,9 @@ async function runMigrate(baselinePath) {
   }));
   if (problems.length === 0) problems.push(...compareToBaseline(baseline, gate.state).problems);
   // Every precheck condition must still hold now, not only when the baseline was taken.
-  problems.push(...checkState(gate.state, await publicReads(conn.target), journalExpected, "pre"));
+  problems.push(
+    ...checkState(gate.state, await publicReads(conn.target), journalExpected, "pre", conn.frozen),
+  );
   problems.push(...(await deadlineProblems(conn, gate.state, deadline)));
   if (!journalMatches(gate.journal, before))
     problems.push(`journal is not exactly the ${beforeCount} migrations up to ${lastBefore}`);
