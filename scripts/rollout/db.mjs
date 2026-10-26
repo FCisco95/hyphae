@@ -314,17 +314,7 @@ function connectionTarget() {
     effective.database !== target.database
   )
     throw new Error("pg's effective connection target differs from the reported one");
-  return { config, target, frozen: frozenPins(target) };
-}
-
-// A loopback rehearsal seeds its own evidence, so its two digests can be supplied; production keeps
-// the pinned ones.
-function frozenPins(target) {
-  const override = process.env.ROLLOUT_EPOCH4_DIGESTS;
-  if (!override) return EPOCH4_FROZEN;
-  if (!LOOPBACK.has(target.host)) throw new Error("ROLLOUT_EPOCH4_DIGESTS is for loopback only");
-  const [snapshot_digest, hold_digest] = override.split(",");
-  return { ...EPOCH4_FROZEN, snapshot_digest, hold_digest };
+  return { config, target };
 }
 
 function newClient({ config }) {
@@ -722,7 +712,7 @@ function epochDifferences(de, pe) {
   return differs;
 }
 
-function checkState(s, live, journalExpected, phase, frozen) {
+function checkState(s, live, journalExpected, phase) {
   const problems = [];
   const fail = (msg) => problems.push(msg);
   const newCount = Object.keys(NEW_MIGRATIONS).length;
@@ -774,22 +764,22 @@ function checkState(s, live, journalExpected, phase, frozen) {
   )
     fail("epoch 4 is not closed from 2026-10-17T00:00Z to 2026-10-24T00:00Z with 1 snapshot");
   if (
-    iso(e4?.snapshot_closed_at) !== frozen.snapshot_closed_at ||
-    e4?.snapshot_entries !== frozen.snapshot_entries ||
-    e4?.snapshot_members !== frozen.snapshot_members ||
-    e4?.snapshot_digest !== frozen.snapshot_digest ||
-    e4?.reward_config_id !== frozen.reward_config_id
+    iso(e4?.snapshot_closed_at) !== EPOCH4_FROZEN.snapshot_closed_at ||
+    e4?.snapshot_entries !== EPOCH4_FROZEN.snapshot_entries ||
+    e4?.snapshot_members !== EPOCH4_FROZEN.snapshot_members ||
+    e4?.snapshot_digest !== EPOCH4_FROZEN.snapshot_digest ||
+    e4?.reward_config_id !== EPOCH4_FROZEN.reward_config_id
   )
     fail("epoch 4's frozen snapshot or reward config differs from the one read on 2026-10-26");
   if (
-    e4?.hold_checks !== frozen.hold_checks ||
-    e4?.hold_holder !== frozen.hold_holder ||
-    e4?.hold_in_window !== frozen.hold_checks
+    e4?.hold_checks !== EPOCH4_FROZEN.hold_checks ||
+    e4?.hold_holder !== EPOCH4_FROZEN.hold_holder ||
+    e4?.hold_in_window !== EPOCH4_FROZEN.hold_checks
   )
     fail(
-      `epoch 4 has ${e4?.hold_holder} holder checks, ${e4?.hold_in_window} read in the window, of ${e4?.hold_checks}; expected ${frozen.hold_checks} of each`,
+      `epoch 4 has ${e4?.hold_holder} holder checks, ${e4?.hold_in_window} read in the window, of ${e4?.hold_checks}; expected ${EPOCH4_FROZEN.hold_checks} of each`,
     );
-  if (e4?.hold_digest !== frozen.hold_digest)
+  if (e4?.hold_digest !== EPOCH4_FROZEN.hold_digest)
     fail("epoch 4's hold results (wallet, mint, threshold, balance, slot, read time) changed");
   if (
     e4?.intents !== 0 ||
@@ -936,7 +926,7 @@ async function check(phase, baselinePath) {
   const deadline = releaseDeadline(conn.target);
   const state = await withReadOnly(conn, readState);
   const live = await publicReads(conn.target);
-  const problems = checkState(state, live, journalExpected, phase, conn.frozen);
+  const problems = checkState(state, live, journalExpected, phase);
   if (phase === "pre") problems.push(...(await deadlineProblems(conn, state, deadline)));
   const allocation = live.epoch3?.settlement?.allocation;
   const report = {
@@ -983,9 +973,7 @@ async function runMigrate(baselinePath) {
   }));
   if (problems.length === 0) problems.push(...compareToBaseline(baseline, gate.state).problems);
   // Every precheck condition must still hold now, not only when the baseline was taken.
-  problems.push(
-    ...checkState(gate.state, await publicReads(conn.target), journalExpected, "pre", conn.frozen),
-  );
+  problems.push(...checkState(gate.state, await publicReads(conn.target), journalExpected, "pre"));
   problems.push(...(await deadlineProblems(conn, gate.state, deadline)));
   if (!journalMatches(gate.journal, before))
     problems.push(`journal is not exactly the ${beforeCount} migrations up to ${lastBefore}`);
