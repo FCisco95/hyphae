@@ -1,6 +1,9 @@
 // Production checks and one pinned migration release. Current release: migration 0021 for the
 // 2026-10-21 shared-handle payout hold (docs/demo/2026-10-21-shared-handle-release.md, private),
-// while epoch 4 is open. The raid cards release used it for 0020, the 2026-10-11 release for
+// re-pinned on 2026-10-26 after epoch 4 closed: epoch 4 is closed and frozen (snapshot and hold
+// checks pinned, no publication intent), epoch 5 is open. The same SQL as the 2026-10-21 pin; only
+// the state it expects and the window it must stay out of changed. The raid cards release used
+// it for 0020, the 2026-10-11 release for
 // 0018+0019, the Jev live scorer release for 0017, the
 // pilot amendment release for 0016, the earn-first release for 0015 and the 2026-10-05 API rollout
 // for 0013+0014 (see those plans and git history).
@@ -19,7 +22,7 @@
 // identity proof is liveness: migrate and postcheck require a reward-recovery completion newer
 // than the precheck's, which only the database the live worker writes to can show.
 //
-// Precheck and migrate refuse once the database clock is past 2 hours before epoch 4's close, so
+// Precheck and migrate refuse once the database clock is past 2 hours before epoch 5's close, so
 // the release cannot run into the close and the payout hold window after it. The clock is read
 // at the state read, again after the public reads, and inside the migration before every
 // statement and the commit; a migration that crosses the deadline rolls back.
@@ -43,13 +46,24 @@ const NEW_MIGRATIONS = {
   "0021_shared_handle_clearances":
     "e049aa17d986e9447ec7e784e92639ac6a09977323db1de2e5cc32b585ccaf68",
 };
-const EPOCH4_CLOSES_AT = "2026-10-24T00:00:00.000Z";
-const RELEASE_DEADLINE = new Date(Date.parse(EPOCH4_CLOSES_AT) - 2 * 60 * 60_000).toISOString();
+const EPOCH5_CLOSES_AT = "2026-10-31T00:00:00.000Z";
+const RELEASE_DEADLINE = new Date(Date.parse(EPOCH5_CLOSES_AT) - 2 * 60 * 60_000).toISOString();
 // Schema-qualified so no function in the session's search_path can stand in for the clock.
 const CLOCK = "select pg_catalog.clock_timestamp() as at";
 const PAST_DEADLINE = "PAST_DEADLINE";
-// No amendment is recorded for epoch 4, so its own config's prompt scores it.
-const EPOCH4_PROMPT = "reward-eval/2";
+// No amendment is recorded for epochs 4 and 5, so their own config's prompt scores them.
+const EPOCH_PROMPT = "reward-eval/2";
+// Epoch 4 closed on 2026-10-24 and is not paid yet. Its evidence is frozen: the release must find
+// it exactly as read on 2026-10-26 and leave it exactly so. Its 14 hold checks were all read inside
+// the 24 h window, which ended on 2026-10-25.
+const EPOCH4_FROZEN = {
+  reward_config_id: "d265af98-202c-4425-9d7b-dfdd5d5715fa",
+  snapshot_closed_at: "2026-10-24T00:00:15.543Z",
+  snapshot_entries: 178,
+  snapshot_members: 17,
+  hold_checks: 14,
+  hold_holder: 14,
+};
 // 0015 is applied before and after: the three member columns are nullable and the check exists.
 const NULLABLE_COLUMNS = ["wallet", "link_method", "linked_at"];
 const MEMBERS_CHECK = "members_wallet_link_together";
@@ -182,6 +196,8 @@ const COUNTED_TABLES = [
   "reward_config_amendments",
   "reward_snapshot_entries",
   "leaves",
+  "epoch_publications",
+  "hold_checks",
   RAID_RECAPS,
   RAID_CARDS,
   SHARED,
@@ -513,8 +529,22 @@ async function readState(client) {
   );
   s.epochs = await one(
     `select e.index, e.status::text, e.opens_at, e.closes_at, e.reward_config_id, e.publish_tx,
+            e.root is not null as has_root, e.pot_lamports is not null as has_pot,
             rc.payload->'scoring'->>'promptVersion' as prompt_version,
             (select count(*)::int from reward_epoch_snapshots r where r.epoch_id = e.id) as snapshots,
+            (select r.closed_at from reward_epoch_snapshots r where r.epoch_id = e.id)
+              as snapshot_closed_at,
+            (select count(*)::int from reward_snapshot_entries x
+               join reward_epoch_snapshots r on r.id = x.snapshot_id where r.epoch_id = e.id)
+              as snapshot_entries,
+            (select count(*)::int from reward_snapshot_members x
+               join reward_epoch_snapshots r on r.id = x.snapshot_id where r.epoch_id = e.id)
+              as snapshot_members,
+            (select count(*)::int from epoch_publications p where p.epoch_id = e.id) as intents,
+            (select count(*)::int from leaves l where l.epoch_id = e.id) as leaves,
+            (select count(*)::int from hold_checks h where h.epoch_id = e.id) as hold_checks,
+            (select count(*)::int from hold_checks h where h.epoch_id = e.id
+                and h.status = 'holder') as hold_holder,
             (select count(*)::int from reward_config_amendments a where a.epoch_id = e.id)
               as amendments
        from epochs e join communities c on c.id = e.community_id
@@ -627,6 +657,7 @@ async function publicReads(target) {
     community: await get(`/v1/communities/${MINT}`),
     epoch3: await get(`/v1/communities/${MINT}/epochs/3`),
     epoch4: await get(`/v1/communities/${MINT}/epochs/4`),
+    epoch5: await get(`/v1/communities/${MINT}/epochs/5`),
   };
 }
 
@@ -670,7 +701,8 @@ function checkState(s, live, journalExpected, phase) {
   const e2 = s.epochs.find((e) => e.index === 2);
   const e3 = s.epochs.find((e) => e.index === 3);
   const e4 = s.epochs.find((e) => e.index === 4);
-  if (s.epochs.length !== 4) fail(`Hyphae Lab has ${s.epochs.length} epochs, expected 4`);
+  const e5 = s.epochs.find((e) => e.index === 5);
+  if (s.epochs.length !== 5) fail(`Hyphae Lab has ${s.epochs.length} epochs, expected 5`);
   if (e1?.status !== "closed" || e1?.snapshots !== 1) fail("epoch 1 is not closed with 1 snapshot");
   // Epochs 2 and 3 were paid: publishing writes status, root and publish_tx together.
   for (const [index, e, closes] of [
@@ -685,15 +717,49 @@ function checkState(s, live, journalExpected, phase) {
     )
       fail(`epoch ${index} is not published, closed at ${closes} with 1 snapshot`);
   }
+  // Epoch 4 is closed and unpaid: no intent, leaf, root, pot or publish_tx, and the frozen
+  // snapshot, config and in-window hold results exactly as pinned. Clearances come after this
+  // release, so the intent that would refuse them must not exist.
   if (
-    e4?.status !== "open" ||
-    e4?.snapshots !== 0 ||
+    e4?.status !== "closed" ||
+    e4?.snapshots !== 1 ||
     iso(e4?.opens_at) !== "2026-10-17T00:00:00.000Z" ||
-    iso(e4?.closes_at) !== EPOCH4_CLOSES_AT
+    iso(e4?.closes_at) !== "2026-10-24T00:00:00.000Z"
   )
-    fail("epoch 4 is not open from 2026-10-17T00:00Z to 2026-10-24T00:00Z with 0 snapshots");
-  if (e4?.prompt_version !== EPOCH4_PROMPT || e4?.amendments !== 0)
-    fail(`epoch 4 is not scored by ${EPOCH4_PROMPT} with no amendment`);
+    fail("epoch 4 is not closed from 2026-10-17T00:00Z to 2026-10-24T00:00Z with 1 snapshot");
+  if (
+    iso(e4?.snapshot_closed_at) !== EPOCH4_FROZEN.snapshot_closed_at ||
+    e4?.snapshot_entries !== EPOCH4_FROZEN.snapshot_entries ||
+    e4?.snapshot_members !== EPOCH4_FROZEN.snapshot_members ||
+    e4?.reward_config_id !== EPOCH4_FROZEN.reward_config_id
+  )
+    fail("epoch 4's frozen snapshot or reward config differs from the one read on 2026-10-26");
+  if (
+    e4?.hold_checks !== EPOCH4_FROZEN.hold_checks ||
+    e4?.hold_holder !== EPOCH4_FROZEN.hold_holder
+  )
+    fail(
+      `epoch 4 has ${e4?.hold_holder}/${e4?.hold_checks} holder checks, expected ${EPOCH4_FROZEN.hold_holder}/${EPOCH4_FROZEN.hold_checks}`,
+    );
+  if (
+    e4?.intents !== 0 ||
+    e4?.leaves !== 0 ||
+    e4?.has_root ||
+    e4?.has_pot ||
+    e4?.publish_tx !== null
+  )
+    fail("epoch 4 already has a publication intent, leaf, root, pot or publish_tx");
+  if (e4?.prompt_version !== EPOCH_PROMPT || e4?.amendments !== 0)
+    fail(`epoch 4 is not scored by ${EPOCH_PROMPT} with no amendment`);
+  if (
+    e5?.status !== "open" ||
+    e5?.snapshots !== 0 ||
+    iso(e5?.opens_at) !== "2026-10-24T00:00:00.000Z" ||
+    iso(e5?.closes_at) !== EPOCH5_CLOSES_AT
+  )
+    fail("epoch 5 is not open from 2026-10-24T00:00Z to 2026-10-31T00:00Z with 0 snapshots");
+  if (e5?.prompt_version !== EPOCH_PROMPT || e5?.amendments !== 0)
+    fail(`epoch 5 is not scored by ${EPOCH_PROMPT} with no amendment`);
 
   // Consistency with what the live API serves (identity comes from liveness, see the header).
   if (live.community.name !== lab?.name) fail("public name differs");
@@ -710,6 +776,7 @@ function checkState(s, live, journalExpected, phase) {
   for (const [de, pe] of [
     [e3, live.epoch3],
     [e4, live.epoch4],
+    [e5, live.epoch5],
   ]) {
     if (!de) continue; // its database state has already failed above
     const differs = epochDifferences(de, pe);
@@ -725,6 +792,9 @@ function checkState(s, live, journalExpected, phase) {
   const allocation = live.epoch3?.settlement?.allocation;
   if (allocation?.status === "published" && allocation.publish_tx !== e3?.publish_tx)
     fail("public epoch 3 publication is not the database's publish_tx");
+  // The database has no publication for epoch 4, so the API must not show one.
+  if (live.epoch4?.settlement?.allocation?.status === "published")
+    fail("public epoch 4 shows a publication the database does not have");
 
   for (const t of COUNTED_TABLES) {
     if (!Number.isInteger(s.counts[t]) || s.counts[t] < 0) fail(`count of ${t} is invalid`);
@@ -773,9 +843,18 @@ function compareToBaseline(baseline, state) {
     deltas[t] = state.counts[t] - baseline.state.counts[t];
     if (!(deltas[t] >= 0)) problems.push(`${t} lost rows or is invalid (delta ${deltas[t]})`);
   }
-  // This release records no amendment: epoch 4 stays on its own config's prompt.
+  // This release records no amendment: epochs 4 and 5 stay on their own config's prompt.
   if (deltas.reward_config_amendments !== 0)
     problems.push(`reward_config_amendments changed by ${deltas.reward_config_amendments}`);
+  // Nothing is closed, planned or checked for a balance while the release runs.
+  for (const t of [
+    "epoch_publications",
+    "hold_checks",
+    "reward_snapshot_entries",
+    "leaves",
+    "epochs",
+  ])
+    if (deltas[t] !== 0) problems.push(`${t} changed by ${deltas[t]}`);
   const age = ms(state.reference.at) - ms(baseline.state.reference.at);
   if (!(age >= 0 && age <= BASELINE_MAX_AGE_MS)) problems.push("baseline is older than 2 hours");
   const last = state.queue?.last_reward_recovery_completed;
