@@ -13,6 +13,7 @@ Hyphae was independently reviewed by AI reviewers, not a third-party audit. Thes
 | October 11 | Claim recovery, cc4f773 | Claude Opus 5.5 ACCEPT. One picker, visible connected address, bounded waits, cancellation and recheck before retry, and stale-account/epoch guards. Transaction construction unchanged. |
 | October 11 | Private eligibility, f573a68 | Claude Opus 5.5 ACCEPT after correcting stale OpenAPI and Postgres race tests. Public eligibility verdicts removed; private checklist access bound to caller and community membership. Payout and scoring rules unchanged. |
 | October 21 | Shared X handle hold, 1273b94..8980899 | Codex: three rejections, fourth round ACCEPT. One X handle per member per community; members already sharing one are not payable for an epoch until an admin clears them. Fixes keep a stored publication intent unchangeable by late hold results or clearances, and end the wait when the hold window closes. A member whose hold stays uncertain past the window still blocks the epoch, as before. |
+| October 26 | Rollout guard for migration 0021, bafb64d..6e13615 | Codex: two rejections, third round ACCEPT. The release check for the additive shared-handle table now pins the closed epoch 4's snapshot and balance results by content and refuses any change to them; the first fixes closed a count-only check and a loopback override that a tunnel could have abused. Rehearsed on a disposable database and read-only against production; nothing is applied yet. |
 
 ## Tests are not reviews
 
