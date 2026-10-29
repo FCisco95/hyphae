@@ -147,7 +147,19 @@ export async function recoverRewardWork(): Promise<void> {
   const holds = await dueHoldChecks(db, now);
   for (const job of holds) await boss.send(QUEUES.holdCheck, job satisfies HoldCheckJob);
   // Settles what a budget-limited reconciliation left, before the messages below are chosen.
-  for (const epoch of await openCopyEpochs(db, now)) await reconcileEpoch(db, epoch);
+  // One epoch that fails to reconcile must not stop the closes, retries and messages around it.
+  for (const epoch of await openCopyEpochs(db, now)) {
+    await reconcileEpoch(db, epoch).catch((e: unknown) =>
+      console.error(
+        JSON.stringify({
+          job: "reward-recovery",
+          copyReconcile: "failed",
+          ...epoch,
+          error: String(e),
+        }),
+      ),
+    );
+  }
   const work = await strandedWork(db, { now, graceMs: RECOVERY_GRACE_MS });
   for (const job of work.evaluations) await sendEvaluation(job);
   for (const job of work.retrievals) await boss.send(QUEUES.rewardRetrieval, job);
