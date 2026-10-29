@@ -96,6 +96,7 @@ export async function seedRewardLane(db: Db, payload = buildRewardConfigPayload(
     capture: Capture = { source: "x_oembed", capturedAt: T0.toISOString(), limitations: [] },
     memberId = member.id,
     clock: Clock = later(60_000),
+    text?: string,
   ) => {
     artifactSeq += 1;
     const result = await admitContribution(
@@ -106,7 +107,7 @@ export async function seedRewardLane(db: Db, payload = buildRewardConfigPayload(
         contribution: {
           kind: "post",
           url: `https://x.com/a/status/${artifactSeq}`,
-          text: `work ${artifactSeq}`,
+          text: text ?? `work ${artifactSeq}`,
           oembed: null,
           telegramMessageId: artifactSeq,
         },

@@ -65,6 +65,7 @@ export function isCopy(
 export function firstCopyOf<T extends { text: string }>(
   candidate: string,
   earlier: readonly T[],
+  thresholdBps: number = COPY_THRESHOLD_BPS,
 ): T | undefined {
-  return earlier.find((post) => isCopy(candidate, post.text));
+  return earlier.find((post) => isCopy(candidate, post.text, thresholdBps));
 }

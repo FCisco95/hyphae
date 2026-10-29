@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
+  COPY_THRESHOLD_BPS,
   canonicalJson,
   EFFORT_CRITERIA_V1,
   MAX_WHOLE_POINTS,
@@ -61,6 +62,12 @@ export const RewardConfigPayload = z
       rounding: z.literal("half_up_after_aggregation"),
       maxWholePoints: z.literal(MAX_WHOLE_POINTS.toString()),
     }),
+    // Copy rule (Cisco, 2026-10-29), active from epoch 6. Absent on every earlier configuration,
+    // which therefore score exactly as before: a post at least thresholdBps the same as an earlier
+    // post of the same epoch that earned points earns nothing.
+    copy: z
+      .object({ thresholdBps: z.literal(COPY_THRESHOLD_BPS), scope: z.literal("epoch") })
+      .optional(),
   })
   .superRefine((p, ctx) => {
     if (p.timing.fullCreditUntilMs !== p.rubric.timing.fullUntil * MINUTE_MS) {
@@ -101,6 +108,8 @@ export const DEFAULT_REWARD_POLICY = {
 export interface RewardPolicyOverrides {
   epoch?: Partial<RewardConfigPayload["epoch"]>;
   effort?: Partial<RewardConfigPayload["effort"]>;
+  // Off unless asked, so a payload built without it keeps the digest it had before the rule.
+  copy?: boolean;
 }
 
 function currentPromptPin(): RewardConfigPayload["scoring"] {
@@ -134,6 +143,7 @@ export function buildRewardConfigPayload(
       rounding: "half_up_after_aggregation",
       maxWholePoints: MAX_WHOLE_POINTS.toString(),
     },
+    ...(overrides.copy ? { copy: { thresholdBps: COPY_THRESHOLD_BPS, scope: "epoch" } } : {}),
   });
 }
 

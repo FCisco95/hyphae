@@ -54,127 +54,138 @@ export async function appendCorrection(
     throw new Error("reward: a correction must change something");
   }
 
-  return withCommunityLock(db, input.communityId, deps, async (tx, _community, now) => {
-    const [replay] = await tx
-      .select()
-      .from(rewardDecisions)
-      .where(
-        and(
-          eq(rewardDecisions.communityId, input.communityId),
-          eq(rewardDecisions.idempotencyKey, input.idempotencyKey),
-        ),
-      );
-    if (replay) {
-      if (replay.contributionId !== input.contributionId) {
-        throw new Error(`reward: idempotency key ${input.idempotencyKey} names other work`);
-      }
-      return { status: "appended", decision: replay, created: false };
-    }
+  return withCommunityLock(db, input.communityId, deps, (tx, _community, now) =>
+    appendCorrectionIn(tx, now, input),
+  );
+}
 
-    const lineage = await tx
-      .select()
-      .from(rewardDecisions)
+// The body of appendCorrection for a caller that already holds the community lock and read the
+// acceptance time after taking it. The caller owns the input checks above.
+export async function appendCorrectionIn(
+  tx: Db,
+  now: Date,
+  input: CorrectionInput,
+): Promise<CorrectionResult> {
+  const reason = input.reason.trim();
+  const [replay] = await tx
+    .select()
+    .from(rewardDecisions)
+    .where(
+      and(
+        eq(rewardDecisions.communityId, input.communityId),
+        eq(rewardDecisions.idempotencyKey, input.idempotencyKey),
+      ),
+    );
+  if (replay) {
+    if (replay.contributionId !== input.contributionId) {
+      throw new Error(`reward: idempotency key ${input.idempotencyKey} names other work`);
+    }
+    return { status: "appended", decision: replay, created: false };
+  }
+
+  const lineage = await tx
+    .select()
+    .from(rewardDecisions)
+    .where(
+      and(
+        eq(rewardDecisions.communityId, input.communityId),
+        eq(rewardDecisions.contributionId, input.contributionId),
+      ),
+    )
+    .orderBy(asc(rewardDecisions.revision));
+  const [root] = lineage;
+  const latest = lineage.at(-1);
+  if (!root || !latest) return { status: "no_decision" };
+  if (latest.revision !== input.expectedRevision) {
+    return { status: "stale_revision", current: latest };
+  }
+
+  let multiplierBps = latest.multiplierBps;
+  let effort = latest.effort;
+  if (input.changes.effort) {
+    // Only work whose nomination consumed a slot can have its effort judged again (O6).
+    const [consumed] = await tx
+      .select({ id: rewardNominations.id })
+      .from(rewardNominations)
+      .innerJoin(rewardSlots, eq(rewardSlots.id, rewardNominations.slotId))
       .where(
         and(
-          eq(rewardDecisions.communityId, input.communityId),
-          eq(rewardDecisions.contributionId, input.contributionId),
+          eq(rewardNominations.contributionId, input.contributionId),
+          inArray(rewardNominations.state, ["completed_eligible", "completed_ineligible"]),
+          eq(rewardSlots.state, "consumed"),
         ),
       )
-      .orderBy(asc(rewardDecisions.revision));
-    const [root] = lineage;
-    const latest = lineage.at(-1);
-    if (!root || !latest) return { status: "no_decision" };
-    if (latest.revision !== input.expectedRevision) {
-      return { status: "stale_revision", current: latest };
-    }
+      .orderBy(desc(rewardNominations.acceptedAt))
+      .limit(1);
+    if (!consumed) return { status: "effort_not_nominated" };
+    const [config] = await tx
+      .select({ payload: rewardConfigs.payload })
+      .from(rewardConfigs)
+      .where(eq(rewardConfigs.id, latest.configId));
+    if (!config) throw new Error(`reward: config ${latest.configId} missing`);
+    effort = input.changes.effort;
+    multiplierBps =
+      effort === "eligible"
+        ? RewardConfigPayload.parse(config.payload).effort.multiplierBps
+        : NO_MULTIPLIER;
+  }
 
-    let multiplierBps = latest.multiplierBps;
-    let effort = latest.effort;
-    if (input.changes.effort) {
-      // Only work whose nomination consumed a slot can have its effort judged again (O6).
-      const [consumed] = await tx
-        .select({ id: rewardNominations.id })
-        .from(rewardNominations)
-        .innerJoin(rewardSlots, eq(rewardSlots.id, rewardNominations.slotId))
-        .where(
-          and(
-            eq(rewardNominations.contributionId, input.contributionId),
-            inArray(rewardNominations.state, ["completed_eligible", "completed_ineligible"]),
-            eq(rewardSlots.state, "consumed"),
-          ),
-        )
-        .orderBy(desc(rewardNominations.acceptedAt))
-        .limit(1);
-      if (!consumed) return { status: "effort_not_nominated" };
-      const [config] = await tx
-        .select({ payload: rewardConfigs.payload })
-        .from(rewardConfigs)
-        .where(eq(rewardConfigs.id, latest.configId));
-      if (!config) throw new Error(`reward: config ${latest.configId} missing`);
-      effort = input.changes.effort;
-      multiplierBps =
-        effort === "eligible"
-          ? RewardConfigPayload.parse(config.payload).effort.multiplierBps
-          : NO_MULTIPLIER;
-    }
+  // Revision 1 always comes from a quality dispatch; its AI-pattern evidence bounds the cap.
+  if (!root.dispatchId)
+    throw new Error(`reward: revision 1 of ${root.contributionId} has no dispatch`);
+  const [dispatch] = await tx
+    .select({ purpose: rewardDispatches.purpose, output: rewardDispatches.output })
+    .from(rewardDispatches)
+    .where(eq(rewardDispatches.id, root.dispatchId));
+  const scored = dispatch && rewardOutputSchema(dispatch.purpose).parse(dispatch.output);
+  if (!scored || !("aiSlop" in scored)) {
+    throw new Error(`reward: dispatch ${root.dispatchId} has no quality output`);
+  }
 
-    // Revision 1 always comes from a quality dispatch; its AI-pattern evidence bounds the cap.
-    if (!root.dispatchId)
-      throw new Error(`reward: revision 1 of ${root.contributionId} has no dispatch`);
-    const [dispatch] = await tx
-      .select({ purpose: rewardDispatches.purpose, output: rewardDispatches.output })
-      .from(rewardDispatches)
-      .where(eq(rewardDispatches.id, root.dispatchId));
-    const scored = dispatch && rewardOutputSchema(dispatch.purpose).parse(dispatch.output);
-    if (!scored || !("aiSlop" in scored)) {
-      throw new Error(`reward: dispatch ${root.dispatchId} has no quality output`);
-    }
-
-    const raw = input.changes.rawQuality ?? latest.rawQuality;
-    const flags = input.changes.flags ?? (latest.flags as RewardFlag[]);
-    const credited = creditedQuality({
-      rawQuality: rawQuality(BigInt(raw)),
-      flags,
-      aiSlop: {
-        patternCount: BigInt(scored.aiSlop.patterns.length),
-        templateRhythm: scored.aiSlop.templateRhythm,
-      },
-    });
-    const [epoch] = await tx
-      .select({ closesAt: epochs.closesAt })
-      .from(epochs)
-      .where(eq(epochs.id, latest.epochId));
-    if (!epoch) throw new Error(`reward: epoch ${latest.epochId} missing`);
-
-    const [decision] = await tx
-      .insert(rewardDecisions)
-      .values({
-        communityId: input.communityId,
-        contributionId: input.contributionId,
-        epochId: latest.epochId,
-        configId: latest.configId,
-        revision: latest.revision + 1,
-        predecessorId: latest.id,
-        rawQuality: raw,
-        creditedQuality: Number(credited),
-        flags,
-        effort,
-        effortCriteria: latest.effortCriteria,
-        timingBps: latest.timingBps,
-        multiplierBps,
-        pointUnits: credited * BigInt(latest.timingBps) * BigInt(multiplierBps),
-        explanation: `Correction: ${reason}`,
-        acceptedAt: now,
-        affectsAllocation: now.getTime() < epoch.closesAt.getTime(),
-        correctionActor: input.actor,
-        correctionReason: reason,
-        correctionEvidence: input.evidenceRefs,
-        idempotencyKey: input.idempotencyKey,
-      })
-      .returning();
-    if (!decision) throw new Error("reward: correction insert returned nothing");
-    return { status: "appended", decision, created: true };
+  const raw = input.changes.rawQuality ?? latest.rawQuality;
+  const flags = input.changes.flags ?? (latest.flags as RewardFlag[]);
+  const credited = creditedQuality({
+    rawQuality: rawQuality(BigInt(raw)),
+    flags,
+    aiSlop: {
+      patternCount: BigInt(scored.aiSlop.patterns.length),
+      templateRhythm: scored.aiSlop.templateRhythm,
+    },
   });
+  const [epoch] = await tx
+    .select({ closesAt: epochs.closesAt })
+    .from(epochs)
+    .where(eq(epochs.id, latest.epochId));
+  if (!epoch) throw new Error(`reward: epoch ${latest.epochId} missing`);
+
+  const [decision] = await tx
+    .insert(rewardDecisions)
+    .values({
+      communityId: input.communityId,
+      contributionId: input.contributionId,
+      epochId: latest.epochId,
+      configId: latest.configId,
+      revision: latest.revision + 1,
+      predecessorId: latest.id,
+      rawQuality: raw,
+      creditedQuality: Number(credited),
+      flags,
+      effort,
+      effortCriteria: latest.effortCriteria,
+      timingBps: latest.timingBps,
+      multiplierBps,
+      pointUnits: credited * BigInt(latest.timingBps) * BigInt(multiplierBps),
+      explanation: `Correction: ${reason}`,
+      acceptedAt: now,
+      affectsAllocation: now.getTime() < epoch.closesAt.getTime(),
+      correctionActor: input.actor,
+      correctionReason: reason,
+      correctionEvidence: input.evidenceRefs,
+      idempotencyKey: input.idempotencyKey,
+    })
+    .returning();
+  if (!decision) throw new Error("reward: correction insert returned nothing");
+  return { status: "appended", decision, created: true };
 }
 
 type Criteria = Record<

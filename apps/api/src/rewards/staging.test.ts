@@ -40,7 +40,7 @@ describe("stageRubric", () => {
       t.db,
       {
         communityId: community.id,
-        payload: buildRewardConfigPayload(rubricB),
+        payload: buildRewardConfigPayload(rubricB, { copy: true }),
         opensAt: T0,
         proposedBy: "test",
       },

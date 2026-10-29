@@ -25,7 +25,7 @@ export async function stageRubric(
   deps: RewardDeps = {},
 ): Promise<StageResult> {
   return db.transaction(async (tx) => {
-    const payload = buildRewardConfigPayload(input.rubric);
+    const payload = buildRewardConfigPayload(input.rubric, { copy: true });
     const { communityId, proposedBy } = input;
     let result: StageResult;
     if (input.activateAt) {

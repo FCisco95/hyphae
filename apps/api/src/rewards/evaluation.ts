@@ -33,6 +33,7 @@ import {
   routeFor,
 } from "../scoring/scorers.js";
 import { RewardConfigPayload, type RewardDeps, withCommunityLock } from "./config.js";
+import { copyExplanation, originalOf, withSpam, zeroLaterCopies } from "./copy.js";
 import type { Capture, RewardIntake } from "./intake.js";
 import type { Nomination } from "./slots.js";
 
@@ -440,6 +441,13 @@ export async function completeDispatch(
     const eligible = effort !== null && effortEligible(effort);
     const multiplierBps = eligible ? payload.effort.multiplierBps : NO_MULTIPLIER;
     const prior = await latestDecision(tx, dispatch.contributionId);
+    // The copy rule applies to a first-time post scored before the epoch's cutoff, and only when
+    // this intake's pinned configuration carries it.
+    const copyRule =
+      payload.copy && quality && !intake.reentryOf && now.getTime() < epoch.closesAt.getTime()
+        ? payload.copy
+        : undefined;
+    const original = copyRule ? await originalOf(tx, intake, copyRule.thresholdBps) : undefined;
 
     let derived: {
       rawQuality: number;
@@ -449,10 +457,11 @@ export async function completeDispatch(
       pointUnits: bigint;
     };
     if (quality) {
+      const flags = original ? withSpam(quality.flags) : quality.flags;
       const points = rewardPointUnits({
         credit: {
           rawQuality: rawQuality(BigInt(quality.score)),
-          flags: quality.flags,
+          flags,
           aiSlop: {
             patternCount: BigInt(quality.aiSlop.patterns.length),
             templateRhythm: quality.aiSlop.templateRhythm,
@@ -469,7 +478,7 @@ export async function completeDispatch(
       derived = {
         rawQuality: quality.score,
         creditedQuality: Number(points.creditedQuality),
-        flags: quality.flags,
+        flags,
         timingBps: Number(points.timingBps),
         pointUnits: points.pointUnits,
       };
@@ -484,7 +493,11 @@ export async function completeDispatch(
         pointUnits: BigInt(prior.creditedQuality) * BigInt(prior.timingBps) * BigInt(multiplierBps),
       };
     }
-    const explanation = [quality?.reasoning, effort ? `Effort: ${effort.explanation}` : null]
+    const explanation = [
+      original && copyRule ? copyExplanation(original.contributionId, copyRule.thresholdBps) : null,
+      quality?.reasoning,
+      effort ? `Effort: ${effort.explanation}` : null,
+    ]
       .filter(Boolean)
       .join("\n\n");
 
@@ -516,6 +529,10 @@ export async function completeDispatch(
       })
       .returning();
     if (!decision) throw new Error("reward: decision insert returned nothing");
+    // This post may be the original of copies that were scored before it.
+    if (copyRule && !original && decision.pointUnits > 0n) {
+      await zeroLaterCopies(tx, now, intake, copyRule.thresholdBps);
+    }
     await tx.update(rewardDispatches).set(stored).where(eq(rewardDispatches.id, dispatch.id));
     if (nomination) {
       await tx
