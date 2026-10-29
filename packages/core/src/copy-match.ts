@@ -5,17 +5,17 @@ export const COPY_THRESHOLD_BPS = 9_500;
 
 const BPS = 10_000;
 
-// Domains a post can carry without a scheme or a path.
+// Domains a post can carry without a path: the common generic ones, and any two-letter country code.
 const TLD =
   "com|org|net|io|xyz|app|dev|co|ai|fi|gg|me|so|sh|ly|to|tv|cc|info|biz|gov|edu|eth|sol|finance|money|link|site|online|tech|cloud|fun|lol|wtf|bio";
-// A link with a scheme or www, X's own short hosts, a bare domain with a path, or a bare domain
-// under a common top-level domain.
+// A link: a scheme or www with everything after it, X's own short hosts, a domain of any kind
+// followed by a path, query or fragment, or a bare domain under a common or country top-level domain.
 const LINK = new RegExp(
   [
     String.raw`(?:https?:\/\/|www\.)\S+`,
     String.raw`\b(?:t\.co|pic\.twitter\.com|pic\.x\.com)\/\S*`,
-    String.raw`\b(?:[a-z0-9-]+\.)+[a-z]{2,}\/\S*`,
-    String.raw`\b(?:[a-z0-9-]+\.)+(?:${TLD})\b`,
+    String.raw`\b(?:[a-z0-9-]+\.)+[a-z]{2,}[/?#]\S*`,
+    String.raw`\b(?:[a-z0-9-]+\.)+(?:${TLD}|[a-z]{2})\b`,
   ].join("|"),
   "g",
 );
@@ -24,15 +24,16 @@ const KEYCAP = /[0-9#*]\u{FE0F}?\u{20E3}/gu;
 const EMOJI =
   /\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji_Modifier}|\p{Regional_Indicator}|[\u{E0020}-\u{E007F}]|\u{200D}|\u{FE0F}/gu;
 
-// What the rule ignores when comparing: case, spacing, links, @mentions and emoji.
+// What the rule ignores when comparing: case, spacing, links, @mentions and emoji. Emoji go before
+// the compatibility folding, which would otherwise turn some of them (TM, !!) into plain text.
 export function copyNormalize(text: string): string {
   return text
+    .replace(KEYCAP, "")
+    .replace(EMOJI, "")
     .normalize("NFKC")
     .toLowerCase()
     .replace(LINK, " ")
     .replace(/@[a-z0-9_]{1,15}/g, " ")
-    .replace(KEYCAP, "")
-    .replace(EMOJI, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -100,24 +101,45 @@ function hammingWithin(a: Uint32Array, b: Uint32Array, limit: number): boolean {
   return true;
 }
 
-export function isCopyKey(
+function limitFor(candidate: CopyKey, earlier: CopyKey, thresholdBps: number): number {
+  if (!Number.isInteger(thresholdBps) || thresholdBps < 1 || thresholdBps > BPS) {
+    throw new RangeError("thresholdBps must be an integer from 1 to 10000");
+  }
+  const longest = Math.max(candidate.chars.length, earlier.chars.length);
+  return Math.floor(((BPS - thresholdBps) * longest) / BPS);
+}
+
+// The answer when it costs no more than a linear pass, or undefined when only the edit distance
+// can tell. A caller that has to bound its work counts the undefined ones.
+export function quickCopyVerdict(
+  candidate: CopyKey,
+  earlier: CopyKey,
+  thresholdBps: number = COPY_THRESHOLD_BPS,
+): boolean | undefined {
+  const limit = limitFor(candidate, earlier, thresholdBps);
+  // Nothing left to compare (a bare link or emoji) is never a copy of anything.
+  if (candidate.chars.length === 0 || earlier.chars.length === 0) return false;
+  if (candidate.text === earlier.text) return true;
+  if (Math.abs(candidate.chars.length - earlier.chars.length) > limit) return false;
+  if (histogramBound(candidate, earlier) > limit) return false;
+  if (
+    candidate.chars.length === earlier.chars.length &&
+    hammingWithin(candidate.chars, earlier.chars, limit)
+  ) {
+    return true;
+  }
+  return undefined;
+}
+
+// The edit-distance answer, for the pairs quickCopyVerdict leaves open.
+export function editCopyVerdict(
   candidate: CopyKey,
   earlier: CopyKey,
   thresholdBps: number = COPY_THRESHOLD_BPS,
 ): boolean {
-  if (!Number.isInteger(thresholdBps) || thresholdBps < 1 || thresholdBps > BPS) {
-    throw new RangeError("thresholdBps must be an integer from 1 to 10000");
-  }
-  // Nothing left to compare (a bare link or emoji) is never a copy of anything.
-  if (candidate.chars.length === 0 || earlier.chars.length === 0) return false;
-  if (candidate.text === earlier.text) return true;
-  const longest = Math.max(candidate.chars.length, earlier.chars.length);
-  const limit = Math.floor(((BPS - thresholdBps) * longest) / BPS);
-  if (Math.abs(candidate.chars.length - earlier.chars.length) > limit) return false;
-  if (histogramBound(candidate, earlier) > limit) return false;
+  const limit = limitFor(candidate, earlier, thresholdBps);
   const a = candidate.chars;
   const b = earlier.chars;
-  if (a.length === b.length && hammingWithin(a, b, limit)) return true;
   // Text both posts share at either end does not change the distance and is not worked through.
   let start = 0;
   while (start < a.length && start < b.length && a[start] === b[start]) start++;
@@ -128,6 +150,17 @@ export function isCopyKey(
     endB--;
   }
   return boundedDistance(a.subarray(start, endA), b.subarray(start, endB), limit) <= limit;
+}
+
+export function isCopyKey(
+  candidate: CopyKey,
+  earlier: CopyKey,
+  thresholdBps: number = COPY_THRESHOLD_BPS,
+): boolean {
+  return (
+    quickCopyVerdict(candidate, earlier, thresholdBps) ??
+    editCopyVerdict(candidate, earlier, thresholdBps)
+  );
 }
 
 export function isCopy(

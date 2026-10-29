@@ -85,6 +85,28 @@ describe("isCopy", () => {
     expect(copyNormalize("closes at midnight.then holds")).toContain("then holds");
   });
 
+  it("ignores a link whatever follows its domain and any country domain", () => {
+    const base = "The snapshot closes at midnight.";
+    for (const suffix of [
+      " example.com?ref=12345",
+      " example.com#details",
+      " example.pt",
+      " example.co.uk/a?b=c#d",
+      " https://example.com:8080/x?y=1",
+    ]) {
+      expect(isCopy(`${base}${suffix}`, base), suffix).toBe(true);
+    }
+    expect(copyNormalize("closes at midnight.then holds")).toContain("then holds");
+    expect(copyNormalize("a.m. and p.m. and e.g. and i.e.")).toContain("and");
+  });
+
+  it("ignores emoji that Unicode compatibility folding would turn into text", () => {
+    const base = "The snapshot closes at midnight.";
+    expect(isCopy(`${base} ™️`, base)).toBe(true);
+    expect(isCopy(`${base} ‼️`, base)).toBe(true);
+    expect(isCopy(`${base} ©️ ®️`, base)).toBe(true);
+  });
+
   it("settles scattered edits in a 25k-character post quickly", () => {
     const long = "the snapshot closes at midnight and holds are read after it. ".repeat(410);
     const substituted = [...long].map((c, i) => (i % 21 === 0 ? "b" : c)).join("");

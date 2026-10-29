@@ -1,4 +1,11 @@
-import { type CopyKey, copyKey, isCopyKey, type RewardFlag, sha256Hex } from "@hyphae/core";
+import {
+  type CopyKey,
+  copyKey,
+  editCopyVerdict,
+  quickCopyVerdict,
+  type RewardFlag,
+  sha256Hex,
+} from "@hyphae/core";
 import {
   contributions,
   type Db,
@@ -15,10 +22,30 @@ import type { Decision } from "./evaluation.js";
 const withSpam = (flags: readonly RewardFlag[]): RewardFlag[] =>
   [...new Set<RewardFlag>([...flags, "spam"])].sort();
 
-// A pair of posts is compared once per process: the answer depends on the two texts and the
-// threshold only. Keyed by the hash of each normalized text, never by the text.
-const PAIR_CACHE_LIMIT = 50_000;
-const verdicts = new Map<string, boolean>();
+// A pair that only the edit distance can settle is compared once per process: the answer depends
+// on the two texts and the threshold only. Keyed by the hash of each normalized text, never by the
+// text. Pairs a linear pass settles are not kept: they cost nothing to answer again. The oldest
+// entries leave first, so a run never loses the progress of the one before it.
+export const copyPairCache = {
+  limit: 200_000,
+  verdicts: new Map<string, boolean>(),
+  get(key: string): boolean | undefined {
+    const verdict = this.verdicts.get(key);
+    if (verdict !== undefined) {
+      this.verdicts.delete(key);
+      this.verdicts.set(key, verdict);
+    }
+    return verdict;
+  },
+  remember(key: string, verdict: boolean): void {
+    this.verdicts.set(key, verdict);
+    while (this.verdicts.size > this.limit) {
+      const oldest = this.verdicts.keys().next().value;
+      if (oldest === undefined) break;
+      this.verdicts.delete(oldest);
+    }
+  },
+};
 
 interface Post {
   contributionId: string;
@@ -26,10 +53,14 @@ interface Post {
   hash: string;
 }
 
-// The most time one reconciliation spends comparing posts while it holds the community lock. It
-// stops between pairs, never inside one, and always completes at least one new pair, so repeated
-// runs make progress and finish.
+// The most time one reconciliation spends on edit-distance comparisons while it holds the community
+// lock. It stops between pairs, never inside one, and always completes at least one new pair, so
+// repeated runs make progress and finish.
 export const RECONCILE_BUDGET_MS = 2_000;
+
+// In the last minutes before the cutoff there is no later run to finish what a budget left, and
+// the cutoff freezes whatever the epoch holds, so a run then has no budget.
+export const RECONCILE_FINAL_WINDOW_MS = 15 * 60_000;
 
 // Brings the epoch to the one result the rule defines, whatever order the posts were scored in
 // and whatever corrections came since. Walk the epoch's posts in acceptance order (server clock,
@@ -83,6 +114,7 @@ export async function reconcileCopies(
     lineages.set(d.contributionId, [...(lineages.get(d.contributionId) ?? []), d]);
   }
 
+  const unbounded = epoch.closesAt.getTime() - now.getTime() <= RECONCILE_FINAL_WINDOW_MS;
   const deadline = Date.now() + (options.budgetMs ?? RECONCILE_BUDGET_MS);
   let compared = 0;
   const keepers: Post[] = [];
@@ -99,14 +131,16 @@ export async function reconcileCopies(
     const post: Post = { contributionId, key, hash: sha256Hex(key.text) };
     let original: Post | undefined;
     for (const keeper of keepers) {
-      const cacheKey = `${post.hash}:${keeper.hash}:${rule.thresholdBps}`;
-      let verdict = verdicts.get(cacheKey);
+      let verdict = quickCopyVerdict(post.key, keeper.key, rule.thresholdBps);
       if (verdict === undefined) {
-        if (compared > 0 && Date.now() >= deadline) break walk;
-        compared++;
-        verdict = isCopyKey(post.key, keeper.key, rule.thresholdBps);
-        if (verdicts.size >= PAIR_CACHE_LIMIT) verdicts.clear();
-        verdicts.set(cacheKey, verdict);
+        const cacheKey = `${post.hash.slice(0, 24)}${keeper.hash.slice(0, 24)}${rule.thresholdBps}`;
+        verdict = copyPairCache.get(cacheKey);
+        if (verdict === undefined) {
+          if (!unbounded && compared > 0 && Date.now() >= deadline) break walk;
+          compared++;
+          verdict = editCopyVerdict(post.key, keeper.key, rule.thresholdBps);
+          copyPairCache.remember(cacheKey, verdict);
+        }
       }
       if (verdict) {
         original = keeper;

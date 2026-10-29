@@ -4,7 +4,7 @@ import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeEpoch } from "./close.js";
 import { buildRewardConfigPayload, findOrInsertConfig } from "./config.js";
-import { openCopyEpochs, reconcileCopies } from "./copy.js";
+import { copyPairCache, openCopyEpochs, reconcileCopies } from "./copy.js";
 import { appendCorrection, COPY_ACTOR } from "./decisions.js";
 import { effectiveResults } from "./effective.js";
 import { completeDispatch, runEvaluation } from "./evaluation.js";
@@ -51,6 +51,9 @@ const answer = (score: number) => async (_prompt: unknown, purpose: RewardPurpos
   latencyMs: 5,
   costMicroUsd: 100,
 });
+
+const dropEvery = (text: string, step: number, offset: number) =>
+  [...text].filter((_, i) => i % step !== offset).join("");
 
 const POINTS = (whole: number) => (BigInt(whole) * 100_000_000n).toString();
 
@@ -342,7 +345,9 @@ describe("copy rule", () => {
     const l = await lane(false);
     // Pairs are remembered per process, so this test uses texts no other test has compared.
     const nonce = `budget ${Math.random().toString(36).slice(2)}`;
-    const texts = [ORIGINAL, COPY, ORIGINAL.replace("sells", "pays")].map((t) => `${nonce} ${t}`);
+    const base = `${nonce} ${ORIGINAL} ${ORIGINAL}`;
+    // Removing characters changes the length, so only the edit distance can tell these apart.
+    const texts = [base, dropEvery(base, 40, 3), dropEvery(base, 45, 7)];
     const posts = [];
     for (const [i, text] of texts.entries()) {
       posts.push(await l.admit(text, 60_000 + i * 1_000, l.other.id));
@@ -368,6 +373,72 @@ describe("copy rule", () => {
     await run();
     expect(await l.points()).toEqual([POINTS(85), "0", "0"]);
   });
+
+  it("in the last minutes before the cutoff one run settles everything whatever the budget", async () => {
+    const l = await lane(false);
+    const nonce = `final ${Math.random().toString(36).slice(2)}`;
+    const base = `${nonce} ${ORIGINAL} ${ORIGINAL}`;
+    const texts = [base, dropEvery(base, 40, 3), dropEvery(base, 45, 7)];
+    const posts = [];
+    for (const [i, text] of texts.entries()) {
+      posts.push(await l.admit(text, 60_000 + i * 1_000, l.other.id));
+    }
+    // Scored in the order that leaves the last copy paid until the whole epoch is compared.
+    for (const [step, index] of [2, 1, 0].entries()) {
+      const post = posts[index];
+      if (!post) throw new Error("no post");
+      await l.score(post.contributionId, 85, 2 * MIN + step * 1_000);
+    }
+    const pinned = await t.db.transaction((tx) =>
+      findOrInsertConfig(tx, l.community.id, buildRewardConfigPayload(rubric, { copy: true })),
+    );
+    await t.db.update(epochs).set({ rewardConfigId: pinned.id }).where(eq(epochs.id, l.epoch.id));
+
+    await t.db.transaction((tx) =>
+      reconcileCopies(tx, new Date(T0.getTime() + WEEK_MS - MIN), l.community.id, l.epoch.id, {
+        budgetMs: 0,
+      }),
+    );
+    expect(await l.points()).toEqual([POINTS(85), "0", "0"]);
+  });
+
+  it("the pair cache drops the oldest verdict first and keeps the ones just used", () => {
+    const limit = copyPairCache.limit;
+    copyPairCache.limit = 2;
+    copyPairCache.verdicts.clear();
+    copyPairCache.remember("a", true);
+    copyPairCache.remember("b", false);
+    expect(copyPairCache.get("a")).toBe(true);
+    copyPairCache.remember("c", true);
+    expect([...copyPairCache.verdicts.keys()]).toEqual(["a", "c"]);
+    copyPairCache.limit = limit;
+    copyPairCache.verdicts.clear();
+  });
+
+  it("many unrelated posts followed by an exact copy of the first: one run settles the copy", async () => {
+    const l = await lane(false);
+    const nonce = Math.random().toString(36).slice(2);
+    const posts = [];
+    for (let i = 0; i < 40; i++) {
+      const text = `${nonce} post ${i}: ${"qwertyuiop".repeat((i % 7) + 1)} ${i * 7919}`;
+      posts.push(await l.admit(text, 60_000 + i * 100, l.other.id));
+    }
+    posts.push(await l.admit(`${nonce} post 0: ${"qwertyuiop".repeat(1)} 0`, 70_000, l.other.id));
+    for (const [i, post] of posts.entries()) {
+      await l.score(post.contributionId, 85, 2 * MIN + i * 100);
+    }
+    const pinned = await t.db.transaction((tx) =>
+      findOrInsertConfig(tx, l.community.id, buildRewardConfigPayload(rubric, { copy: true })),
+    );
+    await t.db.update(epochs).set({ rewardConfigId: pinned.id }).where(eq(epochs.id, l.epoch.id));
+
+    await t.db.transaction((tx) =>
+      reconcileCopies(tx, new Date(T0.getTime() + 5 * MIN), l.community.id, l.epoch.id),
+    );
+    const points = await l.points();
+    expect(points.at(-1)).toBe("0");
+    expect(points.slice(0, -1).every((p) => p === POINTS(85))).toBe(true);
+  }, 30_000);
 
   it("the recovery sweep finds the epochs whose pinned configuration carries the rule", async () => {
     const withRule = await lane(true);
