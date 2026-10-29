@@ -1,13 +1,17 @@
 import type { RewardPurpose } from "@hyphae/core";
-import { epochs, members, rewardDecisions } from "@hyphae/db";
+import { epochs, members, rewardDecisions, rewardIntakes } from "@hyphae/db";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { closeEpoch } from "./close.js";
 import { buildRewardConfigPayload } from "./config.js";
+import { appendCorrection, COPY_ACTOR } from "./decisions.js";
 import { effectiveResults } from "./effective.js";
 import { runEvaluation } from "./evaluation.js";
+import { nominate } from "./slots.js";
 import { createTestDb, later, rubric, seedRewardLane } from "./test-db.js";
 
 const MIN = 60_000;
+const WEEK_MS = 7 * 86_400_000; // epoch 1 is [T0, T0 + WEEK_MS)
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -28,11 +32,25 @@ const quality = (score: number) => ({
   aiSlop: { patterns: [], templateRhythm: false },
   reasoning: "Specific to the post.",
 });
-const answer = (score: number) => async (_prompt: unknown, _purpose: RewardPurpose) => ({
-  output: quality(score),
+const effort = {
+  originalSubstance: { met: true, note: "own test" },
+  inspectableWork: { met: true, note: "steps and output" },
+  communityContribution: { met: true, note: "useful to holders" },
+  missingEssentialEvidence: null,
+  explanation: "You ran the flow and posted the result.",
+};
+const answer = (score: number) => async (_prompt: unknown, purpose: RewardPurpose) => ({
+  output:
+    purpose === "effort"
+      ? { effort }
+      : purpose === "quality_effort"
+        ? { ...quality(score), effort }
+        : quality(score),
   latencyMs: 5,
   costMicroUsd: 100,
 });
+
+const POINTS = (whole: number) => (BigInt(whole) * 100_000_000n).toString();
 
 async function lane(copyRule = true) {
   const s = await seedRewardLane(t.db, buildRewardConfigPayload(rubric, { copy: copyRule }));
@@ -56,19 +74,36 @@ async function lane(copyRule = true) {
       { communityId: s.community.id, target: { contributionId } },
       { model: "test:fake", call: answer(value), horizonMs: 5 * MIN, clock: later(atMs) },
     );
-  const read = () =>
-    effectiveResults(
-      t.db,
-      { communityId: s.community.id, epochId: epoch.id },
-      { clock: later(10 * MIN) },
-    );
+  const read = (epochId = epoch.id, atMs = 10 * MIN) =>
+    effectiveResults(t.db, { communityId: s.community.id, epochId }, { clock: later(atMs) });
+  const points = async () => (await read()).entries.map((e) => e.pointUnits);
   const lineage = (contributionId: string) =>
     t.db
       .select()
       .from(rewardDecisions)
       .where(eq(rewardDecisions.contributionId, contributionId))
       .orderBy(asc(rewardDecisions.revision));
-  return { ...s, other, admit, score, read, lineage };
+  const correct = (
+    contributionId: string,
+    expectedRevision: number,
+    changes: { rawQuality: number },
+    atMs: number,
+  ) =>
+    appendCorrection(
+      t.db,
+      {
+        communityId: s.community.id,
+        contributionId,
+        expectedRevision,
+        changes,
+        reason: "reviewed by the admin",
+        evidenceRefs: ["review"],
+        actor: "admin:test",
+        idempotencyKey: `k-${contributionId}-${expectedRevision}`,
+      },
+      { clock: later(atMs) },
+    );
+  return { ...s, epoch, other, admit, score, read, points, lineage, correct };
 }
 
 describe("copy rule", () => {
@@ -77,16 +112,20 @@ describe("copy rule", () => {
     const first = await l.admit(ORIGINAL, 60_000);
     const second = await l.admit(COPY, 70_000, l.other.id);
     await l.score(first.contributionId, 85, 2 * MIN);
-    await l.score(second.contributionId, 85, 3 * MIN);
+    const scored = await l.score(second.contributionId, 85, 3 * MIN);
 
-    const [copy] = await l.lineage(second.contributionId);
-    expect(copy).toMatchObject({ creditedQuality: 0, pointUnits: 0n, flags: ["spam"] });
-    expect(copy?.explanation).toContain(first.contributionId);
-    const r = await l.read();
-    expect(r.entries.find((e) => e.contributionId === first.contributionId)?.pointUnits).toBe(
-      "8500000000",
-    );
-    expect(r.entries.find((e) => e.contributionId === second.contributionId)?.pointUnits).toBe("0");
+    const lineage = await l.lineage(second.contributionId);
+    expect(lineage.map((d) => d.revision)).toEqual([1, 2]);
+    expect(lineage[1]).toMatchObject({
+      creditedQuality: 0,
+      pointUnits: 0n,
+      flags: ["spam"],
+      correctionActor: COPY_ACTOR,
+    });
+    expect(lineage[1]?.explanation).toContain(first.contributionId);
+    // The member's message reports the zero, not the 85 the model first gave.
+    expect(scored).toMatchObject({ status: "completed", decision: { pointUnits: 0n } });
+    expect(await l.points()).toEqual([POINTS(85), "0"]);
   });
 
   it("a reply on the same topic in other words is not a copy and earns normally", async () => {
@@ -100,16 +139,15 @@ describe("copy rule", () => {
     await l.score(first.contributionId, 85, 2 * MIN);
     await l.score(second.contributionId, 80, 3 * MIN);
 
-    const r = await l.read();
-    expect(r.entries.map((e) => e.pointUnits)).toEqual(["8500000000", "8000000000"]);
+    expect(await l.points()).toEqual([POINTS(85), POINTS(80)]);
   });
 
-  it("scored out of order: the original earns and the copy that earned first is zeroed by a correction", async () => {
+  it("scored out of order: the original earns and the copy that earned first is zeroed", async () => {
     const l = await lane();
     const first = await l.admit(ORIGINAL, 60_000);
     const second = await l.admit(COPY, 70_000, l.other.id);
     await l.score(second.contributionId, 85, 2 * MIN);
-    expect((await l.read()).entries.map((e) => e.pointUnits)).toEqual(["0", "8500000000"]);
+    expect(await l.points()).toEqual(["0", POINTS(85)]);
     await l.score(first.contributionId, 85, 3 * MIN);
 
     const lineage = await l.lineage(second.contributionId);
@@ -117,15 +155,10 @@ describe("copy rule", () => {
     expect(lineage[1]).toMatchObject({
       pointUnits: 0n,
       flags: ["spam"],
-      correctionActor: "system:copy-rule",
+      correctionActor: COPY_ACTOR,
     });
     expect(lineage[1]?.correctionEvidence).toEqual([`contribution:${first.contributionId}`]);
-    const r = await l.read();
-    expect(r.entries.find((e) => e.contributionId === first.contributionId)?.pointUnits).toBe(
-      "8500000000",
-    );
-    expect(r.entries.find((e) => e.contributionId === second.contributionId)?.pointUnits).toBe("0");
-    expect(r.totals.reduce((sum, m) => sum + BigInt(m.pointUnits), 0n)).toBe(8_500_000_000n);
+    expect(await l.points()).toEqual([POINTS(85), "0"]);
   });
 
   it("a copy of a post that earned nothing is not a copy: it earns when it scores", async () => {
@@ -135,8 +168,7 @@ describe("copy rule", () => {
     await l.score(first.contributionId, 40, 2 * MIN);
     await l.score(second.contributionId, 85, 3 * MIN);
 
-    const r = await l.read();
-    expect(r.entries.map((e) => e.pointUnits)).toEqual(["0", "8500000000"]);
+    expect(await l.points()).toEqual(["0", POINTS(85)]);
   });
 
   it("the same member copying their own earlier post is a copy too", async () => {
@@ -147,7 +179,7 @@ describe("copy rule", () => {
     await l.score(second.contributionId, 85, 3 * MIN);
 
     expect((await l.read()).totals).toEqual([
-      { memberId: l.member.id, pointUnits: "8500000000", wholePoints: "85" },
+      { memberId: l.member.id, pointUnits: POINTS(85), wholePoints: "85" },
     ]);
   });
 
@@ -158,7 +190,149 @@ describe("copy rule", () => {
     await l.score(first.contributionId, 85, 2 * MIN);
     await l.score(second.contributionId, 85, 3 * MIN);
 
-    expect((await l.read()).entries.map((e) => e.pointUnits)).toEqual(["8500000000", "8500000000"]);
+    expect(await l.points()).toEqual([POINTS(85), POINTS(85)]);
     expect(await l.lineage(second.contributionId)).toHaveLength(1);
+  });
+
+  it("gives the same points in every scoring order, also when copies chain below the threshold", async () => {
+    // A and B are copies, B and C are copies, A and C are not (10% apart). The sequential result
+    // is A earns, B is zeroed, C earns: C is compared with the posts that earn, and B does not.
+    const texts = [
+      "a".repeat(100),
+      `${"b".repeat(5)}${"a".repeat(95)}`,
+      `${"b".repeat(10)}${"a".repeat(90)}`,
+    ];
+    const orders = [
+      [0, 1, 2],
+      [0, 2, 1],
+      [1, 0, 2],
+      [1, 2, 0],
+      [2, 0, 1],
+      [2, 1, 0],
+    ];
+    for (const order of orders) {
+      const l = await lane();
+      const posts = [];
+      for (const [i, text] of texts.entries()) {
+        posts.push(await l.admit(text, 60_000 + i * 1_000, l.other.id));
+      }
+      for (const [step, index] of order.entries()) {
+        const post = posts[index];
+        if (!post) throw new Error("no post");
+        await l.score(post.contributionId, 85, 2 * MIN + step * 1_000);
+      }
+      expect(await l.points(), `scored in order ${order.join("")}`).toEqual([
+        POINTS(85),
+        "0",
+        POINTS(85),
+      ]);
+    }
+  });
+
+  it("an admin correction that lifts an original above zero zeroes the copy that earned", async () => {
+    const l = await lane();
+    const first = await l.admit(ORIGINAL, 60_000);
+    const second = await l.admit(COPY, 70_000, l.other.id);
+    await l.score(first.contributionId, 40, 2 * MIN);
+    await l.score(second.contributionId, 85, 3 * MIN);
+    expect(await l.points()).toEqual(["0", POINTS(85)]);
+
+    await l.correct(first.contributionId, 1, { rawQuality: 85 }, 4 * MIN);
+    expect(await l.points()).toEqual([POINTS(85), "0"]);
+  });
+
+  it("an admin correction that drops an original to zero gives its copy the points back", async () => {
+    const l = await lane();
+    const first = await l.admit(ORIGINAL, 60_000);
+    const second = await l.admit(COPY, 70_000, l.other.id);
+    await l.score(first.contributionId, 85, 2 * MIN);
+    await l.score(second.contributionId, 85, 3 * MIN);
+    expect(await l.points()).toEqual([POINTS(85), "0"]);
+
+    await l.correct(first.contributionId, 1, { rawQuality: 40 }, 4 * MIN);
+    expect(await l.points()).toEqual(["0", POINTS(85)]);
+    const lineage = await l.lineage(second.contributionId);
+    expect(lineage.at(-1)).toMatchObject({ correctionActor: COPY_ACTOR, flags: [] });
+  });
+
+  it("a correction on a zeroed copy keeps its own quality for when the zero is lifted", async () => {
+    const l = await lane();
+    const first = await l.admit(ORIGINAL, 60_000);
+    const second = await l.admit(COPY, 70_000, l.other.id);
+    await l.score(first.contributionId, 85, 2 * MIN);
+    await l.score(second.contributionId, 85, 3 * MIN);
+
+    await l.correct(second.contributionId, 2, { rawQuality: 90 }, 4 * MIN);
+    expect(await l.points()).toEqual([POINTS(85), "0"]);
+    await l.correct(first.contributionId, 1, { rawQuality: 40 }, 5 * MIN);
+    expect(await l.points()).toEqual(["0", POINTS(90)]);
+  });
+
+  it("a re-entry that copies an earlier post of the epoch is a copy too", async () => {
+    const l = await lane();
+    const original = await l.admit("first try, since expired", 3 * MIN);
+    const nominated = await nominate(
+      t.db,
+      {
+        communityId: l.community.id,
+        memberId: l.member.id,
+        contributionId: original.contributionId,
+        idempotencyKey: "n1",
+      },
+      { clock: later(3 * MIN) },
+    );
+    if (nominated.status !== "nominated") throw new Error(nominated.status);
+    await closeEpoch(
+      t.db,
+      { communityId: l.community.id, epochId: l.epoch.id },
+      { clock: later(WEEK_MS) },
+    );
+
+    const inEpoch2 = WEEK_MS + 10 * MIN;
+    const post = await l.admit(ORIGINAL, inEpoch2);
+    await l.score(post.contributionId, 85, inEpoch2 + MIN);
+    const again = await nominate(
+      t.db,
+      {
+        communityId: l.community.id,
+        memberId: l.member.id,
+        contributionId: original.contributionId,
+        idempotencyKey: "n2",
+        evidence: {
+          contribution: {
+            url: "https://x.com/a/status/now",
+            text: COPY,
+            oembed: null,
+            telegramMessageId: 42,
+          },
+          capture: {
+            source: "x_oembed",
+            capturedAt: new Date(WEEK_MS).toISOString(),
+            limitations: [],
+          },
+        },
+      },
+      { clock: later(inEpoch2 + 2 * MIN) },
+    );
+    if (again.status !== "nominated") throw new Error(again.status);
+    const [reentry] = await t.db
+      .select()
+      .from(rewardIntakes)
+      .where(eq(rewardIntakes.contributionId, again.nomination.contributionId));
+    await runEvaluation(
+      t.db,
+      { communityId: l.community.id, target: { nominationId: again.nomination.id } },
+      {
+        model: "test:fake",
+        call: answer(85),
+        horizonMs: 5 * MIN,
+        clock: later(inEpoch2 + 3 * MIN),
+      },
+    );
+
+    const r = await l.read(reentry?.epochId, inEpoch2 + 4 * MIN);
+    const pointsOf = (id?: string) => r.entries.find((e) => e.contributionId === id)?.pointUnits;
+    expect(pointsOf(post.contributionId)).toBe(POINTS(85));
+    expect(pointsOf(reentry?.contributionId)).toBe("0");
   });
 });

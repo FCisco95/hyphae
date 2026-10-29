@@ -52,6 +52,28 @@ describe("isCopy", () => {
     expect(isCopy(`${"b".repeat(6)}${"a".repeat(94)}`, base)).toBe(false);
   });
 
+  it("ignores keycap emoji and every kind of link", () => {
+    expect(isCopy("gm builders", "gm builders 1️⃣2️⃣3️⃣")).toBe(true);
+    expect(isCopy("gm builders", "gm builders pic.twitter.com/abcdefghijk")).toBe(true);
+    expect(isCopy("gm builders", "gm builders www.example.com/a")).toBe(true);
+    expect(isCopy("gm builders", "gm builders example.com/some/path?x=1")).toBe(true);
+    expect(isCopy("gm builders", "gm builders pic.x.com/zzz")).toBe(true);
+  });
+
+  it("stays fast on the longest posts: identical, lightly edited and unrelated", () => {
+    const word = "snapshot closes at midnight and holds are read after it. ";
+    const long = word.repeat(Math.ceil(25_000 / word.length)).slice(0, 25_000);
+    const edited = `${"x".repeat(900)}${long.slice(900)}`;
+    const unrelated = "zq".repeat(12_500);
+    const started = performance.now();
+    for (let i = 0; i < 5; i++) {
+      expect(isCopy(long, long)).toBe(true);
+      expect(isCopy(edited, long)).toBe(true);
+      expect(isCopy(unrelated, long)).toBe(false);
+    }
+    expect(performance.now() - started).toBeLessThan(2_000);
+  });
+
   it("never treats a post with nothing left after normalizing as a copy", () => {
     expect(isCopy("🚀 https://t.co/x @a", "🔥 https://t.co/y @b")).toBe(false);
     expect(isCopy("", "")).toBe(false);

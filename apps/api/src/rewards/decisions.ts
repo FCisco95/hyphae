@@ -10,9 +10,20 @@ import {
 } from "@hyphae/db";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { RewardConfigPayload, type RewardDeps, withCommunityLock } from "./config.js";
+import { reconcileCopies } from "./copy.js";
 import type { Decision } from "./evaluation.js";
 
 const NO_MULTIPLIER = 10_000;
+
+// The author of the successors that apply or lift the copy rule. They overlay a post's own
+// decision and never replace it.
+export const COPY_ACTOR = "system:copy-rule";
+
+// What the post would earn without the copy rule: its newest decision that the rule did not write.
+// A correction or an effort upgrade builds on this, so a copy that stops being one gets back
+// exactly what it earned, and a post that earned nothing still earns nothing.
+export const baseOf = (lineage: readonly Decision[]): Decision | undefined =>
+  lineage.findLast((d) => d.correctionActor !== COPY_ACTOR);
 
 export interface CorrectionInput {
   communityId: string;
@@ -54,9 +65,14 @@ export async function appendCorrection(
     throw new Error("reward: a correction must change something");
   }
 
-  return withCommunityLock(db, input.communityId, deps, (tx, _community, now) =>
-    appendCorrectionIn(tx, now, input),
-  );
+  return withCommunityLock(db, input.communityId, deps, async (tx, _community, now) => {
+    const result = await appendCorrectionIn(tx, now, input);
+    // A correction can move a post across zero, which changes who its copies are.
+    if (result.status === "appended" && result.created) {
+      await reconcileCopies(tx, now, input.communityId, result.decision.epochId);
+    }
+    return result;
+  });
 }
 
 // The body of appendCorrection for a caller that already holds the community lock and read the
@@ -100,8 +116,10 @@ export async function appendCorrectionIn(
     return { status: "stale_revision", current: latest };
   }
 
-  let multiplierBps = latest.multiplierBps;
-  let effort = latest.effort;
+  const base = baseOf(lineage);
+  if (!base) return { status: "no_decision" };
+  let multiplierBps = base.multiplierBps;
+  let effort = base.effort;
   if (input.changes.effort) {
     // Only work whose nomination consumed a slot can have its effort judged again (O6).
     const [consumed] = await tx
@@ -142,8 +160,8 @@ export async function appendCorrectionIn(
     throw new Error(`reward: dispatch ${root.dispatchId} has no quality output`);
   }
 
-  const raw = input.changes.rawQuality ?? latest.rawQuality;
-  const flags = input.changes.flags ?? (latest.flags as RewardFlag[]);
+  const raw = input.changes.rawQuality ?? base.rawQuality;
+  const flags = input.changes.flags ?? (base.flags as RewardFlag[]);
   const credited = creditedQuality({
     rawQuality: rawQuality(BigInt(raw)),
     flags,
@@ -171,10 +189,10 @@ export async function appendCorrectionIn(
       creditedQuality: Number(credited),
       flags,
       effort,
-      effortCriteria: latest.effortCriteria,
-      timingBps: latest.timingBps,
+      effortCriteria: base.effortCriteria,
+      timingBps: base.timingBps,
       multiplierBps,
-      pointUnits: credited * BigInt(latest.timingBps) * BigInt(multiplierBps),
+      pointUnits: credited * BigInt(base.timingBps) * BigInt(multiplierBps),
       explanation: `Correction: ${reason}`,
       acceptedAt: now,
       affectsAllocation: now.getTime() < epoch.closesAt.getTime(),

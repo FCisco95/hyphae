@@ -23,7 +23,7 @@ import {
   rewardSlots,
   tasks,
 } from "@hyphae/db";
-import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { jevCostMicroUsd } from "../scoring/jev.js";
 import {
   type JevRegistry,
@@ -33,7 +33,8 @@ import {
   routeFor,
 } from "../scoring/scorers.js";
 import { RewardConfigPayload, type RewardDeps, withCommunityLock } from "./config.js";
-import { copyExplanation, originalOf, withSpam, zeroLaterCopies } from "./copy.js";
+import { reconcileCopies } from "./copy.js";
+import { baseOf } from "./decisions.js";
 import type { Capture, RewardIntake } from "./intake.js";
 import type { Nomination } from "./slots.js";
 
@@ -79,6 +80,17 @@ async function originalAcceptance(tx: Tx, intake: RewardIntake): Promise<Date> {
     .where(eq(rewardIntakes.id, intake.reentryOf));
   if (!origin) throw new Error(`reward: intake ${intake.reentryOf} missing`);
   return origin.acceptedAt;
+}
+
+// The decision the copy rule did not write: what the model and any operator judged (see baseOf).
+async function baseDecision(tx: Tx, contributionId: string): Promise<Decision | undefined> {
+  return baseOf(
+    await tx
+      .select()
+      .from(rewardDecisions)
+      .where(eq(rewardDecisions.contributionId, contributionId))
+      .orderBy(asc(rewardDecisions.revision)),
+  );
 }
 
 async function latestDecision(tx: Tx, contributionId: string): Promise<Decision | undefined> {
@@ -237,7 +249,7 @@ export async function beginDispatch(
         .limit(1);
       if (round) limitations = round.limitations;
     }
-    const prior = purpose === "effort" ? await latestDecision(tx, contributionId) : undefined;
+    const prior = purpose === "effort" ? await baseDecision(tx, contributionId) : undefined;
     if (purpose === "effort" && !prior) throw new Error("reward: upgrade without a decision");
     const route = routeFor(promptVersion, purpose, scorers);
     if (!route) throw new Error(`reward: no scorer for ${promptVersion} although its pin matched`);
@@ -441,13 +453,8 @@ export async function completeDispatch(
     const eligible = effort !== null && effortEligible(effort);
     const multiplierBps = eligible ? payload.effort.multiplierBps : NO_MULTIPLIER;
     const prior = await latestDecision(tx, dispatch.contributionId);
-    // The copy rule applies to a first-time post scored before the epoch's cutoff, and only when
-    // this intake's pinned configuration carries it.
-    const copyRule =
-      payload.copy && quality && !intake.reentryOf && now.getTime() < epoch.closesAt.getTime()
-        ? payload.copy
-        : undefined;
-    const original = copyRule ? await originalOf(tx, intake, copyRule.thresholdBps) : undefined;
+    // An upgrade builds on what the post earned before the copy rule, not on the rule's own overlay.
+    const base = await baseDecision(tx, dispatch.contributionId);
 
     let derived: {
       rawQuality: number;
@@ -457,11 +464,10 @@ export async function completeDispatch(
       pointUnits: bigint;
     };
     if (quality) {
-      const flags = original ? withSpam(quality.flags) : quality.flags;
       const points = rewardPointUnits({
         credit: {
           rawQuality: rawQuality(BigInt(quality.score)),
-          flags,
+          flags: quality.flags,
           aiSlop: {
             patternCount: BigInt(quality.aiSlop.patterns.length),
             templateRhythm: quality.aiSlop.templateRhythm,
@@ -478,26 +484,22 @@ export async function completeDispatch(
       derived = {
         rawQuality: quality.score,
         creditedQuality: Number(points.creditedQuality),
-        flags,
+        flags: quality.flags,
         timingBps: Number(points.timingBps),
         pointUnits: points.pointUnits,
       };
     } else {
       // An upgrade judges effort only; quality, flags and timing come from the predecessor.
-      if (!prior) throw new Error("reward: upgrade without a decision");
+      if (!prior || !base) throw new Error("reward: upgrade without a decision");
       derived = {
-        rawQuality: prior.rawQuality,
-        creditedQuality: prior.creditedQuality,
-        flags: prior.flags,
-        timingBps: prior.timingBps,
-        pointUnits: BigInt(prior.creditedQuality) * BigInt(prior.timingBps) * BigInt(multiplierBps),
+        rawQuality: base.rawQuality,
+        creditedQuality: base.creditedQuality,
+        flags: base.flags,
+        timingBps: base.timingBps,
+        pointUnits: BigInt(base.creditedQuality) * BigInt(base.timingBps) * BigInt(multiplierBps),
       };
     }
-    const explanation = [
-      original && copyRule ? copyExplanation(original.contributionId, copyRule.thresholdBps) : null,
-      quality?.reasoning,
-      effort ? `Effort: ${effort.explanation}` : null,
-    ]
+    const explanation = [quality?.reasoning, effort ? `Effort: ${effort.explanation}` : null]
       .filter(Boolean)
       .join("\n\n");
 
@@ -529,10 +531,6 @@ export async function completeDispatch(
       })
       .returning();
     if (!decision) throw new Error("reward: decision insert returned nothing");
-    // This post may be the original of copies that were scored before it.
-    if (copyRule && !original && decision.pointUnits > 0n) {
-      await zeroLaterCopies(tx, now, intake, copyRule.thresholdBps);
-    }
     await tx.update(rewardDispatches).set(stored).where(eq(rewardDispatches.id, dispatch.id));
     if (nomination) {
       await tx
@@ -552,7 +550,12 @@ export async function completeDispatch(
         .set({ state: "consumed", consumedAt: now, consumedDecisionId: decision.id })
         .where(eq(rewardSlots.id, nomination.slotId));
     }
-    return { status: "completed", decision, created: true };
+    // Settles this post against the epoch's other posts in either scoring order. It reads the
+    // dispatch output stored above, so it runs last.
+    await reconcileCopies(tx, now, input.communityId, intake.epochId);
+    // The member is told what the post earns now, which the copy rule may have just changed.
+    const settled = await latestDecision(tx, dispatch.contributionId);
+    return { status: "completed", decision: settled ?? decision, created: true };
   });
 }
 
