@@ -7,6 +7,7 @@ const TOKEN = "1234567890:AAH-worker-token-that-must-never-be-stored";
 const CLOSES_AT = new Date("2026-10-10T00:00:00.000Z");
 const m = vi.hoisted(() => ({
   marked: [] as string[],
+  superseded: false,
   sent: [] as { chat: number; text: string; other: Record<string, unknown> }[],
   fail: false,
   blocked: false,
@@ -46,6 +47,7 @@ vi.mock("./score-route.js", async (importActual) => ({
 vi.mock("../rewards/recovery.js", () => ({
   strandedWork: async () => ({ evaluations: [], retrievals: [], notifications: [] }),
   decisionNotified: async () => false,
+  decisionSuperseded: async () => m.superseded,
   markNotified: async (_db: unknown, id: string) => {
     m.marked.push(id);
   },
@@ -97,6 +99,7 @@ const notYet: PayoutVerdictV1 = {
 
 beforeEach(() => {
   m.marked = [];
+  m.superseded = false;
   m.sent = [];
   m.fail = false;
   m.blocked = false;
@@ -126,6 +129,13 @@ describe("notifyReward", () => {
     expect(err?.cause).toBeUndefined();
     expect(inspect(err, { depth: null })).not.toContain(TOKEN);
     expect(JSON.stringify(err, Object.getOwnPropertyNames(err))).not.toContain(TOKEN);
+    expect(m.marked).toEqual([]);
+  });
+
+  it("sends nothing for a decision that a newer one has replaced", async () => {
+    m.superseded = true;
+    await notifyReward(job);
+    expect(m.sent).toEqual([]);
     expect(m.marked).toEqual([]);
   });
 

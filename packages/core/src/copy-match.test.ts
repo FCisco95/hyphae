@@ -74,6 +74,27 @@ describe("isCopy", () => {
     expect(performance.now() - started).toBeLessThan(2_000);
   });
 
+  it("ignores a bare domain and the tag characters of a flag emoji", () => {
+    const base = "The snapshot closes at midnight.";
+    expect(isCopy(`${base} example.com`, base)).toBe(true);
+    expect(isCopy(`${base} www.example.org`, base)).toBe(true);
+    // England's flag: a black flag, then the tag characters for "gbeng" and the cancel tag.
+    const england = "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}";
+    expect(isCopy(`${base} ${england}`, base)).toBe(true);
+    // A word that merely follows a full stop is not a domain.
+    expect(copyNormalize("closes at midnight.then holds")).toContain("then holds");
+  });
+
+  it("settles scattered edits in a 25k-character post quickly", () => {
+    const long = "the snapshot closes at midnight and holds are read after it. ".repeat(410);
+    const substituted = [...long].map((c, i) => (i % 21 === 0 ? "b" : c)).join("");
+    const deleted = [...long].filter((_, i) => i % 25 !== 0).join("");
+    const started = performance.now();
+    expect(isCopy(substituted, long)).toBe(true);
+    expect(isCopy(deleted, long)).toBe(true);
+    expect(performance.now() - started).toBeLessThan(1_000);
+  });
+
   it("never treats a post with nothing left after normalizing as a copy", () => {
     expect(isCopy("🚀 https://t.co/x @a", "🔥 https://t.co/y @b")).toBe(false);
     expect(isCopy("", "")).toBe(false);

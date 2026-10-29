@@ -8,8 +8,14 @@ import { env } from "../env.js";
 import { dueHoldChecks, holdCheckerFromEnv, runHoldChecks } from "../payout/hold-gate.js";
 import { raidCardsOn } from "../raid-cards/flag.js";
 import { closeEpoch, dueCloses } from "../rewards/close.js";
+import { openCopyEpochs, reconcileEpoch } from "../rewards/copy.js";
 import { type EvaluationTarget, type RunResult, runEvaluation } from "../rewards/evaluation.js";
-import { decisionNotified, markNotified, strandedWork } from "../rewards/recovery.js";
+import {
+  decisionNotified,
+  decisionSuperseded,
+  markNotified,
+  strandedWork,
+} from "../rewards/recovery.js";
 import { recordRetrieval } from "../rewards/slots.js";
 import { claudeDepsFromEnv } from "../scoring/claude-client.js";
 import { CLAUDE_REGISTRY } from "../scoring/claude-registry.js";
@@ -140,6 +146,8 @@ export async function recoverRewardWork(): Promise<void> {
   for (const job of closes) await boss.send(QUEUES.rewardClose, job satisfies RewardCloseJob);
   const holds = await dueHoldChecks(db, now);
   for (const job of holds) await boss.send(QUEUES.holdCheck, job satisfies HoldCheckJob);
+  // Settles what a budget-limited reconciliation left, before the messages below are chosen.
+  for (const epoch of await openCopyEpochs(db, now)) await reconcileEpoch(db, epoch);
   const work = await strandedWork(db, { now, graceMs: RECOVERY_GRACE_MS });
   for (const job of work.evaluations) await sendEvaluation(job);
   for (const job of work.retrievals) await boss.send(QUEUES.rewardRetrieval, job);
@@ -195,7 +203,13 @@ export async function checkEpochHolds(job: HoldCheckJob): Promise<void> {
 // again. A decision's message is read, sent and marked under its member and epoch's lock.
 export async function notifyReward(job: RewardNotifyJob): Promise<void> {
   const { decisionId } = job;
-  if (decisionId && (await decisionNotified(db, decisionId))) return;
+  // A message for a decision that a newer one has replaced would announce stale points.
+  if (
+    decisionId &&
+    ((await decisionNotified(db, decisionId)) || (await decisionSuperseded(db, decisionId)))
+  ) {
+    return;
+  }
   const target = scoreTarget(await loadScoreTarget(db, job.contributionId), raidCardsOn());
   const send = () =>
     telegramCall(bot.token, async () => {
@@ -229,7 +243,9 @@ export async function notifyReward(job: RewardNotifyJob): Promise<void> {
   await db.transaction(async (tx) => {
     await lockScoreMessages(tx, decisionId);
     // A copy of this job may have sent the message while this one waited for the lock.
-    if (await decisionNotified(tx, decisionId)) return;
+    if ((await decisionNotified(tx, decisionId)) || (await decisionSuperseded(tx, decisionId))) {
+      return;
+    }
     await send();
     await markNotified(tx, decisionId, new Date());
   });

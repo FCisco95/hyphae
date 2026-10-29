@@ -403,7 +403,10 @@ export async function completeDispatch(
         .select()
         .from(rewardDecisions)
         .where(eq(rewardDecisions.dispatchId, dispatch.id));
-      if (decision) return { status: "completed", decision, created: false };
+      if (decision) {
+        const settled = await latestDecision(tx, dispatch.contributionId);
+        return { status: "completed", decision: settled ?? decision, created: false };
+      }
       return { status: "pending_evidence", reason: nomination?.pendingReason ?? "unknown" };
     }
     // Withdrawal is refused while a dispatch may be in flight and a proven non-dispatch changes

@@ -5,11 +5,24 @@ export const COPY_THRESHOLD_BPS = 9_500;
 
 const BPS = 10_000;
 
-// A link with a scheme or www, X's own short hosts, or a bare domain followed by a path.
-const LINK =
-  /(?:https?:\/\/|www\.)\S+|\b(?:t\.co|pic\.twitter\.com|pic\.x\.com)\/\S*|\b(?:[a-z0-9-]+\.)+[a-z]{2,}\/\S*/g;
-const KEYCAP = /[0-9#*]️?⃣/g;
-const EMOJI = /\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Regional_Indicator}|‍|️/gu;
+// Domains a post can carry without a scheme or a path.
+const TLD =
+  "com|org|net|io|xyz|app|dev|co|ai|fi|gg|me|so|sh|ly|to|tv|cc|info|biz|gov|edu|eth|sol|finance|money|link|site|online|tech|cloud|fun|lol|wtf|bio";
+// A link with a scheme or www, X's own short hosts, a bare domain with a path, or a bare domain
+// under a common top-level domain.
+const LINK = new RegExp(
+  [
+    String.raw`(?:https?:\/\/|www\.)\S+`,
+    String.raw`\b(?:t\.co|pic\.twitter\.com|pic\.x\.com)\/\S*`,
+    String.raw`\b(?:[a-z0-9-]+\.)+[a-z]{2,}\/\S*`,
+    String.raw`\b(?:[a-z0-9-]+\.)+(?:${TLD})\b`,
+  ].join("|"),
+  "g",
+);
+const KEYCAP = /[0-9#*]\u{FE0F}?\u{20E3}/gu;
+// Tag characters (U+E0020 to U+E007F) carry the subdivision of a flag such as England's.
+const EMOJI =
+  /\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji_Modifier}|\p{Regional_Indicator}|[\u{E0020}-\u{E007F}]|\u{200D}|\u{FE0F}/gu;
 
 // What the rule ignores when comparing: case, spacing, links, @mentions and emoji.
 export function copyNormalize(text: string): string {
@@ -77,6 +90,16 @@ function boundedDistance(a: Uint32Array, b: Uint32Array, limit: number): number 
   return Math.min(previous[b.length] as number, over);
 }
 
+// Positions that differ when the two are laid side by side; an upper bound on the distance when
+// they have the same length.
+function hammingWithin(a: Uint32Array, b: Uint32Array, limit: number): boolean {
+  let differing = 0;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i] && ++differing > limit) return false;
+  }
+  return true;
+}
+
 export function isCopyKey(
   candidate: CopyKey,
   earlier: CopyKey,
@@ -92,9 +115,10 @@ export function isCopyKey(
   const limit = Math.floor(((BPS - thresholdBps) * longest) / BPS);
   if (Math.abs(candidate.chars.length - earlier.chars.length) > limit) return false;
   if (histogramBound(candidate, earlier) > limit) return false;
-  // Text both posts share at either end does not change the distance and is not worked through.
   const a = candidate.chars;
   const b = earlier.chars;
+  if (a.length === b.length && hammingWithin(a, b, limit)) return true;
+  // Text both posts share at either end does not change the distance and is not worked through.
   let start = 0;
   while (start < a.length && start < b.length && a[start] === b[start]) start++;
   let endA = a.length;

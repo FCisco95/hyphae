@@ -1,14 +1,16 @@
 import type { RewardPurpose } from "@hyphae/core";
-import { epochs, members, rewardDecisions, rewardIntakes } from "@hyphae/db";
+import { epochs, members, rewardDecisions, rewardDispatches, rewardIntakes } from "@hyphae/db";
 import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeEpoch } from "./close.js";
-import { buildRewardConfigPayload } from "./config.js";
+import { buildRewardConfigPayload, findOrInsertConfig } from "./config.js";
+import { openCopyEpochs, reconcileCopies } from "./copy.js";
 import { appendCorrection, COPY_ACTOR } from "./decisions.js";
 import { effectiveResults } from "./effective.js";
-import { runEvaluation } from "./evaluation.js";
+import { completeDispatch, runEvaluation } from "./evaluation.js";
+import { decisionSuperseded, strandedWork } from "./recovery.js";
 import { nominate } from "./slots.js";
-import { createTestDb, later, rubric, seedRewardLane } from "./test-db.js";
+import { createTestDb, later, rubric, seedRewardLane, T0 } from "./test-db.js";
 
 const MIN = 60_000;
 const WEEK_MS = 7 * 86_400_000; // epoch 1 is [T0, T0 + WEEK_MS)
@@ -122,7 +124,8 @@ describe("copy rule", () => {
       flags: ["spam"],
       correctionActor: COPY_ACTOR,
     });
-    expect(lineage[1]?.explanation).toContain(first.contributionId);
+    expect(lineage[1]?.explanation).toContain("Only the first earns");
+    expect(lineage[1]?.correctionEvidence).toEqual([`contribution:${first.contributionId}`]);
     // The member's message reports the zero, not the 85 the model first gave.
     expect(scored).toMatchObject({ status: "completed", decision: { pointUnits: 0n } });
     expect(await l.points()).toEqual([POINTS(85), "0"]);
@@ -335,4 +338,122 @@ describe("copy rule", () => {
     expect(pointsOf(post.contributionId)).toBe(POINTS(85));
     expect(pointsOf(reentry?.contributionId)).toBe("0");
   });
+  it("a budget-limited reconcile settles the posts it reached and the next run finishes", async () => {
+    const l = await lane(false);
+    // Pairs are remembered per process, so this test uses texts no other test has compared.
+    const nonce = `budget ${Math.random().toString(36).slice(2)}`;
+    const texts = [ORIGINAL, COPY, ORIGINAL.replace("sells", "pays")].map((t) => `${nonce} ${t}`);
+    const posts = [];
+    for (const [i, text] of texts.entries()) {
+      posts.push(await l.admit(text, 60_000 + i * 1_000, l.other.id));
+    }
+    for (const [i, post] of posts.entries())
+      await l.score(post.contributionId, 85, 2 * MIN + i * 1_000);
+    expect(await l.points()).toEqual([POINTS(85), POINTS(85), POINTS(85)]);
+    const pinned = await t.db.transaction((tx) =>
+      findOrInsertConfig(tx, l.community.id, buildRewardConfigPayload(rubric, { copy: true })),
+    );
+    await t.db.update(epochs).set({ rewardConfigId: pinned.id }).where(eq(epochs.id, l.epoch.id));
+
+    const run = () =>
+      t.db.transaction((tx) =>
+        reconcileCopies(tx, new Date(T0.getTime() + 5 * MIN), l.community.id, l.epoch.id, {
+          budgetMs: 0,
+        }),
+      );
+    await run();
+    expect(await l.points()).toEqual([POINTS(85), "0", POINTS(85)]);
+    await run();
+    expect(await l.points()).toEqual([POINTS(85), "0", "0"]);
+    await run();
+    expect(await l.points()).toEqual([POINTS(85), "0", "0"]);
+  });
+
+  it("the recovery sweep finds the epochs whose pinned configuration carries the rule", async () => {
+    const withRule = await lane(true);
+    const without = await lane(false);
+    const found = await openCopyEpochs(t.db, new Date(T0.getTime() + MIN));
+    expect(found.map((e) => e.communityId)).toContain(withRule.community.id);
+    expect(found.map((e) => e.communityId)).not.toContain(without.community.id);
+  });
+
+  it("tells the member of a copy that earned first, once its original is scored", async () => {
+    const l = await lane();
+    const first = await l.admit(ORIGINAL, 60_000);
+    const second = await l.admit(COPY, 70_000, l.other.id);
+    await l.score(second.contributionId, 85, 2 * MIN);
+    await l.score(first.contributionId, 85, 3 * MIN);
+
+    const [firstDecision, overlay] = await l.lineage(second.contributionId);
+    expect(await decisionSuperseded(t.db, firstDecision?.id as string)).toBe(true);
+    expect(await decisionSuperseded(t.db, overlay?.id as string)).toBe(false);
+    const work = await strandedWork(t.db, {
+      now: new Date(T0.getTime() + 20 * MIN),
+      graceMs: 60_000,
+    });
+    const mine = work.notifications.filter((n) => n.contributionId === second.contributionId);
+    expect(mine.map((n) => n.decision.id)).toEqual([overlay?.id]);
+    expect(mine[0]?.decision).toMatchObject({ pointUnits: 0n, correctionActor: COPY_ACTOR });
+  });
+
+  it("a replay of the completed dispatch reports the settled decision, not the one before the rule", async () => {
+    const l = await lane();
+    const first = await l.admit(ORIGINAL, 60_000);
+    const second = await l.admit(COPY, 70_000, l.other.id);
+    await l.score(first.contributionId, 85, 2 * MIN);
+    await l.score(second.contributionId, 85, 3 * MIN);
+    const [firstDecision] = await l.lineage(second.contributionId);
+    const [dispatch] = await t.db
+      .select()
+      .from(rewardDispatches)
+      .where(eq(rewardDispatches.id, firstDecision?.dispatchId as string));
+
+    const replay = await completeDispatch(
+      t.db,
+      {
+        communityId: l.community.id,
+        dispatchId: dispatch?.id as string,
+        fence: dispatch?.fence as number,
+        output: quality(85),
+        latencyMs: 5,
+        costMicroUsd: 100,
+      },
+      { clock: later(5 * MIN) },
+    );
+    expect(replay).toMatchObject({
+      status: "completed",
+      created: false,
+      decision: { pointUnits: 0n },
+    });
+  });
+  it("holds the community lock for a bounded time on long near-copies and still settles them", async () => {
+    const l = await lane(false);
+    const base = `${Math.random().toString(36).slice(2)} ${"the snapshot closes at midnight and holds are read after it. ".repeat(200)}`;
+    const posts = [await l.admit(base, 60_000)];
+    for (let k = 1; k <= 6; k++) {
+      // Every 25th character removed, from a different offset: 4% from the original, 8% apart.
+      const variant = [...base].filter((_, i) => i % 25 !== k).join("");
+      posts.push(await l.admit(variant, 60_000 + k * 1_000, l.other.id));
+    }
+    for (const [i, post] of posts.entries())
+      await l.score(post.contributionId, 85, 2 * MIN + i * 1_000);
+    const pinned = await t.db.transaction((tx) =>
+      findOrInsertConfig(tx, l.community.id, buildRewardConfigPayload(rubric, { copy: true })),
+    );
+    await t.db.update(epochs).set({ rewardConfigId: pinned.id }).where(eq(epochs.id, l.epoch.id));
+
+    let slowestMs = 0;
+    for (let run = 0; run < 10; run++) {
+      const started = performance.now();
+      await t.db.transaction((tx) =>
+        reconcileCopies(tx, new Date(T0.getTime() + 5 * MIN), l.community.id, l.epoch.id, {
+          budgetMs: 100,
+        }),
+      );
+      slowestMs = Math.max(slowestMs, performance.now() - started);
+    }
+    expect(await l.points()).toEqual([POINTS(85), ...Array(6).fill("0")]);
+    // The budget plus one pair and the database work; far from the tens of seconds it would take unbounded.
+    expect(slowestMs).toBeLessThan(3_000);
+  }, 30_000);
 });

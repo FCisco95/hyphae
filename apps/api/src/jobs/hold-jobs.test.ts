@@ -30,9 +30,14 @@ vi.mock("../rewards/close.js", () => ({
   closeEpoch: async () => ({ status: "closed", created: true, entries: [] }),
   dueCloses: async () => [],
 }));
+vi.mock("../rewards/copy.js", () => ({
+  openCopyEpochs: async () => [],
+  reconcileEpoch: async () => undefined,
+}));
 vi.mock("../rewards/recovery.js", () => ({
   strandedWork: async () => ({ evaluations: [], retrievals: [], notifications: [] }),
   decisionNotified: async () => false,
+  decisionSuperseded: async () => false,
   markNotified: async () => undefined,
 }));
 vi.mock("../payout/hold-gate.js", () => ({

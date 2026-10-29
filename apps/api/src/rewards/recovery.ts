@@ -19,10 +19,12 @@ import {
   lte,
   ne,
   notExists,
+  or,
   sql,
 } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { RewardConfigPayload } from "./config.js";
+import { COPY_ACTOR } from "./decisions.js";
 import type { EvaluationTarget } from "./evaluation.js";
 
 export interface StrandedWork {
@@ -159,15 +161,16 @@ export async function strandedWork(
   }
 
   // A decision's acceptedAt is its completion time under the lock. Operator corrections have no
-  // dispatch and no member message to lose. A superseded decision's message would announce points
-  // the effective read no longer counts, so it is dropped.
+  // dispatch and no member message to lose; the copy rule's successors are the exception, since
+  // they change a post's points without the member doing anything. A superseded decision's message
+  // would announce points the effective read no longer counts, so it is dropped.
   const successor = alias(rewardDecisions, "successor");
   const unnotified = await db
     .select()
     .from(rewardDecisions)
     .where(
       and(
-        isNotNull(rewardDecisions.dispatchId),
+        or(isNotNull(rewardDecisions.dispatchId), eq(rewardDecisions.correctionActor, COPY_ACTOR)),
         isNull(rewardDecisions.notifiedAt),
         lte(rewardDecisions.acceptedAt, settled),
         gt(rewardDecisions.acceptedAt, new Date(input.now.getTime() - NOTIFY_WINDOW_MS)),
@@ -209,6 +212,16 @@ export async function decisionNotified(db: Db, decisionId: string): Promise<bool
     .where(eq(rewardDecisions.id, decisionId));
   if (!row) throw new Error(`reward: decision ${decisionId} missing`);
   return row.notifiedAt !== null;
+}
+
+// A newer decision of the same work exists, so this one's message would announce stale points.
+export async function decisionSuperseded(db: Db, decisionId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: rewardDecisions.id })
+    .from(rewardDecisions)
+    .where(eq(rewardDecisions.predecessorId, decisionId))
+    .limit(1);
+  return row !== undefined;
 }
 
 // Returns false when another job already marked it.
