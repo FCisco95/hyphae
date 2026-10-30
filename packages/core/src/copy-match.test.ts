@@ -31,6 +31,10 @@ describe("copyNormalize", () => {
     expect(copyNormalize("bad [2001:db8:::1]:8080/path")).toBe("bad [2001:db8:::1]:8080/path");
   });
 
+  it("preserves invalid contextual joiners rather than removing only a hostname tail", () => {
+    expect(copyNormalize("keep a‌b.com/path")).toBe("keep a‌b.com/path");
+  });
+
   it("does not restart a failed domain search at every label in a long dotted token", () => {
     const texts = ["a.".repeat(12_500), "1234.".repeat(5_000)];
     const started = performance.now();
@@ -38,6 +42,13 @@ describe("copyNormalize", () => {
       for (const text of texts) expect(copyNormalize(text)).toBe(text);
     }
     expect(performance.now() - started).toBeLessThan(1_000);
+  });
+
+  it("does not do quadratic IDNA work for a hostname that exceeds DNS label limits", () => {
+    const host = `${Array.from({ length: 10_000 }, (_, i) => String.fromCodePoint(0x4e00 + i)).join("")}.com`;
+    const started = performance.now();
+    for (let i = 0; i < 8; i++) expect(copyNormalize(host)).toBe(host);
+    expect(performance.now() - started).toBeLessThan(500);
   });
 });
 
@@ -167,6 +178,15 @@ describe("isCopy", () => {
     expect(isCopy(base, linked)).toBe(true);
   });
 
+  it.each(["192.0.2.1./path", "192。0。2。1/path", "192。0。2。1。:8080/path", "192｡0｡2｡1/path"])(
+    "ignores a mapped or terminal IPv4 separator: %s",
+    (link) => {
+      const base = "The snapshot closes at midnight.";
+      expect(copyNormalize(`${base} ${link}`)).toBe("the snapshot closes at midnight.");
+      expect(isCopy(`${base} ${link}`, base)).toBe(true);
+    },
+  );
+
   it.each(["bücher.de/path", "例子.公司/path", "example.xn--p1ai/path", "bücher.de:8080/path"])(
     "ignores the entire internationalized domain link %s",
     (link) => {
@@ -177,6 +197,19 @@ describe("isCopy", () => {
       expect(isCopy(base, linked)).toBe(true);
     },
   );
+
+  it.each([
+    "l·l.cat/path",
+    "͵α.gr/path",
+    "א׳.com/path",
+    "א״.com/path",
+    "カ・ナ.jp/path",
+    "क्‌ष.com/path",
+  ])("ignores a full IDNA contextual-character hostname: %s", (link) => {
+    const base = "The snapshot closes at midnight.";
+    expect(copyNormalize(`${base} ${link}`)).toBe("the snapshot closes at midnight.");
+    expect(isCopy(`${base} ${link}`, base)).toBe(true);
+  });
 
   it.each(["例子。公司/path", "例子｡公司/path", "例子．公司/path"])(
     "ignores a domain link with an internationalized label separator: %s",

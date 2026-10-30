@@ -131,6 +131,9 @@ for (const root of ["alt", "example", "invalid", "local", "localhost", "onion", 
   ROOT_TLDS.add(root);
 }
 
+// IDNA includes contextual joiners and a small set of punctuation/symbol exceptions (RFC 5892).
+const HOST_CHAR = String.raw`[\p{L}\p{M}\p{N}\p{Cf}\p{Default_Ignorable_Code_Point}\u00b7\u0375\u05f3\u05f4\u06fd\u06fe\u0f0b\u30fb_-]`;
+
 // A link: a scheme or www with everything after it, X's own short hosts, a domain followed by a
 // path, query or fragment, or a bare domain, including Unicode and punycode domains and ports.
 // Without a scheme, IP literals need a port or URL suffix; version numbers remain ordinary text.
@@ -141,12 +144,12 @@ const LINK = new RegExp(
   [
     String.raw`(?:https?:\/\/|www\.)\S+`,
     String.raw`\b(?:t\.co|pic\.twitter\.com|pic\.x\.com)\/\S*`,
-    String.raw`(?<![\p{L}\p{M}\p{N}_.-])(?:[0-9]{1,3}\.){3}[0-9]{1,3}` +
+    String.raw`(?<![\p{L}\p{M}\p{N}_.-])(?:[0-9]{1,3}[.\u3002]){3}[0-9]{1,3}[.\u3002]?` +
       String.raw`(?![\p{L}\p{M}\p{N}_.-])(?::[0-9]+(?:[/?#]\S*)?|[/?#]\S*)`,
     String.raw`(?<![\p{L}\p{M}\p{N}_])\[[0-9a-f:.]+\]` +
       String.raw`(?::[0-9]+(?:[/?#]\S*)?|[/?#]\S*)`,
-    String.raw`(?<![\p{L}\p{M}\p{N}_-])(?<![\p{L}\p{M}\p{N}-][.\u3002])` +
-      String.raw`(?:[\p{L}\p{M}\p{N}-]+[.\u3002])+` +
+    String.raw`(?<!${HOST_CHAR})(?<!${HOST_CHAR}[.\u3002])` +
+      String.raw`(?:${HOST_CHAR}+[.\u3002])+` +
       String.raw`(?:xn--[a-z0-9-]+|[\p{L}\p{M}]{2,})(?![\p{L}\p{M}\p{N}_-])` +
       String.raw`[.\u3002]?(?::[0-9]+)?(?:[/?#]\S*)?`,
   ].join("|"),
@@ -159,7 +162,7 @@ const EMOJI =
 
 function withoutLink(link: string): string {
   if (/^(?:https?:\/\/|www\.)/u.test(link)) return " ";
-  if (link.startsWith("[") || /^[0-9]{1,3}(?:\.[0-9]{1,3}){3}[:/?#]/u.test(link)) {
+  if (link.startsWith("[") || /^[0-9]{1,3}(?:[.\u3002][0-9]{1,3}){3}[.\u3002]?[:/?#]/u.test(link)) {
     try {
       new URL(`https://${link}`);
       return " ";
@@ -173,7 +176,24 @@ function withoutLink(link: string): string {
   if (root.length > 63) return link;
   try {
     const asciiRoot = new URL(`https://${root}`).hostname;
-    return ROOT_TLDS.has(asciiRoot) ? " " : link;
+    if (!ROOT_TLDS.has(asciiRoot)) return link;
+    // DNS labels cannot encode more than 63 bytes. Check a lower bound before IDNA work;
+    // ignored characters do not contribute, so valid hosts with long ignored runs still parse.
+    const labels = host.split(/[.\u3002]/);
+    if (
+      labels.some(
+        (label) =>
+          [...label.replace(/\p{Default_Ignorable_Code_Point}/gu, "").normalize("NFKC")].length >
+          63,
+      )
+    ) {
+      return link;
+    }
+    const parsedHost = new URL(`https://${link}`).hostname.replace(/\.$/, "");
+    if (parsedHost.length > 253 || parsedHost.split(".").some((label) => label.length > 63)) {
+      return link;
+    }
+    return " ";
   } catch {
     return link;
   }

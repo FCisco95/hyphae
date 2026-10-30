@@ -158,6 +158,25 @@ describe("copy rule", () => {
     expect(await l.lineage(second.contributionId)).toHaveLength(1);
   });
 
+  it("an invalid contextual hostname remains new text, not an ignored link", async () => {
+    const l = await lane();
+    const first = await l.admit(ORIGINAL, 60_000);
+    const second = await l.admit(`${ORIGINAL} a‌b.com/path`, 70_000, l.other.id);
+    await l.score(first.contributionId, 85, 2 * MIN);
+    await l.score(second.contributionId, 85, 3 * MIN);
+    expect(await l.points()).toEqual([POINTS(85), POINTS(85)]);
+  });
+
+  it("a valid contextual middle dot does not make a duplicate earn points", async () => {
+    const l = await lane();
+    const base = "The snapshot closes at midnight.";
+    const first = await l.admit(base, 60_000);
+    const second = await l.admit(`${base} l·l.cat/path`, 70_000, l.other.id);
+    await l.score(first.contributionId, 85, 2 * MIN);
+    await l.score(second.contributionId, 85, 3 * MIN);
+    expect(await l.points()).toEqual([POINTS(85), "0"]);
+  });
+
   it("a scheme-less link with a port does not make a duplicate earn points", async () => {
     const l = await lane();
     const base = "The snapshot closes at midnight.";
@@ -170,6 +189,19 @@ describe("copy rule", () => {
 
   it.each(["192.0.2.1:8080/path?x=1#d", "[2001:db8::1]:8080/path?x=1#d"])(
     "a scheme-less IP link does not make a duplicate earn points: %s",
+    async (link) => {
+      const l = await lane();
+      const base = "The snapshot closes at midnight.";
+      const first = await l.admit(base, 60_000);
+      const second = await l.admit(`${base} ${link}`, 70_000, l.other.id);
+      await l.score(first.contributionId, 85, 2 * MIN);
+      await l.score(second.contributionId, 85, 3 * MIN);
+      expect(await l.points()).toEqual([POINTS(85), "0"]);
+    },
+  );
+
+  it.each(["192.0.2.1./path", "192。0。2。1/path"])(
+    "an IPv4 separator variant does not make a duplicate earn points: %s",
     async (link) => {
       const l = await lane();
       const base = "The snapshot closes at midnight.";
