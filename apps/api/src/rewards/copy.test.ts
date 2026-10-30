@@ -148,6 +148,16 @@ describe("copy rule", () => {
     expect(await l.points()).toEqual([POINTS(85), POINTS(80)]);
   });
 
+  it("unrelated Chinese sentences keep their points and receive no copy overlay", async () => {
+    const l = await lane();
+    const first = await l.admit("我们将在周末发布产品。欢迎测试！", 60_000);
+    const second = await l.admit("明天社区讨论治理。请来投票！", 70_000, l.other.id);
+    await l.score(first.contributionId, 85, 2 * MIN);
+    await l.score(second.contributionId, 85, 3 * MIN);
+    expect(await l.points()).toEqual([POINTS(85), POINTS(85)]);
+    expect(await l.lineage(second.contributionId)).toHaveLength(1);
+  });
+
   it("a scheme-less link with a port does not make a duplicate earn points", async () => {
     const l = await lane();
     const base = "The snapshot closes at midnight.";
@@ -157,6 +167,19 @@ describe("copy rule", () => {
     await l.score(second.contributionId, 85, 3 * MIN);
     expect(await l.points()).toEqual([POINTS(85), "0"]);
   });
+
+  it.each(["192.0.2.1:8080/path?x=1#d", "[2001:db8::1]:8080/path?x=1#d"])(
+    "a scheme-less IP link does not make a duplicate earn points: %s",
+    async (link) => {
+      const l = await lane();
+      const base = "The snapshot closes at midnight.";
+      const first = await l.admit(base, 60_000);
+      const second = await l.admit(`${base} ${link}`, 70_000, l.other.id);
+      await l.score(first.contributionId, 85, 2 * MIN);
+      await l.score(second.contributionId, 85, 3 * MIN);
+      expect(await l.points()).toEqual([POINTS(85), "0"]);
+    },
+  );
 
   it.each(["bücher.de/path", "例子.公司/path"])(
     "an internationalized domain link does not make a duplicate earn points: %s",

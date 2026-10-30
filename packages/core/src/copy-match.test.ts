@@ -18,6 +18,19 @@ describe("copyNormalize", () => {
     expect(copyNormalize("note。。例子。公司/path")).toBe("note。。");
   });
 
+  it("preserves ordinary Chinese sentences separated by a full stop", () => {
+    expect(copyNormalize("我们将在周末发布产品。欢迎测试！")).toBe(
+      "我们将在周末发布产品。欢迎测试!",
+    );
+    expect(copyNormalize("明天社区讨论治理。请来投票！")).toBe("明天社区讨论治理。请来投票!");
+  });
+
+  it("preserves version numbers and invalid IP locators", () => {
+    expect(copyNormalize("Build 1.2.3.4 and ratio 3.14.")).toBe("build 1.2.3.4 and ratio 3.14.");
+    expect(copyNormalize("bad 999.0.2.1:8080/path")).toBe("bad 999.0.2.1:8080/path");
+    expect(copyNormalize("bad [2001:db8:::1]:8080/path")).toBe("bad [2001:db8:::1]:8080/path");
+  });
+
   it("does not restart a failed domain search at every label in a long dotted token", () => {
     const texts = ["a.".repeat(12_500), "1234.".repeat(5_000)];
     const started = performance.now();
@@ -29,6 +42,9 @@ describe("copyNormalize", () => {
 });
 
 describe("isCopy", () => {
+  it("does not treat unrelated Chinese sentences as copies", () => {
+    expect(isCopy("我们将在周末发布产品。欢迎测试！", "明天社区讨论治理。请来投票！")).toBe(false);
+  });
   it("marks an identical post as a copy", () => {
     expect(isCopy(ORIGINAL, ORIGINAL)).toBe(true);
   });
@@ -97,6 +113,14 @@ describe("isCopy", () => {
     expect(isCopy(`${base} ${england}`, base)).toBe(true);
   });
 
+  it.each(["test", "invalid", "example", "localhost", "local", "onion", "alt"])(
+    "ignores a link under an IANA special-use domain: %s",
+    (root) => {
+      const base = "The snapshot closes at midnight.";
+      expect(isCopy(`${base} host.${root}/path`, base)).toBe(true);
+    },
+  );
+
   it("ignores a link whatever follows its domain and any country domain", () => {
     const base = "The snapshot closes at midnight.";
     for (const suffix of [
@@ -126,6 +150,19 @@ describe("isCopy", () => {
     const base = "The snapshot closes at midnight.";
     const linked = `${base} example.com:8080/some/path?x=1#d`;
     expect(copyNormalize(linked)).toBe(copyNormalize(base));
+    expect(isCopy(linked, base)).toBe(true);
+    expect(isCopy(base, linked)).toBe(true);
+  });
+
+  it.each([
+    "192.0.2.1:8080/path?x=1#d",
+    "[2001:db8::1]:8080/path?x=1#d",
+    "192.0.2.1/path",
+    "[2001:db8::1]/path",
+  ])("ignores a scheme-less IP link: %s", (link) => {
+    const base = "The snapshot closes at midnight.";
+    const linked = `${base} ${link}`;
+    expect(copyNormalize(linked)).toBe("the snapshot closes at midnight.");
     expect(isCopy(linked, base)).toBe(true);
     expect(isCopy(base, linked)).toBe(true);
   });
