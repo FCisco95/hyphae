@@ -6,17 +6,18 @@ export const COPY_THRESHOLD_BPS = 9_500;
 const BPS = 10_000;
 
 // A link: a scheme or www with everything after it, X's own short hosts, a domain followed by a
-// path, query or fragment, or a bare domain whatever its top-level domain. A dotted token that ends
-// in letters (example.network, node.js) reads as a domain; abbreviations (p.m., e.g.) and numbers
-// (3.14) do not.
+// path, query or fragment, or a bare domain, including Unicode and punycode domains and ports.
+// Dotted words (example.network, node.js) read as domains; abbreviations (p.m., e.g.) and numbers
+// (3.14) do not. Unicode boundaries prevent removing only the ASCII tail of a domain.
 const LINK = new RegExp(
   [
     String.raw`(?:https?:\/\/|www\.)\S+`,
     String.raw`\b(?:t\.co|pic\.twitter\.com|pic\.x\.com)\/\S*`,
-    String.raw`\b(?:[a-z0-9-]+\.)+[a-z]{2,}[/?#]\S*`,
-    String.raw`\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b`,
+    String.raw`(?<![\p{L}\p{M}\p{N}_-])(?:[\p{L}\p{M}\p{N}-]+\.)+` +
+      String.raw`(?:xn--[a-z0-9-]+|[\p{L}\p{M}]{2,})(?![\p{L}\p{M}\p{N}_-])` +
+      String.raw`(?::[0-9]+)?(?:[/?#]\S*)?`,
   ].join("|"),
-  "g",
+  "gu",
 );
 const KEYCAP = /[0-9#*]\u{FE0F}?\u{20E3}/gu;
 // Tag characters (U+E0020 to U+E007F) carry the subdivision of a flag such as England's.

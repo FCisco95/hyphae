@@ -108,6 +108,25 @@ describe("isCopy", () => {
     expect(isCopy(`${base} ${"☺︎".repeat(3)}`, base)).toBe(true);
   });
 
+  it("ignores an entire scheme-less link with a port", () => {
+    const base = "The snapshot closes at midnight.";
+    const linked = `${base} example.com:8080/some/path?x=1#d`;
+    expect(copyNormalize(linked)).toBe(copyNormalize(base));
+    expect(isCopy(linked, base)).toBe(true);
+    expect(isCopy(base, linked)).toBe(true);
+  });
+
+  it.each(["bücher.de/path", "例子.公司/path", "example.xn--p1ai/path", "bücher.de:8080/path"])(
+    "ignores the entire internationalized domain link %s",
+    (link) => {
+      const base = "The snapshot closes at midnight.";
+      const linked = `${base} ${link}`;
+      expect(copyNormalize(linked)).toBe("the snapshot closes at midnight.");
+      expect(isCopy(linked, base)).toBe(true);
+      expect(isCopy(base, linked)).toBe(true);
+    },
+  );
+
   it("ignores emoji that Unicode compatibility folding would turn into text", () => {
     const base = "The snapshot closes at midnight.";
     expect(isCopy(`${base} ™️`, base)).toBe(true);
