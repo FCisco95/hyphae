@@ -12,6 +12,20 @@ describe("copyNormalize", () => {
   it("keeps the words themselves", () => {
     expect(copyNormalize("Snapshot closes at 00:00Z.")).toBe("snapshot closes at 00:00z.");
   });
+
+  it("still recognizes a link after repeated punctuation", () => {
+    expect(copyNormalize("note...example.com/path")).toBe("note...");
+    expect(copyNormalize("note。。例子。公司/path")).toBe("note。。");
+  });
+
+  it("does not restart a failed domain search at every label in a long dotted token", () => {
+    const texts = ["a.".repeat(12_500), "1234.".repeat(5_000)];
+    const started = performance.now();
+    for (let i = 0; i < 6; i++) {
+      for (const text of texts) expect(copyNormalize(text)).toBe(text);
+    }
+    expect(performance.now() - started).toBeLessThan(1_000);
+  });
 });
 
 describe("isCopy", () => {
@@ -126,6 +140,30 @@ describe("isCopy", () => {
       expect(isCopy(base, linked)).toBe(true);
     },
   );
+
+  it.each(["例子。公司/path", "例子｡公司/path", "例子．公司/path"])(
+    "ignores a domain link with an internationalized label separator: %s",
+    (link) => {
+      const base = "The snapshot closes at midnight.";
+      const linked = `${base} ${link}`;
+      expect(copyNormalize(linked)).toBe("the snapshot closes at midnight.");
+      expect(isCopy(linked, base)).toBe(true);
+      expect(isCopy(base, linked)).toBe(true);
+    },
+  );
+
+  it.each([
+    "example.com./path",
+    "example.com.:8080/some/path?x=1#d",
+    "example.com.",
+    "例子。公司。:8080/path",
+  ])("ignores a link with a terminal hostname separator: %s", (link) => {
+    const base = "The snapshot closes at midnight.";
+    const linked = `${base} ${link}`;
+    expect(copyNormalize(linked)).toBe("the snapshot closes at midnight.");
+    expect(isCopy(linked, base)).toBe(true);
+    expect(isCopy(base, linked)).toBe(true);
+  });
 
   it("ignores emoji that Unicode compatibility folding would turn into text", () => {
     const base = "The snapshot closes at midnight.";

@@ -171,6 +171,29 @@ describe("copy rule", () => {
     },
   );
 
+  it("a Unicode domain separator does not make a duplicate earn points", async () => {
+    const l = await lane();
+    const base = "The snapshot closes at midnight.";
+    const first = await l.admit(base, 60_000);
+    const second = await l.admit(`${base} 例子。公司/path`, 70_000, l.other.id);
+    await l.score(first.contributionId, 85, 2 * MIN);
+    await l.score(second.contributionId, 85, 3 * MIN);
+    expect(await l.points()).toEqual([POINTS(85), "0"]);
+  });
+
+  it.each(["example.com./path", "example.com.:8080/some/path?x=1#d"])(
+    "a terminal hostname dot does not make a duplicate earn points: %s",
+    async (link) => {
+      const l = await lane();
+      const base = "The snapshot closes at midnight.";
+      const first = await l.admit(base, 60_000);
+      const second = await l.admit(`${base} ${link}`, 70_000, l.other.id);
+      await l.score(first.contributionId, 85, 2 * MIN);
+      await l.score(second.contributionId, 85, 3 * MIN);
+      expect(await l.points()).toEqual([POINTS(85), "0"]);
+    },
+  );
+
   it("scored out of order: the original earns and the copy that earned first is zeroed", async () => {
     const l = await lane();
     const first = await l.admit(ORIGINAL, 60_000);
