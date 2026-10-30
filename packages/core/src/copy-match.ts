@@ -5,24 +5,23 @@ export const COPY_THRESHOLD_BPS = 9_500;
 
 const BPS = 10_000;
 
-// Domains a post can carry without a path: the common generic ones, and any two-letter country code.
-const TLD =
-  "com|org|net|io|xyz|app|dev|co|ai|fi|gg|me|so|sh|ly|to|tv|cc|info|biz|gov|edu|eth|sol|finance|money|link|site|online|tech|cloud|fun|lol|wtf|bio";
-// A link: a scheme or www with everything after it, X's own short hosts, a domain of any kind
-// followed by a path, query or fragment, or a bare domain under a common or country top-level domain.
+// A link: a scheme or www with everything after it, X's own short hosts, a domain followed by a
+// path, query or fragment, or a bare domain whatever its top-level domain. A dotted token that ends
+// in letters (example.network, node.js) reads as a domain; abbreviations (p.m., e.g.) and numbers
+// (3.14) do not.
 const LINK = new RegExp(
   [
     String.raw`(?:https?:\/\/|www\.)\S+`,
     String.raw`\b(?:t\.co|pic\.twitter\.com|pic\.x\.com)\/\S*`,
     String.raw`\b(?:[a-z0-9-]+\.)+[a-z]{2,}[/?#]\S*`,
-    String.raw`\b(?:[a-z0-9-]+\.)+(?:${TLD}|[a-z]{2})\b`,
+    String.raw`\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b`,
   ].join("|"),
   "g",
 );
 const KEYCAP = /[0-9#*]\u{FE0F}?\u{20E3}/gu;
 // Tag characters (U+E0020 to U+E007F) carry the subdivision of a flag such as England's.
 const EMOJI =
-  /\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji_Modifier}|\p{Regional_Indicator}|[\u{E0020}-\u{E007F}]|\u{200D}|\u{FE0F}/gu;
+  /\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji_Modifier}|\p{Regional_Indicator}|[\u{E0020}-\u{E007F}]|\u{200D}|[\u{FE0E}\u{FE0F}]/gu;
 
 // What the rule ignores when comparing: case, spacing, links, @mentions and emoji. Emoji go before
 // the compatibility folding, which would otherwise turn some of them (TM, !!) into plain text.

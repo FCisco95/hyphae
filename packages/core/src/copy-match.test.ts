@@ -81,8 +81,6 @@ describe("isCopy", () => {
     // England's flag: a black flag, then the tag characters for "gbeng" and the cancel tag.
     const england = "\u{1F3F4}\u{E0067}\u{E0062}\u{E0065}\u{E006E}\u{E0067}\u{E007F}";
     expect(isCopy(`${base} ${england}`, base)).toBe(true);
-    // A word that merely follows a full stop is not a domain.
-    expect(copyNormalize("closes at midnight.then holds")).toContain("then holds");
   });
 
   it("ignores a link whatever follows its domain and any country domain", () => {
@@ -96,8 +94,18 @@ describe("isCopy", () => {
     ]) {
       expect(isCopy(`${base}${suffix}`, base), suffix).toBe(true);
     }
-    expect(copyNormalize("closes at midnight.then holds")).toContain("then holds");
-    expect(copyNormalize("a.m. and p.m. and e.g. and i.e.")).toContain("and");
+    // Any domain, whatever its top-level domain.
+    for (const suffix of [" example.network", " example.social", " my-site.photography"]) {
+      expect(isCopy(`${base}${suffix}`, base), suffix).toBe(true);
+    }
+    // Abbreviations and decimals are not domains.
+    expect(copyNormalize("at 5 p.m. and e.g. 3.14 and i.e. u.s.a")).toContain("3.14");
+    expect(copyNormalize("at 5 p.m. and e.g. 3.14 and i.e. u.s.a")).toContain("p.m.");
+  });
+
+  it("ignores text-presentation selectors together with their symbols", () => {
+    const base = "The snapshot closes at midnight.";
+    expect(isCopy(`${base} ${"☺︎".repeat(3)}`, base)).toBe(true);
   });
 
   it("ignores emoji that Unicode compatibility folding would turn into text", () => {
@@ -109,7 +117,9 @@ describe("isCopy", () => {
 
   it("settles scattered edits in a 25k-character post quickly", () => {
     const long = "the snapshot closes at midnight and holds are read after it. ".repeat(410);
-    const substituted = [...long].map((c, i) => (i % 21 === 0 ? "b" : c)).join("");
+    const substituted = [...long]
+      .map((c, i) => (i % 21 === 0 && c !== " " && c !== "." ? "b" : c))
+      .join("");
     const deleted = [...long].filter((_, i) => i % 25 !== 0).join("");
     const started = performance.now();
     expect(isCopy(substituted, long)).toBe(true);
