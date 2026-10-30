@@ -108,8 +108,7 @@ function limitFor(candidate: CopyKey, earlier: CopyKey, thresholdBps: number): n
   return Math.floor(((BPS - thresholdBps) * longest) / BPS);
 }
 
-// The answer when it costs no more than a linear pass, or undefined when only the edit distance
-// can tell. A caller that has to bound its work counts the undefined ones.
+// The answer when it costs no more than a linear pass, or undefined when the edit check is needed.
 export function quickCopyVerdict(
   candidate: CopyKey,
   earlier: CopyKey,
@@ -130,7 +129,8 @@ export function quickCopyVerdict(
   return undefined;
 }
 
-// The edit-distance answer, for the pairs quickCopyVerdict leaves open.
+// Insertion/deletion matching is limited to 2,000 normalized characters to bound each comparison.
+// Longer posts still use the identical-text and positional-substitution checks above.
 export function editCopyVerdict(
   candidate: CopyKey,
   earlier: CopyKey,
@@ -139,6 +139,7 @@ export function editCopyVerdict(
   const limit = limitFor(candidate, earlier, thresholdBps);
   const a = candidate.chars;
   const b = earlier.chars;
+  if (a.length > 2_000 || b.length > 2_000) return false;
   // Text both posts share at either end does not change the distance and is not worked through.
   let start = 0;
   while (start < a.length && start < b.length && a[start] === b[start]) start++;

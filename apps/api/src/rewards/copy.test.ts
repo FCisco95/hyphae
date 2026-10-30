@@ -1,10 +1,10 @@
 import type { RewardPurpose } from "@hyphae/core";
 import { epochs, members, rewardDecisions, rewardDispatches, rewardIntakes } from "@hyphae/db";
 import { asc, eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeEpoch } from "./close.js";
 import { buildRewardConfigPayload, findOrInsertConfig } from "./config.js";
-import { copyPairCache, openCopyEpochs, reconcileCopies } from "./copy.js";
+import { openCopyEpochs, reconcileCopies } from "./copy.js";
 import { appendCorrection, COPY_ACTOR } from "./decisions.js";
 import { effectiveResults } from "./effective.js";
 import { completeDispatch, runEvaluation } from "./evaluation.js";
@@ -341,43 +341,47 @@ describe("copy rule", () => {
     expect(pointsOf(post.contributionId)).toBe(POINTS(85));
     expect(pointsOf(reentry?.contributionId)).toBe("0");
   });
-  it("a budget-limited reconcile settles the posts it reached and the next run finishes", async () => {
-    const l = await lane(false);
-    // Pairs are remembered per process, so this test uses texts no other test has compared.
-    const nonce = `budget ${Math.random().toString(36).slice(2)}`;
-    const base = `${nonce} ${ORIGINAL} ${ORIGINAL}`;
-    // Removing characters changes the length, so only the edit distance can tell these apart.
-    const texts = [base, dropEvery(base, 40, 3), dropEvery(base, 45, 7)];
-    const posts = [];
-    for (const [i, text] of texts.entries()) {
-      posts.push(await l.admit(text, 60_000 + i * 1_000, l.other.id));
-    }
-    for (const [i, post] of posts.entries())
-      await l.score(post.contributionId, 85, 2 * MIN + i * 1_000);
-    expect(await l.points()).toEqual([POINTS(85), POINTS(85), POINTS(85)]);
-    const pinned = await t.db.transaction((tx) =>
-      findOrInsertConfig(tx, l.community.id, buildRewardConfigPayload(rubric, { copy: true })),
-    );
-    await t.db.update(epochs).set({ rewardConfigId: pinned.id }).where(eq(epochs.id, l.epoch.id));
-
-    const run = () =>
-      t.db.transaction((tx) =>
-        reconcileCopies(tx, new Date(T0.getTime() + 5 * MIN), l.community.id, l.epoch.id, {
-          budgetMs: 0,
-        }),
+  it.each([5 * MIN, WEEK_MS - 16 * MIN, WEEK_MS - MIN])(
+    "one run settles every post at %i ms, regardless of elapsed comparison time",
+    async (atMs) => {
+      const l = await lane(false);
+      const base = `always complete ${atMs} ${ORIGINAL} ${ORIGINAL}`;
+      // Removing characters changes the length, so only the edit distance can tell these apart.
+      const texts = [base, dropEvery(base, 40, 3), dropEvery(base, 45, 7)];
+      const posts = [];
+      for (const [i, text] of texts.entries()) {
+        posts.push(await l.admit(text, 60_000 + i * 1_000, l.other.id));
+      }
+      for (const [i, post] of posts.entries())
+        await l.score(post.contributionId, 85, 2 * MIN + i * 1_000);
+      expect(await l.points()).toEqual([POINTS(85), POINTS(85), POINTS(85)]);
+      const pinned = await t.db.transaction((tx) =>
+        findOrInsertConfig(tx, l.community.id, buildRewardConfigPayload(rubric, { copy: true })),
       );
-    await run();
-    expect(await l.points()).toEqual([POINTS(85), "0", POINTS(85)]);
-    await run();
-    expect(await l.points()).toEqual([POINTS(85), "0", "0"]);
-    await run();
-    expect(await l.points()).toEqual([POINTS(85), "0", "0"]);
-  });
+      await t.db.update(epochs).set({ rewardConfigId: pinned.id }).where(eq(epochs.id, l.epoch.id));
 
-  it("in the last minutes before the cutoff one run settles everything whatever the budget", async () => {
+      let elapsed = 0;
+      const clock = vi.spyOn(Date, "now").mockImplementation(() => (elapsed += 3_000));
+      try {
+        await t.db.transaction((tx) =>
+          reconcileCopies(tx, new Date(T0.getTime() + atMs), l.community.id, l.epoch.id),
+        );
+      } finally {
+        clock.mockRestore();
+      }
+      expect(await l.points()).toEqual([POINTS(85), "0", "0"]);
+      await t.db.transaction((tx) =>
+        reconcileCopies(tx, new Date(T0.getTime() + atMs), l.community.id, l.epoch.id),
+      );
+      expect(await l.points()).toEqual([POINTS(85), "0", "0"]);
+      expect(await l.lineage(posts[1]?.contributionId as string)).toHaveLength(2);
+      expect(await l.lineage(posts[2]?.contributionId as string)).toHaveLength(2);
+    },
+  );
+
+  it("one run settles out-of-order scoring before the final window and close freezes it", async () => {
     const l = await lane(false);
-    const nonce = `final ${Math.random().toString(36).slice(2)}`;
-    const base = `${nonce} ${ORIGINAL} ${ORIGINAL}`;
+    const base = `before cutoff ${ORIGINAL} ${ORIGINAL}`;
     const texts = [base, dropEvery(base, 40, 3), dropEvery(base, 45, 7)];
     const posts = [];
     for (const [i, text] of texts.entries()) {
@@ -395,24 +399,16 @@ describe("copy rule", () => {
     await t.db.update(epochs).set({ rewardConfigId: pinned.id }).where(eq(epochs.id, l.epoch.id));
 
     await t.db.transaction((tx) =>
-      reconcileCopies(tx, new Date(T0.getTime() + WEEK_MS - MIN), l.community.id, l.epoch.id, {
-        budgetMs: 0,
-      }),
+      reconcileCopies(tx, new Date(T0.getTime() + WEEK_MS - 16 * MIN), l.community.id, l.epoch.id),
     );
     expect(await l.points()).toEqual([POINTS(85), "0", "0"]);
-  });
-
-  it("the pair cache drops the oldest verdict first and keeps the ones just used", () => {
-    const limit = copyPairCache.limit;
-    copyPairCache.limit = 2;
-    copyPairCache.verdicts.clear();
-    copyPairCache.remember("a", true);
-    copyPairCache.remember("b", false);
-    expect(copyPairCache.get("a")).toBe(true);
-    copyPairCache.remember("c", true);
-    expect([...copyPairCache.verdicts.keys()]).toEqual(["a", "c"]);
-    copyPairCache.limit = limit;
-    copyPairCache.verdicts.clear();
+    await closeEpoch(
+      t.db,
+      { communityId: l.community.id, epochId: l.epoch.id },
+      { clock: later(WEEK_MS) },
+    );
+    const closed = await l.read(l.epoch.id, WEEK_MS + MIN);
+    expect(closed.entries.map((entry) => entry.pointUnits)).toEqual([POINTS(85), "0", "0"]);
   });
 
   it("many unrelated posts followed by an exact copy of the first: one run settles the copy", async () => {
@@ -497,15 +493,16 @@ describe("copy rule", () => {
       decision: { pointUnits: 0n },
     });
   });
-  it("holds the community lock for a bounded time on long near-copies and still settles them", async () => {
+  it("settles 200 long near-copies and an exact copy completely in one fast run", async () => {
     const l = await lane(false);
-    const base = `${Math.random().toString(36).slice(2)} ${"the snapshot closes at midnight and holds are read after it. ".repeat(200)}`;
+    const base = "the snapshot closes at midnight and holds are read after it. ".repeat(425).trim();
     const posts = [await l.admit(base, 60_000)];
-    for (let k = 1; k <= 6; k++) {
-      // Every 25th character removed, from a different offset: 4% from the original, 8% apart.
-      const variant = [...base].filter((_, i) => i % 25 !== k).join("");
-      posts.push(await l.admit(variant, 60_000 + k * 1_000, l.other.id));
+    for (let k = 0; k < 200; k++) {
+      // Insertions/deletions above the cap do not trigger the copy rule.
+      const variant = [...base].filter((_, i) => i % 101 !== 0 || i / 101 > k).join("");
+      posts.push(await l.admit(variant, 60_001 + k * 100, l.other.id));
     }
+    posts.push(await l.admit(base, 90_000, l.other.id));
     for (const [i, post] of posts.entries())
       await l.score(post.contributionId, 85, 2 * MIN + i * 1_000);
     const pinned = await t.db.transaction((tx) =>
@@ -513,18 +510,12 @@ describe("copy rule", () => {
     );
     await t.db.update(epochs).set({ rewardConfigId: pinned.id }).where(eq(epochs.id, l.epoch.id));
 
-    let slowestMs = 0;
-    for (let run = 0; run < 10; run++) {
-      const started = performance.now();
-      await t.db.transaction((tx) =>
-        reconcileCopies(tx, new Date(T0.getTime() + 5 * MIN), l.community.id, l.epoch.id, {
-          budgetMs: 100,
-        }),
-      );
-      slowestMs = Math.max(slowestMs, performance.now() - started);
-    }
-    expect(await l.points()).toEqual([POINTS(85), ...Array(6).fill("0")]);
-    // The budget plus one pair and the database work; far from the tens of seconds it would take unbounded.
-    expect(slowestMs).toBeLessThan(3_000);
-  }, 30_000);
+    const started = performance.now();
+    await t.db.transaction((tx) =>
+      reconcileCopies(tx, new Date(T0.getTime() + 5 * MIN), l.community.id, l.epoch.id),
+    );
+    const elapsedMs = performance.now() - started;
+    expect(await l.points()).toEqual([...Array(201).fill(POINTS(85)), "0"]);
+    expect(elapsedMs).toBeLessThan(5_000);
+  }, 90_000);
 });

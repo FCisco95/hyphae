@@ -39,10 +39,10 @@ describe("isCopy", () => {
     expect(isCopy(longer, ORIGINAL)).toBe(false);
   });
 
-  it("does not use length as a signal: a long post is compared like a short one", () => {
+  it("does not penalize long originals or miss identical long copies", () => {
     const long = `${ORIGINAL} ${"The hold window needs a wallet that stays funded. ".repeat(40)}`;
     expect(isCopy(long, long)).toBe(true);
-    expect(isCopy(`${long}extra detail nobody else wrote`, long)).toBe(true);
+    expect(isCopy(`${long}extra detail nobody else wrote`, long)).toBe(false);
     expect(isCopy(long.slice(0, long.length / 2), long)).toBe(false);
   });
 
@@ -123,8 +123,33 @@ describe("isCopy", () => {
     const deleted = [...long].filter((_, i) => i % 25 !== 0).join("");
     const started = performance.now();
     expect(isCopy(substituted, long)).toBe(true);
-    expect(isCopy(deleted, long)).toBe(true);
+    expect(isCopy(deleted, long)).toBe(false);
     expect(performance.now() - started).toBeLessThan(1_000);
+  });
+
+  it.each([
+    [1_900, true],
+    [2_000, true],
+    [2_001, false],
+    [2_500, false],
+  ])("compares scattered deletions at %i normalized characters: %s", (length, copied) => {
+    const base = "abcdefghijklmnopqrstuvwxyz".repeat(100).slice(0, length);
+    const deleted = [...base].filter((_, i) => i % 25 !== 0).join("");
+    expect(isCopy(deleted, base)).toBe(copied);
+    expect(isCopy(base, deleted)).toBe(copied);
+  });
+
+  it("still detects substitutions in a 2,500-character post", () => {
+    const base = "abcdefghijklmnopqrstuvwxyz".repeat(100).slice(0, 2_500);
+    const substituted = [...base].map((c, i) => (i % 25 === 0 ? "0" : c)).join("");
+    expect(isCopy(substituted, base)).toBe(true);
+    expect(isCopy(base, substituted)).toBe(true);
+  });
+
+  it("applies the cap after normalization and counts Unicode characters", () => {
+    const base = "𐐨".repeat(1_900);
+    const deleted = [...base].filter((_, i) => i % 25 !== 0).join("");
+    expect(isCopy(`@someone 🚀 https://example.com ${deleted}`, base)).toBe(true);
   });
 
   it("never treats a post with nothing left after normalizing as a copy", () => {

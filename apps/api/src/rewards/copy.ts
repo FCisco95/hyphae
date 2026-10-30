@@ -4,7 +4,6 @@ import {
   editCopyVerdict,
   quickCopyVerdict,
   type RewardFlag,
-  sha256Hex,
 } from "@hyphae/core";
 import {
   contributions,
@@ -22,45 +21,10 @@ import type { Decision } from "./evaluation.js";
 const withSpam = (flags: readonly RewardFlag[]): RewardFlag[] =>
   [...new Set<RewardFlag>([...flags, "spam"])].sort();
 
-// A pair that only the edit distance can settle is compared once per process: the answer depends
-// on the two texts and the threshold only. Keyed by the hash of each normalized text, never by the
-// text. Pairs a linear pass settles are not kept: they cost nothing to answer again. The oldest
-// entries leave first, so a run never loses the progress of the one before it.
-export const copyPairCache = {
-  limit: 200_000,
-  verdicts: new Map<string, boolean>(),
-  get(key: string): boolean | undefined {
-    const verdict = this.verdicts.get(key);
-    if (verdict !== undefined) {
-      this.verdicts.delete(key);
-      this.verdicts.set(key, verdict);
-    }
-    return verdict;
-  },
-  remember(key: string, verdict: boolean): void {
-    this.verdicts.set(key, verdict);
-    while (this.verdicts.size > this.limit) {
-      const oldest = this.verdicts.keys().next().value;
-      if (oldest === undefined) break;
-      this.verdicts.delete(oldest);
-    }
-  },
-};
-
 interface Post {
   contributionId: string;
   key: CopyKey;
-  hash: string;
 }
-
-// The most time one reconciliation spends on edit-distance comparisons while it holds the community
-// lock. It stops between pairs, never inside one, and always completes at least one new pair, so
-// repeated runs make progress and finish.
-export const RECONCILE_BUDGET_MS = 2_000;
-
-// In the last minutes before the cutoff there is no later run to finish what a budget left, and
-// the cutoff freezes whatever the epoch holds, so a run then has no budget.
-export const RECONCILE_FINAL_WINDOW_MS = 15 * 60_000;
 
 // Brings the epoch to the one result the rule defines, whatever order the posts were scored in
 // and whatever corrections came since. Walk the epoch's posts in acceptance order (server clock,
@@ -69,15 +33,13 @@ export const RECONCILE_FINAL_WINDOW_MS = 15 * 60_000;
 // the epoch's decisions differ from that, a successor by COPY_ACTOR zeroes a copy or lifts the zero.
 //
 // Runs inside a reward write that holds the community lock. Epochs whose pinned configuration has
-// no copy rule, and decisions that no longer count toward the allocation, are left alone. When the
-// comparison budget runs out the posts reached so far are settled and the rest wait for the next
-// run (every reward write runs one, and so does the recovery sweep).
+// no copy rule, and decisions that no longer count toward the allocation, are left alone. Every
+// run settles the whole epoch; edit-distance work is capped by the normalized-character limit.
 export async function reconcileCopies(
   tx: Db,
   now: Date,
   communityId: string,
   epochId: string,
-  options: { budgetMs?: number } = {},
 ): Promise<void> {
   const [epoch] = await tx
     .select({ closesAt: epochs.closesAt, configId: epochs.rewardConfigId })
@@ -114,12 +76,9 @@ export async function reconcileCopies(
     lineages.set(d.contributionId, [...(lineages.get(d.contributionId) ?? []), d]);
   }
 
-  const unbounded = epoch.closesAt.getTime() - now.getTime() <= RECONCILE_FINAL_WINDOW_MS;
-  const deadline = Date.now() + (options.budgetMs ?? RECONCILE_BUDGET_MS);
-  let compared = 0;
   const keepers: Post[] = [];
   const settled: { contributionId: string; lineage: Decision[]; original: string | null }[] = [];
-  walk: for (const { contributionId, text } of intakes) {
+  for (const { contributionId, text } of intakes) {
     const lineage = lineages.get(contributionId);
     const base = lineage && baseOf(lineage);
     if (!lineage || !base) continue; // not scored yet: it earns nothing and blocks nothing
@@ -128,20 +87,12 @@ export async function reconcileCopies(
       continue;
     }
     const key = copyKey(text);
-    const post: Post = { contributionId, key, hash: sha256Hex(key.text) };
+    const post: Post = { contributionId, key };
     let original: Post | undefined;
     for (const keeper of keepers) {
-      let verdict = quickCopyVerdict(post.key, keeper.key, rule.thresholdBps);
-      if (verdict === undefined) {
-        const cacheKey = `${post.hash.slice(0, 24)}${keeper.hash.slice(0, 24)}${rule.thresholdBps}`;
-        verdict = copyPairCache.get(cacheKey);
-        if (verdict === undefined) {
-          if (!unbounded && compared > 0 && Date.now() >= deadline) break walk;
-          compared++;
-          verdict = editCopyVerdict(post.key, keeper.key, rule.thresholdBps);
-          copyPairCache.remember(cacheKey, verdict);
-        }
-      }
+      const verdict =
+        quickCopyVerdict(post.key, keeper.key, rule.thresholdBps) ??
+        editCopyVerdict(post.key, keeper.key, rule.thresholdBps);
       if (verdict) {
         original = keeper;
         break;
@@ -184,7 +135,7 @@ export async function reconcileCopies(
 }
 
 // Open epochs whose pinned configuration carries the copy rule: the recovery sweep reconciles
-// them, which settles whatever a budget-limited run left and sends the members' messages.
+// them, catching up posts scored before a deployment and sending the members' messages.
 export async function openCopyEpochs(db: Db, now: Date) {
   return db
     .select({ communityId: epochs.communityId, epochId: epochs.id })
