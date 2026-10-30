@@ -150,7 +150,7 @@ const LINK = new RegExp(
       String.raw`(?::[0-9]+(?:[/?#]\S*)?|[/?#]\S*)`,
     String.raw`(?<!${HOST_CHAR})(?<!${HOST_CHAR}[.\u3002])` +
       String.raw`(?:${HOST_CHAR}+[.\u3002])+` +
-      String.raw`(?:xn--[a-z0-9-]+|[\p{L}\p{M}]{2,})(?![\p{L}\p{M}\p{N}_-])` +
+      `${HOST_CHAR}+(?!${HOST_CHAR})` +
       String.raw`[.\u3002]?(?::[0-9]+)?(?:[/?#]\S*)?`,
   ].join("|"),
   "gu",
@@ -159,6 +159,9 @@ const KEYCAP = /[0-9#*]\u{FE0F}?\u{20E3}/gu;
 // Tag characters (U+E0020 to U+E007F) carry the subdivision of a flag such as England's.
 const EMOJI =
   /\p{Extended_Pictographic}|\p{Emoji_Presentation}|\p{Emoji_Modifier}|\p{Regional_Indicator}|[\u{E0020}-\u{E007F}]|\u{200D}|[\u{FE0E}\u{FE0F}]/gu;
+
+const labelCanFitDns = (label: string): boolean =>
+  [...label.replace(/\p{Default_Ignorable_Code_Point}/gu, "").normalize("NFKC")].length <= 63;
 
 function withoutLink(link: string): string {
   if (/^(?:https?:\/\/|www\.)/u.test(link)) return " ";
@@ -173,20 +176,14 @@ function withoutLink(link: string): string {
   const host = (link.split(/[/?#]/, 1)[0] ?? "").replace(/:[0-9]+$/, "").replace(/[.\u3002]$/, "");
   const root = host.split(/[.\u3002]/).at(-1) ?? "";
   // A root label cannot exceed 63 ASCII bytes; reject long prose before IDNA processing.
-  if (root.length > 63) return link;
+  if (!labelCanFitDns(root)) return link;
   try {
     const asciiRoot = new URL(`https://${root}`).hostname;
     if (!ROOT_TLDS.has(asciiRoot)) return link;
     // DNS labels cannot encode more than 63 bytes. Check a lower bound before IDNA work;
     // ignored characters do not contribute, so valid hosts with long ignored runs still parse.
     const labels = host.split(/[.\u3002]/);
-    if (
-      labels.some(
-        (label) =>
-          [...label.replace(/\p{Default_Ignorable_Code_Point}/gu, "").normalize("NFKC")].length >
-          63,
-      )
-    ) {
+    if (labels.some((label) => !labelCanFitDns(label))) {
       return link;
     }
     const parsedHost = new URL(`https://${link}`).hostname.replace(/\.$/, "");

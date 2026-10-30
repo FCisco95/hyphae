@@ -177,6 +177,30 @@ describe("copy rule", () => {
     expect(await l.points()).toEqual([POINTS(85), "0"]);
   });
 
+  it.each(["example.co\u00adm/path", `example.${"\u00ad".repeat(100)}com/path`])(
+    "an ignorable in the final hostname label does not make a duplicate earn: %s",
+    async (link) => {
+      const l = await lane();
+      const base = "The snapshot closes at midnight.";
+      const first = await l.admit(base, 60_000);
+      const second = await l.admit(`${base} ${link}`, 70_000, l.other.id);
+      await l.score(first.contributionId, 85, 2 * MIN);
+      await l.score(second.contributionId, 85, 3 * MIN);
+      expect(await l.points()).toEqual([POINTS(85), "0"]);
+    },
+  );
+
+  it("an invalid final hostname label is preserved without a false copy penalty", async () => {
+    const l = await lane();
+    const base = "The snapshot closes at midnight. ".repeat(5).trim();
+    const first = await l.admit(base, 60_000);
+    const second = await l.admit(`${base} example.co\u200cm/path`, 70_000, l.other.id);
+    await l.score(first.contributionId, 85, 2 * MIN);
+    await l.score(second.contributionId, 85, 3 * MIN);
+    expect(await l.points()).toEqual([POINTS(85), POINTS(85)]);
+    expect(await l.lineage(second.contributionId)).toHaveLength(1);
+  });
+
   it("a scheme-less link with a port does not make a duplicate earn points", async () => {
     const l = await lane();
     const base = "The snapshot closes at midnight.";

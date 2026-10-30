@@ -33,6 +33,7 @@ describe("copyNormalize", () => {
 
   it("preserves invalid contextual joiners rather than removing only a hostname tail", () => {
     expect(copyNormalize("keep a‌b.com/path")).toBe("keep a‌b.com/path");
+    expect(copyNormalize("keep example.co\u200cm/path")).toBe("keep example.co\u200cm/path");
   });
 
   it("does not restart a failed domain search at every label in a long dotted token", () => {
@@ -210,6 +211,15 @@ describe("isCopy", () => {
     expect(copyNormalize(`${base} ${link}`)).toBe("the snapshot closes at midnight.");
     expect(isCopy(`${base} ${link}`, base)).toBe(true);
   });
+
+  it.each(["example.co\u00adm/path", `example.${"\u00ad".repeat(100)}com/path`])(
+    "normalizes an entire final hostname label containing IDNA ignorables: %s",
+    (link) => {
+      const base = "The snapshot closes at midnight.";
+      expect(copyNormalize(`${base} ${link}`)).toBe("the snapshot closes at midnight.");
+      expect(isCopy(`${base} ${link}`, base)).toBe(true);
+    },
+  );
 
   it.each(["例子。公司/path", "例子｡公司/path", "例子．公司/path"])(
     "ignores a domain link with an internationalized label separator: %s",
