@@ -36,6 +36,11 @@ describe("copyNormalize", () => {
     expect(copyNormalize("keep example.co\u200cm/path")).toBe("keep example.co\u200cm/path");
   });
 
+  it("preserves complete invalid percent-encoded hostnames", () => {
+    expect(copyNormalize("keep example.co%00m/path")).toBe("keep example.co%00m/path");
+    expect(copyNormalize("keep exa%zzmple.com/path")).toBe("keep exa%zzmple.com/path");
+  });
+
   it("does not restart a failed domain search at every label in a long dotted token", () => {
     const texts = ["a.".repeat(12_500), "1234.".repeat(5_000)];
     const started = performance.now();
@@ -220,6 +225,18 @@ describe("isCopy", () => {
       expect(isCopy(`${base} ${link}`, base)).toBe(true);
     },
   );
+
+  it.each([
+    "example.%63om/path",
+    "exa%6dple.com/path",
+    "example%2ecom/path",
+    "example%e3%80%82com/path",
+    "example.%63%6f%6d/path",
+  ])("ignores a complete percent-encoded hostname: %s", (link) => {
+    const base = "The snapshot closes at midnight.";
+    expect(copyNormalize(`${base} ${link}`)).toBe("the snapshot closes at midnight.");
+    expect(isCopy(`${base} ${link}`, base)).toBe(true);
+  });
 
   it.each(["例子。公司/path", "例子｡公司/path", "例子．公司/path"])(
     "ignores a domain link with an internationalized label separator: %s",

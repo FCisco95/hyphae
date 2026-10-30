@@ -201,6 +201,30 @@ describe("copy rule", () => {
     expect(await l.lineage(second.contributionId)).toHaveLength(1);
   });
 
+  it.each(["example.%63om/path", "exa%6dple.com/path", "example%2ecom/path"])(
+    "a percent-encoded hostname does not make a duplicate earn points: %s",
+    async (link) => {
+      const l = await lane();
+      const base = "The snapshot closes at midnight.";
+      const first = await l.admit(base, 60_000);
+      const second = await l.admit(`${base} ${link}`, 70_000, l.other.id);
+      await l.score(first.contributionId, 85, 2 * MIN);
+      await l.score(second.contributionId, 85, 3 * MIN);
+      expect(await l.points()).toEqual([POINTS(85), "0"]);
+    },
+  );
+
+  it("an invalid encoded hostname is not partially removed or falsely zeroed", async () => {
+    const l = await lane();
+    const base = "The snapshot closes at midnight. ".repeat(6).trim();
+    const first = await l.admit(base, 60_000);
+    const second = await l.admit(`${base} example.co%00m/path`, 70_000, l.other.id);
+    await l.score(first.contributionId, 85, 2 * MIN);
+    await l.score(second.contributionId, 85, 3 * MIN);
+    expect(await l.points()).toEqual([POINTS(85), POINTS(85)]);
+    expect(await l.lineage(second.contributionId)).toHaveLength(1);
+  });
+
   it("a scheme-less link with a port does not make a duplicate earn points", async () => {
     const l = await lane();
     const base = "The snapshot closes at midnight.";

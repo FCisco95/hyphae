@@ -132,7 +132,7 @@ for (const root of ["alt", "example", "invalid", "local", "localhost", "onion", 
 }
 
 // IDNA includes contextual joiners and a small set of punctuation/symbol exceptions (RFC 5892).
-const HOST_CHAR = String.raw`[\p{L}\p{M}\p{N}\p{Cf}\p{Default_Ignorable_Code_Point}\u00b7\u0375\u05f3\u05f4\u06fd\u06fe\u0f0b\u30fb_-]`;
+const HOST_CHAR = String.raw`[\p{L}\p{M}\p{N}\p{Cf}\p{Default_Ignorable_Code_Point}\u00b7\u0375\u05f3\u05f4\u06fd\u06fe\u0f0b\u30fb_%-]`;
 
 // A link: a scheme or www with everything after it, X's own short hosts, a domain followed by a
 // path, query or fragment, or a bare domain, including Unicode and punycode domains and ports.
@@ -148,6 +148,10 @@ const LINK = new RegExp(
       String.raw`(?![\p{L}\p{M}\p{N}_.-])(?::[0-9]+(?:[/?#]\S*)?|[/?#]\S*)`,
     String.raw`(?<![\p{L}\p{M}\p{N}_])\[[0-9a-f:.]+\]` +
       String.raw`(?::[0-9]+(?:[/?#]\S*)?|[/?#]\S*)`,
+    // Flat rather than nested encoded separators: escapes cannot multiply parse paths.
+    String.raw`(?<!${HOST_CHAR})(?<!${HOST_CHAR}[.\u3002])` +
+      `${HOST_CHAR}+%(?:2e|e3%80%82|ef%bc%8e|ef%bd%a1)${HOST_CHAR}+` +
+      String.raw`(?::[0-9]+)?(?:[/?#]\S*)?`,
     String.raw`(?<!${HOST_CHAR})(?<!${HOST_CHAR}[.\u3002])` +
       String.raw`(?:${HOST_CHAR}+[.\u3002])+` +
       `${HOST_CHAR}+(?!${HOST_CHAR})` +
@@ -165,7 +169,19 @@ const labelCanFitDns = (label: string): boolean =>
 
 function withoutLink(link: string): string {
   if (/^(?:https?:\/\/|www\.)/u.test(link)) return " ";
-  if (link.startsWith("[") || /^[0-9]{1,3}(?:[.\u3002][0-9]{1,3}){3}[.\u3002]?[:/?#]/u.test(link)) {
+  let host: string;
+  try {
+    host = decodeURIComponent((link.split(/[/?#]/, 1)[0] ?? "").replace(/:[0-9]+$/, ""))
+      .normalize("NFKC")
+      .replace(/\u3002/g, ".")
+      .replace(/\.$/, "");
+  } catch {
+    return link;
+  }
+  if (
+    link.startsWith("[") ||
+    (/^[0-9]{1,3}(?:\.[0-9]{1,3}){3}$/u.test(host) && /[:/?#]/u.test(link))
+  ) {
     try {
       new URL(`https://${link}`);
       return " ";
@@ -173,7 +189,6 @@ function withoutLink(link: string): string {
       return link;
     }
   }
-  const host = (link.split(/[/?#]/, 1)[0] ?? "").replace(/:[0-9]+$/, "").replace(/[.\u3002]$/, "");
   const root = host.split(/[.\u3002]/).at(-1) ?? "";
   // A root label cannot exceed 63 ASCII bytes; reject long prose before IDNA processing.
   if (!labelCanFitDns(root)) return link;
