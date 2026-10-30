@@ -31,6 +31,20 @@ describe("copyNormalize", () => {
     expect(copyNormalize("bad [2001:db8:::1]:8080/path")).toBe("bad [2001:db8:::1]:8080/path");
   });
 
+  it.each([
+    "example.com:abc/x",
+    "example.com:80oops/x",
+    "192.0.2.1:80oops/x",
+    "[2001:db8::1]:80oops/x",
+  ])("preserves an entire invalid port token: %s", (link) =>
+    expect(copyNormalize(`keep ${link}`)).toBe(`keep ${link}`),
+  );
+
+  it("keeps closing punctuation outside an otherwise valid numeric-port link", () => {
+    expect(copyNormalize("go example.com:80)")).toBe("go )");
+    expect(copyNormalize("go example.com:80.")).toBe("go .");
+  });
+
   it("preserves invalid contextual joiners rather than removing only a hostname tail", () => {
     expect(copyNormalize("keep a‌b.com/path")).toBe("keep a‌b.com/path");
     expect(copyNormalize("keep example.co\u200cm/path")).toBe("keep example.co\u200cm/path");
@@ -39,6 +53,8 @@ describe("copyNormalize", () => {
   it("preserves complete invalid percent-encoded hostnames", () => {
     expect(copyNormalize("keep example.co%00m/path")).toBe("keep example.co%00m/path");
     expect(copyNormalize("keep exa%zzmple.com/path")).toBe("keep exa%zzmple.com/path");
+    expect(copyNormalize("keep example%2ecom.%00/path")).toBe("keep example%2ecom.%00/path");
+    expect(copyNormalize("keep example%2ecom.%zz/path")).toBe("keep example%2ecom.%zz/path");
   });
 
   it("does not restart a failed domain search at every label in a long dotted token", () => {
@@ -232,11 +248,22 @@ describe("isCopy", () => {
     "example%2ecom/path",
     "example%e3%80%82com/path",
     "example.%63%6f%6d/path",
+    "sub%2eexample.com/path",
+    "sub%ef%bc%8eexample.com/path",
   ])("ignores a complete percent-encoded hostname: %s", (link) => {
     const base = "The snapshot closes at midnight.";
     expect(copyNormalize(`${base} ${link}`)).toBe("the snapshot closes at midnight.");
     expect(isCopy(`${base} ${link}`, base)).toBe(true);
   });
+
+  it.each(["example.com:/x", "192.0.2.1:/x", "[2001:db8::1]:/x"])(
+    "ignores a valid locator with an empty port: %s",
+    (link) => {
+      const base = "The snapshot closes at midnight.";
+      expect(copyNormalize(`${base} ${link}`)).toBe("the snapshot closes at midnight.");
+      expect(isCopy(`${base} ${link}`, base)).toBe(true);
+    },
+  );
 
   it.each(["例子。公司/path", "例子｡公司/path", "例子．公司/path"])(
     "ignores a domain link with an internationalized label separator: %s",

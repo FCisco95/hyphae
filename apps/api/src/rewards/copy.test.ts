@@ -225,6 +225,57 @@ describe("copy rule", () => {
     expect(await l.lineage(second.contributionId)).toHaveLength(1);
   });
 
+  it.each(["sub%2eexample.com/path", "sub%ef%bc%8eexample.com/path"])(
+    "mixed hostname separators do not make a duplicate earn: %s",
+    async (link) => {
+      const l = await lane();
+      const base = "The snapshot closes at midnight.";
+      const first = await l.admit(base, 60_000);
+      const second = await l.admit(`${base} ${link}`, 70_000, l.other.id);
+      await l.score(first.contributionId, 85, 2 * MIN);
+      await l.score(second.contributionId, 85, 3 * MIN);
+      expect(await l.points()).toEqual([POINTS(85), "0"]);
+    },
+  );
+
+  it.each(["example%2ecom.%00/path", "example%2ecom.%zz/path"])(
+    "mixed invalid encoded hostname is preserved without false spam: %s",
+    async (link) => {
+      const l = await lane();
+      const base = "The snapshot closes at midnight. ".repeat(6).trim();
+      const first = await l.admit(base, 60_000);
+      const second = await l.admit(`${base} ${link}`, 70_000, l.other.id);
+      await l.score(first.contributionId, 85, 2 * MIN);
+      await l.score(second.contributionId, 85, 3 * MIN);
+      expect(await l.points()).toEqual([POINTS(85), POINTS(85)]);
+      expect(await l.lineage(second.contributionId)).toHaveLength(1);
+    },
+  );
+
+  it("an empty port does not make a duplicate earn points", async () => {
+    const l = await lane();
+    const base = "The snapshot closes at midnight.";
+    const first = await l.admit(base, 60_000);
+    const second = await l.admit(`${base} example.com:/x`, 70_000, l.other.id);
+    await l.score(first.contributionId, 85, 2 * MIN);
+    await l.score(second.contributionId, 85, 3 * MIN);
+    expect(await l.points()).toEqual([POINTS(85), "0"]);
+  });
+
+  it.each(["example.com:abc/x", "example.com:80oops/x"])(
+    "an invalid port is preserved without a false copy penalty: %s",
+    async (link) => {
+      const l = await lane();
+      const base = "The snapshot closes at midnight. ".repeat(6).trim();
+      const first = await l.admit(base, 60_000);
+      const second = await l.admit(`${base} ${link}`, 70_000, l.other.id);
+      await l.score(first.contributionId, 85, 2 * MIN);
+      await l.score(second.contributionId, 85, 3 * MIN);
+      expect(await l.points()).toEqual([POINTS(85), POINTS(85)]);
+      expect(await l.lineage(second.contributionId)).toHaveLength(1);
+    },
+  );
+
   it("a scheme-less link with a port does not make a duplicate earn points", async () => {
     const l = await lane();
     const base = "The snapshot closes at midnight.";
