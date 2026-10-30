@@ -133,6 +133,11 @@ for (const root of ["alt", "example", "invalid", "local", "localhost", "onion", 
 
 // IDNA includes contextual joiners and a small set of punctuation/symbol exceptions (RFC 5892).
 const HOST_CHAR = String.raw`[\p{L}\p{M}\p{N}\p{Cf}\p{Default_Ignorable_Code_Point}\u00b7\u0375\u05f3\u05f4\u06fd\u06fe\u0f0b\u30fb_%-]`;
+const ENCODED_HOST_DOT = "%(?:2e|e3%80%82|ef%bc%8e|ef%bd%a1)";
+const HOST_SEPARATOR = String.raw`(?:[.\u3002]|${ENCODED_HOST_DOT})`;
+// A separator escape cannot also be label text, so failed candidates have only one partition.
+const HOST_UNIT = `(?:(?!${ENCODED_HOST_DOT})${HOST_CHAR})`;
+const HOST_LABEL = `${HOST_UNIT}+`;
 const PORT_TEXT = String.raw`[^\s/?#]*`;
 
 // A link: a scheme or www with everything after it, X's own short hosts, a domain followed by a
@@ -149,14 +154,10 @@ const LINK = new RegExp(
       String.raw`(?![\p{L}\p{M}\p{N}_.-])(?::${PORT_TEXT}(?:[/?#]\S*)?|[/?#]\S*)`,
     String.raw`(?<![\p{L}\p{M}\p{N}_])\[[0-9a-f:.]+\]` +
       String.raw`(?::${PORT_TEXT}(?:[/?#]\S*)?|[/?#]\S*)`,
-    // Flat rather than nested encoded separators: escapes cannot multiply parse paths.
     String.raw`(?<!${HOST_CHAR})(?<!${HOST_CHAR}[.\u3002])` +
-      String.raw`${HOST_CHAR}+%(?:2e|e3%80%82|ef%bc%8e|ef%bd%a1)${HOST_CHAR}+(?!${HOST_CHAR}|[.\u3002])` +
+      `(?:${HOST_LABEL}${HOST_SEPARATOR})+${HOST_LABEL}` +
+      `(?!${HOST_UNIT})${HOST_SEPARATOR}?(?!${HOST_CHAR}|${HOST_SEPARATOR})` +
       String.raw`(?::${PORT_TEXT})?(?:[/?#]\S*)?`,
-    String.raw`(?<!${HOST_CHAR})(?<!${HOST_CHAR}[.\u3002])` +
-      String.raw`(?:${HOST_CHAR}+[.\u3002])+` +
-      `${HOST_CHAR}+(?!${HOST_CHAR})` +
-      String.raw`[.\u3002]?(?::${PORT_TEXT})?(?:[/?#]\S*)?`,
   ].join("|"),
   "gu",
 );

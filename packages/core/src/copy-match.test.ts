@@ -72,6 +72,13 @@ describe("copyNormalize", () => {
     for (let i = 0; i < 8; i++) expect(copyNormalize(host)).toBe(host);
     expect(performance.now() - started).toBeLessThan(500);
   });
+
+  it("scans mixed encoded separators without retrying quadratic label partitions", () => {
+    const text = `${"a%2e".repeat(6_000)}.%00/path`;
+    const started = performance.now();
+    for (let i = 0; i < 3; i++) expect(copyNormalize(text)).toBe(text);
+    expect(performance.now() - started).toBeLessThan(250);
+  });
 });
 
 describe("isCopy", () => {

@@ -4,7 +4,7 @@ import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { closeEpoch } from "./close.js";
 import { buildRewardConfigPayload, findOrInsertConfig } from "./config.js";
-import { openCopyEpochs, reconcileCopies } from "./copy.js";
+import { openCopyEpochs, reconcileCopies, reconcileEpoch } from "./copy.js";
 import { appendCorrection, COPY_ACTOR } from "./decisions.js";
 import { effectiveResults } from "./effective.js";
 import { completeDispatch, runEvaluation } from "./evaluation.js";
@@ -693,6 +693,32 @@ describe("copy rule", () => {
       decision: { pointUnits: 0n },
     });
   });
+  it("reconciles encoded invalid hostnames quickly even when a repeated run has no writes", async () => {
+    const l = await lane(false);
+    const text = `${"a%2e".repeat(6_000)}.%00/path`;
+    const posts = [];
+    for (let i = 0; i < 12; i++) {
+      posts.push(await l.admit(text, 60_000 + i * 100, l.other.id));
+    }
+    for (const [i, post] of posts.entries()) {
+      await l.score(post.contributionId, 85, 2 * MIN + i * 100);
+    }
+    const pinned = await t.db.transaction((tx) =>
+      findOrInsertConfig(tx, l.community.id, buildRewardConfigPayload(rubric, { copy: true })),
+    );
+    await t.db.update(epochs).set({ rewardConfigId: pinned.id }).where(eq(epochs.id, l.epoch.id));
+    for (let i = 0; i < 2; i++) {
+      const started = performance.now();
+      await reconcileEpoch(
+        t.db,
+        { communityId: l.community.id, epochId: l.epoch.id },
+        { clock: later(5 * MIN) },
+      );
+      expect(performance.now() - started).toBeLessThan(1_500);
+      expect(await l.points()).toEqual([POINTS(85), ...Array(11).fill("0")]);
+    }
+  }, 30_000);
+
   it("settles 200 long near-copies and an exact copy completely in one fast run", async () => {
     const l = await lane(false);
     const base = "the snapshot closes at midnight and holds are read after it. ".repeat(425).trim();
