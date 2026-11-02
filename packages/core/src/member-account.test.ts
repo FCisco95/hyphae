@@ -69,4 +69,31 @@ describe("private member contract", () => {
       }).success,
     ).toBe(false);
   });
+  it("accepts the member's own rules test, absent, null, passed or not", () => {
+    const member = { ...base, state: "member", wallet: { address: null, status: "none" } };
+    for (const rules_test of [
+      undefined,
+      null,
+      { passed: false, passed_at: null },
+      { passed: true, passed_at: "2026-10-08T09:30:00.123456Z" },
+    ])
+      expect(MemberAccountSchema.safeParse({ ...member, rules_test }).success).toBe(true);
+  });
+  it.each([
+    { passed: true, passed_at: null },
+    { passed: false, passed_at: "2026-10-08T09:30:00.123456Z" },
+    { passed: true, passed_at: "2026-10-08T09:30:00Z", test_id: "mycel-rules-1" },
+  ])("rejects an inconsistent or widened rules test %o", (rules_test) => {
+    const member = { ...base, state: "member", wallet: { address: null, status: "none" } };
+    expect(MemberAccountSchema.safeParse({ ...member, rules_test }).success).toBe(false);
+  });
+  it("never serves a rules test before membership is confirmed", () => {
+    expect(
+      MemberAccountSchema.safeParse({
+        ...base,
+        state: "join_required",
+        rules_test: { passed: false, passed_at: null },
+      }).success,
+    ).toBe(false);
+  });
 });

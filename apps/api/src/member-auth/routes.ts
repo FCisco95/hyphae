@@ -8,6 +8,7 @@ import { isMemberStatus } from "../bot/membership.js";
 import { telegramIdentity } from "./identity.js";
 import { tokenBucket } from "./limits.js";
 import type { MemberIdentityProvider } from "./privy.js";
+import { rulesTestStatus } from "./rules-status.js";
 import { ipBucketKey } from "./visitor.js";
 
 const GroupMembership = z
@@ -123,6 +124,7 @@ export function memberRoutes({
             return MemberAccountSchema.parse({ ...common, state: "join_required" });
           const [member] = await db
             .select({
+              id: members.id,
               wallet: members.wallet,
               method: members.linkMethod,
               linkedAt: members.linkedAt,
@@ -140,10 +142,14 @@ export function memberRoutes({
             (member.wallet === null) !== (member.linkedAt === null)
           )
             throw new Error("member_unavailable");
+          // Only this caller's own member row, resolved from the verified token above.
+          const rulesTest = await rulesTestStatus(db, community.id, member.id);
+          abort.signal.throwIfAborted();
           return MemberAccountSchema.parse({
             ...common,
             state: "member",
             wallet: { address: member.wallet, status: member.method ?? "none" },
+            rules_test: rulesTest,
           });
         })(),
       ]);

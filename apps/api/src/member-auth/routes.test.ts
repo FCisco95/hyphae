@@ -1,8 +1,9 @@
 import { MemberAccountSchema } from "@hyphae/core";
-import { communities, members, memberWalletLinks } from "@hyphae/db";
+import { communities, members, memberWalletLinks, rulesTestPasses } from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { createTestDb, rubric } from "../rewards/test-db.js";
+import { bootstrapRewardEpochs, buildRewardConfigPayload } from "../rewards/config.js";
+import { createTestDb, later, rubric, T0 } from "../rewards/test-db.js";
 import type { MemberIdentityProvider } from "./privy.js";
 import { memberRoutes } from "./routes.js";
 
@@ -232,6 +233,7 @@ describe("private member reads", () => {
       as_of: "2026-10-09T12:00:00.000Z",
       state: "member",
       wallet: { address: WALLET, status: "signature" },
+      rules_test: null,
     });
     expect(await testDb.db.select().from(members)).toEqual(beforeMembers);
     expect(await testDb.db.select().from(memberWalletLinks)).toEqual(beforeLinks);
@@ -366,5 +368,109 @@ describe("private member reads", () => {
     await testDb.db.update(members).set({ wallet: "invalid-wallet" }).where(ownMember);
     await expectPrivate(await read(fixture()), 503);
     await testDb.db.update(members).set({ wallet: WALLET }).where(ownMember);
+  });
+});
+
+describe("the member's own rules test", () => {
+  // Community R pins rubric MYCEL 1.2.0, which mycel-rules-1 covers; community S pins a version no
+  // test covers. Telegram 601 passed in R, 602 did not; 603 passed only in S.
+  const ids: Record<string, string> = {};
+  beforeAll(async () => {
+    for (const [mint, chat, version] of [
+      ["MintR", -1101n, rubric.version],
+      ["MintS", -1102n, "9.9.9"],
+    ] as const) {
+      const pinned = { ...rubric, version };
+      const [community] = await testDb.db
+        .insert(communities)
+        .values({
+          mint,
+          name: mint,
+          telegramChatId: chat,
+          adminTelegramUserId: 7n,
+          rubricVersion: version,
+          rubric: pinned,
+        })
+        .returning();
+      if (!community) throw new Error("fixture community absent");
+      ids[mint] = community.id;
+      await bootstrapRewardEpochs(
+        testDb.db,
+        {
+          communityId: community.id,
+          payload: buildRewardConfigPayload(pinned),
+          opensAt: T0,
+          proposedBy: "test",
+        },
+        { clock: later(-3_600_000) },
+      );
+      for (const tg of [601n, 602n, 603n]) {
+        const [member] = await testDb.db
+          .insert(members)
+          .values({ communityId: community.id, telegramUserId: tg, linkedAt: null })
+          .returning();
+        if (!member) throw new Error("fixture member absent");
+        ids[`${mint}:${tg}`] = member.id;
+      }
+    }
+    await testDb.db.insert(rulesTestPasses).values([
+      {
+        communityId: ids.MintR as string,
+        memberId: ids["MintR:601"] as string,
+        testId: "mycel-rules-1",
+        passedAt: new Date("2026-10-08T09:30:00.123Z"),
+      },
+      {
+        communityId: ids.MintS as string,
+        memberId: ids["MintS:603"] as string,
+        testId: "mycel-rules-1",
+        passedAt: new Date("2026-10-08T10:00:00Z"),
+      },
+    ]);
+  });
+  const as = (telegram: string, mint: string) =>
+    read(
+      fixture({
+        user: { id: DID, linked_accounts: [{ type: "telegram", telegram_user_id: telegram }] },
+      }),
+      "",
+      mint,
+    );
+
+  it("serves the caller's own pass of the test the current rules require", async () => {
+    const body = MemberAccountSchema.parse(await expectPrivate(await as("601", "MintR"), 200));
+    expect(body.state === "member" && body.rules_test).toEqual({
+      passed: true,
+      passed_at: "2026-10-08T09:30:00.123000Z",
+    });
+  });
+
+  it("never lends another member's pass, nor the caller's pass in another community", async () => {
+    for (const telegram of ["602", "603"]) {
+      const body = await expectPrivate(await as(telegram, "MintR"), 200);
+      expect(body.rules_test).toEqual({ passed: false, passed_at: null });
+    }
+  });
+
+  it("is null when the current rules have no test, even with a stored pass", async () => {
+    const body = await expectPrivate(await as("603", "MintS"), 200);
+    expect(body.state).toBe("member");
+    expect(body.rules_test).toBeNull();
+  });
+
+  it("is absent before membership is confirmed", async () => {
+    const body = await expectPrivate(
+      await read(
+        fixture({
+          group: { status: "left" },
+          user: { id: DID, linked_accounts: [{ type: "telegram", telegram_user_id: "601" }] },
+        }),
+        "",
+        "MintR",
+      ),
+      200,
+    );
+    expect(body.state).toBe("join_required");
+    expect(body.rules_test).toBeUndefined();
   });
 });

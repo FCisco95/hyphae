@@ -21,7 +21,11 @@ describe("the OpenAPI document", () => {
       .filter((r) => r.method === "GET" && r.path !== "/openapi.json")
       .map((r) => `/v1${r.path.replace(/:(\w+)/g, "{$1}")}`)
       .sort();
-    expect(Object.keys(doc.paths).sort()).toEqual(served);
+    expect(
+      Object.keys(doc.paths)
+        .filter((p) => p.startsWith("/v1/") && !p.startsWith("/v1/integrations/"))
+        .sort(),
+    ).toEqual(served);
   });
 
   it("describes each path parameter, and every answer with a schema from the v1 contract", () => {
@@ -82,6 +86,15 @@ describe("the OpenAPI document", () => {
         { $ref: "#/components/schemas/AllTimeLeaderboard" },
       ],
     });
+  });
+
+  it("documents the member read with its own rules test and no selector", () => {
+    const me = doc.paths["/member/v1/communities/{mint}/me"]?.get as Operation & {
+      security?: unknown;
+    };
+    expect(me.security).toEqual([{ memberToken: [] }]);
+    expect(me.parameters?.map((p) => p.in)).toEqual(["path"]);
+    expect(JSON.stringify(doc.components.schemas.MemberAccount)).toContain('"rules_test"');
   });
 
   it("is served as JSON under /v1", async () => {

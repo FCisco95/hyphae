@@ -1,4 +1,4 @@
-import { PublicRaidsSchema, ReadApiV1 } from "@hyphae/core";
+import { MemberAccountSchema, PublicRaidsSchema, ReadApiV1 } from "@hyphae/core";
 import { z } from "zod";
 import { AllTimeLeaderboardSchema, EpochSchema } from "./schemas.js";
 
@@ -18,6 +18,10 @@ const schemas = {
   WalletClaims: ReadApiV1.walletClaims,
   WalletRecord: ReadApiV1.walletRecord,
   Error: ReadApiV1.error,
+  MemberAccount: MemberAccountSchema,
+  MemberError: z.strictObject({
+    error: z.enum(["invalid_request", "unauthorized", "not_found", "unavailable"]),
+  }),
 };
 
 const ref = (name: keyof typeof schemas) => ({ $ref: `#/components/schemas/${name}` });
@@ -199,8 +203,49 @@ export function openApiDocument() {
         [path("wallet", "A Solana address: base58 for exactly 32 bytes.", base58), ...paging],
         "No epoch's public reads show this wallet.",
       ),
+      "/member/v1/communities/{mint}/me": {
+        get: {
+          summary: "The signed-in member's own account",
+          description: [
+            "Who the token's member is in this community: Telegram link, group membership, recorded reward wallet, and `rules_test`: their own pass of the rules test that the community's current rules require (`passed_at` in UTC), or null when those rules have no test.",
+            "Never another member's record: the caller is resolved from the token, no selector is accepted, and the answer is never cached.",
+          ].join("\n\n"),
+          security: [{ memberToken: [] }],
+          parameters: [mint],
+          responses: {
+            "200": { description: "OK", content: json("MemberAccount") },
+            "400": {
+              description: "A malformed mint or any query string: `invalid_request`.",
+              content: json("MemberError"),
+            },
+            "401": {
+              description: "No valid member token: `unauthorized`.",
+              content: json("MemberError"),
+            },
+            "404": {
+              description: "No community with this mint: `not_found`.",
+              content: json("MemberError"),
+            },
+            "429": {
+              description: "Too many requests: `unavailable`.",
+              content: json("MemberError"),
+            },
+            "503": {
+              description: "Not configured, or a provider could not be read: `unavailable`.",
+              content: json("MemberError"),
+            },
+          },
+        },
+      },
     },
     components: {
+      securitySchemes: {
+        memberToken: {
+          type: "http",
+          scheme: "bearer",
+          description: "The signed-in member's app token, verified with the identity provider.",
+        },
+      },
       schemas: Object.fromEntries(
         Object.entries(schemas).map(([name, s]) => [
           name,
