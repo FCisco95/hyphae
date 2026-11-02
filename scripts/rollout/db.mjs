@@ -47,6 +47,15 @@ const NEW_MIGRATIONS = {
 const EPOCH6_OPENS_AT = "2026-10-31T00:00:00.000Z";
 const EPOCH6_CLOSES_AT = "2026-11-07T00:00:00.000Z";
 const RELEASE_DEADLINE = new Date(Date.parse(EPOCH6_CLOSES_AT) - 2 * 60 * 60_000).toISOString();
+// Every epoch's window to the microsecond, as read on 2026-11-02 (pg's Date keeps milliseconds).
+const EPOCH_TIMES = {
+  1: ["2026-09-25T00:00:00.000000", "2026-10-02T00:00:00.000000"],
+  2: ["2026-10-02T00:00:00.000000", "2026-10-10T00:00:00.000000"],
+  3: ["2026-10-10T00:00:00.000000", "2026-10-17T00:00:00.000000"],
+  4: ["2026-10-17T00:00:00.000000", "2026-10-24T00:00:00.000000"],
+  5: ["2026-10-24T00:00:00.000000", "2026-10-31T00:00:00.000000"],
+  6: ["2026-10-31T00:00:00.000000", "2026-11-07T00:00:00.000000"],
+};
 // Schema-qualified so no function in the session's search_path can stand in for the clock.
 const CLOCK = "select pg_catalog.clock_timestamp() as at";
 // Microsecond-exact UTC text: pg's JS Date would round a timestamp to milliseconds.
@@ -60,8 +69,6 @@ const PAST_DEADLINE = "PAST_DEADLINE";
 // scores it.
 const FROZEN = {
   4: {
-    opens_at: "2026-10-17T00:00:00.000Z",
-    closes_at: "2026-10-24T00:00:00.000Z",
     reward_config_id: "d265af98-202c-4425-9d7b-dfdd5d5715fa",
     prompt_version: "reward-eval/2",
     snapshot_closed_at: "2026-10-24T00:00:15.543Z",
@@ -78,8 +85,6 @@ const FROZEN = {
     config_digest: "99b367e7cf69f637057dd49a4a949e0b4022f609a04670eda5c7ede53c90a0c6",
   },
   5: {
-    opens_at: "2026-10-24T00:00:00.000Z",
-    closes_at: "2026-10-31T00:00:00.000Z",
     reward_config_id: "d265af98-202c-4425-9d7b-dfdd5d5715fa",
     prompt_version: "reward-eval/2",
     snapshot_closed_at: "2026-10-31T00:00:32.985Z",
@@ -138,6 +143,7 @@ const WALLET_INDEX_SHAPE = {
 };
 const RAID_RECAPS = "raid_recaps";
 const RAID_RECAPS_SHAPE = {
+  persistence: "p",
   columns: [
     "task_id pg_catalog.uuid not null",
     "community_id pg_catalog.uuid not null",
@@ -163,6 +169,7 @@ const CARD_ENUMS = {
 };
 const RAID_CARDS = "raid_cards";
 const RAID_CARDS_SHAPE = {
+  persistence: "p",
   columns: [
     "task_id pg_catalog.uuid not null",
     "community_id pg_catalog.uuid not null",
@@ -201,6 +208,7 @@ const CARDS_INDEX_SHAPE = {
 // 0021 is applied before and after: exactly its table and unique index.
 const SHARED = "shared_handle_clearances";
 const SHARED_SHAPE = {
+  persistence: "p",
   columns: [
     "id pg_catalog.uuid not null default gen_random_uuid()",
     "community_id pg_catalog.uuid not null",
@@ -232,6 +240,7 @@ const SHARED_INDEX_SHAPE = {
 // What 0022 creates. Its checks are compared with their definitions, so a weaker check differs.
 const INTEGRATION = "integration_raid_requests";
 const INTEGRATION_SHAPE = {
+  persistence: "p",
   columns: [
     "id pg_catalog.uuid not null default gen_random_uuid()",
     "community_id pg_catalog.uuid not null",
@@ -509,6 +518,13 @@ async function readShape(client) {
   const tableShape = async (name) =>
     (await exists(name))
       ? {
+          // An unlogged table is emptied after a crash.
+          persistence: (
+            await client.query(
+              "select relpersistence::text as p from pg_class where oid = $1::regclass",
+              [`public.${name}`],
+            )
+          ).rows[0].p,
           columns: await rows(
             `select a.attname || ' ' || tn.nspname || '.' || t.typname
                     || case when a.atttypmod <> -1 then '(' || a.atttypmod::text || ')' else '' end
@@ -647,6 +663,8 @@ async function readState(client) {
   );
   s.epochs = await one(
     `select e.index, e.status::text, e.opens_at, e.closes_at, e.reward_config_id, e.publish_tx,
+            to_char(e.opens_at at time zone 'UTC', ${TS_US}) as opens_at_us,
+            to_char(e.closes_at at time zone 'UTC', ${TS_US}) as closes_at_us,
             e.root is not null as has_root, e.pot_lamports is not null as has_pot,
             rc.payload->'scoring'->>'promptVersion' as prompt_version,
             (select count(*)::int from reward_epoch_snapshots r where r.epoch_id = e.id) as snapshots,
@@ -871,6 +889,11 @@ function checkState(s, live, journalExpected, phase) {
   const e5 = s.epochs.find((e) => e.index === 5);
   const e6 = s.epochs.find((e) => e.index === 6);
   if (s.epochs.length !== 6) fail(`Hyphae Lab has ${s.epochs.length} epochs, expected 6`);
+  for (const [index, [opens, closes]] of Object.entries(EPOCH_TIMES)) {
+    const e = s.epochs.find((x) => x.index === Number(index));
+    if (e?.opens_at_us !== opens || e?.closes_at_us !== closes)
+      fail(`epoch ${index} does not run exactly from ${opens} to ${closes} UTC`);
+  }
   if (e1?.status !== "closed" || e1?.snapshots !== 1) fail("epoch 1 is not closed with 1 snapshot");
   // Epochs 2 and 3 were paid: publishing writes status, root and publish_tx together.
   for (const [index, e, closes] of [
