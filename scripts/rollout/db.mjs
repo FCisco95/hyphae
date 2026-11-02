@@ -141,9 +141,20 @@ const WALLET_INDEX_SHAPE = {
   partial: false,
   valid: true,
 };
+// Every table this script checks is permanent, owned like members, with no row security, policy,
+// trigger or rule.
+const PERMANENT_PLAIN_TABLE = {
+  persistence: "p",
+  row_security: false,
+  force_row_security: false,
+  owner_is_members_owner: true,
+  triggers: [],
+  rules: [],
+  policies: [],
+};
 const RAID_RECAPS = "raid_recaps";
 const RAID_RECAPS_SHAPE = {
-  persistence: "p",
+  relation: PERMANENT_PLAIN_TABLE,
   columns: [
     "task_id pg_catalog.uuid not null",
     "community_id pg_catalog.uuid not null",
@@ -169,7 +180,7 @@ const CARD_ENUMS = {
 };
 const RAID_CARDS = "raid_cards";
 const RAID_CARDS_SHAPE = {
-  persistence: "p",
+  relation: PERMANENT_PLAIN_TABLE,
   columns: [
     "task_id pg_catalog.uuid not null",
     "community_id pg_catalog.uuid not null",
@@ -208,7 +219,7 @@ const CARDS_INDEX_SHAPE = {
 // 0021 is applied before and after: exactly its table and unique index.
 const SHARED = "shared_handle_clearances";
 const SHARED_SHAPE = {
-  persistence: "p",
+  relation: PERMANENT_PLAIN_TABLE,
   columns: [
     "id pg_catalog.uuid not null default gen_random_uuid()",
     "community_id pg_catalog.uuid not null",
@@ -240,7 +251,7 @@ const SHARED_INDEX_SHAPE = {
 // What 0022 creates. Its checks are compared with their definitions, so a weaker check differs.
 const INTEGRATION = "integration_raid_requests";
 const INTEGRATION_SHAPE = {
-  persistence: "p",
+  relation: PERMANENT_PLAIN_TABLE,
   columns: [
     "id pg_catalog.uuid not null default gen_random_uuid()",
     "community_id pg_catalog.uuid not null",
@@ -518,13 +529,26 @@ async function readShape(client) {
   const tableShape = async (name) =>
     (await exists(name))
       ? {
-          // An unlogged table is emptied after a crash.
-          persistence: (
+          // Table-level settings that change what the app can write or read without touching a
+          // column: an unlogged table is emptied after a crash; row security, a policy, a
+          // trigger or a rule can hide, block or rewrite rows; another owner changes who may
+          // write.
+          relation: (
             await client.query(
-              "select relpersistence::text as p from pg_class where oid = $1::regclass",
+              `select c.relpersistence::text as persistence, c.relrowsecurity as row_security,
+                      c.relforcerowsecurity as force_row_security,
+                      c.relowner = m.relowner as owner_is_members_owner,
+                      array(select g.tgname::text from pg_trigger g
+                             where g.tgrelid = c.oid and not g.tgisinternal order by 1) as triggers,
+                      array(select w.rulename::text from pg_rewrite w
+                             where w.ev_class = c.oid order by 1) as rules,
+                      array(select p.polname::text from pg_policy p
+                             where p.polrelid = c.oid order by 1) as policies
+                 from pg_class c, pg_class m
+                where c.oid = $1::regclass and m.oid = 'public.members'::regclass`,
               [`public.${name}`],
             )
-          ).rows[0].p,
+          ).rows[0],
           columns: await rows(
             `select a.attname || ' ' || tn.nspname || '.' || t.typname
                     || case when a.atttypmod <> -1 then '(' || a.atttypmod::text || ')' else '' end
