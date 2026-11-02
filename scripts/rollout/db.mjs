@@ -1,12 +1,10 @@
-// Production checks and one pinned migration release. Current release: migration 0021 for the
-// 2026-10-21 shared-handle payout hold (docs/demo/2026-10-21-shared-handle-release.md, private),
-// re-pinned on 2026-10-26 after epoch 4 closed: epoch 4 is closed and frozen (snapshot and hold
-// checks pinned, no publication intent), epoch 5 is open. The same SQL as the 2026-10-21 pin; only
-// the state it expects and the window it must stay out of changed. The raid cards release used
-// it for 0020, the 2026-10-11 release for
-// 0018+0019, the Jev live scorer release for 0017, the
-// pilot amendment release for 0016, the earn-first release for 0015 and the 2026-10-05 API rollout
-// for 0013+0014 (see those plans and git history).
+// Production checks and one pinned migration release. Current release: migration 0022 for the
+// Organic signed raid route (integration_raid_requests), pinned on 2026-11-02: epochs 4 and 5 are
+// closed, unpaid and frozen (snapshot, hold checks and shared-handle clearances pinned, no
+// publication intent), epoch 6 is open. The 0021 release (shared-handle clearances, 2026-10-26)
+// used it before, the raid cards release for 0020, the 2026-10-11 release for 0018+0019, the Jev
+// live scorer release for 0017, the pilot amendment release for 0016, the earn-first release for
+// 0015 and the 2026-10-05 API rollout for 0013+0014 (see those plans and git history).
 //
 // Run from the exact-source worktree's packages/db, so the migrations folder and drivers are the
 // ones the image was built from:
@@ -22,7 +20,7 @@
 // identity proof is liveness: migrate and postcheck require a reward-recovery completion newer
 // than the precheck's, which only the database the live worker writes to can show.
 //
-// Precheck and migrate refuse once the database clock is past 2 hours before epoch 5's close, so
+// Precheck and migrate refuse once the database clock is past 2 hours before epoch 6's close, so
 // the release cannot run into the close and the payout hold window after it. The clock is read
 // at the state read, again after the public reads, and inside the migration before every
 // statement and the commit; a migration that crosses the deadline rolls back.
@@ -43,32 +41,64 @@ const MINT = "HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg";
 const PUBLIC_API = "https://hyphae-api.fly.dev";
 // The migrations this release applies, in order, pinned by the SHA-256 of their SQL files.
 const NEW_MIGRATIONS = {
-  "0021_shared_handle_clearances":
-    "e049aa17d986e9447ec7e784e92639ac6a09977323db1de2e5cc32b585ccaf68",
+  "0022_integration_raid_requests":
+    "20453fbc05f2b54f210c2821f5ffd138a16805c3aa1dd75c422555b7083f7a5c",
 };
-const EPOCH5_CLOSES_AT = "2026-10-31T00:00:00.000Z";
-const RELEASE_DEADLINE = new Date(Date.parse(EPOCH5_CLOSES_AT) - 2 * 60 * 60_000).toISOString();
+const EPOCH6_OPENS_AT = "2026-10-31T00:00:00.000Z";
+const EPOCH6_CLOSES_AT = "2026-11-07T00:00:00.000Z";
+const RELEASE_DEADLINE = new Date(Date.parse(EPOCH6_CLOSES_AT) - 2 * 60 * 60_000).toISOString();
 // Schema-qualified so no function in the session's search_path can stand in for the clock.
 const CLOCK = "select pg_catalog.clock_timestamp() as at";
 // Microsecond-exact UTC text: pg's JS Date would round a timestamp to milliseconds.
 const TS_US = `'YYYY-MM-DD"T"HH24:MI:SS.US'`;
 const PAST_DEADLINE = "PAST_DEADLINE";
-// No amendment is recorded for epochs 4 and 5, so their own config's prompt scores them.
-const EPOCH_PROMPT = "reward-eval/2";
-// Epoch 4 closed on 2026-10-24 and is not paid yet. Its evidence is frozen: the release must find
-// it exactly as read on 2026-10-26 and leave it exactly so. Its 14 hold checks were all read inside
-// the 24 h window, which ended on 2026-10-25.
-const EPOCH4_FROZEN = {
-  reward_config_id: "d265af98-202c-4425-9d7b-dfdd5d5715fa",
-  snapshot_closed_at: "2026-10-24T00:00:15.543Z",
-  snapshot_entries: 178,
-  snapshot_members: 17,
-  hold_checks: 14,
-  hold_holder: 14,
-  // Counts alone would not notice an edited total or a moved observation, so the evidence itself
-  // is pinned as a SHA-256 over every row in a fixed order (see readState).
-  snapshot_digest: "e93d8b40aca66c49ab1cdfc89c965fd24bce837f3f03d38cd44dc6355f9db1b3",
-  hold_digest: "be09a24846a90d3589fa42bf08a7e693f00977049ff7b2a5cdcd9728d17de5be",
+// Epochs 4 and 5 closed on 2026-10-24 and 2026-10-31 and are not paid (parked by Cisco on
+// 2026-11-01 until funds exist). Their evidence is frozen: the release must find it exactly as read
+// on 2026-11-02 and leave it exactly so. Counts alone would not notice an edited total, a moved
+// observation or a changed clearance, so the evidence itself is pinned as a SHA-256 over every row
+// in a fixed order (see readState). Neither epoch has an amendment, so its own config's prompt
+// scores it.
+const FROZEN = {
+  4: {
+    opens_at: "2026-10-17T00:00:00.000Z",
+    closes_at: "2026-10-24T00:00:00.000Z",
+    reward_config_id: "d265af98-202c-4425-9d7b-dfdd5d5715fa",
+    prompt_version: "reward-eval/2",
+    snapshot_closed_at: "2026-10-24T00:00:15.543Z",
+    snapshot_entries: 178,
+    snapshot_members: 17,
+    snapshot_digest: "e93d8b40aca66c49ab1cdfc89c965fd24bce837f3f03d38cd44dc6355f9db1b3",
+    hold_checks: 14,
+    hold_holder: 14,
+    hold_in_window: 14,
+    hold_digest: "be09a24846a90d3589fa42bf08a7e693f00977049ff7b2a5cdcd9728d17de5be",
+    // Cisco's own member, cleared on 2026-10-29.
+    clearances: 1,
+    clearance_digest: "6d38932d8e371c329792d08f0d5e9ffae3dbfd313b4008043c3c20f7a52680d8",
+  },
+  5: {
+    opens_at: "2026-10-24T00:00:00.000Z",
+    closes_at: "2026-10-31T00:00:00.000Z",
+    reward_config_id: "d265af98-202c-4425-9d7b-dfdd5d5715fa",
+    prompt_version: "reward-eval/2",
+    snapshot_closed_at: "2026-10-31T00:00:32.985Z",
+    snapshot_entries: 133,
+    snapshot_members: 14,
+    snapshot_digest: "5b3883dd3debbb577d34593f3fdb8fd32dde0ab48d73cfd0c31152c3e9d5a93b",
+    // Its 13 reads failed (Helius 429) and the window ended with none decided: the ruling on them
+    // is open, and this release must not move them.
+    hold_checks: 13,
+    hold_holder: 0,
+    hold_in_window: 0,
+    hold_digest: "436aaf7469fd74d4023a4cdee14cdb04cee1ef98e5176ab014e7b8599b223bf3",
+    clearances: 0,
+    clearance_digest: "",
+  },
+};
+// Epoch 6 is open and stays on the config it opened with, with no amendment.
+const EPOCH6 = {
+  reward_config_id: "bd8e5f63-6010-4f0f-8872-476d8323efc4",
+  prompt_version: "reward-eval/2",
 };
 // payout/gate.ts HOLD_WINDOW_MS: a balance counts only if read within this long after the close.
 const HOLD_WINDOW_HOURS = 24;
@@ -163,7 +193,7 @@ const CARDS_INDEX_SHAPE = {
   partial: false,
   valid: true,
 };
-// What 0021 creates.
+// 0021 is applied before and after: exactly its table and unique index.
 const SHARED = "shared_handle_clearances";
 const SHARED_SHAPE = {
   columns: [
@@ -194,6 +224,61 @@ const SHARED_INDEX_SHAPE = {
   partial: false,
   valid: true,
 };
+// What 0022 creates. Its checks are compared with their definitions, so a weaker check differs.
+const INTEGRATION = "integration_raid_requests";
+const INTEGRATION_SHAPE = {
+  columns: [
+    "id pg_catalog.uuid not null default gen_random_uuid()",
+    "community_id pg_catalog.uuid not null",
+    "idempotency_key pg_catalog.uuid not null",
+    "request_hash pg_catalog.text not null",
+    "key_id pg_catalog.text not null",
+    "actor_organic_user_id pg_catalog.text not null",
+    "actor_role pg_catalog.text not null",
+    "task_id pg_catalog.uuid not null",
+    "state pg_catalog.text not null",
+    "response pg_catalog.jsonb null",
+    "created_at pg_catalog.timestamptz not null default now()",
+    "completed_at pg_catalog.timestamptz null",
+  ],
+  constraints: [
+    "integration_raid_requests_community_id_communities_id_fk f (community_id) -> public.communities(id) a/a",
+    "integration_raid_requests_hash c (request_hash) CHECK ((request_hash ~ '^[0-9a-f]{64}$'::text))",
+    "integration_raid_requests_pkey p (id)",
+    "integration_raid_requests_role c (actor_role) CHECK ((actor_role = ANY (ARRAY['admin'::text, 'steward'::text])))",
+    "integration_raid_requests_state c (state,response,completed_at) CHECK ((((state = 'announcing'::text) AND (response IS NULL) AND (completed_at IS NULL)) OR ((state = 'created'::text) AND (response IS NOT NULL) AND (completed_at IS NOT NULL))))",
+    "integration_raid_requests_task_id_tasks_id_fk f (task_id) -> public.tasks(id) a/a",
+  ],
+  indexes: [
+    "integration_raid_requests_key",
+    "integration_raid_requests_pkey",
+    "integration_raid_requests_task",
+  ],
+};
+const INTEGRATION_INDEXES = {
+  integration_raid_requests_key: {
+    table: INTEGRATION,
+    method: "btree",
+    columns: "community_id,idempotency_key",
+    attributes: 2,
+    key_attributes: 2,
+    expressions: false,
+    unique: true,
+    partial: false,
+    valid: true,
+  },
+  integration_raid_requests_task: {
+    table: INTEGRATION,
+    method: "btree",
+    columns: "task_id",
+    attributes: 1,
+    key_attributes: 1,
+    expressions: false,
+    unique: true,
+    partial: false,
+    valid: true,
+  },
+};
 const COUNTED_TABLES = [
   "members",
   "contributions",
@@ -209,6 +294,7 @@ const COUNTED_TABLES = [
   RAID_RECAPS,
   RAID_CARDS,
   SHARED,
+  INTEGRATION,
 ];
 // Any other query parameter (host, hostaddr, port, options, ...) could redirect the connection
 // away from the host this script reports, so it is refused.
@@ -438,6 +524,7 @@ async function readShape(client) {
                               || '(' || ${columnList("k.confkey", "k.confrelid")} || ') '
                               || k.confupdtype::text || '/' || k.confdeltype::text
                          else '' end
+                    || case when k.contype = 'c' then ' ' || pg_get_constraintdef(k.oid) else '' end
                     || ${constraintFlags("k")} as v
                from pg_constraint k left join pg_class r on r.oid = k.confrelid
                left join pg_namespace rn on rn.oid = r.relnamespace
@@ -466,6 +553,12 @@ async function readShape(client) {
     raid_cards: await tableShape(RAID_CARDS),
     shared_index: await indexShape(SHARED_INDEX),
     shared: await tableShape(SHARED),
+    integration_indexes: Object.fromEntries(
+      await Promise.all(
+        Object.keys(INTEGRATION_INDEXES).map(async (name) => [name, await indexShape(name)]),
+      ),
+    ),
+    integration: await tableShape(INTEGRATION),
   };
 }
 
@@ -484,8 +577,8 @@ const constraintFlags = (k) =>
    || case when ${k}.condeferrable then ' deferrable' else '' end
    || case when ${k}.condeferred then ' initially deferred' else '' end`;
 
-// Before and after: 0015, 0017, 0018, 0019 and 0020 applied. Before: nothing of 0021. After:
-// exactly 0021's table and unique index as well.
+// Before and after: 0015, 0017, 0018, 0019, 0020 and 0021 applied. Before: nothing of 0022.
+// After: exactly 0022's table and two unique indexes as well.
 function shapeProblems(shape, phase) {
   const problems = [];
   if (!NULLABLE_COLUMNS.every((c) => shape.nullable[c] === true) || !shape.members_check_exists)
@@ -509,14 +602,20 @@ function shapeProblems(shape, phase) {
     problems.push(`${CARDS_INDEX} is not exactly 0020's index`);
   if (!isDeepStrictEqual(shape.raid_cards, RAID_CARDS_SHAPE))
     problems.push(`${RAID_CARDS} is not exactly 0020's table`);
+  if (!isDeepStrictEqual(shape.shared_index, SHARED_INDEX_SHAPE))
+    problems.push(`${SHARED_INDEX} is not exactly 0021's index`);
+  if (!isDeepStrictEqual(shape.shared, SHARED_SHAPE))
+    problems.push(`${SHARED} is not exactly 0021's table`);
   if (phase === "pre") {
-    if (shape.shared_index !== null) problems.push(`${SHARED_INDEX} already exists`);
-    if (shape.shared !== null) problems.push(`${SHARED} already exists`);
+    for (const [name, index] of Object.entries(shape.integration_indexes))
+      if (index !== null) problems.push(`${name} already exists`);
+    if (shape.integration !== null) problems.push(`${INTEGRATION} already exists`);
   } else {
-    if (!isDeepStrictEqual(shape.shared_index, SHARED_INDEX_SHAPE))
-      problems.push(`${SHARED_INDEX} is not exactly 0021's index`);
-    if (!isDeepStrictEqual(shape.shared, SHARED_SHAPE))
-      problems.push(`${SHARED} is not exactly 0021's table`);
+    for (const [name, index] of Object.entries(INTEGRATION_INDEXES))
+      if (!isDeepStrictEqual(shape.integration_indexes[name], index))
+        problems.push(`${name} is not exactly 0022's index`);
+    if (!isDeepStrictEqual(shape.integration, INTEGRATION_SHAPE))
+      problems.push(`${INTEGRATION} is not exactly 0022's table`);
   }
   return problems;
 }
@@ -581,6 +680,13 @@ async function readState(client) {
                 coalesce(to_char(h.observed_at at time zone 'UTC', ${TS_US}), ''),
                 chr(10) order by h.member_id), ''), 'UTF8')), 'hex')
                from hold_checks h where h.epoch_id = e.id) as hold_digest,
+            (select count(*)::int from shared_handle_clearances k where k.epoch_id = e.id)
+              as clearances,
+            (select coalesce(encode(sha256(convert_to(string_agg(
+                k.member_id::text || '|' || k.community_id::text || '|' || k.note || '|' ||
+                to_char(k.cleared_at at time zone 'UTC', ${TS_US}),
+                chr(10) order by k.member_id), 'UTF8')), 'hex'), '')
+               from shared_handle_clearances k where k.epoch_id = e.id) as clearance_digest,
             (select count(*)::int from reward_config_amendments a where a.epoch_id = e.id)
               as amendments
        from epochs e join communities c on c.id = e.community_id
@@ -590,9 +696,9 @@ async function readState(client) {
   );
   s.counts = {};
   for (const t of COUNTED_TABLES) {
-    // Before 0021 its table does not exist and holds no rows; the shape says whether it exists.
+    // Before 0022 its table does not exist and holds no rows; the shape says whether it exists.
     s.counts[t] =
-      t === SHARED && s.shape.shared === null
+      t === INTEGRATION && s.shape.integration === null
         ? 0
         : (await one(`select count(*)::int as n from public.${t}`))[0].n;
   }
@@ -694,6 +800,7 @@ async function publicReads(target) {
     epoch3: await get(`/v1/communities/${MINT}/epochs/3`),
     epoch4: await get(`/v1/communities/${MINT}/epochs/4`),
     epoch5: await get(`/v1/communities/${MINT}/epochs/5`),
+    epoch6: await get(`/v1/communities/${MINT}/epochs/6`),
   };
 }
 
@@ -738,7 +845,8 @@ function checkState(s, live, journalExpected, phase) {
   const e3 = s.epochs.find((e) => e.index === 3);
   const e4 = s.epochs.find((e) => e.index === 4);
   const e5 = s.epochs.find((e) => e.index === 5);
-  if (s.epochs.length !== 5) fail(`Hyphae Lab has ${s.epochs.length} epochs, expected 5`);
+  const e6 = s.epochs.find((e) => e.index === 6);
+  if (s.epochs.length !== 6) fail(`Hyphae Lab has ${s.epochs.length} epochs, expected 6`);
   if (e1?.status !== "closed" || e1?.snapshots !== 1) fail("epoch 1 is not closed with 1 snapshot");
   // Epochs 2 and 3 were paid: publishing writes status, root and publish_tx together.
   for (const [index, e, closes] of [
@@ -753,53 +861,43 @@ function checkState(s, live, journalExpected, phase) {
     )
       fail(`epoch ${index} is not published, closed at ${closes} with 1 snapshot`);
   }
-  // Epoch 4 is closed and unpaid: no intent, leaf, root, pot or publish_tx, and the frozen
-  // snapshot, config and in-window hold results exactly as pinned. Clearances come after this
-  // release, so the intent that would refuse them must not exist.
+  // Epochs 4 and 5 are closed and unpaid: no intent, leaf, root, pot or publish_tx, no amendment,
+  // and every frozen fact exactly as pinned.
+  for (const [index, e] of [
+    [4, e4],
+    [5, e5],
+  ]) {
+    const frozen = FROZEN[index];
+    if (e?.status !== "closed" || e?.snapshots !== 1)
+      fail(`epoch ${index} is not closed with 1 snapshot`);
+    const differs = Object.entries(frozen)
+      .filter(([key, want]) => {
+        const got = e?.[key];
+        return (got instanceof Date ? got.toISOString() : got) !== want;
+      })
+      .map(([key]) => key);
+    if (differs.length)
+      fail(`epoch ${index} differs from its frozen 2026-11-02 state: ${differs.join(", ")}`);
+    if (e?.intents !== 0 || e?.leaves !== 0 || e?.has_root || e?.has_pot || e?.publish_tx !== null)
+      fail(`epoch ${index} already has a publication intent, leaf, root, pot or publish_tx`);
+    if (e?.amendments !== 0) fail(`epoch ${index} has an amendment`);
+  }
   if (
-    e4?.status !== "closed" ||
-    e4?.snapshots !== 1 ||
-    iso(e4?.opens_at) !== "2026-10-17T00:00:00.000Z" ||
-    iso(e4?.closes_at) !== "2026-10-24T00:00:00.000Z"
+    e6?.status !== "open" ||
+    e6?.snapshots !== 0 ||
+    iso(e6?.opens_at) !== EPOCH6_OPENS_AT ||
+    iso(e6?.closes_at) !== EPOCH6_CLOSES_AT
   )
-    fail("epoch 4 is not closed from 2026-10-17T00:00Z to 2026-10-24T00:00Z with 1 snapshot");
+    fail(`epoch 6 is not open from ${EPOCH6_OPENS_AT} to ${EPOCH6_CLOSES_AT} with 0 snapshots`);
   if (
-    iso(e4?.snapshot_closed_at) !== EPOCH4_FROZEN.snapshot_closed_at ||
-    e4?.snapshot_entries !== EPOCH4_FROZEN.snapshot_entries ||
-    e4?.snapshot_members !== EPOCH4_FROZEN.snapshot_members ||
-    e4?.snapshot_digest !== EPOCH4_FROZEN.snapshot_digest ||
-    e4?.reward_config_id !== EPOCH4_FROZEN.reward_config_id
+    e6?.reward_config_id !== EPOCH6.reward_config_id ||
+    e6?.prompt_version !== EPOCH6.prompt_version ||
+    e6?.amendments !== 0
   )
-    fail("epoch 4's frozen snapshot or reward config differs from the one read on 2026-10-26");
-  if (
-    e4?.hold_checks !== EPOCH4_FROZEN.hold_checks ||
-    e4?.hold_holder !== EPOCH4_FROZEN.hold_holder ||
-    e4?.hold_in_window !== EPOCH4_FROZEN.hold_checks
-  )
-    fail(
-      `epoch 4 has ${e4?.hold_holder} holder checks, ${e4?.hold_in_window} read in the window, of ${e4?.hold_checks}; expected ${EPOCH4_FROZEN.hold_checks} of each`,
-    );
-  if (e4?.hold_digest !== EPOCH4_FROZEN.hold_digest)
-    fail("epoch 4's hold results (wallet, mint, threshold, balance, slot, read time) changed");
-  if (
-    e4?.intents !== 0 ||
-    e4?.leaves !== 0 ||
-    e4?.has_root ||
-    e4?.has_pot ||
-    e4?.publish_tx !== null
-  )
-    fail("epoch 4 already has a publication intent, leaf, root, pot or publish_tx");
-  if (e4?.prompt_version !== EPOCH_PROMPT || e4?.amendments !== 0)
-    fail(`epoch 4 is not scored by ${EPOCH_PROMPT} with no amendment`);
-  if (
-    e5?.status !== "open" ||
-    e5?.snapshots !== 0 ||
-    iso(e5?.opens_at) !== "2026-10-24T00:00:00.000Z" ||
-    iso(e5?.closes_at) !== EPOCH5_CLOSES_AT
-  )
-    fail("epoch 5 is not open from 2026-10-24T00:00Z to 2026-10-31T00:00Z with 0 snapshots");
-  if (e5?.prompt_version !== EPOCH_PROMPT || e5?.amendments !== 0)
-    fail(`epoch 5 is not scored by ${EPOCH_PROMPT} with no amendment`);
+    fail(`epoch 6 is not on config ${EPOCH6.reward_config_id} with no amendment`);
+  // Nothing is planned or checked for epoch 6 before it closes.
+  if (e6?.intents !== 0 || e6?.leaves !== 0 || e6?.hold_checks !== 0 || e6?.clearances !== 0)
+    fail("epoch 6 already has an intent, leaf, hold check or clearance");
 
   // Consistency with what the live API serves (identity comes from liveness, see the header).
   if (live.community.name !== lab?.name) fail("public name differs");
@@ -817,6 +915,7 @@ function checkState(s, live, journalExpected, phase) {
     [e3, live.epoch3],
     [e4, live.epoch4],
     [e5, live.epoch5],
+    [e6, live.epoch6],
   ]) {
     if (!de) continue; // its database state has already failed above
     const differs = epochDifferences(de, pe);
@@ -832,17 +931,20 @@ function checkState(s, live, journalExpected, phase) {
   const allocation = live.epoch3?.settlement?.allocation;
   if (allocation?.status === "published" && allocation.publish_tx !== e3?.publish_tx)
     fail("public epoch 3 publication is not the database's publish_tx");
-  // The database has no publication for epoch 4, so the API must not show one.
-  if (live.epoch4?.settlement?.allocation?.status === "published")
-    fail("public epoch 4 shows a publication the database does not have");
+  // The database has no publication for epochs 4 and 5, so the API must not show one.
+  for (const [index, pe] of [
+    [4, live.epoch4],
+    [5, live.epoch5],
+  ])
+    if (pe?.settlement?.allocation?.status === "published")
+      fail(`public epoch ${index} shows a publication the database does not have`);
 
   for (const t of COUNTED_TABLES) {
     if (!Number.isInteger(s.counts[t]) || s.counts[t] < 0) fail(`count of ${t} is invalid`);
   }
-  if (s.counts[SHARED] !== 0)
-    fail(
-      `${SHARED} has ${s.counts[SHARED]} row(s): clearances are recorded only after this release`,
-    );
+  // Organic's requests can arrive only after its key exists, which comes after this release.
+  if (s.counts[INTEGRATION] !== 0)
+    fail(`${INTEGRATION} has ${s.counts[INTEGRATION]} row(s): requests come only after the key`);
   if (s.long_transactions.length > 0)
     fail(`${s.long_transactions.length} other transaction(s) older than 5 s`);
   if (!s.queue) fail("pgboss.job is missing or has no reward-recovery completion");
@@ -883,11 +985,12 @@ function compareToBaseline(baseline, state) {
     deltas[t] = state.counts[t] - baseline.state.counts[t];
     if (!(deltas[t] >= 0)) problems.push(`${t} lost rows or is invalid (delta ${deltas[t]})`);
   }
-  // This release records no amendment: epochs 4 and 5 stay on their own config's prompt.
+  // This release records no amendment: epochs 4 to 6 stay on their own config's prompt.
   if (deltas.reward_config_amendments !== 0)
     problems.push(`reward_config_amendments changed by ${deltas.reward_config_amendments}`);
-  // Nothing is closed, planned or checked for a balance while the release runs.
+  // Nothing is closed, planned, cleared or checked for a balance while the release runs.
   for (const t of [
+    SHARED,
     "epoch_publications",
     "hold_checks",
     "reward_snapshot_entries",
