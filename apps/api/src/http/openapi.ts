@@ -1,5 +1,6 @@
-import { MemberAccountSchema, PublicRaidsSchema, ReadApiV1 } from "@hyphae/core";
+import { MemberAccountSchema, PublicRaidSchema, PublicRaidsSchema, ReadApiV1 } from "@hyphae/core";
 import { z } from "zod";
+import { RaidRequestSchema } from "../integrations/raids.js";
 import { AllTimeLeaderboardSchema, EpochSchema } from "./schemas.js";
 
 // The v1 contract as OpenAPI 3.1. Every schema is generated from the zod schemas the api's own
@@ -19,6 +20,28 @@ const schemas = {
   WalletRecord: ReadApiV1.walletRecord,
   Error: ReadApiV1.error,
   MemberAccount: MemberAccountSchema,
+  OrganicRaidRequest: RaidRequestSchema,
+  OrganicRaid: z.strictObject({ raid: PublicRaidSchema }),
+  IntegrationError: z.strictObject({
+    error: z.enum([
+      "bad_request",
+      "invalid_post_url",
+      "post_unreadable",
+      "invalid_window",
+      "scheduling_unsupported",
+      "unauthorized",
+      "stale_request",
+      "community_not_registered",
+      "intake_paused",
+      "open_raid_limit",
+      "idempotency_conflict",
+      "request_in_progress",
+      "not_found",
+      "not_configured",
+      "telegram_unavailable",
+      "unavailable",
+    ]),
+  }),
   MemberError: z.strictObject({
     error: z.enum(["invalid_request", "unauthorized", "not_found", "unavailable"]),
   }),
@@ -100,7 +123,7 @@ export function openApiDocument() {
       title: "Hyphae read API",
       version: "1",
       description: [
-        "Public, read-only and unauthenticated. JSON in snake_case. Exact integers (point units,",
+        "The /v1 reads are public, read-only and unauthenticated. JSON in snake_case. Exact integers (point units,",
         "lamports) are decimal strings; timestamps are RFC 3339 UTC with microseconds.",
         "",
         "A section the api cannot confirm is `{ status: 'unavailable', reason }`, never a zero.",
@@ -108,6 +131,9 @@ export function openApiDocument() {
         "chain proves it created the account it names.",
         "",
         "Inside v1 fields are only added. Parse loosely: an older api may lack a newer field.",
+        "",
+        "`/member/v1` answers a signed-in member about their own record only, with their app token.",
+        "`/v1/integrations` takes signed server-to-server writes from Organic.",
       ].join("\n"),
     },
     paths: {
@@ -203,6 +229,53 @@ export function openApiDocument() {
         [path("wallet", "A Solana address: base58 for exactly 32 bytes.", base58), ...paging],
         "No epoch's public reads show this wallet.",
       ),
+      "/v1/integrations/communities/{mint}/raids": {
+        post: {
+          summary: "Open a raid from Organic (server to server)",
+          description: [
+            "Opens a raid for the community as its Telegram /raid would: the same checks (registered community, reward intake open, at most 3 open raids, a public X post the bot can read), the same records and private alerts, and the same announcement in the community's group. The raid opens when Hyphae records it; `opens_at`, if sent, must be within 60 seconds of that (no scheduling). `closes_at` is 1 minute to 30 days later. `actor` is the Organic admin or steward Organic resolved; Hyphae stores it for audit and trusts it only because the request is signed.",
+            "Signed with a per-environment shared key: `Authorization: Organic-HMAC keyId=<id>, ts=<unix seconds>, sig=<hex>`, where sig is the lowercase hex HMAC-SHA256, keyed with the secret's UTF-8 bytes, of `<METHOD>\\n<path>\\n<ts>\\n<lowercase hex SHA-256 of the raw body>` (\\n a newline), the path without a query string. `ts` must be within 60 seconds of Hyphae's clock.",
+            "Idempotent per community and `idempotency_key`: the same key with the same body (compared as canonical JSON) returns the first answer; with a different body, 409 `idempotency_conflict`; while the first is still being announced, 409 `request_in_progress`. If Telegram refuses the announcement, nothing is kept (503 `telegram_unavailable`) and the same request may be sent again.",
+          ].join("\n\n"),
+          security: [{ organicHmac: [] }],
+          parameters: [mint],
+          requestBody: { required: true, content: json("OrganicRaidRequest") },
+          responses: {
+            "201": {
+              description: "The raid as the public raids read shows it.",
+              content: json("OrganicRaid"),
+            },
+            "400": {
+              description:
+                "A malformed request, or a post, window or opening Hyphae cannot accept.",
+              content: json("IntegrationError"),
+            },
+            "401": {
+              description:
+                "A missing or wrong signature, or a stale ts: `unauthorized`, `stale_request`.",
+              content: json("IntegrationError"),
+            },
+            "403": {
+              description:
+                "The mint is not a registered community, or its reward intake is paused.",
+              content: json("IntegrationError"),
+            },
+            "409": {
+              description: "3 raids are open, or the idempotency key conflicts or is in progress.",
+              content: json("IntegrationError"),
+            },
+            "413": {
+              description: "A body over 16 KiB: `bad_request`.",
+              content: json("IntegrationError"),
+            },
+            "503": {
+              description:
+                "No key configured (`not_configured`), Telegram unavailable, or the database: `unavailable`.",
+              content: json("IntegrationError"),
+            },
+          },
+        },
+      },
       "/member/v1/communities/{mint}/me": {
         get: {
           summary: "The signed-in member's own account",
@@ -240,6 +313,12 @@ export function openApiDocument() {
     },
     components: {
       securitySchemes: {
+        organicHmac: {
+          type: "apiKey",
+          in: "header",
+          name: "Authorization",
+          description: "Organic-HMAC keyId=<id>, ts=<unix seconds>, sig=<hex>; see the route.",
+        },
         memberToken: {
           type: "http",
           scheme: "bearer",

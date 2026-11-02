@@ -5,6 +5,7 @@ import { communities, createDb, members } from "@hyphae/db";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readContribution, readEpoch } from "../http/read-service.js";
+import { EpochSchema } from "../http/schemas.js";
 import { epochCommitments } from "../payout/commitments.js";
 import { type JevScorerDef, jevTemplateHash } from "../scoring/scorers.js";
 import { amendEpochPrompt } from "./amendment.js";
@@ -115,7 +116,7 @@ describe("a pilot amendment on postgres-js", () => {
     expect(exactly.configId).toBe(row.toConfigId);
 
     const now = new Date(T0.getTime() + 3 * HOUR);
-    const e = ReadApiV1.epoch.parse(await readEpoch(db, s.community.mint, 1, now));
+    const e = EpochSchema.parse(await readEpoch(db, s.community.mint, 1, now));
     expect(e.amendments?.[0]).toMatchObject({
       effective_at: "2026-10-01T02:00:00.000000Z",
       recorded_at: "2026-10-01T01:59:30.000000Z",
@@ -188,7 +189,7 @@ describe("a second amendment on postgres-js", () => {
     expect(after.configId).toBe(second.toConfigId);
 
     const now = new Date(T0.getTime() + 5 * HOUR);
-    const e = ReadApiV1.epoch.parse(await readEpoch(db, s.community.mint, 1, now));
+    const e = EpochSchema.parse(await readEpoch(db, s.community.mint, 1, now));
     expect(e.amendments?.map((a) => a.to.prompt_version)).toEqual([
       "reward-eval/2",
       "reward-jev/1",

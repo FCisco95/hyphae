@@ -1100,3 +1100,39 @@ export const holdChecks = pgTable(
     ),
   ],
 );
+
+// Raids posted by Organic's server through the signed integration route (contract 2026-10-30 §7).
+// One row per community and idempotency key: the hash of the request it answers, the signing key
+// and the actor Organic vouched for (kept for audit), and the first answer, which a repeat of the
+// same request receives again. `announcing` until the raid's Telegram announcement is bound to it.
+export const integrationRaidRequests = pgTable(
+  "integration_raid_requests",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    idempotencyKey: uuid("idempotency_key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    keyId: text("key_id").notNull(),
+    actorOrganicUserId: text("actor_organic_user_id").notNull(),
+    actorRole: text("actor_role").$type<"admin" | "steward">().notNull(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id),
+    state: text("state").$type<"announcing" | "created">().notNull(),
+    response: jsonb("response"),
+    createdAt: createdAt(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("integration_raid_requests_key").on(t.communityId, t.idempotencyKey),
+    uniqueIndex("integration_raid_requests_task").on(t.taskId),
+    check("integration_raid_requests_role", sql`${t.actorRole} in ('admin', 'steward')`),
+    check("integration_raid_requests_hash", sql`${t.requestHash} ~ '^[0-9a-f]{64}$'`),
+    check(
+      "integration_raid_requests_state",
+      sql`(${t.state} = 'announcing' and ${t.response} is null and ${t.completedAt} is null) or (${t.state} = 'created' and ${t.response} is not null and ${t.completedAt} is not null)`,
+    ),
+  ],
+);

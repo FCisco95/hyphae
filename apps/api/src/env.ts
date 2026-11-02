@@ -32,6 +32,10 @@ const Env = z.object({
   PRIVY_APP_ID: z.string().optional(),
   PRIVY_APP_SECRET: z.string().optional(),
   PRIVY_VERIFICATION_KEY: z.string().optional(),
+  // Organic's signed raid route. Both, the key at least 32 bytes, or the route answers 503; a bad
+  // value disables that route instead of failing the process.
+  ORGANIC_HMAC_KEY_ID: z.string().optional(),
+  ORGANIC_HMAC_KEY: z.string().optional(),
 });
 
 export const env = Env.parse(process.env);

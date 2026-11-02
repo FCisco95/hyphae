@@ -31,7 +31,7 @@ describe("the OpenAPI document", () => {
   it("describes each path parameter, and every answer with a schema from the v1 contract", () => {
     for (const [path, item] of Object.entries(doc.paths)) {
       const op = item.get;
-      if (!op) throw new Error(`${path}: no GET`);
+      if (!op) continue;
       for (const name of path.match(/\{(\w+)\}/g) ?? []) {
         expect(
           op.parameters?.some((p) => `{${p.name}}` === name && p.in === "path"),
@@ -97,6 +97,29 @@ describe("the OpenAPI document", () => {
     expect(me.security).toEqual([{ memberToken: [] }]);
     expect(me.parameters?.map((p) => p.in)).toEqual(["path"]);
     expect(JSON.stringify(doc.components.schemas.MemberAccount)).toContain('"rules_test"');
+  });
+
+  it("documents the signed Organic raid route, its signature and its answers", () => {
+    const post = (
+      doc.paths as Record<
+        string,
+        { post?: Operation & { security?: unknown; description?: string } }
+      >
+    )["/v1/integrations/communities/{mint}/raids"]?.post;
+    expect(post?.security).toEqual([{ organicHmac: [] }]);
+    expect(post?.description).toContain("Organic-HMAC keyId=<id>, ts=<unix seconds>, sig=<hex>");
+    expect(Object.keys(post?.responses ?? {}).sort()).toEqual(
+      ["201", "400", "401", "403", "409", "413", "503"].sort(),
+    );
+    const schemas = doc.components.schemas as Record<string, { properties?: object }>;
+    expect(Object.keys(schemas.OrganicRaidRequest?.properties ?? {}).sort()).toEqual([
+      "actor",
+      "brief",
+      "closes_at",
+      "idempotency_key",
+      "opens_at",
+      "post_url",
+    ]);
   });
 
   it("is served as JSON under /v1", async () => {

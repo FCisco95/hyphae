@@ -11,6 +11,10 @@ import { env } from "./env.js";
 import { settlementReader } from "./http/chain-reader.js";
 import { docsRoutes } from "./http/docs.js";
 import { readRoutes } from "./http/routes.js";
+import { organicKey } from "./integrations/hmac.js";
+import { postRaid } from "./integrations/raids.js";
+import { integrationRoutes } from "./integrations/routes.js";
+import { telegramRaidDeps } from "./integrations/telegram.js";
 import { startQueue } from "./jobs/queue.js";
 import { telegramLinkedNotifier } from "./link/notify.js";
 import { assertProofConfig, proofConfig } from "./link/proof-config.js";
@@ -54,6 +58,15 @@ app.route(
     ...(memberConfig ? { identity: privyIdentity(memberConfig) } : {}),
     chatMember: telegramMembership(notifyApi),
     ...(env.READ_API_WEB_TOKEN ? { webToken: env.READ_API_WEB_TOKEN } : {}),
+  }),
+);
+// Before /v1, so the public read middleware never handles a signed write.
+const raidDeps = telegramRaidDeps(db, new Api(env.TELEGRAM_BOT_TOKEN), env.PUBLIC_WEB_URL);
+app.route(
+  "/v1/integrations",
+  integrationRoutes({
+    key: organicKey(env.ORGANIC_HMAC_KEY_ID, env.ORGANIC_HMAC_KEY),
+    postRaid: (mint, keyId, request) => postRaid(raidDeps, mint, keyId, request),
   }),
 );
 app.route(

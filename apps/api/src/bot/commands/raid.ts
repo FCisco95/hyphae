@@ -3,13 +3,10 @@ import { communities, type tasks } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { type CommandContext, type Context, InlineKeyboard } from "grammy";
 import { db } from "../../db.js";
-import { alertLink, MAX_OPEN_RAIDS, openRaid } from "../../raid-alerts/alerts.js";
-import { announceCard, telegramCardSender, webCardImage } from "../../raid-cards/announce.js";
-import { raidCardsOn } from "../../raid-cards/flag.js";
+import { MAX_OPEN_RAIDS, openRaid } from "../../raid-alerts/alerts.js";
+import { announceRaid as announceTo } from "../../raid-alerts/announce-raid.js";
 import { fetchPost, parsePostUrl, type XPost } from "../../x/oembed.js";
-import { raidKeyboard } from "../raid-keyboard.js";
 import { reply } from "../reply.js";
-import { clipMessageText } from "../text.js";
 import { parseRaidArgs } from "./args.js";
 
 export const RAID_HOUR_CHOICES = [6, 12, 24, 48] as const;
@@ -23,39 +20,27 @@ export const hoursKeyboard = (handle: string, id: string) =>
     new InlineKeyboard(),
   );
 
-export async function announceRaid(
+export const announceRaid = (
   ctx: Context,
   community: typeof communities.$inferSelect,
   post: XPost,
   task: typeof tasks.$inferSelect,
   hours: number,
   webUrl: string,
-) {
-  if (raidCardsOn())
-    return announceCard(
-      db,
-      { community, task, botUsername: ctx.me.username, now: task.opensAt },
-      telegramCardSender(ctx.api, webCardImage(webUrl, community.mint, task.id)),
-    );
-  const rubric = RubricSchema.parse(community.rubric);
-  return ctx.reply(
-    [
-      `Raid open for ${hours}h — @${post.handle}:`,
-      `"${clipMessageText(post.text, 200)}"`,
-      post.url,
-      task.brief ? `Brief: ${task.brief}` : "",
-      `Raid ID: ${task.id}`,
-      `Tap Reply on X or Quote on X, post it, then tap Submit below and paste your post's link. One of each per member. Full credit for the first ${rubric.timing.fullUntil / 60}h, decaying to zero at ${hours}h.`,
-      `Optional private alerts for future raids: ${alertLink(ctx.me.username, community.id)}`,
-    ]
-      .filter(Boolean)
-      .join("\n"),
+) =>
+  announceTo(
+    db,
     {
-      reply_markup: raidKeyboard(ctx.me.username, task.id, post.url),
-      link_preview_options: { is_disabled: true },
+      api: ctx.api,
+      botUsername: ctx.me.username,
+      sendText: (text, other) => ctx.reply(text, other),
     },
+    community,
+    post,
+    task,
+    hours,
+    webUrl,
   );
-}
 
 export const LIMIT_REACHED = (open: { id: string }[]) =>
   `${MAX_OPEN_RAIDS} raids are already open (${open.map((t) => t.id).join(", ")}). Close one before opening another. /raids lists them with a Close button.`;

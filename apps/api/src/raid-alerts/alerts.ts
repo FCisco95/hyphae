@@ -109,14 +109,7 @@ export async function openRaid(
       );
     if (old[0]) return { status: "existing", task: old[0].task };
     const now = await clock(tx, input.communityId);
-    const active = await tx.query.tasks.findMany({
-      where: and(
-        eq(tasks.communityId, community.id),
-        eq(tasks.status, "open"),
-        gt(tasks.closesAt, now),
-      ),
-      limit: MAX_OPEN_RAIDS,
-    });
+    const active = await activeRaids(tx, community.id, now);
     if (active.length >= MAX_OPEN_RAIDS) return { status: "limit_reached", open: active };
     const [task] = await tx
       .insert(tasks)
@@ -134,47 +127,86 @@ export async function openRaid(
       })
       .returning();
     if (!task) throw new Error("Raid creation failed");
-    await tx.insert(raidLifecycleEvents).values({
+    await recordOpening(tx, {
       communityId: community.id,
+      chatId: input.chatId,
+      messageId: input.messageId,
+      actorId: input.actorId,
       taskId: task.id,
-      actorTelegramUserId: input.actorId,
-      action: "opened",
       reason: input.brief || "Raid opened",
-      telegramMessageId: input.messageId,
-      createdAt: now,
+      now,
     });
-    const [event] = await tx
-      .insert(raidAnnouncements)
-      .values({
-        communityId: input.communityId,
-        telegramChatId: input.chatId,
-        telegramMessageId: input.messageId,
-        taskId: task.id,
-      })
-      .returning();
-    if (!event) throw new Error("Raid announcement failed");
-    const subscribers = await tx
-      .select()
-      .from(raidSubscriptions)
-      .where(
-        and(
-          eq(raidSubscriptions.communityId, input.communityId),
-          eq(raidSubscriptions.enabled, true),
-          lte(raidSubscriptions.enabledAt, now),
-        ),
-      );
-    for (let i = 0; i < subscribers.length; i += 500) {
-      await tx.insert(raidDeliveries).values(
-        subscribers.slice(i, i + 500).map((s) => ({
-          announcementId: event.id,
-          telegramUserId: s.telegramUserId,
-          subscriptionRevision: s.revision,
-          nextAttemptAt: now,
-        })),
-      );
-    }
     return { status: "created", task };
   });
+}
+
+// Raids still open at `now`, which count toward the cap.
+export function activeRaids(tx: Db, communityId: string, now: Date) {
+  return tx.query.tasks.findMany({
+    where: and(
+      eq(tasks.communityId, communityId),
+      eq(tasks.status, "open"),
+      gt(tasks.closesAt, now),
+    ),
+    limit: MAX_OPEN_RAIDS,
+  });
+}
+
+// The records every opened raid gets, in the transaction that opened it or, for a raid posted from
+// Organic, the one that binds its announcement: the lifecycle event, the announcement keyed by its
+// Telegram message, and one private alert per current subscriber.
+export async function recordOpening(
+  tx: Db,
+  input: {
+    communityId: string;
+    chatId: bigint;
+    messageId: number;
+    actorId: bigint;
+    taskId: string;
+    reason: string;
+    now: Date;
+  },
+) {
+  const { now } = input;
+  await tx.insert(raidLifecycleEvents).values({
+    communityId: input.communityId,
+    taskId: input.taskId,
+    actorTelegramUserId: input.actorId,
+    action: "opened",
+    reason: input.reason,
+    telegramMessageId: input.messageId,
+    createdAt: now,
+  });
+  const [event] = await tx
+    .insert(raidAnnouncements)
+    .values({
+      communityId: input.communityId,
+      telegramChatId: input.chatId,
+      telegramMessageId: input.messageId,
+      taskId: input.taskId,
+    })
+    .returning();
+  if (!event) throw new Error("Raid announcement failed");
+  const subscribers = await tx
+    .select()
+    .from(raidSubscriptions)
+    .where(
+      and(
+        eq(raidSubscriptions.communityId, input.communityId),
+        eq(raidSubscriptions.enabled, true),
+        lte(raidSubscriptions.enabledAt, now),
+      ),
+    );
+  for (let i = 0; i < subscribers.length; i += 500) {
+    await tx.insert(raidDeliveries).values(
+      subscribers.slice(i, i + 500).map((s) => ({
+        announcementId: event.id,
+        telegramUserId: s.telegramUserId,
+        subscriptionRevision: s.revision,
+        nextAttemptAt: now,
+      })),
+    );
+  }
 }
 
 // Claims interrupted before dispatch may recover. Started sends stay uncertain and are never blindly resent.
