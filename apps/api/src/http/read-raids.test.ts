@@ -2,7 +2,7 @@ import { PublicRaidsSchema } from "@hyphae/core";
 import { communities, raidLifecycleEvents, tasks } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { createTestDb, seedCommunity } from "../rewards/test-db.js";
+import { createTestDb, seedCommunity, seedRewardLane, T0 } from "../rewards/test-db.js";
 import { readRaids } from "./read-raids.js";
 import { readRoutes } from "./routes.js";
 
@@ -141,4 +141,61 @@ it("publishes a GET-only bounded read route, validates the mint, and returns hon
   expect((await app.request("/communities/UnknownMint/raids")).status).toBe(404);
   expect((await app.request("/communities/bad-mint/raids")).status).toBe(400);
   expect((await app.request(`/communities/${mint}/raids`, { method: "POST" })).status).toBe(404);
+});
+it("adds only kind and full_credit_until to each raid", async () => {
+  const body = PublicRaidsSchema.parse(await readRaids(t.db, mint, now));
+  for (const raid of body.raids) {
+    expect(Object.keys(raid).sort()).toEqual(
+      [
+        "brief",
+        "closes_at",
+        "full_credit_until",
+        "id",
+        "kind",
+        "opens_at",
+        "post",
+        "status",
+      ].sort(),
+    );
+    expect(raid.kind).toBe("raid");
+    // This community has no epoch, so no pinned timing to compute from.
+    expect(raid.full_credit_until).toBeNull();
+  }
+});
+it("computes full credit from the timing pinned to the epoch the raid opened in", async () => {
+  const lane = await seedRewardLane(t.db);
+  const base = {
+    communityId: lane.community.id,
+    kind: "raid" as const,
+    status: "open" as const,
+    targetUrl: "https://x.com/owner/status/321",
+    brief: "",
+    telegramMessageId: 1,
+  };
+  const inside = new Date(T0.getTime() + 3_600_000 + 456);
+  const rows = await t.db
+    .insert(tasks)
+    .values([
+      { ...base, opensAt: inside, closesAt: new Date(inside.getTime() + 48 * 3_600_000) },
+      {
+        ...base,
+        opensAt: new Date(T0.getTime() - 3_600_000),
+        closesAt: new Date(T0.getTime() + 47 * 3_600_000),
+      },
+    ])
+    .returning();
+  const body = PublicRaidsSchema.parse(
+    await readRaids(t.db, lane.community.mint, new Date(T0.getTime() + 2 * 3_600_000)),
+  );
+  const byId = new Map(body.raids.map((r) => [r.id, r]));
+  // test-db pins fullUntil 360 minutes.
+  expect(byId.get(rows[0]?.id as string)?.full_credit_until).toBe(
+    new Date(inside.getTime() + 360 * 60_000).toISOString().replace("Z", "000Z"),
+  );
+  // Opened before the first epoch: no pinned timing applies.
+  expect(byId.get(rows[1]?.id as string)?.full_credit_until).toBeNull();
+});
+it("serves no full-credit time for a cancelled raid", async () => {
+  const body = PublicRaidsSchema.parse(await readRaids(t.db, mint, now));
+  expect(body.raids.find((raid) => raid.id === cancelledId)?.full_credit_until).toBeNull();
 });

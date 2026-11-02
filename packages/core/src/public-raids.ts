@@ -31,10 +31,24 @@ export function publicXPost(value: string | null): { url: string; handle: string
   }
 }
 
+// The end of a raid's full-credit window: the reward timing measures from the raid's opening in
+// whole milliseconds and gives full credit while the elapsed time is at most the pinned
+// fullCreditUntilMs; after it, timing credit decays to zero at zeroCreditAtMs.
+export function fullCreditUntil(opensAt: Date, fullCreditUntilMs: number): Date {
+  if (!Number.isSafeInteger(fullCreditUntilMs) || fullCreditUntilMs < 0)
+    throw new RangeError("fullCreditUntilMs must be a non-negative safe integer");
+  return new Date(opensAt.getTime() + fullCreditUntilMs);
+}
+
 const timestamp = z.iso.datetime({ precision: null });
 export const PublicRaidSchema = z.strictObject({
   id: z.uuid(),
   status: z.enum(["open", "scheduled", "closed", "cancelled"]),
+  // Added inside v1: an older api omits them. Every served raid today is an X post raid.
+  kind: z.enum(["raid", "open"]).optional(),
+  // From the reward configuration pinned to the epoch the raid opened in; null when there is none,
+  // and for a cancelled raid.
+  full_credit_until: timestamp.nullable().optional(),
   opens_at: timestamp,
   closes_at: timestamp,
   brief: z.string().max(2000),

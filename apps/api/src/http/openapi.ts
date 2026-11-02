@@ -120,7 +120,7 @@ export function openApiDocument() {
       ),
       "/v1/communities/{mint}/raids": get(
         "A community's raids",
-        "Up to 20 active or scheduled raids, earliest deadline first, and up to 6 recent closed or cancelled raids. Approved records only; safe X links and recorded post text, no private member or moderation metadata. Scheduled and cancelled raids omit post content and briefs. Truncated text ends with an ellipsis. A raid window never extends the reward epoch deadline.",
+        "Up to 20 active or scheduled raids, earliest deadline first, and up to 6 recent closed or cancelled raids. Approved records only; safe X links and recorded post text, no private member or moderation metadata. Scheduled and cancelled raids omit post content and briefs. Truncated text ends with an ellipsis. A raid window never extends the reward epoch deadline. `kind` is the raid's type (every served raid is an X post raid); `full_credit_until` is when full timing credit ends, computed from the timing pinned to the epoch the raid opened in, null when no epoch pins one and for a cancelled raid.",
         "Raids",
         [mint],
         "No community with this mint.",

@@ -79,6 +79,8 @@ describe("the OpenAPI document", () => {
       "mint_decimals",
     ]);
     expect(schemas.AllTimeLeaderboard?.properties.epoch?.type).toBe("null");
+    const raid = JSON.stringify(schemas.Raids);
+    for (const field of ['"kind"', '"full_credit_until"']) expect(raid).toContain(field);
     const board = doc.paths["/v1/communities/{mint}/leaderboard"]?.get;
     expect(board?.responses["200"]?.content?.["application/json"]?.schema).toEqual({
       oneOf: [
