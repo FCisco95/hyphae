@@ -71,10 +71,11 @@ const FROZEN = {
     hold_checks: 14,
     hold_holder: 14,
     hold_in_window: 14,
-    hold_digest: "be09a24846a90d3589fa42bf08a7e693f00977049ff7b2a5cdcd9728d17de5be",
+    hold_digest: "1e2edf9229648a9e0f395b199c22c7fc066aa614cb728a6e31cc27e8c02f972a",
     // Cisco's own member, cleared on 2026-10-29.
     clearances: 1,
     clearance_digest: "6d38932d8e371c329792d08f0d5e9ffae3dbfd313b4008043c3c20f7a52680d8",
+    config_digest: "99b367e7cf69f637057dd49a4a949e0b4022f609a04670eda5c7ede53c90a0c6",
   },
   5: {
     opens_at: "2026-10-24T00:00:00.000Z",
@@ -90,16 +91,20 @@ const FROZEN = {
     hold_checks: 13,
     hold_holder: 0,
     hold_in_window: 0,
-    hold_digest: "436aaf7469fd74d4023a4cdee14cdb04cee1ef98e5176ab014e7b8599b223bf3",
+    hold_digest: "8790dfa10c83caca3d24038d4e2b6e25bb07280e5b8f16cd6b47900b34ea4327",
     clearances: 0,
     clearance_digest: "",
+    config_digest: "99b367e7cf69f637057dd49a4a949e0b4022f609a04670eda5c7ede53c90a0c6",
   },
 };
 // Epoch 6 is open and stays on the config it opened with, with no amendment.
 const EPOCH6 = {
   reward_config_id: "bd8e5f63-6010-4f0f-8872-476d8323efc4",
   prompt_version: "reward-eval/2",
+  config_digest: "06f3d0b4bd567f42b70604e610dddf2497aba8f1e246f1cd47fa3f7b2d3ad2aa",
 };
+// The community's rubric, publisher and chain address, as read on 2026-11-02.
+const COMMUNITY_RULES_DIGEST = "93453dfb2b72b5e54a94d2b4b31e763d25e38e40048589d301fa9b1dc5233c7e";
 // payout/gate.ts HOLD_WINDOW_MS: a balance counts only if read within this long after the close.
 const HOLD_WINDOW_HOURS = 24;
 // 0015 is applied before and after: the three member columns are nullable and the check exists.
@@ -506,6 +511,8 @@ async function readShape(client) {
       ? {
           columns: await rows(
             `select a.attname || ' ' || tn.nspname || '.' || t.typname
+                    || case when a.atttypmod <> -1 then '(' || a.atttypmod::text || ')' else '' end
+                    || case when a.attndims > 0 then '[]' else '' end
                     || case when a.attnotnull then ' not null' else ' null' end
                     || coalesce(' default ' || pg_get_expr(d.adbin, d.adrelid), '') as v
                from pg_attribute a join pg_type t on t.oid = a.atttypid
@@ -632,7 +639,11 @@ async function readState(client) {
   s.shape = await readShape(client);
   s.communities = await one(
     `select id, mint, name, telegram_chat_id::text, admin_telegram_user_id::text, first_paid_epoch,
-            reward_intake_paused_at from communities order by created_at`,
+            reward_intake_paused_at,
+            encode(sha256(convert_to(concat_ws(chr(10), quote_nullable(rubric_version),
+                quote_nullable(rubric::text), quote_nullable(publisher_pubkey),
+                quote_nullable(chain_address)), 'UTF8')), 'hex') as rules_digest
+       from communities order by created_at`,
   );
   s.epochs = await one(
     `select e.index, e.status::text, e.opens_at, e.closes_at, e.reward_config_id, e.publish_tx,
@@ -672,13 +683,16 @@ async function readState(client) {
                   from reward_snapshot_members m where m.snapshot_id = r.id), ''),
               'UTF8')), 'hex')
                from reward_epoch_snapshots r where r.epoch_id = e.id) as snapshot_digest,
-            (select encode(sha256(convert_to(coalesce(string_agg(
-                h.member_id::text || '|' || h.wallet || '|' || h.mint || '|' ||
-                h.threshold_raw::text || '|' || h.status::text || '|' ||
-                coalesce(h.raw_amount::text, '') || '|' || coalesce(h.decimals::text, '') || '|' ||
-                coalesce(h.provider, '') || '|' || coalesce(h.slot::text, '') || '|' ||
-                coalesce(to_char(h.observed_at at time zone 'UTC', ${TS_US}), ''),
-                chr(10) order by h.member_id), ''), 'UTF8')), 'hex')
+            (select encode(sha256(convert_to(coalesce(string_agg(concat_ws('|',
+                quote_nullable(h.id), quote_nullable(h.community_id), quote_nullable(h.member_id),
+                quote_nullable(h.wallet), quote_nullable(h.mint), quote_nullable(h.threshold_raw),
+                quote_nullable(h.check_round), quote_nullable(h.status), quote_nullable(h.reason),
+                quote_nullable(h.attempts), quote_nullable(h.raw_amount),
+                quote_nullable(h.decimals), quote_nullable(h.provider), quote_nullable(h.slot),
+                quote_nullable(to_char(h.observed_at at time zone 'UTC', ${TS_US})),
+                quote_nullable(to_char(h.checked_at at time zone 'UTC', ${TS_US})),
+                quote_nullable(to_char(h.created_at at time zone 'UTC', ${TS_US}))),
+                chr(10) order by h.member_id, h.id), ''), 'UTF8')), 'hex')
                from hold_checks h where h.epoch_id = e.id) as hold_digest,
             (select count(*)::int from shared_handle_clearances k where k.epoch_id = e.id)
               as clearances,
@@ -688,7 +702,15 @@ async function readState(client) {
                 chr(10) order by k.member_id), 'UTF8')), 'hex'), '')
                from shared_handle_clearances k where k.epoch_id = e.id) as clearance_digest,
             (select count(*)::int from reward_config_amendments a where a.epoch_id = e.id)
-              as amendments
+              as amendments,
+            -- The whole config row, not only its id and prompt: the payout gate reads the
+            -- payload (the hold threshold among it).
+            encode(sha256(convert_to(concat_ws(chr(10), quote_nullable(rc.id),
+                quote_nullable(rc.community_id), quote_nullable(rc.payload_version),
+                quote_nullable(rc.payload::text), quote_nullable(rc.digest),
+                quote_nullable(rc.config_hash),
+                quote_nullable(to_char(rc.created_at at time zone 'UTC', ${TS_US}))), 'UTF8')), 'hex')
+              as config_digest
        from epochs e join communities c on c.id = e.community_id
        left join reward_configs rc on rc.id = e.reward_config_id
       where c.mint = $1 order by e.index`,
@@ -839,6 +861,8 @@ function checkState(s, live, journalExpected, phase) {
   if (lab?.mint !== MINT || lab?.name !== "Hyphae Lab") fail("community is not Hyphae Lab");
   if (lab?.first_paid_epoch !== 2) fail(`first_paid_epoch is ${lab?.first_paid_epoch}`);
   if (lab?.reward_intake_paused_at !== null) fail("reward intake is paused");
+  if (lab?.rules_digest !== COMMUNITY_RULES_DIGEST)
+    fail("community rubric, publisher or chain address differs from the one read on 2026-11-02");
 
   const e1 = s.epochs.find((e) => e.index === 1);
   const e2 = s.epochs.find((e) => e.index === 2);
@@ -892,12 +916,21 @@ function checkState(s, live, journalExpected, phase) {
   if (
     e6?.reward_config_id !== EPOCH6.reward_config_id ||
     e6?.prompt_version !== EPOCH6.prompt_version ||
+    e6?.config_digest !== EPOCH6.config_digest ||
     e6?.amendments !== 0
   )
     fail(`epoch 6 is not on config ${EPOCH6.reward_config_id} with no amendment`);
-  // Nothing is planned or checked for epoch 6 before it closes.
-  if (e6?.intents !== 0 || e6?.leaves !== 0 || e6?.hold_checks !== 0 || e6?.clearances !== 0)
-    fail("epoch 6 already has an intent, leaf, hold check or clearance");
+  // Nothing is planned, published or checked for epoch 6 before it closes.
+  if (
+    e6?.intents !== 0 ||
+    e6?.leaves !== 0 ||
+    e6?.has_root ||
+    e6?.has_pot ||
+    e6?.publish_tx !== null ||
+    e6?.hold_checks !== 0 ||
+    e6?.clearances !== 0
+  )
+    fail("epoch 6 already has an intent, leaf, root, pot, publish_tx, hold check or clearance");
 
   // Consistency with what the live API serves (identity comes from liveness, see the header).
   if (live.community.name !== lab?.name) fail("public name differs");
@@ -931,10 +964,11 @@ function checkState(s, live, journalExpected, phase) {
   const allocation = live.epoch3?.settlement?.allocation;
   if (allocation?.status === "published" && allocation.publish_tx !== e3?.publish_tx)
     fail("public epoch 3 publication is not the database's publish_tx");
-  // The database has no publication for epochs 4 and 5, so the API must not show one.
+  // The database has no publication for epochs 4 to 6, so the API must not show one.
   for (const [index, pe] of [
     [4, live.epoch4],
     [5, live.epoch5],
+    [6, live.epoch6],
   ])
     if (pe?.settlement?.allocation?.status === "published")
       fail(`public epoch ${index} shows a publication the database does not have`);
