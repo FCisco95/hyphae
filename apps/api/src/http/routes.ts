@@ -1,4 +1,3 @@
-import type { EpochV1 } from "@hyphae/core";
 import type { Db } from "@hyphae/db";
 import { isAddress } from "@solana/kit";
 import { sql } from "drizzle-orm";
@@ -9,6 +8,7 @@ import { readRaids } from "./read-raids.js";
 import {
   type Page,
   type ReadClock,
+  readAllTimeLeaderboard,
   readClaim,
   readCommunity,
   readContribution,
@@ -18,6 +18,7 @@ import {
   readWalletClaims,
   readWalletRecord,
 } from "./read-service.js";
+import type { EpochApi } from "./schemas.js";
 import type { SettlementReader } from "./settlement.js";
 
 // Public read API v1 (H-CONTRACT Part A): GET only, no auth, fixed error bodies (A11).
@@ -81,7 +82,7 @@ async function databaseNow(db: Db): Promise<Date> {
 
 // Settlement sections read the chain, so their state can change at any time: only a final epoch
 // whose sections do not depend on the chain is cached long.
-const readsChain = ({ settlement }: EpochV1) =>
+const readsChain = ({ settlement }: EpochApi) =>
   settlement !== undefined &&
   (settlement.allocation.status === "published" ||
     settlement.allocation.reason.startsWith("chain_"));
@@ -166,6 +167,10 @@ export function readRoutes(deps: {
     return send(c, body, body?.epoch.final);
   });
   app.get("/communities/:mint/leaderboard", async (c) => {
+    if (c.req.query("epoch") === "all") {
+      const body = await readAllTimeLeaderboard(db, mint(c.req.param("mint")), page(c), clock);
+      return send(c, body, body?.final);
+    }
     const body = await readLeaderboard(
       db,
       mint(c.req.param("mint")),

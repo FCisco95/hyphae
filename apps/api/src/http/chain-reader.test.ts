@@ -157,4 +157,18 @@ describe("the chain reader", () => {
     const reader = settlementReader(createSolanaRpcFromTransport(transport), 50);
     await expect(reader.network()).rejects.toThrow();
   });
+
+  it("reads a mint's decimals once and keeps only a good answer", async () => {
+    let decimals: unknown = 19;
+    const { rpc, calls } = rpcWith(() => ({
+      context: { slot: 1 },
+      value: { amount: "1", decimals, uiAmountString: "1" },
+    }));
+    const reader = settlementReader(rpc);
+    await expect(reader.mintDecimals?.(A)).rejects.toThrow(/decimals/);
+    decimals = 6;
+    expect(await reader.mintDecimals?.(A)).toBe(6);
+    expect(await reader.mintDecimals?.(A)).toBe(6);
+    expect(calls.filter((c) => c.method === "getTokenSupply")).toHaveLength(2);
+  });
 });

@@ -27,6 +27,7 @@ import { type PublishChain, publishEpoch } from "../payout/publish.js";
 import { type ReadySeed, randomAddress, seedReadyEpoch } from "../payout/ready-seed.js";
 import { createTestDb } from "../rewards/test-db.js";
 import { readClaim, readEpoch, readWalletClaims, readWalletRecord } from "./read-service.js";
+import { EpochSchema } from "./schemas.js";
 import { LOOKUPS_AT_ONCE, mapLimit, type SettlementReader } from "./settlement.js";
 
 // The deadline tests time the read path, not program-address derivation: each derivation is a
@@ -251,7 +252,7 @@ async function claimed(fake: ReturnType<typeof fakeReader>, p: Published, leaf: 
 const epochOf = async (seed: ReadySeed, reader?: SettlementReader, deadlineMs?: number) => {
   const e = await readEpoch(t.db, seed.mint, 1, NOW, reader, deadlineMs);
   if (!e) throw new Error("no epoch");
-  const parsed = ReadApiV1.epoch.parse(e);
+  const parsed = EpochSchema.parse(e);
   const { settlement } = parsed;
   if (!settlement) throw new Error("no settlement");
   // A4: the first v1 fields stay `unavailable`, pointing to `settlement` once it has more.

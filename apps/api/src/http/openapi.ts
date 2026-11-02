@@ -1,5 +1,6 @@
 import { PublicRaidsSchema, ReadApiV1 } from "@hyphae/core";
 import { z } from "zod";
+import { AllTimeLeaderboardSchema, EpochSchema } from "./schemas.js";
 
 // The v1 contract as OpenAPI 3.1. Every schema is generated from the zod schemas the api's own
 // tests parse its responses with, so the document cannot drift from what the api serves; a test
@@ -8,9 +9,10 @@ import { z } from "zod";
 const schemas = {
   Community: ReadApiV1.community,
   Raids: PublicRaidsSchema,
-  Epoch: ReadApiV1.epoch,
+  Epoch: EpochSchema,
   Contributions: ReadApiV1.contributions,
   Leaderboard: ReadApiV1.leaderboard,
+  AllTimeLeaderboard: AllTimeLeaderboardSchema,
   Contribution: ReadApiV1.contribution,
   Claim: ReadApiV1.claim,
   WalletClaims: ReadApiV1.walletClaims,
@@ -19,7 +21,12 @@ const schemas = {
 };
 
 const ref = (name: keyof typeof schemas) => ({ $ref: `#/components/schemas/${name}` });
-const json = (name: keyof typeof schemas) => ({ "application/json": { schema: ref(name) } });
+type Name = keyof typeof schemas;
+const json = (name: Name | Name[]) => ({
+  "application/json": {
+    schema: Array.isArray(name) ? { oneOf: name.map(ref) } : ref(name),
+  },
+});
 
 const path = (name: string, description: string, schema: object) => ({
   name,
@@ -58,7 +65,7 @@ const error = (description: string) => ({ description, headers: limited, content
 function get(
   summary: string,
   description: string,
-  body: keyof typeof schemas,
+  body: Name | Name[],
   parameters: object[],
   notFound: string | null,
 ) {
@@ -116,7 +123,10 @@ export function openApiDocument() {
       ),
       "/v1/communities/{mint}/epochs/{index}": get(
         "An epoch",
-        "Window, status, pinned configuration, counts, the frozen snapshot, and the settlement: the published allocation and each member's payment, read against the chain.",
+        [
+          "Window, status, pinned configuration, counts, the frozen snapshot, and the settlement: the published allocation and each member's payment, read against the chain.",
+          "`eligibility`: the pinned minimum balance of the community's mint in base units (`0`: no hold condition), the mint's decimals from the chain (null when they could not be read in time), and the window in which a member's balance is read: from the close to 24 hours after it. There is no snapshot instant.",
+        ].join("\n\n"),
         "Epoch",
         [mint, index],
         "No such community or served epoch.",
@@ -134,12 +144,25 @@ export function openApiDocument() {
         "No such community or served epoch.",
       ),
       "/v1/communities/{mint}/leaderboard": get(
-        "An epoch's leaderboard",
-        "Members ranked by point units; ties share a rank. Member eligibility checklists are private.",
-        "Leaderboard",
+        "An epoch's leaderboard, or the all-time one",
+        [
+          "Members ranked by point units; ties share a rank. Member eligibility checklists are private.",
+          "`epoch=all` sums every served epoch per member, in the same shape with `epoch: null`. Its whole points are those of the summed units; its wallets are the signed links valid now; it is closed and final only when every epoch is.",
+        ].join("\n\n"),
+        ["Leaderboard", "AllTimeLeaderboard"],
         [
           mint,
-          query("epoch", "The epoch index.", { type: "integer", minimum: 1 }, true),
+          query(
+            "epoch",
+            "The epoch index, or `all`.",
+            {
+              oneOf: [
+                { type: "integer", minimum: 1 },
+                { type: "string", const: "all" },
+              ],
+            },
+            true,
+          ),
           ...paging,
         ],
         "No such community or served epoch.",

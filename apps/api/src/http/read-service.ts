@@ -49,13 +49,16 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
+import { HOLD_WINDOW_MS } from "../payout/gate.js";
 import { loadIntent } from "../payout/intent.js";
 import { isoUs, readOnly } from "../pg.js";
 import { amendmentsOf } from "../rewards/amendment.js";
 import { RewardConfigPayload } from "../rewards/config.js";
 import { correctionRecord, effortCriteriaRecord } from "../rewards/decisions.js";
 import { selectEffective } from "../rewards/effective.js";
+import { type AllTimeLeaderboard, addMsUs, type EpochApi } from "./schemas.js";
 import {
+  byDeadline,
   CHAIN_DEADLINE_MS,
   claimOf,
   firstV1Section,
@@ -504,7 +507,7 @@ export async function readEpoch(
   clock: ReadClock,
   chain?: SettlementReader,
   deadlineMs = CHAIN_DEADLINE_MS,
-): Promise<EpochV1 | null> {
+): Promise<EpochApi | null> {
   const read = await readOnly(db, async (tx) => {
     const now = await timeIn(tx, clock);
     const found = await findEpoch(tx, mint, index);
@@ -578,16 +581,40 @@ export async function readEpoch(
           }
         : { status: "not_frozen" },
     };
-    return { body, facts: await publicationFacts(tx, epoch.row, community.firstPaidEpoch) };
+    const hold = {
+      min_hold_units: BigInt(payload.rubric.minHoldUnits).toString(),
+      hold_checked_from: epoch.closesAt,
+      hold_checked_until: addMsUs(epoch.closesAt, HOLD_WINDOW_MS),
+    };
+    return {
+      body,
+      hold,
+      facts: await publicationFacts(tx, epoch.row, community.firstPaidEpoch),
+    };
   });
   if (!read) return null;
-  const settlement = await settlementOf(read.facts, chain, deadlineMs);
+  const [settlement, decimals] = await Promise.all([
+    settlementOf(read.facts, chain, deadlineMs),
+    mintDecimalsOf(mint, chain, deadlineMs),
+  ]);
   return {
     ...read.body,
     allocation: firstV1Section(settlement.allocation),
     payment: firstV1Section(settlement.payment),
     settlement,
+    eligibility: { ...read.hold, mint_decimals: decimals },
   };
+}
+
+// The hold is a balance of the community's mint, so its decimals come from the chain.
+async function mintDecimalsOf(
+  mint: string,
+  chain: SettlementReader | undefined,
+  deadlineMs: number,
+): Promise<number | null> {
+  if (!chain?.mintDecimals) return null;
+  const work = chain.mintDecimals(mint).catch(() => null);
+  return byDeadline(work, Date.now() + deadlineMs, null);
 }
 
 export async function readClaim(
@@ -890,6 +917,88 @@ export async function readContributions(
   });
 }
 
+interface MemberTotal {
+  memberId: string;
+  units: bigint;
+  whole: bigint;
+}
+interface MemberCounts {
+  contributions: number;
+  counted: number;
+  pending: number;
+}
+const noCounts = (): MemberCounts => ({ contributions: 0, counted: 0, pending: 0 });
+
+// One epoch's points per member: the frozen snapshot once it exists, else the live selection.
+async function epochTotals(tx: Db, epoch: EpochView): Promise<MemberTotal[]> {
+  if (epoch.snapshot) {
+    return tx
+      .select({
+        memberId: rewardSnapshotMembers.memberId,
+        units: rewardSnapshotMembers.pointUnits,
+        whole: rewardSnapshotMembers.wholePoints,
+      })
+      .from(rewardSnapshotMembers)
+      .where(eq(rewardSnapshotMembers.snapshotId, epoch.snapshot.id));
+  }
+  const { totals } = await selectEffective(tx, epoch.row.id, epoch.row.closesAt);
+  return totals.map((m) => ({
+    memberId: m.memberId,
+    units: BigInt(m.pointUnits),
+    whole: BigInt(m.wholePoints),
+  }));
+}
+
+function countEntries(entries: Entry[], into = new Map<string, MemberCounts>()) {
+  for (const e of entries) {
+    const c = into.get(e.memberId) ?? noCounts();
+    c.contributions += 1;
+    if (e.state === "counted") c.counted += 1;
+    if (e.state === "pending") c.pending += 1;
+    into.set(e.memberId, c);
+  }
+  return into;
+}
+
+// Highest points first, then member id; competition ranking, so ties share the rank of their first
+// position. The page's rows, each with its rank, counts and wallet.
+async function boardPage(
+  tx: Db,
+  totals: MemberTotal[],
+  counts: Map<string, MemberCounts>,
+  page: Page,
+  walletsAt: Date,
+): Promise<LeaderboardV1["entries"]> {
+  totals.sort((a, b) =>
+    a.units !== b.units ? (a.units > b.units ? -1 : 1) : a.memberId < b.memberId ? -1 : 1,
+  );
+  const ranks: number[] = [];
+  totals.forEach((m, i) => {
+    const prev = totals[i - 1];
+    ranks.push(prev && prev.units === m.units ? (ranks[i - 1] ?? i + 1) : i + 1);
+  });
+  const slice = totals.slice(page.offset, page.offset + page.limit);
+  const wallets = await publicWallets(
+    tx,
+    slice.map((m) => m.memberId),
+    walletsAt,
+  );
+  return slice.map((m, i) => {
+    if (m.whole !== wholePoints(m.units as PointUnits)) {
+      throw new Error(`read: member ${m.memberId} whole points disagree with their units`);
+    }
+    return {
+      rank: ranks[page.offset + i] ?? page.offset + i + 1,
+      member_id: m.memberId,
+      ...(wallets.get(m.memberId) ?? { wallet: null, wallet_status: "none" as const }),
+      point_units: m.units.toString(),
+      points: exactPoints(m.units),
+      whole_points: m.whole.toString(),
+      ...(counts.get(m.memberId) ?? noCounts()),
+    };
+  });
+}
+
 export async function readLeaderboard(
   db: Db,
   mint: string,
@@ -903,50 +1012,7 @@ export async function readLeaderboard(
     if (!found) return null;
     const { community, epoch } = found;
     const entries = await epochEntries(tx, epoch, now);
-
-    let totals: { memberId: string; units: bigint; whole: bigint }[];
-    if (epoch.snapshot) {
-      totals = (
-        await tx
-          .select({
-            memberId: rewardSnapshotMembers.memberId,
-            units: rewardSnapshotMembers.pointUnits,
-            whole: rewardSnapshotMembers.wholePoints,
-          })
-          .from(rewardSnapshotMembers)
-          .where(eq(rewardSnapshotMembers.snapshotId, epoch.snapshot.id))
-      ).map((m) => ({ ...m }));
-    } else {
-      const { totals: live } = await selectEffective(tx, epoch.row.id, epoch.row.closesAt);
-      totals = live.map((m) => ({
-        memberId: m.memberId,
-        units: BigInt(m.pointUnits),
-        whole: BigInt(m.wholePoints),
-      }));
-    }
-    totals.sort((a, b) =>
-      a.units !== b.units ? (a.units > b.units ? -1 : 1) : a.memberId < b.memberId ? -1 : 1,
-    );
-    // Competition ranking over the sorted list: ties share the rank of their first position.
-    const ranks: number[] = [];
-    totals.forEach((m, i) => {
-      const prev = totals[i - 1];
-      ranks.push(prev && prev.units === m.units ? (ranks[i - 1] ?? i + 1) : i + 1);
-    });
-    const perMember = new Map<
-      string,
-      { contributions: number; counted: number; pending: number }
-    >();
-    for (const e of entries) {
-      const c = perMember.get(e.memberId) ?? { contributions: 0, counted: 0, pending: 0 };
-      c.contributions += 1;
-      if (e.state === "counted") c.counted += 1;
-      if (e.state === "pending") c.pending += 1;
-      perMember.set(e.memberId, c);
-    }
-    const slice = totals.slice(page.offset, page.offset + page.limit);
-    const sliceIds = slice.map((m) => m.memberId);
-    const wallets = await publicWallets(tx, sliceIds, walletTime(epoch.row, now));
+    const totals = await epochTotals(tx, epoch);
     return {
       community: { mint: community.mint },
       epoch: { index: epoch.row.index, opens_at: epoch.opensAt, closes_at: epoch.closesAt },
@@ -957,21 +1023,50 @@ export async function readLeaderboard(
       total_contributions: entries.length,
       offset: page.offset,
       limit: page.limit,
-      entries: slice.map((m, i) => {
-        const mine = perMember.get(m.memberId) ?? { contributions: 0, counted: 0, pending: 0 };
-        if (m.whole !== wholePoints(m.units as PointUnits)) {
-          throw new Error(`read: member ${m.memberId} whole points disagree with their units`);
-        }
-        return {
-          rank: ranks[page.offset + i] ?? page.offset + i + 1,
-          member_id: m.memberId,
-          ...(wallets.get(m.memberId) ?? { wallet: null, wallet_status: "none" as const }),
-          point_units: m.units.toString(),
-          points: exactPoints(m.units),
-          whole_points: m.whole.toString(),
-          ...mine,
-        };
-      }),
+      entries: await boardPage(tx, totals, countEntries(entries), page, walletTime(epoch.row, now)),
+    };
+  });
+}
+
+// Every served epoch summed per member. Whole points are those of the summed units, rounded once,
+// like an epoch's; wallets are the signed links valid now.
+export async function readAllTimeLeaderboard(
+  db: Db,
+  mint: string,
+  page: Page,
+  clock: ReadClock,
+): Promise<AllTimeLeaderboard | null> {
+  return readOnly(db, async (tx) => {
+    const now = await timeIn(tx, clock);
+    const community = await findCommunity(tx, mint);
+    if (!community) return null;
+    const served = await findEpochs(tx, community.id);
+    const sums = new Map<string, bigint>();
+    const counts = new Map<string, MemberCounts>();
+    let contributionCount = 0;
+    for (const epoch of served) {
+      const entries = await epochEntries(tx, epoch, now);
+      contributionCount += entries.length;
+      countEntries(entries, counts);
+      for (const m of await epochTotals(tx, epoch))
+        sums.set(m.memberId, (sums.get(m.memberId) ?? 0n) + m.units);
+    }
+    const totals = [...sums].map(([memberId, units]) => ({
+      memberId,
+      units,
+      whole: wholePoints(units as PointUnits),
+    }));
+    return {
+      community: { mint: community.mint },
+      epoch: null,
+      closed: served.length > 0 && served.every((e) => isClosed(e.row, now)),
+      final: served.length > 0 && served.every((e) => e.snapshot !== null),
+      as_of: dateUs(now),
+      total_entries: totals.length,
+      total_contributions: contributionCount,
+      offset: page.offset,
+      limit: page.limit,
+      entries: await boardPage(tx, totals, counts, page, now),
     };
   });
 }

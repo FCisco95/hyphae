@@ -34,11 +34,17 @@ describe("the OpenAPI document", () => {
           path,
         ).toBe(true);
       }
-      const ok = op.responses["200"]?.content?.["application/json"]?.schema as { $ref: string };
-      expect(
-        doc.components.schemas[ok.$ref.replace("#/components/schemas/", "")],
-        path,
-      ).toBeDefined();
+      const ok = op.responses["200"]?.content?.["application/json"]?.schema as {
+        $ref?: string;
+        oneOf?: { $ref: string }[];
+      };
+      const refs = ok.oneOf ?? [ok as { $ref: string }];
+      expect(refs.length, path).toBeGreaterThan(0);
+      for (const { $ref } of refs)
+        expect(
+          doc.components.schemas[$ref.replace("#/components/schemas/", "")],
+          path,
+        ).toBeDefined();
       for (const status of ["400", "429", "503"]) expect(op.responses[status], path).toBeDefined();
     }
   });
@@ -49,6 +55,7 @@ describe("the OpenAPI document", () => {
     for (const properties of [
       schemas.Contributions?.properties.contributions?.items?.properties,
       schemas.Leaderboard?.properties.entries?.items?.properties,
+      schemas.AllTimeLeaderboard?.properties.entries?.items?.properties,
       schemas.Contribution?.properties,
     ]) {
       expect(properties).toBeDefined();
@@ -56,6 +63,25 @@ describe("the OpenAPI document", () => {
       expect(properties).not.toHaveProperty("hold");
       expect(properties).not.toHaveProperty("rules_test");
     }
+  });
+
+  it("documents the epoch's eligibility block and the all-time leaderboard", () => {
+    type Props = { properties: Record<string, { properties?: object; type?: unknown }> };
+    const schemas = doc.components.schemas as Record<string, Props>;
+    expect(Object.keys(schemas.Epoch?.properties.eligibility?.properties ?? {}).sort()).toEqual([
+      "hold_checked_from",
+      "hold_checked_until",
+      "min_hold_units",
+      "mint_decimals",
+    ]);
+    expect(schemas.AllTimeLeaderboard?.properties.epoch?.type).toBe("null");
+    const board = doc.paths["/v1/communities/{mint}/leaderboard"]?.get;
+    expect(board?.responses["200"]?.content?.["application/json"]?.schema).toEqual({
+      oneOf: [
+        { $ref: "#/components/schemas/Leaderboard" },
+        { $ref: "#/components/schemas/AllTimeLeaderboard" },
+      ],
+    });
   });
 
   it("is served as JSON under /v1", async () => {

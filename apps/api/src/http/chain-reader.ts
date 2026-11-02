@@ -17,6 +17,8 @@ export function settlementReader(rpc: Rpc<SolanaRpcApi>, timeoutMs = 1_500): Set
   let network: Promise<keyof typeof GENESIS> | undefined;
   // A finalized creation never changes, so it is looked up once per account.
   const proven = new Map<string, Creation>();
+  // A mint's decimals never change; only a successful read is kept.
+  const decimals = new Map<string, number>();
   return {
     network() {
       network ??= rpc
@@ -65,6 +67,18 @@ export function settlementReader(rpc: Rpc<SolanaRpcApi>, timeoutMs = 1_500): Set
         .getBalance(address(at), { commitment: "confirmed" })
         .send({ abortSignal: abortSignal() });
       return value;
+    },
+    async mintDecimals(mint) {
+      const known = decimals.get(mint);
+      if (known !== undefined) return known;
+      const { value } = await rpc
+        .getTokenSupply(address(mint), { commitment: "finalized" })
+        .send({ abortSignal: abortSignal() });
+      if (!Number.isInteger(value.decimals) || value.decimals < 0 || value.decimals > 18)
+        throw new Error("chain: mint decimals out of range");
+      if (decimals.size >= PROVEN) decimals.delete(decimals.keys().next().value as string);
+      decimals.set(mint, value.decimals);
+      return value.decimals;
     },
     async latestBlockhash() {
       const { value } = await rpc

@@ -8,6 +8,7 @@ import { randomAddress, seedReadyEpoch } from "../payout/ready-seed.js";
 import { createTestDb, seedRewardLane, T0 } from "../rewards/test-db.js";
 import { type AuditDemo, seedAuditDemo, seedSignedLink } from "./demo-seed.js";
 import { readRoutes } from "./routes.js";
+import { AllTimeLeaderboardSchema, EpochSchema } from "./schemas.js";
 import type { SettlementReader } from "./settlement.js";
 
 const NOW = new Date("2026-11-20T12:00:00.000Z");
@@ -59,9 +60,10 @@ describe("read routes v1", () => {
     const m = demo.mint;
     const cases: [string, { parse: (v: unknown) => unknown }][] = [
       [`/communities/${m}`, ReadApiV1.community],
-      [`/communities/${m}/epochs/1`, ReadApiV1.epoch],
+      [`/communities/${m}/epochs/1`, EpochSchema],
       [`/communities/${m}/epochs/1/contributions`, ReadApiV1.contributions],
       [`/communities/${m}/leaderboard?epoch=1`, ReadApiV1.leaderboard],
+      [`/communities/${m}/leaderboard?epoch=all`, AllTimeLeaderboardSchema],
       [`/contributions/${demo.contributions.upgraded}`, ReadApiV1.contribution],
       [`/wallets/${WALLET}/claims`, ReadApiV1.walletClaims],
       [`/wallets/${demo.signedWallet}/record`, ReadApiV1.walletRecord],
@@ -314,7 +316,7 @@ describe("the claim route and settled epochs", () => {
     expect(claim.payment).toEqual({ status: "unavailable", reason: "chain_unavailable" });
 
     const e = await live.request(`/communities/${seed.mint}/epochs/1`);
-    const body = ReadApiV1.epoch.parse(await e.json());
+    const body = EpochSchema.parse(await e.json());
     expect(body.final).toBe(true);
     expect(body.settlement?.allocation).toEqual({
       status: "unavailable",

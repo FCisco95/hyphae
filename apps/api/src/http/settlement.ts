@@ -38,6 +38,8 @@ export interface SettlementReader {
   latestBlockhash(): Promise<{ blockhash: string; lastValidBlockHeight: bigint }>;
   // The lamports held at `at`, any owner.
   balance(at: string): Promise<bigint>;
+  // The decimals of the token mint `mint`.
+  mintDecimals?(mint: string): Promise<number>;
 }
 
 // The chain is read after the database, under one deadline, because the web client gives up at

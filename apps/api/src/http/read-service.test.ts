@@ -22,6 +22,7 @@ import { beginDispatch, completeDispatch, runEvaluation } from "../rewards/evalu
 import { at, createTestDb, later, rubric, seedRewardLane, T0 } from "../rewards/test-db.js";
 import { type AuditDemo, fakeModel, seedAuditDemo, seedSignedLink } from "./demo-seed.js";
 import {
+  readAllTimeLeaderboard,
   readClaim,
   readCommunity,
   readContribution,
@@ -31,6 +32,8 @@ import {
   readWalletClaims,
   readWalletRecord,
 } from "./read-service.js";
+import { AllTimeLeaderboardSchema, EpochSchema } from "./schemas.js";
+import type { SettlementReader } from "./settlement.js";
 
 const NOW = new Date("2026-11-20T12:00:00.000Z");
 
@@ -86,7 +89,7 @@ describe("readCommunity", () => {
 
 describe("readEpoch", () => {
   it("a final epoch reads its snapshot: every close reason, and settlement unavailable", async () => {
-    const e = strict(ReadApiV1.epoch, await readEpoch(t.db, demo.mint, 1, NOW));
+    const e = strict(EpochSchema, await readEpoch(t.db, demo.mint, 1, NOW));
     expect([e.status, e.closed, e.final]).toEqual(["closed", true, true]);
     expect(e.counts).toEqual({
       contributions: 5,
@@ -106,7 +109,7 @@ describe("readEpoch", () => {
   });
 
   it("an open epoch is provisional", async () => {
-    const e = strict(ReadApiV1.epoch, await readEpoch(t.db, demo.mint, 2, NOW));
+    const e = strict(EpochSchema, await readEpoch(t.db, demo.mint, 2, NOW));
     expect([e.status, e.closed, e.final]).toEqual(["open", false, false]);
     expect(e.counts.counted).toBe(1);
     expect(e.counts.pending).toBe(1);
@@ -115,12 +118,51 @@ describe("readEpoch", () => {
 
   it("past closes_at without a snapshot is closing", async () => {
     const after = new Date((await epochClose(2)).getTime() + 60_000);
-    const e = strict(ReadApiV1.epoch, await readEpoch(t.db, demo.mint, 2, after));
+    const e = strict(EpochSchema, await readEpoch(t.db, demo.mint, 2, after));
     expect([e.status, e.closed, e.final]).toEqual(["closing", true, false]);
   });
 
   it("returns null for an unknown index", async () => {
     expect(await readEpoch(t.db, demo.mint, 9, NOW)).toBeNull();
+  });
+
+  it("serves the pinned minimum hold and the 24 hour window after the close", async () => {
+    const e = strict(EpochSchema, await readEpoch(t.db, demo.mint, 1, NOW));
+    const closes = Date.parse(e.closes_at);
+    expect(e.eligibility).toEqual({
+      min_hold_units: "100000000000",
+      mint_decimals: null,
+      hold_checked_from: e.closes_at,
+      hold_checked_until: new Date(closes + 24 * 3_600_000).toISOString().replace("Z", "000Z"),
+    });
+  });
+
+  it("reads the mint's decimals from the chain, and null when the chain fails or is late", async () => {
+    const reader = (decimals: () => Promise<number>) =>
+      ({ mintDecimals: decimals }) as unknown as SettlementReader;
+    const asked: string[] = [];
+    const good = reader(async () => {
+      asked.push("read");
+      return 6;
+    });
+    const read = async (r: SettlementReader, ms = 200) =>
+      strict(EpochSchema, await readEpoch(t.db, demo.mint, 1, NOW, r, ms)).eligibility
+        .mint_decimals;
+    expect(await read(good)).toBe(6);
+    expect(asked).toEqual(["read"]);
+    expect(
+      await read(
+        reader(async () => {
+          throw new Error("rpc down");
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      await read(
+        reader(() => new Promise<number>(() => {})),
+        20,
+      ),
+    ).toBeNull();
   });
 });
 
@@ -294,6 +336,46 @@ describe("readLeaderboard", () => {
   });
 });
 
+describe("readAllTimeLeaderboard", () => {
+  it("sums every served epoch per member, in the leaderboard's shape with epoch null", async () => {
+    const all = { offset: 0, limit: 100 };
+    const board = strict(
+      AllTimeLeaderboardSchema,
+      await readAllTimeLeaderboard(t.db, demo.mint, all, NOW),
+    );
+    const sums = new Map<string, bigint>();
+    let contributions = 0;
+    for (const index of [1, 2]) {
+      const one = strict(
+        ReadApiV1.leaderboard,
+        await readLeaderboard(t.db, demo.mint, index, all, NOW),
+      );
+      contributions += one.total_contributions;
+      for (const e of one.entries)
+        sums.set(e.member_id, (sums.get(e.member_id) ?? 0n) + BigInt(e.point_units));
+    }
+    expect(board.epoch).toBeNull();
+    expect([board.closed, board.final]).toEqual([false, false]);
+    expect(board.total_contributions).toBe(contributions);
+    expect(board.total_entries).toBe(sums.size);
+    expect(new Map(board.entries.map((e) => [e.member_id, BigInt(e.point_units)]))).toEqual(sums);
+    const units = board.entries.map((e) => BigInt(e.point_units));
+    expect(units).toEqual([...units].sort((a, b) => (a > b ? -1 : a < b ? 1 : 0)));
+    expect(board.entries[0]?.rank).toBe(1);
+  });
+
+  it("pages like an epoch's board and is null for an unknown community", async () => {
+    const page = strict(
+      AllTimeLeaderboardSchema,
+      await readAllTimeLeaderboard(t.db, demo.mint, { offset: 1, limit: 1 }, NOW),
+    );
+    expect([page.offset, page.limit, page.entries.length]).toEqual([1, 1, 1]);
+    expect(
+      await readAllTimeLeaderboard(t.db, "NoSuchMint", { offset: 0, limit: 1 }, NOW),
+    ).toBeNull();
+  });
+});
+
 describe("readLeaderboard ties", () => {
   it("members with equal points share a rank, across pages", async () => {
     const lane = await seedRewardLane(t.db);
@@ -348,7 +430,7 @@ describe("a pilot amendment", () => {
     const amended = await lane.admitOne(undefined, undefined, later(2 * HOUR + 60_000));
     const now = new Date(T0.getTime() + 3 * HOUR);
 
-    const e = strict(ReadApiV1.epoch, await readEpoch(t.db, lane.community.mint, 1, now));
+    const e = strict(EpochSchema, await readEpoch(t.db, lane.community.mint, 1, now));
     expect(e.config.prompt_version).toBe("reward-eval/1");
     expect(e.amendments).toEqual([
       {
@@ -377,7 +459,7 @@ describe("a pilot amendment", () => {
   });
 
   it("an epoch without one lists none", async () => {
-    const e = strict(ReadApiV1.epoch, await readEpoch(t.db, demo.mint, 1, NOW));
+    const e = strict(EpochSchema, await readEpoch(t.db, demo.mint, 1, NOW));
     expect(e.amendments).toEqual([]);
   });
 });
