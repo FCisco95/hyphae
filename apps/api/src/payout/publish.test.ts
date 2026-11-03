@@ -1,12 +1,14 @@
 import { c14n, HYPHAE_PROGRAM_ID, memberEpochHash, TAGS, taggedHash } from "@hyphae/core";
 import {
   communities,
+  epochPayoutDecisions,
   epochPublicationMembers,
   epochPublications,
   epochs,
   holdChecks,
   leaves,
   members,
+  payoutPolicies,
   rewardDecisions,
 } from "@hyphae/db";
 import { eq } from "drizzle-orm";
@@ -169,6 +171,53 @@ describe("publishEpoch", () => {
       reason: "community_not_on_chain",
     });
     expect(fake.calls).toEqual({ read: 0, publish: [], found: [] });
+  });
+
+  // The settle loop owns every epoch under a payout policy: a manual publish of one would pay it a
+  // second time under another index, or strand the stored distribution (review, 2026-11-03).
+  it("refuses an epoch of a community under a payout policy, or with a payout decision", async () => {
+    const { seed, ref } = await seeded();
+    const community = await communityOf(seed.communityId);
+    const fake = fakeChain(community.chainAddress as string);
+    const [policy] = await t.db
+      .insert(payoutPolicies)
+      .values({
+        communityId: seed.communityId,
+        effectiveFromIndex: 1,
+        thresholdVolumeLamports: 1n,
+        basis: "cumulative",
+        rewardBpsOfVolume: 100,
+        autoPublish: false,
+      })
+      .returning();
+    if (!policy) throw new Error("policy");
+    const refused = { status: "refused", reason: "policy_managed" };
+    expect(await planPublication(t.db, fake.chain, input(ref))).toEqual(refused);
+    expect(await publishEpoch(t.db, fake.chain, input(ref))).toEqual(refused);
+    expect(fake.calls).toEqual({ read: 0, publish: [], found: [] });
+    expect(await leafRows(seed.epochId)).toHaveLength(0);
+
+    // A policy that starts at a later index leaves this epoch to the operator.
+    await t.db
+      .update(payoutPolicies)
+      .set({ effectiveFromIndex: 2 })
+      .where(eq(payoutPolicies.id, policy.id));
+    expect(await planPublication(t.db, fake.chain, input(ref))).toMatchObject({
+      status: "planned",
+      index: 1n,
+    });
+
+    // An epoch the loop has decided is refused whatever the policy's index.
+    await t.db.insert(epochPayoutDecisions).values({
+      communityId: seed.communityId,
+      epochId: seed.epochId,
+      policyId: policy.id,
+      accrualLamports: 0n,
+      outcome: "rolled_over",
+      reason: "below_threshold",
+    });
+    expect(await publishEpoch(t.db, fake.chain, input(ref))).toEqual(refused);
+    expect(fake.calls.publish).toHaveLength(0);
   });
 
   it("refuses a community whose on-chain account is not initialized", async () => {

@@ -1,6 +1,13 @@
 import type { MemberEpochManifest } from "@hyphae/core";
-import { communities, type Db, epochs, leaves } from "@hyphae/db";
-import { and, eq, sql } from "drizzle-orm";
+import {
+  communities,
+  type Db,
+  epochPayoutDecisions,
+  epochs,
+  leaves,
+  payoutPolicies,
+} from "@hyphae/db";
+import { and, eq, lte, sql } from "drizzle-orm";
 import { backfillEpochCommitments } from "./commitment-store.js";
 import { type Blocker, evaluatePayoutGate } from "./gate.js";
 import { loadIntent, type PublicationIntent, storeIntent } from "./intent.js";
@@ -48,7 +55,7 @@ export interface PublishArgs {
 }
 
 export type PublishOutcome =
-  | { status: "refused"; reason: "community_not_on_chain" }
+  | { status: "refused"; reason: RefusalReason }
   | { status: "blocked"; blockers: Blocker[] }
   | {
       status: "published";
@@ -60,8 +67,13 @@ export type PublishOutcome =
       recovered: boolean;
     };
 
+// policy_managed: the settle loop owns the epoch (a payout policy is in force for its index, or
+// it has a payout decision); a manual publish would pay it again under another index, or strand
+// the stored distribution (review 2026-11-03, P1). The worker publishes such an epoch.
+export type RefusalReason = "community_not_on_chain" | "policy_managed";
+
 export type PlanOutcome =
-  | { status: "refused"; reason: "community_not_on_chain" }
+  | { status: "refused"; reason: RefusalReason }
   | { status: "blocked"; blockers: Blocker[] }
   | {
       status: "planned";
@@ -74,6 +86,34 @@ export type PlanOutcome =
     };
 
 type PublishInput = { communityId: string; epochId: string; grossLamports: bigint };
+
+// Whether the settle loop owns the epoch: a payout policy in force at its index, or a decision
+// already recorded for it. A community without a policy is untouched by this check.
+async function policyManaged(db: Db, ref: { communityId: string; epochId: string }) {
+  const [epoch] = await db
+    .select({ index: epochs.index })
+    .from(epochs)
+    .where(and(eq(epochs.id, ref.epochId), eq(epochs.communityId, ref.communityId)));
+  // A missing epoch is reported by the gate, as before.
+  if (!epoch) return false;
+  const [policy] = await db
+    .select({ id: payoutPolicies.id })
+    .from(payoutPolicies)
+    .where(
+      and(
+        eq(payoutPolicies.communityId, ref.communityId),
+        lte(payoutPolicies.effectiveFromIndex, epoch.index),
+      ),
+    )
+    .limit(1);
+  if (policy) return true;
+  const [decision] = await db
+    .select({ id: epochPayoutDecisions.id })
+    .from(epochPayoutDecisions)
+    .where(eq(epochPayoutDecisions.epochId, ref.epochId))
+    .limit(1);
+  return decision !== undefined;
+}
 
 // Everything before the send: the gate, then the stored intent, or a rebuild stored as the intent.
 // The operator's plan step runs this alone and shows the result before anything is signed.
@@ -88,6 +128,7 @@ export async function planPublication(
     .from(communities)
     .where(eq(communities.id, input.communityId));
   if (!community) throw new Error(`publish: no community ${input.communityId}`);
+  if (await policyManaged(db, input)) return { status: "refused", reason: "policy_managed" };
   // The operator binds a community to its initialized on-chain account; until then nothing is
   // published. The fee recipient comes from that account, so the audit commits the one it pays.
   const onChain = await chain.readCommunity(community.mint);

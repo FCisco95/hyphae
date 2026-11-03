@@ -45,7 +45,9 @@ const plan = await planPublication(db, chain, input);
 if (plan.status !== "planned") {
   console.error(
     plan.status === "refused"
-      ? `refused: ${plan.reason} (is ${admin.address} this community's admin, and is it bound?)`
+      ? plan.reason === "policy_managed"
+        ? "refused: policy_managed (a payout policy is in force for this epoch, or it has a payout decision: the settle loop publishes it)"
+        : `refused: ${plan.reason} (is ${admin.address} this community's admin, and is it bound?)`
       : `blocked: ${plan.blockers.join(", ")}`,
   );
   process.exit(1);
