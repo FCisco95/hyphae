@@ -1,9 +1,10 @@
+import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { createDb, payoutPolicies } from "@hyphae/db";
+import { communities, createDb, payoutPolicies } from "@hyphae/db";
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { seedCommunity } from "../rewards/test-db.js";
+import { rubric } from "../rewards/test-db.js";
 import { applyBind, type BindRequest, type ReadBoundCommunity } from "./bind-community.js";
 import { randomAddress } from "./ready-seed.js";
 
@@ -26,7 +27,19 @@ afterAll(async () => {
 
 describe("applyBind on Postgres", () => {
   it("lets exactly one of two concurrent binds write a policy", async () => {
-    const { community } = await seedCommunity(a);
+    // Unique values: the pg suites share one database, so a fixed mint or chat id would collide.
+    const [community] = await a
+      .insert(communities)
+      .values({
+        mint: randomAddress(),
+        name: "Bind race",
+        telegramChatId: -BigInt(randomBytes(6).readUIntBE(0, 6)),
+        adminTelegramUserId: 7n,
+        rubricVersion: rubric.version,
+        rubric,
+      })
+      .returning();
+    if (!community) throw new Error("bind: community");
     const chainAddress = randomAddress();
     const admin = randomAddress();
     // A slow chain read, so both binds have passed their checks before either one stores.
