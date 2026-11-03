@@ -1,5 +1,5 @@
 import { communities, type Db, epochs, holdChecks, holdRulings, members } from "@hyphae/db";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { HOLD_WINDOW_MS, payoutGateIn } from "./gate.js";
 
 // Recording a hold ruling (Cisco, 2026-11-03, for MYCEL epoch 5): one epoch's members whose hold
@@ -44,6 +44,19 @@ async function unreadIn(
     return { status: "refused", reason: "window_open" };
   }
   const ref = { communityId: epoch.communityId, epochId: epoch.id };
+  if (forUpdate) {
+    // Review F2 (2026-11-03): a hold run keeps a check's row locked from its claim until its
+    // result commits, so the ruling locks every check of the epoch, in id order, before judging
+    // anything. A run in flight commits first and its result counts: the statements below start
+    // after it, under read committed, and see it. A run holds one check row and no epoch lock,
+    // so this order cannot deadlock with it.
+    await tx
+      .select({ id: holdChecks.id })
+      .from(holdChecks)
+      .where(eq(holdChecks.epochId, epoch.id))
+      .orderBy(asc(holdChecks.id))
+      .for("update");
+  }
   const gate = await payoutGateIn(tx, ref, { clock: () => input.now });
   const held = new Set(
     gate.members
@@ -90,8 +103,9 @@ export type RecordOutcome =
   | { status: "refused"; reason: UnreadHoldRefusal | "nothing_to_rule" }
   | { status: "recorded"; epochId: string; count: number; members: UnreadHold[] };
 
-// One ruling row per unread hold, in one transaction under the epoch row lock, from a list
-// computed inside it: a hold result or a ruling recorded meanwhile is seen, never overridden.
+// One ruling row per unread hold, in one read-committed transaction under the epoch row lock and
+// the locks of its hold checks, from a list computed inside it: a hold result or a ruling recorded
+// meanwhile is seen, never overridden.
 export async function recordHoldRulings(
   db: Db,
   input: { mint: string; index: number; now: Date; reason: string; actor: string },
