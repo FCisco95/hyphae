@@ -397,3 +397,38 @@ describe("leaf encoding", () => {
     expect(() => leafHash({ ...base, amount: -1n })).toThrow(/u64/);
   });
 });
+
+// Round 2 of the Codex review (R6, R7).
+describe("review R6 and R7", () => {
+  it("R6: accepts a distribution whose properties are listed in another order", () => {
+    const original = buildDistribution(weeks);
+    const { members, ...rest } = original;
+    const reordered = {
+      members: members.map(({ wallet, ...m }) => ({ ...m, wallet })),
+      ...rest,
+    };
+    const run = (distribution: typeof original) =>
+      assembleDistribution({
+        network: "solana:mainnet",
+        programId: PROGRAM,
+        communityId: uuid(900),
+        mint: MINT,
+        feeRecipient: wallet(250),
+        policy,
+        volumeLamports: 100n * SOL,
+        distribution,
+        epochs: evidence(original),
+      });
+    expect(run(reordered).root).toBe(run(original).root);
+  });
+
+  it("R7: allows an off-chain volume above u64 when every on-chain field fits", () => {
+    const a = structuredClone(assemble().audit);
+    const huge = (1n << 64n).toString();
+    for (const e of a.epochs) e.volume_lamports = "0";
+    must(a.epochs[0]).volume_lamports = huge;
+    a.distribution.volume_lamports = huge;
+    expect(issues(a)).not.toMatch(/u64/);
+    expect(DistributionAuditManifest.safeParse(a).success).toBe(true);
+  });
+});

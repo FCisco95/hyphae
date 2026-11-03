@@ -275,16 +275,29 @@ export function assembleDistribution(input: {
   return { members, leaves, root, audit, auditHash: distributionAuditHash(audit) };
 }
 
-// A distribution's content, independent of the order its members were listed in.
+// A distribution's content, independent of the order its members and its properties were listed
+// in (review R6): members sorted by id, object keys sorted at every level, bigints as decimals.
 function fingerprint(d: Distribution): string {
   const byId = <T extends { memberId: string }>(xs: readonly T[]) =>
     [...xs].sort((a, b) => byKey(a.memberId, b.memberId));
+  const canonical = (v: unknown): unknown => {
+    if (typeof v === "bigint") return v.toString();
+    if (Array.isArray(v)) return v.map(canonical);
+    if (v !== null && typeof v === "object") {
+      const o = v as Record<string, unknown>;
+      return Object.fromEntries(
+        Object.keys(o)
+          .sort()
+          .map((k) => [k, canonical(o[k])]),
+      );
+    }
+    return v;
+  };
   return JSON.stringify(
-    {
+    canonical({
       ...d,
       slices: d.slices.map((s) => ({ ...s, members: byId(s.members) })),
       members: byId(d.members),
-    },
-    (_, v) => (typeof v === "bigint" ? v.toString() : v),
+    }),
   );
 }

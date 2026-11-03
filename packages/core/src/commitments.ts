@@ -383,7 +383,8 @@ export const epochAuditHash = hashOf(TAGS.epochAudit, EpochAuditManifest);
 // manifests, with the member's share of that epoch's slice; B10 is the leaf's evidence and sums a
 // member's parts; B11 is the on-chain audit hash and reconciles every lamport across the slices.
 
-// Fields the program reads as u64, and the sums that feed them.
+// Fields the program reads as u64, and the sums that feed them. Volumes never reach the program,
+// so they stay unbounded decimals (review R7).
 const MAX_U64 = (1n << 64n) - 1n;
 const u64 = dec.refine((v) => BigInt(v) <= MAX_U64, "a field does not fit a u64");
 
@@ -445,7 +446,7 @@ const distributionEpoch = z.strictObject({
   ),
   accrual_lamports: u64,
   // Null when the volume was unknown at the decision.
-  volume_lamports: u64.nullable(),
+  volume_lamports: dec.nullable(),
   // The epoch whose slice carries this accrual when nobody here was payable, else null.
   merged_into: dec.nullable(),
   gross_lamports: u64,
@@ -477,14 +478,14 @@ export const DistributionAuditManifest = z
     distribution: z.strictObject({
       index: u64,
       policy: z.strictObject({
-        threshold_volume_lamports: u64,
+        threshold_volume_lamports: dec,
         basis: z.enum(["cumulative", "per_epoch"]),
         split: z.literal("per_epoch"),
         volume_source: z.literal("fee_derived"),
         reward_bps_of_volume: dec.nullable(),
       }),
       // The volume the decision compared with the threshold.
-      volume_lamports: u64,
+      volume_lamports: dec,
     }),
     epochs: z.array(distributionEpoch).min(1),
     members: z
