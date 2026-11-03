@@ -44,6 +44,34 @@ export const GENESIS: Record<PublishChain["network"], string> = {
   "solana:mainnet": "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",
 };
 
+// A local test validator starts a new genesis at every reset, so it is known by its RPC instead: a
+// loopback URL whose genesis is neither public cluster's. Its manifests carry the devnet label,
+// the only non-mainnet network the commitments know; nothing it records leaves the machine.
+const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]"]);
+
+export function clusterProblem(
+  o: { rpcUrl: string; network: PublishChain["network"]; local?: boolean },
+  genesis: string,
+): string | null {
+  if (!o.local) {
+    return genesis === GENESIS[o.network]
+      ? null
+      : `the RPC is not ${o.network} (genesis ${genesis})`;
+  }
+  if (o.network !== "solana:devnet") return "a local validator carries the devnet label";
+  let host: string;
+  try {
+    host = new URL(o.rpcUrl).hostname;
+  } catch {
+    return "a local validator's RPC must be a loopback URL";
+  }
+  if (!LOOPBACK.has(host)) return "a local validator's RPC must be a loopback URL";
+  if (Object.values(GENESIS).includes(genesis)) {
+    return `the loopback RPC serves a public cluster (genesis ${genesis})`;
+  }
+  return null;
+}
+
 export class SendError extends Error {
   constructor(
     readonly signature: string,
@@ -135,14 +163,14 @@ export async function solanaChain(opts: {
   // P5: the community's admin key, the only one publish accepts.
   admin: TransactionSigner;
   programId?: Address;
+  // A local test validator (clusterProblem), never a public cluster.
+  local?: boolean;
 }) {
   const programId = opts.programId ?? HYPHAE_PROGRAM_ID;
   const rpc = createSolanaRpc(opts.rpcUrl);
   const rpcSubscriptions = createSolanaRpcSubscriptions(opts.wsUrl);
-  const genesis = await rpc.getGenesisHash().send();
-  if (genesis !== GENESIS[opts.network]) {
-    throw new Error(`chain: the RPC is not ${opts.network} (genesis ${genesis})`);
-  }
+  const problem = clusterProblem(opts, await rpc.getGenesisHash().send());
+  if (problem) throw new Error(`chain: ${problem}`);
   const sendAndConfirm = sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions });
 
   // skipPreflight lands a failing transaction on-chain, so its failure has a signature too.

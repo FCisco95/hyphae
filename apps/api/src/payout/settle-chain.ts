@@ -17,7 +17,7 @@ import {
   type SolanaRpcApi,
   type TransactionSigner,
 } from "@solana/kit";
-import { GENESIS, programAccount, publishTransaction, solanaChain } from "./chain.js";
+import { clusterProblem, programAccount, publishTransaction, solanaChain } from "./chain.js";
 import type { SettleChain } from "./distribution-settle.js";
 import type { OnChainEpoch, PublishArgs } from "./publish.js";
 
@@ -33,13 +33,13 @@ export async function settleChain(opts: {
   programId?: Address;
   // Tests inject a transport; production builds one from the URL.
   rpc?: Rpc<SolanaRpcApi>;
+  // A local test validator (clusterProblem), never a public cluster.
+  local?: boolean;
 }): Promise<SettleChain> {
   const programId = opts.programId ?? HYPHAE_PROGRAM_ID;
   const rpc = opts.rpc ?? createSolanaRpc(opts.rpcUrl);
-  const genesis = await rpc.getGenesisHash().send();
-  if (genesis !== GENESIS[opts.network]) {
-    throw new Error(`chain: the RPC is not ${opts.network} (genesis ${genesis})`);
-  }
+  const problem = clusterProblem(opts, await rpc.getGenesisHash().send());
+  if (problem) throw new Error(`chain: ${problem}`);
   const sending = opts.publisher
     ? await solanaChain({
         rpcUrl: opts.rpcUrl,
@@ -47,6 +47,7 @@ export async function settleChain(opts: {
         network: opts.network,
         admin: opts.publisher,
         programId,
+        ...(opts.local && { local: true }),
       })
     : null;
   const decoder = getAddressDecoder();

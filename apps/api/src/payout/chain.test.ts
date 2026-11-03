@@ -25,10 +25,54 @@ import {
   type TransactionPartialSigner,
 } from "@solana/kit";
 import { describe, expect, it } from "vitest";
-import { programAccount, publishTransaction, signSimulated } from "./chain.js";
+import {
+  clusterProblem,
+  GENESIS,
+  programAccount,
+  publishTransaction,
+  signSimulated,
+} from "./chain.js";
 
 const SYSTEM = "11111111111111111111111111111111";
 const OTHER = "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR";
+
+describe("clusterProblem", () => {
+  const LOCAL_GENESIS = "4uhcVJyU9pJkvQyS88uRDiswHXSCkY3zQawwpjk2NsNY";
+  const devnet = GENESIS["solana:devnet"];
+  const mainnet = GENESIS["solana:mainnet"];
+
+  it("takes a public cluster only at its own genesis", () => {
+    const at = { rpcUrl: "https://rpc.test", network: "solana:mainnet" as const };
+    expect(clusterProblem(at, mainnet)).toBeNull();
+    expect(clusterProblem(at, devnet)).toMatch(/not solana:mainnet/);
+    expect(clusterProblem(at, LOCAL_GENESIS)).toMatch(/not solana:mainnet/);
+  });
+
+  it("takes a local validator on a loopback RPC whose genesis is no public cluster's", () => {
+    for (const rpcUrl of ["http://127.0.0.1:8899", "http://localhost:8899", "http://[::1]:8899"]) {
+      expect(
+        clusterProblem({ rpcUrl, network: "solana:devnet", local: true }, LOCAL_GENESIS),
+      ).toBeNull();
+    }
+  });
+
+  it("refuses a local run on a public cluster, a remote RPC or the mainnet label", () => {
+    const local = {
+      rpcUrl: "http://127.0.0.1:8899",
+      network: "solana:devnet" as const,
+      local: true,
+    };
+    expect(clusterProblem(local, devnet)).toMatch(/serves a public cluster/);
+    expect(clusterProblem(local, mainnet)).toMatch(/serves a public cluster/);
+    expect(
+      clusterProblem({ ...local, rpcUrl: "https://api.devnet.solana.com" }, LOCAL_GENESIS),
+    ).toMatch(/loopback/);
+    expect(clusterProblem({ ...local, rpcUrl: "not a url" }, LOCAL_GENESIS)).toMatch(/loopback/);
+    expect(clusterProblem({ ...local, network: "solana:mainnet" }, LOCAL_GENESIS)).toMatch(
+      /devnet label/,
+    );
+  });
+});
 
 const info = (owner: string, bytes: number[], executable = false) => ({
   owner,
