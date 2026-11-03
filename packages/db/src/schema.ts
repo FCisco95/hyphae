@@ -1189,7 +1189,9 @@ export const epochPayoutDecisions = pgTable(
       .notNull()
       .references(() => payoutPolicies.id),
     // The vault's free balance read at the decision; null when it could not be read. Free and
-    // accrual are on-chain amounts and keep the u64 domain of a bigint column.
+    // accrual are on-chain amounts; a Postgres bigint is signed, so these columns end at 2^63 − 1,
+    // short of u64. Unreachable in practice (the whole SOL supply is about 5.8e17 lamports), and
+    // the settle loop refuses a larger value before the insert (review round 2, P2).
     freeLamports: bigint("free_lamports", { mode: "bigint" }),
     accrualLamports: bigint("accrual_lamports", { mode: "bigint" }).notNull(),
     // Null when the volume was unknown, which never meets the threshold. Off-chain and unbounded:
