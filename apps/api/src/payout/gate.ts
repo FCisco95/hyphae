@@ -103,6 +103,8 @@ export type PayoutGate =
       blockers: Blocker[];
       testId: string | null;
       hold: HoldRequirement | null;
+      // Present when the member stage ran: the frozen snapshot the members were judged on.
+      snapshot?: JudgedSnapshot;
     });
 
 type Epoch = typeof epochs.$inferSelect;
@@ -238,6 +240,7 @@ export async function payoutGateIn(
     blockers: Blocker[],
     found: { testId?: string; hold?: HoldRequirement } = {},
     members: MemberVerdict[] = [],
+    snapshot?: JudgedSnapshot,
   ): PayoutGate => ({
     status: "blocked",
     epochIndex: epoch.index,
@@ -246,6 +249,7 @@ export async function payoutGateIn(
     testId: found.testId ?? null,
     hold: found.hold ?? null,
     members,
+    ...(snapshot && { snapshot }),
   });
 
   if (!epoch.rewardConfigId) return blocked(["legacy_epoch"]);
@@ -287,7 +291,14 @@ export async function payoutGateIn(
   }
   if (held) blockers.push("hold_checks_pending");
   else if (payable.length === 0) blockers.push("no_payable_members");
-  if (blockers.length > 0) return blocked(blockers, found, members);
+  const snapshot: JudgedSnapshot = {
+    opensAt: row.opensAt,
+    closesAt: row.closesAt,
+    closedAt: frozen.closedAt,
+    cutoffAssumption: frozen.snapshot.cutoffAssumption,
+    entries: judged.entries,
+  };
+  if (blockers.length > 0) return blocked(blockers, found, members, snapshot);
   return {
     status: "ready",
     epochIndex: epoch.index,
@@ -295,13 +306,7 @@ export async function payoutGateIn(
     ...found,
     members,
     payable: payable.length,
-    snapshot: {
-      opensAt: row.opensAt,
-      closesAt: row.closesAt,
-      closedAt: frozen.closedAt,
-      cutoffAssumption: frozen.snapshot.cutoffAssumption,
-      entries: judged.entries,
-    },
+    snapshot,
   };
 }
 

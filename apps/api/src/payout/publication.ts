@@ -17,7 +17,13 @@ import { inArray } from "drizzle-orm";
 import { readOnly } from "../pg.js";
 import { amendmentsOf } from "../rewards/amendment.js";
 import { storedEpochCommitments } from "./commitment-store.js";
-import { type Blocker, type MemberVerdict, payoutGateIn } from "./gate.js";
+import {
+  type Blocker,
+  type HoldRequirement,
+  type JudgedSnapshot,
+  type MemberVerdict,
+  payoutGateIn,
+} from "./gate.js";
 import type { RulesTest } from "./rules-test.js";
 import { clearedMembers } from "./shared-handles.js";
 
@@ -94,6 +100,124 @@ export function leavesOf(
   };
 }
 
+// A gate verdict whose evidence can no longer change: ready, or blocked after the member stage
+// (nobody payable). Both carry the frozen snapshot the members were judged on.
+export interface JudgedGate {
+  epochIndex: number;
+  testId: string;
+  hold: HoldRequirement;
+  members: MemberVerdict[];
+  snapshot: JudgedSnapshot;
+}
+
+// A member's share of a pot, in lamports, as the allocation computes it (P10, P11).
+export interface MemberShare {
+  uncappedLamports: bigint;
+  amountLamports: bigint;
+  capRemainderLamports: bigint;
+}
+
+export interface EpochManifests {
+  // The fields every manifest of the epoch shares (B7, B9).
+  base: Pick<
+    MemberEpochManifest,
+    "network" | "program_id" | "community_id" | "mint" | "epoch" | "config_hash"
+  >;
+  // Every snapshot entry in contribution order, each under its member.
+  entries: EpochAuditManifest["entries"];
+  // In the gate's member order.
+  members: MemberEpochManifest[];
+  manifestHash: Map<string, string>;
+}
+
+// The member-epoch manifests (B7) of a judged epoch, inside the caller's snapshot transaction,
+// each member carrying the share `shareOf` gives it. The single-epoch publication passes its
+// allocation; a distribution of rolled-over epochs passes each epoch's slice.
+export async function epochManifestsIn(
+  tx: Db,
+  ref: { communityId: string; epochId: string },
+  gate: JudgedGate,
+  input: PublicationSettings,
+  shareOf: (memberId: string) => MemberShare | undefined,
+): Promise<EpochManifests> {
+  const { snapshot } = gate;
+  const commitments = await storedEpochCommitments(tx, ref.epochId);
+
+  const base = {
+    network: input.network,
+    program_id: input.programId,
+    community_id: ref.communityId,
+    // The hold mint is the community's own.
+    mint: gate.hold.mint,
+    epoch: {
+      id: ref.epochId,
+      index: gate.epochIndex.toString(),
+      opens_at: snapshot.opensAt,
+      closes_at: snapshot.closesAt,
+    },
+    config_hash: commitments.configHash,
+  };
+  // Every snapshot entry in contribution order, listed under its member and in the audit.
+  const entries = [...snapshot.entries]
+    .sort((a, b) => byKey(a.contributionId, b.contributionId))
+    .map((e) => {
+      const decision = e.decisionId ? commitments.decisions.get(e.decisionId) : undefined;
+      if (e.decisionId && !decision) {
+        throw new Error(`publication: decision ${e.decisionId} has no commitment`);
+      }
+      return {
+        member_id: e.memberId,
+        contribution_id: e.contributionId,
+        decision_hash: decision?.hash ?? null,
+        reason: e.reason,
+        point_units: e.pointUnits.toString(),
+      };
+    });
+  const entriesOf = new Map<string, MemberEpochManifest["entries"]>();
+  for (const { member_id, ...entry } of entries) {
+    const list = entriesOf.get(member_id);
+    if (list) list.push(entry);
+    else entriesOf.set(member_id, [entry]);
+  }
+
+  // The hold result the gate applied: a payable member's, or the one that excluded it.
+  const holdOf = ({ holdResult: r }: MemberVerdict) =>
+    r && {
+      mint: r.check.mint,
+      threshold_raw: r.check.thresholdRaw,
+      status: r.check.status,
+      raw_amount: r.check.rawAmount as string,
+      decimals: (r.check.decimals as number).toString(),
+      slot: r.check.slot as string,
+      provider: r.check.provider as string,
+      observed_at: r.observedAt,
+    };
+
+  const members: MemberEpochManifest[] = gate.members.map((m) => {
+    const share = shareOf(m.memberId);
+    if (!share) throw new Error("publication: allocation lost a member");
+    return {
+      ...base,
+      member_id: m.memberId,
+      wallet: m.wallet,
+      entries: entriesOf.get(m.memberId) ?? [],
+      point_units: m.pointUnits,
+      whole_points: m.wholePoints,
+      settlement: {
+        status: m.status === "payable" ? "payable" : "not_payable",
+        reasons: [...m.reasons].sort(),
+        rules_test: { test_id: gate.testId, passed_at: m.rulesTestPassedAt },
+        hold: holdOf(m),
+        uncapped_lamports: share.uncappedLamports.toString(),
+        amount_lamports: share.amountLamports.toString(),
+        cap_remainder_lamports: share.capRemainderLamports.toString(),
+      },
+    };
+  });
+  const manifestHash = new Map(members.map((m) => [m.member_id, memberEpochHash(m)]));
+  return { base, entries, members, manifestHash };
+}
+
 export async function buildPublication(
   db: Db,
   ref: { communityId: string; epochId: string },
@@ -105,7 +229,6 @@ export async function buildPublication(
     const gate = await payoutGateIn(tx, ref, deps);
     if (gate.status !== "ready") return { status: "blocked", blockers: gate.blockers };
     const { snapshot } = gate;
-    const commitments = await storedEpochCommitments(tx, ref.epochId);
 
     const allocation = allocate(
       input.grossLamports,
@@ -116,79 +239,13 @@ export async function buildPublication(
       })),
     );
     const shareOf = new Map(allocation.members.map((m) => [m.memberId, m]));
-
-    const base = {
-      network: input.network,
-      program_id: input.programId,
-      community_id: ref.communityId,
-      // The hold mint is the community's own.
-      mint: gate.hold.mint,
-      epoch: {
-        id: ref.epochId,
-        index: gate.epochIndex.toString(),
-        opens_at: snapshot.opensAt,
-        closes_at: snapshot.closesAt,
-      },
-      config_hash: commitments.configHash,
-    };
-    // Every snapshot entry in contribution order, listed under its member and in the audit.
-    const entries = [...snapshot.entries]
-      .sort((a, b) => byKey(a.contributionId, b.contributionId))
-      .map((e) => {
-        const decision = e.decisionId ? commitments.decisions.get(e.decisionId) : undefined;
-        if (e.decisionId && !decision) {
-          throw new Error(`publication: decision ${e.decisionId} has no commitment`);
-        }
-        return {
-          member_id: e.memberId,
-          contribution_id: e.contributionId,
-          decision_hash: decision?.hash ?? null,
-          reason: e.reason,
-          point_units: e.pointUnits.toString(),
-        };
-      });
-    const entriesOf = new Map<string, MemberEpochManifest["entries"]>();
-    for (const { member_id, ...entry } of entries) {
-      const list = entriesOf.get(member_id);
-      if (list) list.push(entry);
-      else entriesOf.set(member_id, [entry]);
-    }
-
-    // The hold result the gate applied: a payable member's, or the one that excluded it.
-    const holdOf = ({ holdResult: r }: MemberVerdict) =>
-      r && {
-        mint: r.check.mint,
-        threshold_raw: r.check.thresholdRaw,
-        status: r.check.status,
-        raw_amount: r.check.rawAmount as string,
-        decimals: (r.check.decimals as number).toString(),
-        slot: r.check.slot as string,
-        provider: r.check.provider as string,
-        observed_at: r.observedAt,
-      };
-
-    const members: MemberEpochManifest[] = gate.members.map((m) => {
-      const share = shareOf.get(m.memberId);
-      if (!share) throw new Error("publication: allocation lost a member");
-      return {
-        ...base,
-        member_id: m.memberId,
-        wallet: m.wallet,
-        entries: entriesOf.get(m.memberId) ?? [],
-        point_units: m.pointUnits,
-        whole_points: m.wholePoints,
-        settlement: {
-          status: m.status === "payable" ? "payable" : "not_payable",
-          reasons: [...m.reasons].sort(),
-          rules_test: { test_id: gate.testId, passed_at: m.rulesTestPassedAt },
-          hold: holdOf(m),
-          uncapped_lamports: share.uncappedLamports.toString(),
-          amount_lamports: share.amountLamports.toString(),
-          cap_remainder_lamports: share.capRemainderLamports.toString(),
-        },
-      };
-    });
-    const manifestHash = new Map(members.map((m) => [m.member_id, memberEpochHash(m)]));
+    const { base, entries, members, manifestHash } = await epochManifestsIn(
+      tx,
+      ref,
+      gate,
+      input,
+      (memberId) => shareOf.get(memberId),
+    );
     const epochIndex = BigInt(gate.epochIndex);
     const { leaves, root } = leavesOf(members, epochIndex);
 
