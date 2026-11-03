@@ -1,10 +1,14 @@
-// Production checks and one pinned migration release. Current release: migration 0022 for the
-// Organic signed raid route (integration_raid_requests), pinned on 2026-11-02: epochs 4 and 5 are
-// closed, unpaid and frozen (snapshot, hold checks and shared-handle clearances pinned, no
-// publication intent), epoch 6 is open. The 0021 release (shared-handle clearances, 2026-10-26)
-// used it before, the raid cards release for 0020, the 2026-10-11 release for 0018+0019, the Jev
-// live scorer release for 0017, the pilot amendment release for 0016, the earn-first release for
-// 0015 and the 2026-10-05 API rollout for 0013+0014 (see those plans and git history).
+// Production checks and one pinned migration release. Current release: migration 0023 for the
+// automatic payout (payout_policies, epoch_payout_decisions, distribution_publications and their
+// two member tables, hold_rulings), pinned on 2026-11-03. It creates new tables only, and they
+// must be empty after it: policies, decisions, publications and rulings come only after the
+// release. Epochs 4 and 5 stay closed, unpaid and frozen exactly as the 0022 release pinned them
+// on 2026-11-02 (snapshot, hold checks and shared-handle clearances, no publication intent), and
+// epoch 6 is open. The 0022 release (Organic's signed raid route, applied 2026-11-02) used it
+// before, the 0021 release (shared-handle clearances, 2026-10-26), the raid cards release for
+// 0020, the 2026-10-11 release for 0018+0019, the Jev live scorer release for 0017, the pilot
+// amendment release for 0016, the earn-first release for 0015 and the 2026-10-05 API rollout for
+// 0013+0014 (see those plans and git history).
 //
 // Run from the exact-source worktree's packages/db, so the migrations folder and drivers are the
 // ones the image was built from:
@@ -28,7 +32,7 @@
 // Rehearsal: against a loopback database only, ROLLOUT_LIVE_FIXTURE=<json> replaces the live API
 // reads with a file and ROLLOUT_DEADLINE=<ISO time> brings the deadline earlier, so a disposable
 // Postgres can be checked and migrated. A non-loopback target always reads the live API and keeps
-// the pinned deadline.
+// the pinned deadline. `pnpm test:rollout` (db.test.mjs, Docker) rehearses this release that way.
 //
 // Exit codes: 0 pass/applied, 1 fail or unexpected error (stop), 2 lock timeout (nothing applied).
 import { createHash } from "node:crypto";
@@ -41,8 +45,8 @@ const MINT = "HudkzEWpcUnTYFZMMcbNdwk1S5Am26J2SyEh4NfFworg";
 const PUBLIC_API = "https://hyphae-api.fly.dev";
 // The migrations this release applies, in order, pinned by the SHA-256 of their SQL files.
 const NEW_MIGRATIONS = {
-  "0022_integration_raid_requests":
-    "20453fbc05f2b54f210c2821f5ffd138a16805c3aa1dd75c422555b7083f7a5c",
+  "0023_payout_policies_and_distributions":
+    "df110714a990ff28ca961587d9182e1a5d6f3d0ec3792cbebba9976d84f615e4",
 };
 const EPOCH6_OPENS_AT = "2026-10-31T00:00:00.000Z";
 const EPOCH6_CLOSES_AT = "2026-11-07T00:00:00.000Z";
@@ -248,7 +252,8 @@ const SHARED_INDEX_SHAPE = {
   partial: false,
   valid: true,
 };
-// What 0022 creates. Its checks are compared with their definitions, so a weaker check differs.
+// 0022 is applied before and after: exactly its table and two unique indexes. Its checks are
+// compared with their definitions, so a weaker check differs.
 const INTEGRATION = "integration_raid_requests";
 const INTEGRATION_SHAPE = {
   relation: PERMANENT_PLAIN_TABLE,
@@ -304,6 +309,269 @@ const INTEGRATION_INDEXES = {
     valid: true,
   },
 };
+// What 0023 creates: six tables, their checks compared with their definitions, and seven indexes
+// besides the primary keys.
+const PAYOUT_TABLES = {
+  distribution_publication_epoch_members: {
+    relation: PERMANENT_PLAIN_TABLE,
+    columns: [
+      "id pg_catalog.uuid not null default gen_random_uuid()",
+      "publication_id pg_catalog.uuid not null",
+      "epoch_id pg_catalog.uuid not null",
+      "member_id pg_catalog.uuid not null",
+      "manifest_hash pg_catalog.text not null",
+      "manifest pg_catalog.text not null",
+    ],
+    constraints: [
+      "distribution_publication_epoch_members_epoch_id_epochs_id_fk f (epoch_id) -> public.epochs(id) a/a",
+      "distribution_publication_epoch_members_hash c (manifest_hash,manifest) CHECK ((manifest_hash = encode(sha256(((convert_to('hyphae/member-epoch/v1'::text, 'UTF8'::name) || '\\x00'::bytea) || convert_to(manifest, 'UTF8'::name))), 'hex'::text)))",
+      "distribution_publication_epoch_members_member_id_members_id_fk f (member_id) -> public.members(id) a/a",
+      "distribution_publication_epoch_members_pkey p (id)",
+      "distribution_publication_epoch_members_publication_id_distribut f (publication_id) -> public.distribution_publications(id) a/a",
+    ],
+    indexes: [
+      "distribution_publication_epoch_members_pkey",
+      "distribution_publication_epoch_members_publication_epoch_member",
+    ],
+  },
+  distribution_publication_members: {
+    relation: PERMANENT_PLAIN_TABLE,
+    columns: [
+      "id pg_catalog.uuid not null default gen_random_uuid()",
+      "publication_id pg_catalog.uuid not null",
+      "member_id pg_catalog.uuid not null",
+      "manifest_hash pg_catalog.text not null",
+      "manifest pg_catalog.text not null",
+    ],
+    constraints: [
+      "distribution_publication_members_hash c (manifest_hash,manifest) CHECK ((manifest_hash = encode(sha256(((convert_to('hyphae/member-distribution/v1'::text, 'UTF8'::name) || '\\x00'::bytea) || convert_to(manifest, 'UTF8'::name))), 'hex'::text)))",
+      "distribution_publication_members_member_id_members_id_fk f (member_id) -> public.members(id) a/a",
+      "distribution_publication_members_pkey p (id)",
+      "distribution_publication_members_publication_id_distribution_pu f (publication_id) -> public.distribution_publications(id) a/a",
+    ],
+    indexes: [
+      "distribution_publication_members_pkey",
+      "distribution_publication_members_publication_member",
+    ],
+  },
+  distribution_publications: {
+    relation: PERMANENT_PLAIN_TABLE,
+    columns: [
+      "id pg_catalog.uuid not null default gen_random_uuid()",
+      "epoch_id pg_catalog.uuid not null",
+      "community_id pg_catalog.uuid not null",
+      "community_address pg_catalog.text not null",
+      "root pg_catalog.text not null",
+      "audit_hash pg_catalog.text not null",
+      "audit_manifest pg_catalog.text not null",
+      "created_at pg_catalog.timestamptz not null default now()",
+    ],
+    constraints: [
+      "distribution_publications_audit_hash c (audit_hash,audit_manifest) CHECK ((audit_hash = encode(sha256(((convert_to('hyphae/distribution-audit/v1'::text, 'UTF8'::name) || '\\x00'::bytea) || convert_to(audit_manifest, 'UTF8'::name))), 'hex'::text)))",
+      "distribution_publications_community_id_communities_id_fk f (community_id) -> public.communities(id) a/a",
+      "distribution_publications_epoch_id_epochs_id_fk f (epoch_id) -> public.epochs(id) a/a",
+      "distribution_publications_pkey p (id)",
+      "distribution_publications_root_format c (root) CHECK ((root ~ '^[0-9a-f]{64}$'::text))",
+    ],
+    indexes: ["distribution_publications_epoch", "distribution_publications_pkey"],
+  },
+  epoch_payout_decisions: {
+    relation: PERMANENT_PLAIN_TABLE,
+    columns: [
+      "id pg_catalog.uuid not null default gen_random_uuid()",
+      "community_id pg_catalog.uuid not null",
+      "epoch_id pg_catalog.uuid not null",
+      "policy_id pg_catalog.uuid not null",
+      "free_lamports pg_catalog.int8 null",
+      "accrual_lamports pg_catalog.int8 not null",
+      "volume_lamports pg_catalog.numeric null",
+      "outcome pg_catalog.text not null",
+      "reason pg_catalog.text null",
+      "distribution_epoch_id pg_catalog.uuid null",
+      "decided_at pg_catalog.timestamptz not null default now()",
+    ],
+    constraints: [
+      "epoch_payout_decisions_accrual_nonnegative c (accrual_lamports) CHECK ((accrual_lamports >= 0))",
+      "epoch_payout_decisions_community_id_communities_id_fk f (community_id) -> public.communities(id) a/a",
+      "epoch_payout_decisions_distribution c (outcome,distribution_epoch_id) CHECK (((outcome = 'rolled_over'::text) = (distribution_epoch_id IS NULL)))",
+      "epoch_payout_decisions_distribution_epoch_id_epochs_id_fk f (distribution_epoch_id) -> public.epochs(id) a/a",
+      "epoch_payout_decisions_epoch_id_epochs_id_fk f (epoch_id) -> public.epochs(id) a/a",
+      "epoch_payout_decisions_free_nonnegative c (free_lamports) CHECK (((free_lamports IS NULL) OR (free_lamports >= 0)))",
+      "epoch_payout_decisions_outcome c (outcome) CHECK ((outcome = ANY (ARRAY['rolled_over'::text, 'distribution_planned'::text, 'distributed'::text])))",
+      "epoch_payout_decisions_pkey p (id)",
+      "epoch_payout_decisions_policy_id_payout_policies_id_fk f (policy_id) -> public.payout_policies(id) a/a",
+      "epoch_payout_decisions_volume_whole c (volume_lamports) CHECK (((volume_lamports IS NULL) OR ((volume_lamports >= (0)::numeric) AND (volume_lamports = trunc(volume_lamports)))))",
+    ],
+    indexes: [
+      "epoch_payout_decisions_community",
+      "epoch_payout_decisions_epoch",
+      "epoch_payout_decisions_pkey",
+    ],
+  },
+  hold_rulings: {
+    relation: PERMANENT_PLAIN_TABLE,
+    columns: [
+      "id pg_catalog.uuid not null default gen_random_uuid()",
+      "epoch_id pg_catalog.uuid not null",
+      "member_id pg_catalog.uuid not null",
+      "verdict pg_catalog.text not null",
+      "reason pg_catalog.text not null",
+      "actor pg_catalog.text not null",
+      "ruled_at pg_catalog.timestamptz not null default now()",
+    ],
+    constraints: [
+      "hold_rulings_epoch_id_epochs_id_fk f (epoch_id) -> public.epochs(id) a/a",
+      "hold_rulings_member_id_members_id_fk f (member_id) -> public.members(id) a/a",
+      "hold_rulings_pkey p (id)",
+      "hold_rulings_reason_actor c (reason,actor) CHECK (((btrim(reason) <> ''::text) AND (btrim(actor) <> ''::text)))",
+      "hold_rulings_verdict c (verdict) CHECK ((verdict = 'not_payable'::text))",
+    ],
+    indexes: ["hold_rulings_epoch_member", "hold_rulings_pkey"],
+  },
+  payout_policies: {
+    relation: PERMANENT_PLAIN_TABLE,
+    columns: [
+      "id pg_catalog.uuid not null default gen_random_uuid()",
+      "community_id pg_catalog.uuid not null",
+      "effective_from_index pg_catalog.int4 not null",
+      "threshold_volume_lamports pg_catalog.int8 not null",
+      "basis pg_catalog.text not null",
+      "reward_bps_of_volume pg_catalog.int4 null",
+      "auto_publish pg_catalog.bool not null default false",
+      "created_at pg_catalog.timestamptz not null default now()",
+    ],
+    constraints: [
+      "payout_policies_basis c (basis) CHECK ((basis = ANY (ARRAY['cumulative'::text, 'per_epoch'::text])))",
+      "payout_policies_community_id_communities_id_fk f (community_id) -> public.communities(id) a/a",
+      "payout_policies_from_positive c (effective_from_index) CHECK ((effective_from_index >= 1))",
+      "payout_policies_pkey p (id)",
+      "payout_policies_reward_bps c (reward_bps_of_volume) CHECK (((reward_bps_of_volume IS NULL) OR ((reward_bps_of_volume >= 1) AND (reward_bps_of_volume <= 10000))))",
+      "payout_policies_threshold_positive c (threshold_volume_lamports) CHECK ((threshold_volume_lamports > 0))",
+    ],
+    indexes: ["payout_policies_community_from", "payout_policies_pkey"],
+  },
+};
+const PAYOUT_INDEXES = {
+  distribution_publication_epoch_members_publication_epoch_member: {
+    table: "distribution_publication_epoch_members",
+    method: "btree",
+    columns: "publication_id,epoch_id,member_id",
+    attributes: 3,
+    key_attributes: 3,
+    expressions: false,
+    unique: true,
+    partial: false,
+    valid: true,
+  },
+  distribution_publication_members_publication_member: {
+    table: "distribution_publication_members",
+    method: "btree",
+    columns: "publication_id,member_id",
+    attributes: 2,
+    key_attributes: 2,
+    expressions: false,
+    unique: true,
+    partial: false,
+    valid: true,
+  },
+  distribution_publications_epoch: {
+    table: "distribution_publications",
+    method: "btree",
+    columns: "epoch_id",
+    attributes: 1,
+    key_attributes: 1,
+    expressions: false,
+    unique: true,
+    partial: false,
+    valid: true,
+  },
+  epoch_payout_decisions_community: {
+    table: "epoch_payout_decisions",
+    method: "btree",
+    columns: "community_id",
+    attributes: 1,
+    key_attributes: 1,
+    expressions: false,
+    unique: false,
+    partial: false,
+    valid: true,
+  },
+  epoch_payout_decisions_epoch: {
+    table: "epoch_payout_decisions",
+    method: "btree",
+    columns: "epoch_id",
+    attributes: 1,
+    key_attributes: 1,
+    expressions: false,
+    unique: true,
+    partial: false,
+    valid: true,
+  },
+  hold_rulings_epoch_member: {
+    table: "hold_rulings",
+    method: "btree",
+    columns: "epoch_id,member_id",
+    attributes: 2,
+    key_attributes: 2,
+    expressions: false,
+    unique: true,
+    partial: false,
+    valid: true,
+  },
+  payout_policies_community_from: {
+    table: "payout_policies",
+    method: "btree",
+    columns: "community_id,effective_from_index",
+    attributes: 2,
+    key_attributes: 2,
+    expressions: false,
+    unique: true,
+    partial: false,
+    valid: true,
+  },
+};
+// Every table and view in the public schema once 0022 is applied, as the migrations create them.
+// 0023 adds exactly its six tables; anything else there, before or after, is refused.
+const PUBLIC_TABLES_BEFORE = [
+  "communities",
+  "contributions",
+  "epoch_publication_members",
+  "epoch_publications",
+  "epochs",
+  "hold_checks",
+  "integration_raid_requests",
+  "leaves",
+  "link_sessions",
+  "member_wallet_links",
+  "members",
+  "raid_announcements",
+  "raid_cards",
+  "raid_deliveries",
+  "raid_lifecycle_events",
+  "raid_recaps",
+  "raid_submission_receipts",
+  "raid_submission_sessions",
+  "raid_subscriptions",
+  "reward_config_amendments",
+  "reward_config_proposals",
+  "reward_configs",
+  "reward_decisions",
+  "reward_dispatches",
+  "reward_epoch_snapshots",
+  "reward_intakes",
+  "reward_nominations",
+  "reward_retrievals",
+  "reward_slots",
+  "reward_snapshot_entries",
+  "reward_snapshot_members",
+  "rules_test_passes",
+  "scoring_runs",
+  "shared_handle_clearances",
+  "submission_issues",
+  "tasks",
+  "wallet_proof_requests",
+];
+const PUBLIC_TABLES_AFTER = [...PUBLIC_TABLES_BEFORE, ...Object.keys(PAYOUT_TABLES)].sort();
 const COUNTED_TABLES = [
   "members",
   "contributions",
@@ -320,6 +588,7 @@ const COUNTED_TABLES = [
   RAID_CARDS,
   SHARED,
   INTEGRATION,
+  ...Object.keys(PAYOUT_TABLES),
 ];
 // Any other query parameter (host, hostaddr, port, options, ...) could redirect the connection
 // away from the host this script reports, so it is refused.
@@ -606,7 +875,24 @@ async function readShape(client) {
       ),
     ),
     integration: await tableShape(INTEGRATION),
+    payout_indexes: await byName(Object.keys(PAYOUT_INDEXES), indexShape),
+    payout: await byName(Object.keys(PAYOUT_TABLES), tableShape),
+    // Tables, partitioned tables, views, materialized views and foreign tables.
+    public_tables: (
+      await client.query(
+        `select c.relname::text as v from pg_class c
+          where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'p', 'v', 'm', 'f')
+          order by c.relname`,
+      )
+    ).rows.map((r) => r.v),
   };
+}
+
+// One read per name, in turn on the one client.
+async function byName(names, read) {
+  const out = {};
+  for (const name of names) out[name] = await read(name);
+  return out;
 }
 
 // The columns of an index or constraint, by name and in key order. An expression key has
@@ -624,8 +910,8 @@ const constraintFlags = (k) =>
    || case when ${k}.condeferrable then ' deferrable' else '' end
    || case when ${k}.condeferred then ' initially deferred' else '' end`;
 
-// Before and after: 0015, 0017, 0018, 0019, 0020 and 0021 applied. Before: nothing of 0022.
-// After: exactly 0022's table and two unique indexes as well.
+// Before and after: 0015, 0017, 0018, 0019, 0020, 0021 and 0022 applied. Before: nothing of 0023.
+// After: exactly 0023's six tables and seven indexes as well, and no other table.
 function shapeProblems(shape, phase) {
   const problems = [];
   if (!NULLABLE_COLUMNS.every((c) => shape.nullable[c] === true) || !shape.members_check_exists)
@@ -653,17 +939,33 @@ function shapeProblems(shape, phase) {
     problems.push(`${SHARED_INDEX} is not exactly 0021's index`);
   if (!isDeepStrictEqual(shape.shared, SHARED_SHAPE))
     problems.push(`${SHARED} is not exactly 0021's table`);
+  for (const [name, index] of Object.entries(INTEGRATION_INDEXES))
+    if (!isDeepStrictEqual(shape.integration_indexes[name], index))
+      problems.push(`${name} is not exactly 0022's index`);
+  if (!isDeepStrictEqual(shape.integration, INTEGRATION_SHAPE))
+    problems.push(`${INTEGRATION} is not exactly 0022's table`);
   if (phase === "pre") {
-    for (const [name, index] of Object.entries(shape.integration_indexes))
+    for (const [name, index] of Object.entries(shape.payout_indexes))
       if (index !== null) problems.push(`${name} already exists`);
-    if (shape.integration !== null) problems.push(`${INTEGRATION} already exists`);
+    for (const [name, table] of Object.entries(shape.payout))
+      if (table !== null) problems.push(`${name} already exists`);
   } else {
-    for (const [name, index] of Object.entries(INTEGRATION_INDEXES))
-      if (!isDeepStrictEqual(shape.integration_indexes[name], index))
-        problems.push(`${name} is not exactly 0022's index`);
-    if (!isDeepStrictEqual(shape.integration, INTEGRATION_SHAPE))
-      problems.push(`${INTEGRATION} is not exactly 0022's table`);
+    for (const [name, index] of Object.entries(PAYOUT_INDEXES))
+      if (!isDeepStrictEqual(shape.payout_indexes[name], index))
+        problems.push(`${name} is not exactly 0023's index`);
+    for (const [name, table] of Object.entries(PAYOUT_TABLES))
+      if (!isDeepStrictEqual(shape.payout[name], table))
+        problems.push(`${name} is not exactly 0023's table`);
   }
+  const tables = phase === "pre" ? PUBLIC_TABLES_BEFORE : PUBLIC_TABLES_AFTER;
+  // Before the apply, a 0023 table that already exists is reported above, not again here.
+  const extra = shape.public_tables.filter(
+    (t) => !tables.includes(t) && !(phase === "pre" && t in PAYOUT_TABLES),
+  );
+  const missing = tables.filter((t) => !shape.public_tables.includes(t));
+  if (extra.length)
+    problems.push(`public has table(s) this release does not expect: ${extra.join(", ")}`);
+  if (missing.length) problems.push(`public is missing table(s): ${missing.join(", ")}`);
   return problems;
 }
 const untouched = (shape) => shapeProblems(shape, "pre").length === 0;
@@ -760,9 +1062,9 @@ async function readState(client) {
   );
   s.counts = {};
   for (const t of COUNTED_TABLES) {
-    // Before 0022 its table does not exist and holds no rows; the shape says whether it exists.
+    // Before 0023 its tables do not exist and hold no rows; the shape says whether they exist.
     s.counts[t] =
-      t === INTEGRATION && s.shape.integration === null
+      t in PAYOUT_TABLES && s.shape.payout[t] === null
         ? 0
         : (await one(`select count(*)::int as n from public.${t}`))[0].n;
   }
@@ -1023,9 +1325,11 @@ function checkState(s, live, journalExpected, phase) {
   for (const t of COUNTED_TABLES) {
     if (!Number.isInteger(s.counts[t]) || s.counts[t] < 0) fail(`count of ${t} is invalid`);
   }
-  // Organic's requests can arrive only after its key exists, which comes after this release.
-  if (s.counts[INTEGRATION] !== 0)
-    fail(`${INTEGRATION} has ${s.counts[INTEGRATION]} row(s): requests come only after the key`);
+  // Organic's signed requests may arrive once its key exists, so 0022's table only has to keep its
+  // rows. Nothing writes 0023's tables before this release ends: a policy, a decision, a
+  // publication or a hold ruling comes only after the postcheck.
+  for (const t of Object.keys(PAYOUT_TABLES))
+    if (s.counts[t] !== 0) fail(`${t} has ${s.counts[t]} row(s): it must be empty in this release`);
   if (s.long_transactions.length > 0)
     fail(`${s.long_transactions.length} other transaction(s) older than 5 s`);
   if (!s.queue) fail("pgboss.job is missing or has no reward-recovery completion");
@@ -1077,6 +1381,7 @@ function compareToBaseline(baseline, state) {
     "reward_snapshot_entries",
     "leaves",
     "epochs",
+    ...Object.keys(PAYOUT_TABLES),
   ])
     if (deltas[t] !== 0) problems.push(`${t} changed by ${deltas[t]}`);
   const age = ms(state.reference.at) - ms(baseline.state.reference.at);
