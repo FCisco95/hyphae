@@ -8,16 +8,19 @@ import {
   receiptAddress,
   vaultAddress,
 } from "@hyphae/core";
-import { payoutPolicies } from "@hyphae/db";
+import { distributionPublicationEpochMembers, payoutPolicies } from "@hyphae/db";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 import { address, createNoopSigner, getAddressEncoder, type Instruction } from "@solana/kit";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { eq } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { type DistributionIntent, loadDistributionIntent } from "../payout/distribution-intent.js";
 import { settleCommunity } from "../payout/distribution-settle.js";
+import { loadIntent } from "../payout/intent.js";
+import { type PublishChain, planPublication } from "../payout/publish.js";
 import { randomAddress } from "../payout/ready-seed.js";
 import { seedRolloverLane } from "../payout/rollover-seed.js";
-import { fakeSettleChain } from "../payout/settle-fake.js";
+import { FAKE_FEE_RECIPIENT, fakeSettleChain } from "../payout/settle-fake.js";
 import { createTestDb } from "../rewards/test-db.js";
 import {
   readClaim,
@@ -166,13 +169,45 @@ async function chainHolding(
 // A community whose epochs 1 to 3 rolled over and whose epoch 4 published the distribution, as
 // the settle loop records it, against a fake settle chain. Without a publisher the distribution
 // stays planned.
-async function distributedLane(opts: { autoPublish: boolean }) {
+// With `staleEpochPlan`, the operator planned epoch 4 as a single-epoch publication before the
+// policy was bound, and that plan was never sent: its intent stays stored beside the distribution.
+async function distributedLane(opts: { autoPublish: boolean; staleEpochPlan?: boolean }) {
   const chainAddress = randomAddress();
   const seed = await seedRolloverLane(t.db, {
     now: NOW,
     chainAddress,
     plan: [["ordinary"], [], ["effort", "floor"]],
   });
+  if (opts.staleEpochPlan) {
+    const e4 = seed.epochs[3];
+    if (!e4) throw new Error("epoch 4");
+    const operatorChain: PublishChain = {
+      network: "solana:devnet",
+      programId: HYPHAE_PROGRAM_ID,
+      readCommunity: async () => ({ address: chainAddress, feeRecipient: FAKE_FEE_RECIPIENT }),
+      readEpoch: async () => null,
+      publishEpoch: async () => {
+        throw new Error("the plan is never sent");
+      },
+      publishSignature: async () => {
+        throw new Error("the plan is never sent");
+      },
+    };
+    // The gate reads the wall clock; the fixture's epoch 4 closes in its future.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+    try {
+      const plan = await planPublication(t.db, operatorChain, {
+        communityId: seed.communityId,
+        epochId: e4.id,
+        grossLamports: SOL,
+      });
+      if (plan.status !== "planned") throw new Error(`stale plan ${plan.status}`);
+    } finally {
+      vi.useRealTimers();
+    }
+    if (!(await loadIntent(t.db, e4.id))) throw new Error("no stale single-epoch intent");
+  }
   await t.db.insert(payoutPolicies).values({
     communityId: seed.communityId,
     effectiveFromIndex: 1,
@@ -327,5 +362,47 @@ describe("a distributed epoch's public reads", () => {
     // Nothing is published, so no wallet has a claim yet.
     const mine = await readWalletClaims(t.db, seed.wallets.effort, { offset: 0, limit: 10 }, NOW);
     expect(mine.total_claims).toBe(0);
+  });
+
+  // Review F1 (2026-11-03): an unsent single-epoch plan stored before the policy was bound must not
+  // stand in for the distribution recorded under the same index.
+  it("serve the recorded distribution, not an unsent single-epoch plan of the same index", async () => {
+    const { seed, chainAddress, outcomes, intent } = await distributedLane({
+      autoPublish: true,
+      staleEpochPlan: true,
+    });
+    expect(outcomes.map((o) => o.status).at(-1)).toBe("published");
+    const e4 = seed.epochs[3];
+    if (!e4) throw new Error("epoch 4");
+    const stale = await loadIntent(t.db, e4.id);
+    expect(stale?.root).not.toBe(intent.root);
+    const paidWallet = seed.wallets.effort;
+    const { reader, epoch } = await chainHolding(chainAddress, 4n, intent, [paidWallet]);
+
+    const read = EpochSchema.parse(await readEpoch(t.db, seed.mint, 4, NOW, reader));
+    expect(read.settlement?.allocation).toMatchObject({
+      status: "published",
+      epoch_address: epoch,
+      root: intent.root,
+      audit_hash: intent.auditHash,
+      payable_members: "3",
+    });
+    expect(read.settlement?.payment).toMatchObject({ status: "available" });
+    const claim = ReadApiV1.claim.parse(
+      await readClaim(t.db, seed.mint, 4, paidWallet, NOW, reader),
+    );
+    expect(claim).toMatchObject({ root: intent.root, payment: { status: "paid" } });
+
+    // The distribution's stored B7 bytes are verified on this path: one missing fails the read.
+    const [b7] = await t.db
+      .select({ id: distributionPublicationEpochMembers.id })
+      .from(distributionPublicationEpochMembers)
+      .where(eq(distributionPublicationEpochMembers.epochId, e4.id))
+      .limit(1);
+    if (!b7) throw new Error("no B7 row for epoch 4");
+    await t.db
+      .delete(distributionPublicationEpochMembers)
+      .where(eq(distributionPublicationEpochMembers.id, b7.id));
+    await expect(readEpoch(t.db, seed.mint, 4, NOW, reader)).rejects.toThrow(/inconsistent/);
   });
 });

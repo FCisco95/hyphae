@@ -511,15 +511,35 @@ async function publicationFacts(
     firstPaidEpoch,
     publishTx: epoch.publishTx,
     publishedAt: row?.at ?? null,
-    intent: published ? await storedIntent(tx, epoch.id) : null,
+    intent: published ? await storedIntent(tx, epoch) : null,
   };
 }
 
-async function storedIntent(tx: Db, epochId: string) {
-  const own = await loadIntent(tx, epochId);
-  if (own) return settlementIntentOf(own);
-  const distribution = await loadDistributionIntent(tx, epochId);
-  return distribution ? settlementIntentOfDistribution(distribution) : null;
+// The stored intent whose root the epoch was recorded with. An epoch can hold an unsent
+// single-epoch plan beside the distribution later published under its index (review F1,
+// 2026-11-03), so neither is preferred: the recorded root picks one, and the chosen intent is
+// loaded in full, every stored byte checked (a distribution's B7 manifests included). The audit
+// hash is then checked against the epoch account by the settlement read. The distribution table
+// is read only when the epoch's own intent does not match, as before migration 0023.
+async function storedIntent(tx: Db, epoch: EpochRow) {
+  if (epoch.root === null) return null;
+  const [own] = await tx
+    .select({ root: epochPublications.root })
+    .from(epochPublications)
+    .where(eq(epochPublications.epochId, epoch.id));
+  if (own?.root === epoch.root) {
+    const intent = await loadIntent(tx, epoch.id);
+    return intent ? settlementIntentOf(intent) : null;
+  }
+  const [distribution] = await tx
+    .select({ root: distributionPublications.root })
+    .from(distributionPublications)
+    .where(eq(distributionPublications.epochId, epoch.id));
+  if (distribution?.root === epoch.root) {
+    const intent = await loadDistributionIntent(tx, epoch.id);
+    return intent ? settlementIntentOfDistribution(intent) : null;
+  }
+  return null;
 }
 
 type PayoutDecision = NonNullable<EpochV1["payout"]>;
