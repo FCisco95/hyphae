@@ -8,6 +8,7 @@ import {
   payoutPolicies,
 } from "@hyphae/db";
 import { and, eq, lte, sql } from "drizzle-orm";
+import { readOnly } from "../pg.js";
 import { backfillEpochCommitments } from "./commitment-store.js";
 import { type Blocker, evaluatePayoutGate } from "./gate.js";
 import { loadIntent, type PublicationIntent, storeIntent } from "./intent.js";
@@ -87,49 +88,51 @@ export type PlanOutcome =
 
 type PublishInput = { communityId: string; epochId: string; grossLamports: bigint };
 
-// Postgres: the relation named in the query does not exist.
-const UNDEFINED_TABLE = "42P01";
-const undefinedTable = (error: unknown) =>
-  (error as { cause?: { code?: string }; code?: string }).cause?.code === UNDEFINED_TABLE ||
-  (error as { code?: string }).code === UNDEFINED_TABLE;
-
 // Whether the settle loop owns the epoch: a payout policy in force at its index, or a decision
 // already recorded for it. A community without a policy is untouched by this check. Before
-// migration 0023 is applied the two tables do not exist, which means no community is managed yet:
-// the operator's publish then proceeds as it did before this check. Any other error still fails.
+// migration 0023 is applied neither table exists, which means no community is managed yet, and
+// the operator's publish proceeds as it did before this check. The two tables are probed by name
+// in the same transaction as the checks: both absent is pre-0023, one absent is a partly applied
+// migration and stops the publish, and with both present every error of the checks propagates
+// (review of 2443d22: a blanket missing-relation fallback also covered a wrong table or schema).
 async function policyManaged(db: Db, ref: { communityId: string; epochId: string }) {
-  try {
-    return await policyManagedIn(db, ref);
-  } catch (error) {
-    if (undefinedTable(error)) return false;
-    throw error;
-  }
-}
-
-async function policyManagedIn(db: Db, ref: { communityId: string; epochId: string }) {
-  const [epoch] = await db
-    .select({ index: epochs.index })
-    .from(epochs)
-    .where(and(eq(epochs.id, ref.epochId), eq(epochs.communityId, ref.communityId)));
-  // A missing epoch is reported by the gate, as before.
-  if (!epoch) return false;
-  const [policy] = await db
-    .select({ id: payoutPolicies.id })
-    .from(payoutPolicies)
-    .where(
-      and(
-        eq(payoutPolicies.communityId, ref.communityId),
-        lte(payoutPolicies.effectiveFromIndex, epoch.index),
-      ),
-    )
-    .limit(1);
-  if (policy) return true;
-  const [decision] = await db
-    .select({ id: epochPayoutDecisions.id })
-    .from(epochPayoutDecisions)
-    .where(eq(epochPayoutDecisions.epochId, ref.epochId))
-    .limit(1);
-  return decision !== undefined;
+  return readOnly(db, async (tx) => {
+    const [epoch] = await tx
+      .select({
+        index: epochs.index,
+        policies: sql<string | null>`to_regclass('public.payout_policies')::text`,
+        decisions: sql<string | null>`to_regclass('public.epoch_payout_decisions')::text`,
+      })
+      .from(epochs)
+      .where(and(eq(epochs.id, ref.epochId), eq(epochs.communityId, ref.communityId)));
+    // A missing epoch is reported by the gate, as before.
+    if (!epoch) return false;
+    const hasPolicies = epoch.policies !== null;
+    const hasDecisions = epoch.decisions !== null;
+    if (!hasPolicies && !hasDecisions) return false;
+    if (hasPolicies !== hasDecisions) {
+      throw new Error(
+        "publish: migration 0023 is partly applied (one of payout_policies and epoch_payout_decisions is missing); apply it fully before publishing",
+      );
+    }
+    const [policy] = await tx
+      .select({ id: payoutPolicies.id })
+      .from(payoutPolicies)
+      .where(
+        and(
+          eq(payoutPolicies.communityId, ref.communityId),
+          lte(payoutPolicies.effectiveFromIndex, epoch.index),
+        ),
+      )
+      .limit(1);
+    if (policy) return true;
+    const [decision] = await tx
+      .select({ id: epochPayoutDecisions.id })
+      .from(epochPayoutDecisions)
+      .where(eq(epochPayoutDecisions.epochId, ref.epochId))
+      .limit(1);
+    return decision !== undefined;
+  });
 }
 
 // Everything before the send: the gate, then the stored intent, or a rebuild stored as the intent.
