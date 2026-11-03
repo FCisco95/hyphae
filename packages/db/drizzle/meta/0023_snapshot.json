@@ -1,5 +1,5 @@
 {
-  "id": "ac010d66-01d1-439c-b5cf-ddd0d9523e87",
+  "id": "326c9eae-e938-4eed-9d94-6a631e631ae4",
   "prevId": "c64a2d48-f5f1-4de0-a5b8-f1d10cc4133a",
   "version": "7",
   "dialect": "postgresql",
@@ -473,7 +473,7 @@
         },
         "volume_lamports": {
           "name": "volume_lamports",
-          "type": "bigint",
+          "type": "numeric",
           "primaryKey": false,
           "notNull": false
         },
@@ -577,9 +577,17 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
+        "epoch_payout_decisions_free_nonnegative": {
+          "name": "epoch_payout_decisions_free_nonnegative",
+          "value": "\"epoch_payout_decisions\".\"free_lamports\" is null or \"epoch_payout_decisions\".\"free_lamports\" >= 0"
+        },
         "epoch_payout_decisions_accrual_nonnegative": {
           "name": "epoch_payout_decisions_accrual_nonnegative",
           "value": "\"epoch_payout_decisions\".\"accrual_lamports\" >= 0"
+        },
+        "epoch_payout_decisions_volume_whole": {
+          "name": "epoch_payout_decisions_volume_whole",
+          "value": "\"epoch_payout_decisions\".\"volume_lamports\" is null or (\"epoch_payout_decisions\".\"volume_lamports\" >= 0 and \"epoch_payout_decisions\".\"volume_lamports\" = trunc(\"epoch_payout_decisions\".\"volume_lamports\"))"
         },
         "epoch_payout_decisions_outcome": {
           "name": "epoch_payout_decisions_outcome",

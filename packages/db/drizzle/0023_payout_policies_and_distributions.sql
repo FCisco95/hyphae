@@ -27,12 +27,14 @@ CREATE TABLE "epoch_payout_decisions" (
 	"policy_id" uuid NOT NULL,
 	"free_lamports" bigint,
 	"accrual_lamports" bigint NOT NULL,
-	"volume_lamports" bigint,
+	"volume_lamports" numeric,
 	"outcome" text NOT NULL,
 	"reason" text,
 	"distribution_epoch_id" uuid,
 	"decided_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "epoch_payout_decisions_free_nonnegative" CHECK ("epoch_payout_decisions"."free_lamports" is null or "epoch_payout_decisions"."free_lamports" >= 0),
 	CONSTRAINT "epoch_payout_decisions_accrual_nonnegative" CHECK ("epoch_payout_decisions"."accrual_lamports" >= 0),
+	CONSTRAINT "epoch_payout_decisions_volume_whole" CHECK ("epoch_payout_decisions"."volume_lamports" is null or ("epoch_payout_decisions"."volume_lamports" >= 0 and "epoch_payout_decisions"."volume_lamports" = trunc("epoch_payout_decisions"."volume_lamports"))),
 	CONSTRAINT "epoch_payout_decisions_outcome" CHECK ("epoch_payout_decisions"."outcome" in ('rolled_over', 'distribution_planned', 'distributed')),
 	CONSTRAINT "epoch_payout_decisions_distribution" CHECK (("epoch_payout_decisions"."outcome" = 'rolled_over') = ("epoch_payout_decisions"."distribution_epoch_id" is null))
 );

@@ -1188,11 +1188,14 @@ export const epochPayoutDecisions = pgTable(
     policyId: uuid("policy_id")
       .notNull()
       .references(() => payoutPolicies.id),
-    // The vault's free balance read at the decision; null when it could not be read.
+    // The vault's free balance read at the decision; null when it could not be read. Free and
+    // accrual are on-chain amounts and keep the u64 domain of a bigint column.
     freeLamports: bigint("free_lamports", { mode: "bigint" }),
     accrualLamports: bigint("accrual_lamports", { mode: "bigint" }).notNull(),
-    // Null when the volume was unknown, which never meets the threshold.
-    volumeLamports: bigint("volume_lamports", { mode: "bigint" }),
+    // Null when the volume was unknown, which never meets the threshold. Off-chain and unbounded:
+    // a small reward share scales an accrual past a signed 64-bit integer, which must not block
+    // the decision (review 2026-11-03, P2). Exact: numeric in Postgres, BigInt in code.
+    volumeLamports: numeric("volume_lamports", { mode: "bigint" }),
     outcome: text("outcome").notNull(),
     reason: text("reason"),
     distributionEpochId: uuid("distribution_epoch_id").references(() => epochs.id),
@@ -1201,7 +1204,15 @@ export const epochPayoutDecisions = pgTable(
   (t) => [
     uniqueIndex("epoch_payout_decisions_epoch").on(t.epochId),
     index("epoch_payout_decisions_community").on(t.communityId),
+    check(
+      "epoch_payout_decisions_free_nonnegative",
+      sql`${t.freeLamports} is null or ${t.freeLamports} >= 0`,
+    ),
     check("epoch_payout_decisions_accrual_nonnegative", sql`${t.accrualLamports} >= 0`),
+    check(
+      "epoch_payout_decisions_volume_whole",
+      sql`${t.volumeLamports} is null or (${t.volumeLamports} >= 0 and ${t.volumeLamports} = trunc(${t.volumeLamports}))`,
+    ),
     check(
       "epoch_payout_decisions_outcome",
       sql`${t.outcome} in ('rolled_over', 'distribution_planned', 'distributed')`,
