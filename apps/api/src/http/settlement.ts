@@ -15,12 +15,65 @@ import {
 } from "@hyphae/core";
 import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { type Address, address, getAddressDecoder } from "@solana/kit";
+import type { DistributionIntent } from "../payout/distribution-intent.js";
 import type { PublicationIntent } from "../payout/intent.js";
 
 // P13/P14: allocation and payment are read against the chain, never from a database string. The
 // stored publication intent says what was published; the epoch account and the claim receipts say
 // it is so, and each transaction shown is the one the chain shows creating them. Anything the
 // chain cannot confirm is `unavailable` with a reason, never zero.
+
+// What a settlement read needs of a stored intent, the same for an epoch's own publication
+// (B9, intent.ts) and a distribution published under the epoch's index (B11,
+// distribution-intent.ts). The community address is the one the intent was published under: a
+// community re-bound to a new account keeps its earlier epochs' records under the old one.
+export interface SettlementIntent {
+  communityAddress: string;
+  network: "solana:devnet" | "solana:mainnet";
+  programId: string;
+  root: string;
+  auditHash: string;
+  settlement: {
+    gross_lamports: string;
+    fee_bps: string;
+    fee_lamports: string;
+    fee_recipient: string;
+    net_lamports: string;
+    allocated_lamports: string;
+    cap_remainder_lamports: string;
+    dust_lamports: string;
+    payable_members: string;
+  };
+  leaves: {
+    memberId: string;
+    wallet: string;
+    score: bigint;
+    amountLamports: bigint;
+    evidenceHash: string;
+    proof: string[];
+  }[];
+}
+
+export const settlementIntentOf = (intent: PublicationIntent): SettlementIntent => ({
+  communityAddress: intent.communityAddress,
+  network: intent.audit.network,
+  programId: intent.audit.program_id,
+  root: intent.root,
+  auditHash: intent.auditHash,
+  settlement: intent.audit.settlement,
+  leaves: intent.leaves,
+});
+
+// A distribution pays one leaf per member, so its payable members are the members it lists.
+export const settlementIntentOfDistribution = (intent: DistributionIntent): SettlementIntent => ({
+  communityAddress: intent.communityAddress,
+  network: intent.audit.network,
+  programId: intent.audit.program_id,
+  root: intent.root,
+  auditHash: intent.auditHash,
+  settlement: { ...intent.audit.settlement, payable_members: intent.members.length.toString() },
+  leaves: intent.leaves,
+});
 
 export interface SettlementReader {
   // The cluster the reader serves, proven by its genesis hash.
@@ -57,11 +110,11 @@ export interface PublicationFacts {
   firstPaidEpoch: number | null;
   publishTx: string | null;
   publishedAt: string | null;
-  intent: PublicationIntent | null;
+  intent: SettlementIntent | null;
 }
 
 interface Verified {
-  intent: PublicationIntent;
+  intent: SettlementIntent;
   program: Address;
   community: Address;
   vault: Address;
@@ -125,13 +178,13 @@ async function verifyPublication(
   if (!facts.intent) return unavailable("no_stored_intent");
   if (!reader) return unavailable("chain_unconfigured");
   const { intent } = facts;
-  const s = intent.audit.settlement;
-  const program = address(intent.audit.program_id);
+  const s = intent.settlement;
+  const program = address(intent.programId);
   const community = address(intent.communityAddress);
   const epoch = await epochAddress(program, community, BigInt(facts.index));
   const vault = await vaultAddress(program, community);
   try {
-    if ((await reader.network()) !== intent.audit.network) return unavailable("chain_unconfigured");
+    if ((await reader.network()) !== intent.network) return unavailable("chain_unconfigured");
     const [data] = await reader.accounts(program, [epoch]);
     const e = data ? decoded(decodeEpoch, data) : null;
     if (
@@ -191,11 +244,10 @@ function decoded<T>(decode: (data: Uint8Array) => T, data: Uint8Array): T | null
 
 function allocationOf(v: Verified | Unavailable): AllocationV1 {
   if ("status" in v) return v;
-  const { audit } = v.intent;
-  const s = audit.settlement;
+  const s = v.intent.settlement;
   return {
     status: "published",
-    network: audit.network,
+    network: v.intent.network,
     program_id: v.program,
     community_address: v.community,
     vault_address: v.vault,
@@ -216,7 +268,7 @@ function allocationOf(v: Verified | Unavailable): AllocationV1 {
   };
 }
 
-type Leaf = PublicationIntent["leaves"][number];
+type Leaf = SettlementIntent["leaves"][number];
 type Receipted = { leaf: Leaf; receipt: Address; claimTx: string | null };
 
 // Each leaf's receipt: paid only if the account exists, matches the leaf, and the claim that
@@ -275,7 +327,7 @@ async function paymentOf(
     // The receipts must explain the epoch account's claimed total exactly.
     const paid = rows.reduce((sum, r) => sum + (r.claimTx ? r.leaf.amountLamports : 0n), 0n);
     if (paid !== v.claimed) return unavailable("chain_mismatch");
-    const allocated = BigInt(v.intent.audit.settlement.allocated_lamports);
+    const allocated = BigInt(v.intent.settlement.allocated_lamports);
     return {
       status: "available",
       claimed_lamports: v.claimed.toString(),
@@ -324,13 +376,13 @@ async function leafOf(facts: PublicationFacts, wallet: string) {
   if (facts.firstPaidEpoch !== null && facts.index < facts.firstPaidEpoch) return null;
   const leaf = intent.leaves.find((l) => l.wallet === wallet);
   if (!leaf) return null;
-  const program = address(intent.audit.program_id);
+  const program = address(intent.programId);
   const community = address(intent.communityAddress);
   const epoch = await epochAddress(program, community, BigInt(facts.index));
   return {
     leaf,
     fields: {
-      network: intent.audit.network,
+      network: intent.network,
       program_id: program,
       community_address: community,
       vault_address: await vaultAddress(program, community),

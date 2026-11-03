@@ -311,13 +311,31 @@ function readApiSchemas(strict: boolean) {
     );
   }
 
+  // What the settle loop decided for a closed epoch (Organic design 2026-11-03, §7 and §8): its
+  // accrual rolled over to a later distribution, a distribution under `distributed_in` is planned
+  // and not yet on-chain, or it was paid in the distribution published under `distributed_in`,
+  // its own index included. Added inside v1 (A4): present only for an epoch with a decision;
+  // consumers accept its absence.
+  const payoutDecision = obj({
+    status: z.enum(["rolled_over", "distribution_planned", "distributed"]),
+    distributed_in: count.nullable(),
+  }).refine((p) => (p.status === "rolled_over") === (p.distributed_in === null));
+
   return {
     community: obj({
       mint: z.string().min(1),
       name: z.string(),
       reward_intake: z.enum(["open", "paused"]),
       current_epoch: count.nullable(),
-      epochs: z.array(obj({ index: count, opens_at: iso, closes_at: iso, status: epochStatus })),
+      epochs: z.array(
+        obj({
+          index: count,
+          opens_at: iso,
+          closes_at: iso,
+          status: epochStatus,
+          payout: payoutDecision.optional(),
+        }),
+      ),
       // Where to fund the community, from its account on chain, before any epoch is published.
       // Added inside v1 (A4): the api always sends it; consumers accept a response without it.
       vault: z
@@ -372,8 +390,11 @@ function readApiSchemas(strict: boolean) {
       // A4: these keep their first v1 shape, so they stay `unavailable`; P14 is in `settlement`.
       allocation: unavailable,
       payment: unavailable,
-      // Required of this api; optional for a consumer reading an older one.
+      // Required of this api; optional for a consumer reading an older one. A distributed epoch's
+      // settlement is the distribution published under its index, which pays every epoch rolled
+      // over before it; an epoch paid under a later index has no settlement of its own.
       settlement: settlement.optional(),
+      payout: payoutDecision.optional(),
       // Pilot amendments of this epoch's scoring prompt: contributions admitted from effective_at
       // on pin `to`. Required of this api; optional for a consumer reading an older one.
       amendments: z

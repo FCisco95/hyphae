@@ -90,6 +90,31 @@ describe("the OpenAPI document", () => {
     });
   });
 
+  it("documents the settle loop's payout decision on an epoch and on the community's list", () => {
+    type Props = {
+      properties: Record<string, Props & { items?: Props; enum?: string[]; type?: unknown }>;
+      required?: string[];
+    };
+    const schemas = doc.components.schemas as Record<string, Props>;
+    const epoch = schemas.Epoch?.properties.payout;
+    const listed = schemas.Community?.properties.epochs?.items?.properties.payout;
+    for (const payout of [epoch, listed]) {
+      expect(payout?.properties.status?.enum).toEqual([
+        "rolled_over",
+        "distribution_planned",
+        "distributed",
+      ]);
+      expect(payout?.properties.distributed_in).toBeDefined();
+    }
+    // Optional: an epoch without a decision has no payout, and an older api sends none.
+    expect(schemas.Epoch?.required).not.toContain("payout");
+    expect(schemas.Community?.properties.epochs?.items?.required).not.toContain("payout");
+    const route = doc.paths["/v1/communities/{mint}/epochs/{index}"]?.get as Operation & {
+      description: string;
+    };
+    expect(route.description).toContain("distributed_in");
+  });
+
   it("documents the member read with its own rules test and no selector", () => {
     const me = doc.paths["/member/v1/communities/{mint}/me"]?.get as Operation & {
       security?: unknown;

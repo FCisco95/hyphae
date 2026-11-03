@@ -139,7 +139,7 @@ export function openApiDocument() {
     paths: {
       "/v1/communities/{mint}": get(
         "A community",
-        "Its name, current epoch and every served epoch.",
+        "Its name, current epoch and every served epoch. An epoch the automatic settle loop has decided carries `payout`: `rolled_over` (its accrual waits in the vault for a later distribution), `distribution_planned` or `distributed`, with `distributed_in` the index the distribution is published under.",
         "Community",
         [mint],
         "No community with this mint.",
@@ -154,7 +154,7 @@ export function openApiDocument() {
       "/v1/communities/{mint}/epochs/{index}": get(
         "An epoch",
         [
-          "Window, status, pinned configuration, counts, the frozen snapshot, and the settlement: the published allocation and each member's payment, read against the chain.",
+          "Window, status, pinned configuration, counts, the frozen snapshot, and the settlement: the published allocation and each member's payment, read against the chain. For an epoch the automatic settle loop distributed under its own index, the settlement is that distribution: its gross is the sum of every epoch it pays (`payout.distributed_in` on each), its payable members are the members with a leaf, and each leaf's evidence is a member-distribution manifest. An epoch paid under a later index has no settlement of its own; `payout` says where it was paid.",
           "`eligibility`: the pinned minimum balance of the community's mint in base units (`0`: no hold condition), the mint's decimals from the chain (null when they could not be read in time), and the window in which a member's balance is read: from the close to 24 hours after it. There is no snapshot instant.",
         ].join("\n\n"),
         "Epoch",

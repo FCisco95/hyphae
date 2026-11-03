@@ -20,6 +20,8 @@ import {
   communities,
   contributions,
   type Db,
+  distributionPublications,
+  epochPayoutDecisions,
   epochPublications,
   epochs,
   leaves,
@@ -49,6 +51,7 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
+import { loadDistributionIntent } from "../payout/distribution-intent.js";
 import { HOLD_WINDOW_MS } from "../payout/gate.js";
 import { loadIntent } from "../payout/intent.js";
 import { isoUs, readOnly } from "../pg.js";
@@ -66,6 +69,8 @@ import {
   mapLimit,
   type PublicationFacts,
   type SettlementReader,
+  settlementIntentOf,
+  settlementIntentOfDistribution,
   settlementOf,
   walletClaimOf,
   walletPayoutOf,
@@ -456,17 +461,26 @@ export async function readCommunity(
     const current = list.find(
       (e) => e.row.opensAt.getTime() <= now.getTime() && !isClosed(e.row, now),
     );
+    const payouts = await payoutDecisionsOf(
+      tx,
+      list.map((e) => e.row.id),
+    );
     return {
       mint: community.mint,
       name: community.name,
       reward_intake: (community.pausedAt ? "paused" : "open") as CommunityV1["reward_intake"],
       current_epoch: current?.row.index ?? null,
-      epochs: list.map((e) => ({
-        index: e.row.index,
-        opens_at: e.opensAt,
-        closes_at: e.closesAt,
-        status: epochStatus(e, now),
-      })),
+      epochs: list.map((e) =>
+        withPayout(
+          {
+            index: e.row.index,
+            opens_at: e.opensAt,
+            closes_at: e.closesAt,
+            status: epochStatus(e, now),
+          },
+          payouts.get(e.row.id),
+        ),
+      ),
       chainAddress: community.chainAddress,
       now,
     };
@@ -477,7 +491,9 @@ export async function readCommunity(
   return { ...body, vault, as_of: dateUs(now) };
 }
 
-// The recorded publication of an epoch, as the settlement sections need it.
+// The recorded publication of an epoch, as the settlement sections need it: the epoch's own
+// publication, or the distribution published under its index (the settle loop's, which pays every
+// epoch rolled over before it).
 async function publicationFacts(
   tx: Db,
   epoch: EpochRow,
@@ -495,9 +511,48 @@ async function publicationFacts(
     firstPaidEpoch,
     publishTx: epoch.publishTx,
     publishedAt: row?.at ?? null,
-    intent: published ? await loadIntent(tx, epoch.id) : null,
+    intent: published ? await storedIntent(tx, epoch.id) : null,
   };
 }
+
+async function storedIntent(tx: Db, epochId: string) {
+  const own = await loadIntent(tx, epochId);
+  if (own) return settlementIntentOf(own);
+  const distribution = await loadDistributionIntent(tx, epochId);
+  return distribution ? settlementIntentOfDistribution(distribution) : null;
+}
+
+type PayoutDecision = NonNullable<EpochV1["payout"]>;
+
+// What the settle loop decided for each of `epochIds`, by epoch id; an epoch without a decision
+// is absent. `distributed_in` is the index of the epoch the distribution is published under.
+async function payoutDecisionsOf(
+  tx: Db,
+  epochIds: readonly string[],
+): Promise<Map<string, PayoutDecision>> {
+  if (epochIds.length === 0) return new Map();
+  const rows = await tx
+    .select({
+      epochId: epochPayoutDecisions.epochId,
+      outcome: epochPayoutDecisions.outcome,
+      distributedIn: epochs.index,
+    })
+    .from(epochPayoutDecisions)
+    .leftJoin(epochs, eq(epochs.id, epochPayoutDecisions.distributionEpochId))
+    .where(inArray(epochPayoutDecisions.epochId, [...epochIds]));
+  const out = new Map<string, PayoutDecision>();
+  for (const r of rows) {
+    const status = r.outcome as PayoutDecision["status"];
+    out.set(r.epochId, {
+      status,
+      distributed_in: status === "rolled_over" ? null : r.distributedIn,
+    });
+  }
+  return out;
+}
+
+const withPayout = <T>(body: T, payout: PayoutDecision | undefined): T =>
+  payout ? { ...body, payout } : body;
 
 // The database is read in one snapshot; the chain is read after it, with no transaction open.
 export async function readEpoch(
@@ -587,7 +642,7 @@ export async function readEpoch(
       hold_checked_until: addMsUs(epoch.closesAt, HOLD_WINDOW_MS),
     };
     return {
-      body,
+      body: withPayout(body, (await payoutDecisionsOf(tx, [epoch.row.id])).get(epoch.row.id)),
       hold,
       facts: await publicationFacts(tx, epoch.row, community.firstPaidEpoch),
     };
@@ -652,10 +707,12 @@ export async function readWalletClaims(
 ): Promise<WalletClaimsV1> {
   const { now, total, rows } = await readOnly(db, async (tx) => {
     const now = await timeIn(tx, clock);
+    // A recorded publication is the epoch's own intent or a distribution under its index.
     const published = and(
       eq(leaves.wallet, wallet),
       isNotNull(epochs.publishTx),
       isNotNull(epochs.rewardConfigId),
+      or(isNotNull(epochPublications.id), isNotNull(distributionPublications.id)),
       or(isNull(communities.firstPaidEpoch), gte(epochs.index, communities.firstPaidEpoch)),
     );
     const [counted] = await tx
@@ -663,14 +720,16 @@ export async function readWalletClaims(
       .from(leaves)
       .innerJoin(epochs, eq(epochs.id, leaves.epochId))
       .innerJoin(communities, eq(communities.id, epochs.communityId))
-      .innerJoin(epochPublications, eq(epochPublications.epochId, epochs.id))
+      .leftJoin(epochPublications, eq(epochPublications.epochId, epochs.id))
+      .leftJoin(distributionPublications, eq(distributionPublications.epochId, epochs.id))
       .where(published);
     const found = await tx
       .select({ mint: communities.mint, firstPaidEpoch: communities.firstPaidEpoch, epoch: epochs })
       .from(leaves)
       .innerJoin(epochs, eq(epochs.id, leaves.epochId))
       .innerJoin(communities, eq(communities.id, epochs.communityId))
-      .innerJoin(epochPublications, eq(epochPublications.epochId, epochs.id))
+      .leftJoin(epochPublications, eq(epochPublications.epochId, epochs.id))
+      .leftJoin(distributionPublications, eq(distributionPublications.epochId, epochs.id))
       .where(published)
       .orderBy(desc(epochs.publishedAt), asc(communities.mint), desc(epochs.index))
       .offset(page.offset)

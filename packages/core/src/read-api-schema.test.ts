@@ -468,6 +468,39 @@ describe("pilot amendments", () => {
   });
 });
 
+// The settle loop's decision (Organic design 2026-11-03): added inside v1, present only for an
+// epoch with a decision row.
+describe("payout decision", () => {
+  const rolled = { status: "rolled_over", distributed_in: null };
+  const planned = { status: "distribution_planned", distributed_in: 4 };
+  const paid = { status: "distributed", distributed_in: 4 };
+
+  it("is optional on an epoch and on the community's epoch list, strict and loose", () => {
+    for (const payout of [rolled, planned, paid]) {
+      expect(ok(ReadApiV1.epoch, { ...epoch, payout })).toBe(true);
+      expect(ok(ReadApiV1Loose.epoch, { ...epoch, payout })).toBe(true);
+      const listed = { ...community, epochs: [{ ...community.epochs[0], payout }] };
+      expect(ok(ReadApiV1.community, listed)).toBe(true);
+      expect(ok(ReadApiV1Loose.community, listed)).toBe(true);
+    }
+    expect(ok(ReadApiV1.epoch, epoch)).toBe(true);
+    expect(ok(ReadApiV1Loose.epoch, epoch)).toBe(true);
+  });
+
+  it("names the distribution index exactly when the epoch is planned or distributed", () => {
+    expect(ok(ReadApiV1.epoch, { ...epoch, payout: { ...rolled, distributed_in: 4 } })).toBe(false);
+    expect(ok(ReadApiV1.epoch, { ...epoch, payout: { ...paid, distributed_in: null } })).toBe(
+      false,
+    );
+    expect(ok(ReadApiV1.epoch, { ...epoch, payout: { ...planned, distributed_in: null } })).toBe(
+      false,
+    );
+    expect(ok(ReadApiV1.epoch, { ...epoch, payout: { status: "paid", distributed_in: 4 } })).toBe(
+      false,
+    );
+  });
+});
+
 describe("private member eligibility", () => {
   it("rejects eligibility verdicts on every public member surface", () => {
     const payout = { status: "not_payable", reasons: ["no_rules_test"], hold: "not_checked" };
