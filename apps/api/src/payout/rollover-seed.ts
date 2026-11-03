@@ -49,7 +49,7 @@ export async function seedRolloverLane(
 
   for (const labels of opts.plan) {
     const epoch = await latestEpoch(db, communityId);
-    if (!epoch || epoch.status !== "open") throw new Error("rollover: no open epoch to fill");
+    if (epoch?.status !== "open") throw new Error("rollover: no open epoch to fill");
     for (const label of labels) {
       seq += 1;
       const when = new Date(epoch.opensAt.getTime() + seq * MIN);
