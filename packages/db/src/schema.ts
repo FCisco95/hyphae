@@ -1136,3 +1136,134 @@ export const integrationRaidRequests = pgTable(
     ),
   ],
 );
+
+// Automatic payout with a volume threshold and rollover (Organic design 2026-11-03, §7 and §10).
+// The settings of one community, in force from an epoch index: the row with the greatest
+// effective_from_index at or below an epoch's index decides that epoch. A community without a
+// row keeps the operator's single-epoch publish path.
+export const payoutPolicies = pgTable(
+  "payout_policies",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    effectiveFromIndex: integer("effective_from_index").notNull(),
+    // The minimum trading volume, in lamports of SOL.
+    thresholdVolumeLamports: bigint("threshold_volume_lamports", { mode: "bigint" }).notNull(),
+    // cumulative: the pending epochs' volume together; per_epoch: the latest epoch's alone.
+    basis: text("basis").notNull(),
+    // fee_derived volume: the share of each traded lamport that reaches the vault. Null makes
+    // every volume unknown, so every epoch rolls over.
+    rewardBpsOfVolume: integer("reward_bps_of_volume"),
+    // Publish without a human when the worker holds the community's admin key.
+    autoPublish: boolean("auto_publish").notNull().default(false),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("payout_policies_community_from").on(t.communityId, t.effectiveFromIndex),
+    check("payout_policies_from_positive", sql`${t.effectiveFromIndex} >= 1`),
+    check("payout_policies_threshold_positive", sql`${t.thresholdVolumeLamports} > 0`),
+    check("payout_policies_basis", sql`${t.basis} in ('cumulative', 'per_epoch')`),
+    check(
+      "payout_policies_reward_bps",
+      sql`${t.rewardBpsOfVolume} is null or ${t.rewardBpsOfVolume} between 1 and 10000`,
+    ),
+  ],
+);
+
+// One row per decided epoch, written once when the epoch's gate is final. A rolled-over epoch
+// waits for a distribution; distribution_planned names the epoch whose index the stored intent
+// publishes under; distributed names the epoch it was paid in.
+export const epochPayoutDecisions = pgTable(
+  "epoch_payout_decisions",
+  {
+    id: id(),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    epochId: uuid("epoch_id")
+      .notNull()
+      .references(() => epochs.id),
+    policyId: uuid("policy_id")
+      .notNull()
+      .references(() => payoutPolicies.id),
+    // The vault's free balance read at the decision; null when it could not be read.
+    freeLamports: bigint("free_lamports", { mode: "bigint" }),
+    accrualLamports: bigint("accrual_lamports", { mode: "bigint" }).notNull(),
+    // Null when the volume was unknown, which never meets the threshold.
+    volumeLamports: bigint("volume_lamports", { mode: "bigint" }),
+    outcome: text("outcome").notNull(),
+    reason: text("reason"),
+    distributionEpochId: uuid("distribution_epoch_id").references(() => epochs.id),
+    decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("epoch_payout_decisions_epoch").on(t.epochId),
+    index("epoch_payout_decisions_community").on(t.communityId),
+    check("epoch_payout_decisions_accrual_nonnegative", sql`${t.accrualLamports} >= 0`),
+    check(
+      "epoch_payout_decisions_outcome",
+      sql`${t.outcome} in ('rolled_over', 'distribution_planned', 'distributed')`,
+    ),
+    check(
+      "epoch_payout_decisions_distribution",
+      sql`(${t.outcome} = 'rolled_over') = (${t.distributionEpochId} is null)`,
+    ),
+  ],
+);
+
+// The distribution intent (B11): stored before any send, never updated, like epoch_publications.
+// epoch_id is the on-chain index epoch, the latest of the epochs the distribution pays.
+export const distributionPublications = pgTable(
+  "distribution_publications",
+  {
+    id: id(),
+    epochId: uuid("epoch_id")
+      .notNull()
+      .references(() => epochs.id),
+    communityId: uuid("community_id")
+      .notNull()
+      .references(() => communities.id),
+    communityAddress: text("community_address").notNull(),
+    root: text("root").notNull(),
+    auditHash: text("audit_hash").notNull(),
+    auditManifest: text("audit_manifest").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("distribution_publications_epoch").on(t.epochId),
+    check("distribution_publications_root_format", sql`${t.root} ~ '^[0-9a-f]{64}$'`),
+    check(
+      "distribution_publications_audit_hash",
+      sql`${t.auditHash} = ${taggedHashSql("hyphae/distribution-audit/v1", t.auditManifest)}`,
+    ),
+  ],
+);
+
+// Every member-distribution manifest of an intent, byte for byte (B10); its hash is the leaf's
+// evidence.
+export const distributionPublicationMembers = pgTable(
+  "distribution_publication_members",
+  {
+    id: id(),
+    publicationId: uuid("publication_id")
+      .notNull()
+      .references(() => distributionPublications.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    manifestHash: text("manifest_hash").notNull(),
+    manifest: text("manifest").notNull(),
+  },
+  (t) => [
+    uniqueIndex("distribution_publication_members_publication_member").on(
+      t.publicationId,
+      t.memberId,
+    ),
+    check(
+      "distribution_publication_members_hash",
+      sql`${t.manifestHash} = ${taggedHashSql("hyphae/member-distribution/v1", t.manifest)}`,
+    ),
+  ],
+);
