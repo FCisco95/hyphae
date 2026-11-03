@@ -236,7 +236,8 @@ async function distributedLane(opts: { autoPublish: boolean; staleEpochPlan?: bo
   return { seed, chainAddress, outcomes, intent };
 }
 
-describe("a distributed epoch's public reads", () => {
+// Each lane runs four settles on PGlite, slow under the full parallel suite.
+describe("a distributed epoch's public reads", { timeout: 30_000 }, () => {
   it("serve the distribution as the index epoch's settlement, read against the chain", async () => {
     const { seed, chainAddress, outcomes, intent } = await distributedLane({ autoPublish: true });
     expect(outcomes.map((o) => o.status)).toEqual([

@@ -37,9 +37,9 @@ describe("a wallet's claims", () => {
 });
 
 describe("a wallet's record", () => {
-  // Every request starts with the query that finds the wallet's public intakes, and a request
-  // for an unknown wallet runs it alone.
-  it("finds a wallet's public intakes through an index led by the wallet", async () => {
+  // Every request starts with the query that finds the wallet's public intakes and the one that
+  // finds its leaves (review F3), and a request for an unknown wallet runs those two alone.
+  it("finds a wallet's public intakes and leaves through indexes led by the wallet", async () => {
     const queries: { query: string; params: unknown[] }[] = [];
     const logged = drizzle(db.$client, {
       schema,
@@ -48,16 +48,22 @@ describe("a wallet's record", () => {
     const now = new Date("2026-11-20T12:00:00.000Z");
     expect(await readWalletRecord(logged, "W", { offset: 0, limit: 50 }, now)).toBeNull();
     const selects = queries.filter((q) => /^select\b/i.test(q.query));
-    expect(selects).toHaveLength(1);
-    const [first] = selects;
-    if (!first) throw new Error("no query");
-    const plan = await db.$client.begin(async (tx) => {
-      await tx`set local enable_seqscan = off`;
-      return tx.unsafe(`explain ${first.query}`, first.params as string[]);
-    });
-    const text = JSON.stringify(plan);
-    expect(text).toContain("member_wallet_links_wallet");
-    expect(text).toMatch(/Index Cond: \(wallet = /);
+    expect(selects).toHaveLength(2);
+    const planOf = async (q: { query: string; params: unknown[] }) =>
+      JSON.stringify(
+        await db.$client.begin(async (tx) => {
+          await tx`set local enable_seqscan = off`;
+          return tx.unsafe(`explain ${q.query}`, q.params as string[]);
+        }),
+      );
+    const [intakes, paid] = selects;
+    if (!intakes || !paid) throw new Error("no query");
+    const intakePlan = await planOf(intakes);
+    expect(intakePlan).toContain("member_wallet_links_wallet");
+    expect(intakePlan).toMatch(/Index Cond: \(wallet = /);
+    const leafPlan = await planOf(paid);
+    expect(leafPlan).toContain("leaves_wallet");
+    expect(leafPlan).toMatch(/Index Cond: \(wallet = /);
   });
 
   it("reads every epoch that shows the wallet, through the production driver", async () => {
