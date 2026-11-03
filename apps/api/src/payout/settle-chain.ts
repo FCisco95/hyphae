@@ -13,6 +13,8 @@ import {
   createKeyPairSignerFromBytes,
   createSolanaRpc,
   getAddressDecoder,
+  type Rpc,
+  type SolanaRpcApi,
   type TransactionSigner,
 } from "@solana/kit";
 import { GENESIS, programAccount, publishTransaction, solanaChain } from "./chain.js";
@@ -29,9 +31,11 @@ export async function settleChain(opts: {
   network: SettleChain["network"];
   publisher?: TransactionSigner;
   programId?: Address;
+  // Tests inject a transport; production builds one from the URL.
+  rpc?: Rpc<SolanaRpcApi>;
 }): Promise<SettleChain> {
   const programId = opts.programId ?? HYPHAE_PROGRAM_ID;
-  const rpc = createSolanaRpc(opts.rpcUrl);
+  const rpc = opts.rpc ?? createSolanaRpc(opts.rpcUrl);
   const genesis = await rpc.getGenesisHash().send();
   if (genesis !== GENESIS[opts.network]) {
     throw new Error(`chain: the RPC is not ${opts.network} (genesis ${genesis})`);
