@@ -405,4 +405,41 @@ describe("a distributed epoch's public reads", () => {
       .where(eq(distributionPublicationEpochMembers.id, b7.id));
     await expect(readEpoch(t.db, seed.mint, 4, NOW, reader)).rejects.toThrow(/inconsistent/);
   });
+
+  // Review F3 (2026-11-03): a member paid by the distribution with no intake in the index epoch
+  // still sees that payout in their wallet record, once.
+  it("show a distribution leaf in the wallet record of a member idle in the index epoch", async () => {
+    const { seed, chainAddress, intent } = await distributedLane({ autoPublish: true });
+    const wallet = seed.wallets.ordinary;
+    const leaf = intent.leaves.find((l) => l.wallet === wallet);
+    if (!leaf) throw new Error("ordinary has no distribution leaf");
+    const { reader } = await chainHolding(chainAddress, 4n, intent, []);
+
+    const r = ReadApiV1.walletRecord.parse(
+      await readWalletRecord(t.db, wallet, { offset: 0, limit: 10 }, NOW, reader),
+    );
+    expect(r.epochs.map((e) => [e.index, e.member_id, e.payout.status])).toEqual([
+      [4, seed.members.ordinary, "allocated"],
+      [2, seed.members.ordinary, "unavailable"],
+      [1, seed.members.ordinary, "unavailable"],
+    ]);
+    expect(r.epochs[0]).toMatchObject({
+      contributions: [],
+      totals: { contributions: 0, point_units: "0" },
+      payout: {
+        amount_lamports: leaf.amountLamports.toString(),
+        payment: { status: "claimable" },
+      },
+    });
+    const allocated = r.epochs.filter((e) => e.payout.status === "allocated");
+    expect(allocated).toHaveLength(1);
+    expect(r.total_epochs).toBe(3);
+    // The claims list agrees: one claim, under epoch 4.
+    const mine = ReadApiV1.walletClaims.parse(
+      await readWalletClaims(t.db, wallet, { offset: 0, limit: 10 }, NOW, reader),
+    );
+    expect(mine.claims.map((c) => [c.epoch.index, c.amount_lamports])).toEqual([
+      [4, leaf.amountLamports.toString()],
+    ]);
+  });
 });

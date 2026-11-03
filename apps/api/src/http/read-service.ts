@@ -796,8 +796,9 @@ function tally(items: RecordItem[]): WalletRecordEpochV1["totals"] {
 }
 
 // A wallet's public record: every epoch whose public reads show `wallet` for a member (the signed
-// link valid at the close, or now while open, as publicWallets serves it), across communities,
-// newest first. Null when there is none, so the route cannot tell whether a wallet is linked at all.
+// link valid at the close, or now while open, as publicWallets serves it) or a leaf of `wallet` in
+// a recorded publication, across communities, newest first. Null when there is none, so the route
+// cannot tell whether a wallet is linked at all.
 export async function readWalletRecord(
   db: Db,
   wallet: string,
@@ -809,7 +810,7 @@ export async function readWalletRecord(
   const read = await readOnly(db, async (tx) => {
     const now = await timeIn(tx, clock);
     // One statement finds the public intakes. A wallet with none, signed or not, costs this query
-    // alone, so the route's timing cannot reveal a private link. The link must be valid at
+    // and the leaves query alone, so the route's timing cannot reveal a private link. The link must be valid at
     // walletTime, least(closes_at, now), spelled out so `now` stays a typed parameter.
     const intakes = await tx
       .select({ ...intakeColumns, epochId: rewardIntakes.epochId, communityId: epochs.communityId })
@@ -837,7 +838,27 @@ export async function readWalletRecord(
         ),
       )
       .orderBy(...intakeOrder);
-    if (intakes.length === 0) return null;
+    // The wallet's leaves in recorded publications, as readWalletClaims serves them. A distribution
+    // pays members with no intake in its index epoch, so its leaf adds that epoch (review F3,
+    // 2026-11-03). Always run, so the cost is the same for every wallet.
+    const paid = await tx
+      .select({
+        epochId: leaves.epochId,
+        memberId: leaves.memberId,
+        communityId: epochs.communityId,
+      })
+      .from(leaves)
+      .innerJoin(epochs, eq(epochs.id, leaves.epochId))
+      .innerJoin(communities, eq(communities.id, epochs.communityId))
+      .where(
+        and(
+          eq(leaves.wallet, wallet),
+          isNotNull(epochs.publishTx),
+          isNotNull(epochs.rewardConfigId),
+          or(isNull(communities.firstPaidEpoch), gte(epochs.index, communities.firstPaidEpoch)),
+        ),
+      );
+    if (intakes.length === 0 && paid.length === 0) return null;
     const found = await tx
       .select({
         id: communities.id,
@@ -846,12 +867,18 @@ export async function readWalletRecord(
         firstPaidEpoch: communities.firstPaidEpoch,
       })
       .from(communities)
-      .where(inArray(communities.id, [...new Set(intakes.map((i) => i.communityId))]));
+      .where(
+        inArray(communities.id, [...new Set([...intakes, ...paid].map((i) => i.communityId))]),
+      );
 
+    // One row per epoch and member: a member with intake and a leaf in the same epoch is shown
+    // once, so a payout appears once.
     const shown: { community: (typeof found)[number]; epoch: EpochView; memberId: string }[] = [];
     for (const community of found) {
       for (const epoch of await findEpochs(tx, community.id)) {
-        const members = intakes.filter((i) => i.epochId === epoch.row.id).map((i) => i.memberId);
+        const members = [...intakes, ...paid]
+          .filter((i) => i.epochId === epoch.row.id)
+          .map((i) => i.memberId);
         for (const memberId of new Set(members)) shown.push({ community, epoch, memberId });
       }
     }

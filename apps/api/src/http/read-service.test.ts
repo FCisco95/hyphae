@@ -769,7 +769,8 @@ describe("readWalletRecord", () => {
       sequences.push([...queries]);
     }
     expect(sequences).toEqual(missing.map(() => sequences[0]));
-    expect(sequences[0]?.filter((q) => /^select\b/i.test(q))).toHaveLength(1);
+    // The intakes query and the leaves query (review F3), nothing more.
+    expect(sequences[0]?.filter((q) => /^select\b/i.test(q))).toHaveLength(2);
   });
 });
 
