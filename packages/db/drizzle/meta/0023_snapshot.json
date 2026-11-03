@@ -90,16 +90,12 @@
         "communities_mint_unique": {
           "name": "communities_mint_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "mint"
-          ]
+          "columns": ["mint"]
         },
         "communities_telegram_chat_id_unique": {
           "name": "communities_telegram_chat_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "telegram_chat_id"
-          ]
+          "columns": ["telegram_chat_id"]
         }
       },
       "policies": {},
@@ -207,12 +203,8 @@
           "name": "contributions_community_id_communities_id_fk",
           "tableFrom": "contributions",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -220,12 +212,8 @@
           "name": "contributions_member_id_members_id_fk",
           "tableFrom": "contributions",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -233,12 +221,8 @@
           "name": "contributions_task_id_tasks_id_fk",
           "tableFrom": "contributions",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -313,12 +297,8 @@
           "name": "distribution_publication_members_publication_id_distribution_publications_id_fk",
           "tableFrom": "distribution_publication_members",
           "tableTo": "distribution_publications",
-          "columnsFrom": [
-            "publication_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["publication_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -326,12 +306,8 @@
           "name": "distribution_publication_members_member_id_members_id_fk",
           "tableFrom": "distribution_publication_members",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -424,12 +400,8 @@
           "name": "distribution_publications_epoch_id_epochs_id_fk",
           "tableFrom": "distribution_publications",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -437,12 +409,8 @@
           "name": "distribution_publications_community_id_communities_id_fk",
           "tableFrom": "distribution_publications",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -572,12 +540,8 @@
           "name": "epoch_payout_decisions_community_id_communities_id_fk",
           "tableFrom": "epoch_payout_decisions",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -585,12 +549,8 @@
           "name": "epoch_payout_decisions_epoch_id_epochs_id_fk",
           "tableFrom": "epoch_payout_decisions",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -598,12 +558,8 @@
           "name": "epoch_payout_decisions_policy_id_payout_policies_id_fk",
           "tableFrom": "epoch_payout_decisions",
           "tableTo": "payout_policies",
-          "columnsFrom": [
-            "policy_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["policy_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -611,12 +567,8 @@
           "name": "epoch_payout_decisions_distribution_epoch_id_epochs_id_fk",
           "tableFrom": "epoch_payout_decisions",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "distribution_epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["distribution_epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -704,12 +656,8 @@
           "name": "epoch_publication_members_publication_id_epoch_publications_id_fk",
           "tableFrom": "epoch_publication_members",
           "tableTo": "epoch_publications",
-          "columnsFrom": [
-            "publication_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["publication_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -717,12 +665,8 @@
           "name": "epoch_publication_members_member_id_members_id_fk",
           "tableFrom": "epoch_publication_members",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -815,12 +759,8 @@
           "name": "epoch_publications_epoch_id_epochs_id_fk",
           "tableFrom": "epoch_publications",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -828,12 +768,8 @@
           "name": "epoch_publications_community_id_communities_id_fk",
           "tableFrom": "epoch_publications",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -961,12 +897,8 @@
           "name": "epochs_community_id_communities_id_fk",
           "tableFrom": "epochs",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -974,12 +906,8 @@
           "name": "epochs_reward_config_id_reward_configs_id_fk",
           "tableFrom": "epochs",
           "tableTo": "reward_configs",
-          "columnsFrom": [
-            "reward_config_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["reward_config_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1136,12 +1064,8 @@
           "name": "hold_checks_community_id_communities_id_fk",
           "tableFrom": "hold_checks",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1149,12 +1073,8 @@
           "name": "hold_checks_epoch_id_epochs_id_fk",
           "tableFrom": "hold_checks",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1162,12 +1082,8 @@
           "name": "hold_checks_member_id_members_id_fk",
           "tableFrom": "hold_checks",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1309,12 +1225,8 @@
           "name": "integration_raid_requests_community_id_communities_id_fk",
           "tableFrom": "integration_raid_requests",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1322,12 +1234,8 @@
           "name": "integration_raid_requests_task_id_tasks_id_fk",
           "tableFrom": "integration_raid_requests",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1454,12 +1362,8 @@
           "name": "leaves_epoch_id_epochs_id_fk",
           "tableFrom": "leaves",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1467,12 +1371,8 @@
           "name": "leaves_member_id_members_id_fk",
           "tableFrom": "leaves",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1566,12 +1466,8 @@
           "name": "link_sessions_community_id_communities_id_fk",
           "tableFrom": "link_sessions",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1581,9 +1477,7 @@
         "link_sessions_token_digest_unique": {
           "name": "link_sessions_token_digest_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token_digest"
-          ]
+          "columns": ["token_digest"]
         }
       },
       "policies": {},
@@ -1704,12 +1598,8 @@
           "name": "member_wallet_links_community_id_communities_id_fk",
           "tableFrom": "member_wallet_links",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1717,12 +1607,8 @@
           "name": "member_wallet_links_member_id_members_id_fk",
           "tableFrom": "member_wallet_links",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1730,12 +1616,8 @@
           "name": "member_wallet_links_proof_request_id_wallet_proof_requests_request_id_fk",
           "tableFrom": "member_wallet_links",
           "tableTo": "wallet_proof_requests",
-          "columnsFrom": [
-            "proof_request_id"
-          ],
-          "columnsTo": [
-            "request_id"
-          ],
+          "columnsFrom": ["proof_request_id"],
+          "columnsTo": ["request_id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1861,12 +1743,8 @@
           "name": "members_community_id_communities_id_fk",
           "tableFrom": "members",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1966,12 +1844,8 @@
           "name": "payout_policies_community_id_communities_id_fk",
           "tableFrom": "payout_policies",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2084,12 +1958,8 @@
           "name": "raid_announcements_community_id_communities_id_fk",
           "tableFrom": "raid_announcements",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2097,12 +1967,8 @@
           "name": "raid_announcements_task_id_tasks_id_fk",
           "tableFrom": "raid_announcements",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2227,12 +2093,8 @@
           "name": "raid_cards_task_id_tasks_id_fk",
           "tableFrom": "raid_cards",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2240,12 +2102,8 @@
           "name": "raid_cards_community_id_communities_id_fk",
           "tableFrom": "raid_cards",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2374,12 +2232,8 @@
           "name": "raid_deliveries_announcement_id_raid_announcements_id_fk",
           "tableFrom": "raid_deliveries",
           "tableTo": "raid_announcements",
-          "columnsFrom": [
-            "announcement_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["announcement_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2482,12 +2336,8 @@
           "name": "raid_lifecycle_events_community_id_communities_id_fk",
           "tableFrom": "raid_lifecycle_events",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2495,12 +2345,8 @@
           "name": "raid_lifecycle_events_task_id_tasks_id_fk",
           "tableFrom": "raid_lifecycle_events",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2583,12 +2429,8 @@
           "name": "raid_recaps_task_id_tasks_id_fk",
           "tableFrom": "raid_recaps",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2596,12 +2438,8 @@
           "name": "raid_recaps_community_id_communities_id_fk",
           "tableFrom": "raid_recaps",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2716,12 +2554,8 @@
           "name": "raid_submission_receipts_session_id_raid_submission_sessions_id_fk",
           "tableFrom": "raid_submission_receipts",
           "tableTo": "raid_submission_sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2729,12 +2563,8 @@
           "name": "raid_submission_receipts_community_id_communities_id_fk",
           "tableFrom": "raid_submission_receipts",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2742,12 +2572,8 @@
           "name": "raid_submission_receipts_member_id_members_id_fk",
           "tableFrom": "raid_submission_receipts",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2755,12 +2581,8 @@
           "name": "raid_submission_receipts_task_id_tasks_id_fk",
           "tableFrom": "raid_submission_receipts",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2768,12 +2590,8 @@
           "name": "raid_submission_receipts_contribution_id_contributions_id_fk",
           "tableFrom": "raid_submission_receipts",
           "tableTo": "contributions",
-          "columnsFrom": [
-            "contribution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["contribution_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2783,16 +2601,12 @@
         "raid_submission_receipts_session_id_unique": {
           "name": "raid_submission_receipts_session_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "session_id"
-          ]
+          "columns": ["session_id"]
         },
         "raid_submission_receipts_contribution_id_unique": {
           "name": "raid_submission_receipts_contribution_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "contribution_id"
-          ]
+          "columns": ["contribution_id"]
         }
       },
       "policies": {},
@@ -2897,12 +2711,8 @@
           "name": "raid_submission_sessions_community_id_communities_id_fk",
           "tableFrom": "raid_submission_sessions",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2910,12 +2720,8 @@
           "name": "raid_submission_sessions_task_id_tasks_id_fk",
           "tableFrom": "raid_submission_sessions",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2977,12 +2783,8 @@
           "name": "raid_subscriptions_community_id_communities_id_fk",
           "tableFrom": "raid_subscriptions",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2990,10 +2792,7 @@
       "compositePrimaryKeys": {
         "raid_subscriptions_community_id_telegram_user_id_pk": {
           "name": "raid_subscriptions_community_id_telegram_user_id_pk",
-          "columns": [
-            "community_id",
-            "telegram_user_id"
-          ]
+          "columns": ["community_id", "telegram_user_id"]
         }
       },
       "uniqueConstraints": {},
@@ -3122,12 +2921,8 @@
           "name": "reward_config_amendments_community_id_communities_id_fk",
           "tableFrom": "reward_config_amendments",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3135,12 +2930,8 @@
           "name": "reward_config_amendments_epoch_id_epochs_id_fk",
           "tableFrom": "reward_config_amendments",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3148,12 +2939,8 @@
           "name": "reward_config_amendments_from_config_id_reward_configs_id_fk",
           "tableFrom": "reward_config_amendments",
           "tableTo": "reward_configs",
-          "columnsFrom": [
-            "from_config_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["from_config_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3161,12 +2948,8 @@
           "name": "reward_config_amendments_to_config_id_reward_configs_id_fk",
           "tableFrom": "reward_config_amendments",
           "tableTo": "reward_configs",
-          "columnsFrom": [
-            "to_config_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["to_config_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3307,12 +3090,8 @@
           "name": "reward_config_proposals_community_id_communities_id_fk",
           "tableFrom": "reward_config_proposals",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3320,12 +3099,8 @@
           "name": "reward_config_proposals_config_id_reward_configs_id_fk",
           "tableFrom": "reward_config_proposals",
           "tableTo": "reward_configs",
-          "columnsFrom": [
-            "config_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["config_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3413,12 +3188,8 @@
           "name": "reward_configs_community_id_communities_id_fk",
           "tableFrom": "reward_configs",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3662,12 +3433,8 @@
           "name": "reward_decisions_community_id_communities_id_fk",
           "tableFrom": "reward_decisions",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3675,12 +3442,8 @@
           "name": "reward_decisions_contribution_id_contributions_id_fk",
           "tableFrom": "reward_decisions",
           "tableTo": "contributions",
-          "columnsFrom": [
-            "contribution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["contribution_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3688,12 +3451,8 @@
           "name": "reward_decisions_epoch_id_epochs_id_fk",
           "tableFrom": "reward_decisions",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3701,12 +3460,8 @@
           "name": "reward_decisions_config_id_reward_configs_id_fk",
           "tableFrom": "reward_decisions",
           "tableTo": "reward_configs",
-          "columnsFrom": [
-            "config_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["config_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3714,12 +3469,8 @@
           "name": "reward_decisions_predecessor_id_reward_decisions_id_fk",
           "tableFrom": "reward_decisions",
           "tableTo": "reward_decisions",
-          "columnsFrom": [
-            "predecessor_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["predecessor_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3727,12 +3478,8 @@
           "name": "reward_decisions_dispatch_id_reward_dispatches_id_fk",
           "tableFrom": "reward_decisions",
           "tableTo": "reward_dispatches",
-          "columnsFrom": [
-            "dispatch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["dispatch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3740,12 +3487,8 @@
           "name": "reward_decisions_nomination_id_reward_nominations_id_fk",
           "tableFrom": "reward_decisions",
           "tableTo": "reward_nominations",
-          "columnsFrom": [
-            "nomination_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["nomination_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -3952,12 +3695,8 @@
           "name": "reward_dispatches_community_id_communities_id_fk",
           "tableFrom": "reward_dispatches",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3965,12 +3704,8 @@
           "name": "reward_dispatches_contribution_id_contributions_id_fk",
           "tableFrom": "reward_dispatches",
           "tableTo": "contributions",
-          "columnsFrom": [
-            "contribution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["contribution_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3978,12 +3713,8 @@
           "name": "reward_dispatches_nomination_id_reward_nominations_id_fk",
           "tableFrom": "reward_dispatches",
           "tableTo": "reward_nominations",
-          "columnsFrom": [
-            "nomination_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["nomination_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -3991,12 +3722,8 @@
           "name": "reward_dispatches_slot_id_reward_slots_id_fk",
           "tableFrom": "reward_dispatches",
           "tableTo": "reward_slots",
-          "columnsFrom": [
-            "slot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["slot_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4006,9 +3733,7 @@
         "reward_dispatches_idempotency_key_unique": {
           "name": "reward_dispatches_idempotency_key_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "idempotency_key"
-          ]
+          "columns": ["idempotency_key"]
         }
       },
       "policies": {},
@@ -4063,12 +3788,8 @@
           "name": "reward_epoch_snapshots_community_id_communities_id_fk",
           "tableFrom": "reward_epoch_snapshots",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4076,12 +3797,8 @@
           "name": "reward_epoch_snapshots_epoch_id_epochs_id_fk",
           "tableFrom": "reward_epoch_snapshots",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4091,9 +3808,7 @@
         "reward_epoch_snapshots_epoch_id_unique": {
           "name": "reward_epoch_snapshots_epoch_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "epoch_id"
-          ]
+          "columns": ["epoch_id"]
         }
       },
       "policies": {},
@@ -4291,12 +4006,8 @@
           "name": "reward_intakes_community_id_communities_id_fk",
           "tableFrom": "reward_intakes",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4304,12 +4015,8 @@
           "name": "reward_intakes_member_id_members_id_fk",
           "tableFrom": "reward_intakes",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4317,12 +4024,8 @@
           "name": "reward_intakes_epoch_id_epochs_id_fk",
           "tableFrom": "reward_intakes",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4330,12 +4033,8 @@
           "name": "reward_intakes_config_id_reward_configs_id_fk",
           "tableFrom": "reward_intakes",
           "tableTo": "reward_configs",
-          "columnsFrom": [
-            "config_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["config_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4343,12 +4042,8 @@
           "name": "reward_intakes_contribution_id_contributions_id_fk",
           "tableFrom": "reward_intakes",
           "tableTo": "contributions",
-          "columnsFrom": [
-            "contribution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["contribution_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4356,12 +4051,8 @@
           "name": "reward_intakes_task_id_tasks_id_fk",
           "tableFrom": "reward_intakes",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4369,12 +4060,8 @@
           "name": "reward_intakes_reentry_of_reward_intakes_id_fk",
           "tableFrom": "reward_intakes",
           "tableTo": "reward_intakes",
-          "columnsFrom": [
-            "reentry_of"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["reentry_of"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4547,12 +4234,8 @@
           "name": "reward_nominations_community_id_communities_id_fk",
           "tableFrom": "reward_nominations",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4560,12 +4243,8 @@
           "name": "reward_nominations_member_id_members_id_fk",
           "tableFrom": "reward_nominations",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4573,12 +4252,8 @@
           "name": "reward_nominations_epoch_id_epochs_id_fk",
           "tableFrom": "reward_nominations",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4586,12 +4261,8 @@
           "name": "reward_nominations_slot_id_reward_slots_id_fk",
           "tableFrom": "reward_nominations",
           "tableTo": "reward_slots",
-          "columnsFrom": [
-            "slot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["slot_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4599,12 +4270,8 @@
           "name": "reward_nominations_contribution_id_contributions_id_fk",
           "tableFrom": "reward_nominations",
           "tableTo": "contributions",
-          "columnsFrom": [
-            "contribution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["contribution_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4612,12 +4279,8 @@
           "name": "reward_nominations_intake_id_reward_intakes_id_fk",
           "tableFrom": "reward_nominations",
           "tableTo": "reward_intakes",
-          "columnsFrom": [
-            "intake_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["intake_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4715,12 +4378,8 @@
           "name": "reward_retrievals_contribution_id_contributions_id_fk",
           "tableFrom": "reward_retrievals",
           "tableTo": "contributions",
-          "columnsFrom": [
-            "contribution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["contribution_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4728,12 +4387,8 @@
           "name": "reward_retrievals_epoch_id_epochs_id_fk",
           "tableFrom": "reward_retrievals",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -4853,12 +4508,8 @@
           "name": "reward_slots_community_id_communities_id_fk",
           "tableFrom": "reward_slots",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4866,12 +4517,8 @@
           "name": "reward_slots_member_id_members_id_fk",
           "tableFrom": "reward_slots",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4879,12 +4526,8 @@
           "name": "reward_slots_epoch_id_epochs_id_fk",
           "tableFrom": "reward_slots",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -4892,12 +4535,8 @@
           "name": "reward_slots_consumed_decision_id_reward_decisions_id_fk",
           "tableFrom": "reward_slots",
           "tableTo": "reward_decisions",
-          "columnsFrom": [
-            "consumed_decision_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["consumed_decision_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5021,12 +4660,8 @@
           "name": "reward_snapshot_entries_snapshot_id_reward_epoch_snapshots_id_fk",
           "tableFrom": "reward_snapshot_entries",
           "tableTo": "reward_epoch_snapshots",
-          "columnsFrom": [
-            "snapshot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["snapshot_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5034,12 +4669,8 @@
           "name": "reward_snapshot_entries_contribution_id_contributions_id_fk",
           "tableFrom": "reward_snapshot_entries",
           "tableTo": "contributions",
-          "columnsFrom": [
-            "contribution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["contribution_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5047,12 +4678,8 @@
           "name": "reward_snapshot_entries_member_id_members_id_fk",
           "tableFrom": "reward_snapshot_entries",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5060,12 +4687,8 @@
           "name": "reward_snapshot_entries_decision_id_reward_decisions_id_fk",
           "tableFrom": "reward_snapshot_entries",
           "tableTo": "reward_decisions",
-          "columnsFrom": [
-            "decision_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["decision_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5168,12 +4791,8 @@
           "name": "reward_snapshot_members_snapshot_id_reward_epoch_snapshots_id_fk",
           "tableFrom": "reward_snapshot_members",
           "tableTo": "reward_epoch_snapshots",
-          "columnsFrom": [
-            "snapshot_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["snapshot_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5181,12 +4800,8 @@
           "name": "reward_snapshot_members_member_id_members_id_fk",
           "tableFrom": "reward_snapshot_members",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5270,12 +4885,8 @@
           "name": "rules_test_passes_community_id_communities_id_fk",
           "tableFrom": "rules_test_passes",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5283,12 +4894,8 @@
           "name": "rules_test_passes_member_id_members_id_fk",
           "tableFrom": "rules_test_passes",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5402,12 +5009,8 @@
           "name": "scoring_runs_contribution_id_contributions_id_fk",
           "tableFrom": "scoring_runs",
           "tableTo": "contributions",
-          "columnsFrom": [
-            "contribution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["contribution_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5417,9 +5020,7 @@
         "scoring_runs_evidence_hash_unique": {
           "name": "scoring_runs_evidence_hash_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "evidence_hash"
-          ]
+          "columns": ["evidence_hash"]
         }
       },
       "policies": {},
@@ -5497,12 +5098,8 @@
           "name": "shared_handle_clearances_community_id_communities_id_fk",
           "tableFrom": "shared_handle_clearances",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5510,12 +5107,8 @@
           "name": "shared_handle_clearances_epoch_id_epochs_id_fk",
           "tableFrom": "shared_handle_clearances",
           "tableTo": "epochs",
-          "columnsFrom": [
-            "epoch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5523,12 +5116,8 @@
           "name": "shared_handle_clearances_member_id_members_id_fk",
           "tableFrom": "shared_handle_clearances",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5616,12 +5205,8 @@
           "name": "submission_issues_receipt_id_raid_submission_receipts_id_fk",
           "tableFrom": "submission_issues",
           "tableTo": "raid_submission_receipts",
-          "columnsFrom": [
-            "receipt_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["receipt_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5629,12 +5214,8 @@
           "name": "submission_issues_community_id_communities_id_fk",
           "tableFrom": "submission_issues",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5642,12 +5223,8 @@
           "name": "submission_issues_member_id_members_id_fk",
           "tableFrom": "submission_issues",
           "tableTo": "members",
-          "columnsFrom": [
-            "member_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5764,12 +5341,8 @@
           "name": "tasks_community_id_communities_id_fk",
           "tableFrom": "tasks",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5777,12 +5350,8 @@
           "name": "tasks_proposed_by_members_id_fk",
           "tableFrom": "tasks",
           "tableTo": "members",
-          "columnsFrom": [
-            "proposed_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["proposed_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5894,12 +5463,8 @@
           "name": "wallet_proof_requests_community_id_communities_id_fk",
           "tableFrom": "wallet_proof_requests",
           "tableTo": "communities",
-          "columnsFrom": [
-            "community_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["community_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -5907,12 +5472,8 @@
           "name": "wallet_proof_requests_link_session_id_link_sessions_id_fk",
           "tableFrom": "wallet_proof_requests",
           "tableTo": "link_sessions",
-          "columnsFrom": [
-            "link_session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["link_session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -5933,105 +5494,57 @@
     "public.contribution_kind": {
       "name": "contribution_kind",
       "schema": "public",
-      "values": [
-        "reply",
-        "quote",
-        "post",
-        "text"
-      ]
+      "values": ["reply", "quote", "post", "text"]
     },
     "public.epoch_status": {
       "name": "epoch_status",
       "schema": "public",
-      "values": [
-        "open",
-        "closed",
-        "published"
-      ]
+      "values": ["open", "closed", "published"]
     },
     "public.hold_check_status": {
       "name": "hold_check_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "holder",
-        "below",
-        "uncertain"
-      ]
+      "values": ["pending", "holder", "below", "uncertain"]
     },
     "public.link_method": {
       "name": "link_method",
       "schema": "public",
-      "values": [
-        "paste",
-        "signature"
-      ]
+      "values": ["paste", "signature"]
     },
     "public.raid_card_format": {
       "name": "raid_card_format",
       "schema": "public",
-      "values": [
-        "photo",
-        "text"
-      ]
+      "values": ["photo", "text"]
     },
     "public.raid_card_state": {
       "name": "raid_card_state",
       "schema": "public",
-      "values": [
-        "open",
-        "ended",
-        "cancelled",
-        "gone"
-      ]
+      "values": ["open", "ended", "cancelled", "gone"]
     },
     "public.raid_delivery_status": {
       "name": "raid_delivery_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "sending",
-        "sent",
-        "skipped",
-        "failed",
-        "uncertain"
-      ]
+      "values": ["pending", "sending", "sent", "skipped", "failed", "uncertain"]
     },
     "public.reward_dispatch_purpose": {
       "name": "reward_dispatch_purpose",
       "schema": "public",
-      "values": [
-        "quality",
-        "quality_effort",
-        "effort"
-      ]
+      "values": ["quality", "quality_effort", "effort"]
     },
     "public.reward_dispatch_state": {
       "name": "reward_dispatch_state",
       "schema": "public",
-      "values": [
-        "dispatched",
-        "completed",
-        "pending_reconciliation",
-        "not_sent_proven"
-      ]
+      "values": ["dispatched", "completed", "pending_reconciliation", "not_sent_proven"]
     },
     "public.reward_effort": {
       "name": "reward_effort",
       "schema": "public",
-      "values": [
-        "eligible",
-        "ineligible",
-        "not_nominated"
-      ]
+      "values": ["eligible", "ineligible", "not_nominated"]
     },
     "public.reward_nomination_kind": {
       "name": "reward_nomination_kind",
       "schema": "public",
-      "values": [
-        "new_work",
-        "upgrade"
-      ]
+      "values": ["new_work", "upgrade"]
     },
     "public.reward_nomination_state": {
       "name": "reward_nomination_state",
@@ -6051,56 +5564,32 @@
     "public.reward_proposal_status": {
       "name": "reward_proposal_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "activated",
-        "superseded",
-        "cancelled"
-      ]
+      "values": ["pending", "activated", "superseded", "cancelled"]
     },
     "public.reward_slot_state": {
       "name": "reward_slot_state",
       "schema": "public",
-      "values": [
-        "open",
-        "reserved",
-        "consumed"
-      ]
+      "values": ["open", "reserved", "consumed"]
     },
     "public.reward_snapshot_reason": {
       "name": "reward_snapshot_reason",
       "schema": "public",
-      "values": [
-        "pending_at_close",
-        "pending_reconciliation",
-        "excluded"
-      ]
+      "values": ["pending_at_close", "pending_reconciliation", "excluded"]
     },
     "public.task_kind": {
       "name": "task_kind",
       "schema": "public",
-      "values": [
-        "raid",
-        "open"
-      ]
+      "values": ["raid", "open"]
     },
     "public.task_status": {
       "name": "task_status",
       "schema": "public",
-      "values": [
-        "proposed",
-        "rejected",
-        "open",
-        "closed"
-      ]
+      "values": ["proposed", "rejected", "open", "closed"]
     },
     "public.wallet_proof_status": {
       "name": "wallet_proof_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "consumed"
-      ]
+      "values": ["pending", "consumed"]
     }
   },
   "schemas": {},

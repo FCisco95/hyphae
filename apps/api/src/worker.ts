@@ -13,6 +13,7 @@ import {
   retrieveEvidence,
 } from "./jobs/reward-jobs.js";
 import { notifyScoringFailed, type ScoreJob, scoreContribution } from "./jobs/score.js";
+import { type PayoutSettleJob, settlePayouts } from "./jobs/settle-jobs.js";
 
 const boss = await startQueue();
 
@@ -44,6 +45,9 @@ await boss.work<RewardCloseJob>(QUEUES.rewardClose, { batchSize: 1 }, async ([jo
 });
 await boss.work<HoldCheckJob>(QUEUES.holdCheck, { batchSize: 1 }, async ([job]) => {
   if (job) await checkEpochHolds(job.data);
+});
+await boss.work<PayoutSettleJob>(QUEUES.payoutSettle, { batchSize: 1 }, async ([job]) => {
+  if (job) await settlePayouts(job.data);
 });
 await boss.work(QUEUES.rewardRecovery, { batchSize: 1 }, recoverRewardWork);
 await boss.schedule(QUEUES.rewardRecovery, "*/5 * * * *");

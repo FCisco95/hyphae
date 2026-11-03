@@ -2,9 +2,9 @@ import {
   accrualOf,
   assembleDistribution,
   buildDistribution,
-  decide,
   type DistributionEpochEvidence,
   type DistributionMember,
+  decide,
   feeDerivedVolume,
   type MemberEpochManifest,
   type PayoutPolicy,
@@ -150,7 +150,8 @@ function finalGate(gate: PayoutGate, now: Date): JudgedGate | null {
   };
 }
 
-const blockersOf = (gate: PayoutGate): Blocker[] => (gate.status === "blocked" ? gate.blockers : []);
+const blockersOf = (gate: PayoutGate): Blocker[] =>
+  gate.status === "blocked" ? gate.blockers : [];
 
 export async function settleCommunity(
   db: Db,
@@ -175,7 +176,8 @@ export async function settleCommunity(
     .from(communities)
     .where(eq(communities.id, communityId));
   if (!community) throw new Error(`settle: no community ${communityId}`);
-  if (community.chainAddress === null) return { status: "refused", reason: "community_not_on_chain" };
+  if (community.chainAddress === null)
+    return { status: "refused", reason: "community_not_on_chain" };
   const onChain = await chain.readCommunity({
     mint: community.mint,
     address: community.chainAddress,

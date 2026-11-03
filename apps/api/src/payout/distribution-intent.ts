@@ -3,8 +3,8 @@ import {
   buildTree,
   c14n,
   DistributionAuditManifest,
-  distributionAuditHash,
   type DistributionLeaf,
+  distributionAuditHash,
   getProof,
   leafHash,
   MemberDistributionManifest,
@@ -90,7 +90,9 @@ export async function loadDistributionIntent(
     .from(distributionPublicationMembers)
     .where(eq(distributionPublicationMembers.publicationId, row.id));
   const inconsistent = (what: string) =>
-    new Error(`settle: the stored distribution intent for epoch ${epochId} is inconsistent (${what})`);
+    new Error(
+      `settle: the stored distribution intent for epoch ${epochId} is inconsistent (${what})`,
+    );
 
   const audit = parsed(DistributionAuditManifest, row.auditManifest);
   if (

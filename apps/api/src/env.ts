@@ -36,6 +36,10 @@ const Env = z.object({
   // value disables that route instead of failing the process.
   ORGANIC_HMAC_KEY_ID: z.string().optional(),
   ORGANIC_HMAC_KEY: z.string().optional(),
+  // The settle loop's publisher key, a JSON array of 64 bytes as solana-keygen writes it. Unset,
+  // a distribution that meets its threshold is stored as an intent and waits for the operator.
+  // It signs only for a community whose admin it is, and only under auto_publish.
+  PAYOUT_PUBLISHER_KEYPAIR: z.string().min(1).optional(),
 });
 
 export const env = Env.parse(process.env);

@@ -1,6 +1,5 @@
 import { HYPHAE_PROGRAM_ID, TAGS, taggedHash } from "@hyphae/core";
 import {
-  communities,
   distributionPublicationMembers,
   distributionPublications,
   epochPayoutDecisions,
@@ -9,23 +8,15 @@ import {
   leaves,
   payoutPolicies,
 } from "@hyphae/db";
-import { and, asc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb } from "../rewards/test-db.js";
-import {
-  type SettleChain,
-  type SettleOutcome,
-  settleCommunity,
-} from "./distribution-settle.js";
+import { type SettleChain, type SettleOutcome, settleCommunity } from "./distribution-settle.js";
 import { buildPublication } from "./publication.js";
-import {
-  type OnChainEpoch,
-  type PublishArgs,
-  type PublishChain,
-  publishEpoch,
-} from "./publish.js";
+import { type PublishArgs, type PublishChain, publishEpoch } from "./publish.js";
 import { randomAddress, seedReadyEpoch } from "./ready-seed.js";
 import { seedRolloverLane } from "./rollover-seed.js";
+import { FAKE_FEE_RECIPIENT, fakeSettleChain } from "./settle-fake.js";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 beforeAll(async () => {
@@ -37,64 +28,13 @@ afterAll(async () => {
 
 const NOW = new Date("2026-11-20T12:00:00.000Z");
 const SOL = 1_000_000_000n;
-// The vault account's rent-exempt minimum as the fake cluster reports it.
-const RENT = 953_520n;
-const ADMIN = "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR";
-const FEE_RECIPIENT = "7dsxLdz2BeakoH3bjB1WzHtK3t6fHC3PoP4hs2Z3C6EQ";
+const FEE_RECIPIENT = FAKE_FEE_RECIPIENT;
 const SETTINGS = {
   network: "solana:devnet" as const,
   programId: HYPHAE_PROGRAM_ID,
   feeRecipient: FEE_RECIPIENT,
 };
-
-// A chain that records what the loop asks of it: the bound community with `admin`, a vault whose
-// free balance the test sets, and one epoch account per index once published.
-function fakeChain(o: {
-  community: string;
-  free: bigint;
-  outstanding?: bigint;
-  // undefined: the publisher is the admin; null: no publisher is configured.
-  publisher?: string | null;
-}) {
-  const outstanding = o.outstanding ?? 0n;
-  const state = { free: o.free, onChain: new Map<bigint, OnChainEpoch>() };
-  const calls = { vault: 0, publish: [] as PublishArgs[], found: [] as PublishArgs[] };
-  const publisher = o.publisher === undefined ? ADMIN : o.publisher;
-  const chain: SettleChain = {
-    network: SETTINGS.network,
-    programId: SETTINGS.programId,
-    readCommunity: async ({ address }) =>
-      address === o.community
-        ? { address, admin: ADMIN, feeRecipient: FEE_RECIPIENT, outstandingLamports: outstanding }
-        : null,
-    readVault: async () => {
-      calls.vault += 1;
-      return { lamports: RENT + outstanding + state.free, rentExemptMinimum: RENT };
-    },
-    readEpoch: async (_community, index) => state.onChain.get(index) ?? null,
-    publisher:
-      publisher === null
-        ? null
-        : {
-            address: publisher,
-            publishEpoch: async (input) => {
-              calls.publish.push(input);
-              state.onChain.set(input.index, {
-                root: input.root,
-                auditHash: input.auditHash,
-                grossLamports: input.grossLamports,
-                allocatedLamports: input.allocatedLamports,
-              });
-              return "sig-publish";
-            },
-          },
-    publishSignature: async (input) => {
-      calls.found.push(input);
-      return "sig-found-on-chain";
-    },
-  };
-  return { chain, calls, state };
-}
+const fakeChain = fakeSettleChain;
 
 const policyFor = async (
   communityId: string,
@@ -520,9 +460,9 @@ describe("settleCommunity: several epochs", () => {
       publishTx: "sig-publish",
     });
     const decisions = await decisionRows(seed.communityId);
-    expect(decisions.map((d) => [d.index, d.decision.outcome, d.decision.distributionEpochId])).toEqual(
-      [1, 2, 3, 4].map((i) => [i, "distributed", e4.id]),
-    );
+    expect(
+      decisions.map((d) => [d.index, d.decision.outcome, d.decision.distributionEpochId]),
+    ).toEqual([1, 2, 3, 4].map((i) => [i, "distributed", e4.id]));
     expect(decisions.reduce((s, d) => s + d.decision.accrualLamports, 0n)).toBe(out.grossLamports);
 
     // The audit: every epoch with its accrual, epoch 3's accrual merged into epoch 4's slice.
@@ -532,7 +472,10 @@ describe("settleCommunity: several epochs", () => {
       epochs: { epoch: { id: string; index: string }; merged_into: string | null }[];
       settlement: { gross_lamports: string };
     };
-    expect(audit.distribution).toMatchObject({ index: "4", volume_lamports: (120n * SOL).toString() });
+    expect(audit.distribution).toMatchObject({
+      index: "4",
+      volume_lamports: (120n * SOL).toString(),
+    });
     expect(audit.settlement.gross_lamports).toBe((12n * (SOL / 10n)).toString());
     expect(audit.epochs.map((e) => [e.epoch.id, e.epoch.index, e.merged_into])).toEqual([
       [e1.id, "1", null],
@@ -590,18 +533,18 @@ describe("settleCommunity: several epochs", () => {
     });
     const inWindow = new Date(e2.closesAt.getTime() + 3_600_000);
     expect(
-      await settleCommunity(t.db, fake.chain, { communityId: seed.communityId }, { clock: () => inWindow }),
+      await settleCommunity(
+        t.db,
+        fake.chain,
+        { communityId: seed.communityId },
+        { clock: () => inWindow },
+      ),
     ).toEqual({ status: "waiting", epochIndex: 2, blockers: ["no_payable_members"] });
     expect(await settle(fake.chain, seed.communityId)).toMatchObject({
       status: "rolled_over",
       epochIndex: 2,
       reason: "below_threshold",
     });
-    // With enough volume, an epoch nobody earned still rolls over: there is no one to pay.
-    const [count] = await t.db
-      .select({ id: communities.id })
-      .from(communities)
-      .where(and(eq(communities.id, seed.communityId)));
-    expect(count).toBeDefined();
+    expect((await decisionRows(seed.communityId)).map((d) => d.index)).toEqual([1, 2]);
   });
 });

@@ -30,6 +30,7 @@ vi.mock("../rewards/close.js", () => ({
   closeEpoch: async () => ({ status: "closed", created: true, entries: [] }),
   dueCloses: async () => [],
 }));
+vi.mock("./settle-jobs.js", () => ({ enqueueDueSettles: async () => 0 }));
 vi.mock("../rewards/copy.js", () => ({
   openCopyEpochs: async () => [],
   reconcileEpoch: async () => undefined,

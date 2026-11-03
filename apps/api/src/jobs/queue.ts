@@ -9,6 +9,7 @@ export const QUEUES = {
   rewardRecovery: "reward-recovery",
   rewardClose: "reward-close",
   holdCheck: "hold-check",
+  payoutSettle: "payout-settle",
 } as const;
 
 export const boss = new PgBoss({
@@ -59,6 +60,14 @@ export async function startQueue() {
     retryLimit: 2,
     retryDelay: 60,
     expireInSeconds: 600,
+  });
+  // One settle job queued or active per community (singletonKey): two runs deciding the same
+  // epoch would fight over the decision row. The sweep re-sends it every five minutes anyway.
+  await boss.createQueue(QUEUES.payoutSettle, {
+    policy: "exclusive",
+    retryLimit: 1,
+    retryDelay: 60,
+    expireInSeconds: 300,
   });
   return boss;
 }

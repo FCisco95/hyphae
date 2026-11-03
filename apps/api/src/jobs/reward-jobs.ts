@@ -28,6 +28,7 @@ import { lockScoreMessages } from "./payout-hint.js";
 import { boss, QUEUES } from "./queue.js";
 import { type RewardOutcome, rewardMessage } from "./reward-message.js";
 import { loadScoreTarget, scoreTarget, scoreText } from "./score-route.js";
+import { enqueueDueSettles } from "./settle-jobs.js";
 
 export interface RewardEvaluationJob {
   communityId: string;
@@ -146,6 +147,9 @@ export async function recoverRewardWork(): Promise<void> {
   for (const job of closes) await boss.send(QUEUES.rewardClose, job satisfies RewardCloseJob);
   const holds = await dueHoldChecks(db, now);
   for (const job of holds) await boss.send(QUEUES.holdCheck, job satisfies HoldCheckJob);
+  // The settle loop: one job per community under a payout policy; the job itself decides whether
+  // an epoch is due.
+  const settles = await enqueueDueSettles();
   // Settles what a budget-limited reconciliation left, before the messages below are chosen.
   // One epoch that fails to reconcile must not stop the closes, retries and messages around it.
   for (const epoch of await openCopyEpochs(db, now)) {
@@ -182,6 +186,7 @@ export async function recoverRewardWork(): Promise<void> {
       notifications: work.notifications.length,
       closes: closes.length,
       holdChecks: holds.length,
+      settles,
     }),
   );
 }
