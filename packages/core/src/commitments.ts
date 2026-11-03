@@ -14,6 +14,9 @@ export const TAGS = {
   decision: "hyphae/decision/v1",
   memberEpoch: "hyphae/member-epoch/v1",
   epochAudit: "hyphae/epoch-audit/v1",
+  // A distribution of one or more rolled-over epochs under one index (B10, B11).
+  memberDistribution: "hyphae/member-distribution/v1",
+  distributionAudit: "hyphae/distribution-audit/v1",
 } as const;
 export type Tag = (typeof TAGS)[keyof typeof TAGS];
 
@@ -374,3 +377,207 @@ export const evidencePayloadHash = hashOf(TAGS.evidence, EvidencePayload);
 export const decisionPayloadHash = hashOf(TAGS.decision, DecisionPayload);
 export const memberEpochHash = hashOf(TAGS.memberEpoch, MemberEpochManifest);
 export const epochAuditHash = hashOf(TAGS.epochAudit, EpochAuditManifest);
+
+// B10 and B11 (Organic design 2026-11-03, Â§8): one distribution pays every epoch rolled over
+// since the last one, under the latest epoch's index. Each epoch keeps its own B7 member-epoch
+// manifests, with the member's share of that epoch's slice; B10 is the leaf's evidence and sums a
+// member's parts; B11 is the on-chain audit hash and reconciles every lamport across the slices.
+
+const ascendingDec = <T>(values: readonly T[], key: (v: T) => string) =>
+  values.every((v, i) => i === 0 || BigInt(key(values[i - 1] as T)) < BigInt(key(v)));
+
+export const MemberDistributionManifest = z
+  .strictObject({
+    network,
+    program_id: base58,
+    community_id: uuid,
+    mint: base58,
+    distribution_index: dec,
+    member_id: uuid,
+    wallet: base58,
+    parts: z
+      .array(
+        z.strictObject({
+          epoch_index: dec,
+          // The B7 manifest of this member in that epoch.
+          member_epoch_hash: hash,
+          whole_points: dec,
+          amount_lamports: dec,
+        }),
+      )
+      .min(1),
+    whole_points: dec,
+    amount_lamports: dec,
+  })
+  .superRefine((m, ctx) => {
+    const fail = (message: string) => ctx.addIssue({ code: "custom", message });
+    if (!ascendingDec(m.parts, (p) => p.epoch_index)) fail("parts must be sorted by epoch index");
+    const last = m.parts[m.parts.length - 1];
+    if (last && BigInt(last.epoch_index) > BigInt(m.distribution_index)) {
+      fail("a part cannot come from an epoch after the distribution");
+    }
+    const points = m.parts.reduce((s, p) => s + BigInt(p.whole_points), 0n);
+    const amount = m.parts.reduce((s, p) => s + BigInt(p.amount_lamports), 0n);
+    if (points !== BigInt(m.whole_points)) fail("whole_points must sum the parts");
+    if (amount !== BigInt(m.amount_lamports)) fail("amount must sum the parts");
+    if (m.amount_lamports === "0") fail("a distributed member is paid a positive amount");
+  });
+export type MemberDistributionManifest = z.infer<typeof MemberDistributionManifest>;
+
+const distributionEpoch = z.strictObject({
+  epoch: epochRef,
+  config_hash: hash,
+  snapshot: z.strictObject({ closed_at: timestamp, cutoff_assumption: z.string() }),
+  entries: z.array(z.strictObject({ ...entryShape, member_id: uuid })),
+  members: z.array(
+    z.strictObject({
+      member_id: uuid,
+      manifest_hash: hash,
+      wallet: base58.nullable(),
+      point_units: dec,
+      whole_points: dec,
+      amount_lamports: dec,
+    }),
+  ),
+  accrual_lamports: dec,
+  // Null when the volume was unknown at the decision.
+  volume_lamports: dec.nullable(),
+  // The epoch whose slice carries this accrual when nobody here was payable, else null.
+  merged_into: dec.nullable(),
+  gross_lamports: dec,
+  net_lamports: dec,
+  cap_bps: dec,
+  cap_lamports: dec,
+  payable_members: dec,
+  allocated_lamports: dec,
+  cap_remainder_lamports: dec,
+  dust_lamports: dec,
+  rules_test_id: z.string().min(1),
+  hold: z.strictObject({ mint: base58, threshold_raw: dec }),
+});
+type DistributionEpoch = z.infer<typeof distributionEpoch>;
+type LamportKey =
+  | "accrual_lamports"
+  | "gross_lamports"
+  | "net_lamports"
+  | "allocated_lamports"
+  | "cap_remainder_lamports"
+  | "dust_lamports";
+
+export const DistributionAuditManifest = z
+  .strictObject({
+    network,
+    program_id: base58,
+    community_id: uuid,
+    mint: base58,
+    distribution: z.strictObject({
+      index: dec,
+      policy: z.strictObject({
+        threshold_volume_lamports: dec,
+        basis: z.enum(["cumulative", "per_epoch"]),
+        split: z.literal("per_epoch"),
+        volume_source: z.literal("fee_derived"),
+        reward_bps_of_volume: dec.nullable(),
+      }),
+      // The volume the decision compared with the threshold.
+      volume_lamports: dec,
+    }),
+    epochs: z.array(distributionEpoch).min(1),
+    members: z
+      .array(
+        z.strictObject({
+          member_id: uuid,
+          manifest_hash: hash,
+          wallet: base58,
+          whole_points: dec,
+          amount_lamports: dec,
+        }),
+      )
+      .min(1),
+    settlement: z.strictObject({
+      gross_lamports: dec,
+      fee_bps: dec,
+      fee_lamports: dec,
+      fee_recipient: base58,
+      net_lamports: dec,
+      allocated_lamports: dec,
+      cap_remainder_lamports: dec,
+      dust_lamports: dec,
+    }),
+    root: hash,
+  })
+  .superRefine((a, ctx) => {
+    const fail = (message: string) => ctx.addIssue({ code: "custom", message });
+    const n = (v: string) => BigInt(v);
+    const total = (key: LamportKey) =>
+      a.epochs.reduce((s, e: DistributionEpoch) => s + n(e[key]), 0n);
+    if (!ascendingDec(a.epochs, (e) => e.epoch.index)) fail("epochs must be sorted by index");
+    const last = a.epochs[a.epochs.length - 1];
+    if (last && last.epoch.index !== a.distribution.index) {
+      fail("a distribution is published under its latest epoch's index");
+    }
+    if (n(a.distribution.volume_lamports) < n(a.distribution.policy.threshold_volume_lamports)) {
+      fail("a distribution's volume meets the threshold");
+    }
+    const indices = new Set(a.epochs.map((e) => e.epoch.index));
+    for (const e of a.epochs) {
+      if (!ascending(e.entries, (x) => x.contribution_id)) {
+        fail("entries must be sorted by contribution id");
+      }
+      if (!e.entries.every(entryIsSelectedOrReason)) {
+        fail("an entry has a decision hash or a reason (with zero points), never both");
+      }
+      if (!ascending(e.members, (m) => m.member_id)) fail("members must be sorted by member id");
+      const merged = a.epochs
+        .filter((x) => x.merged_into === e.epoch.index)
+        .reduce((s, x) => s + n(x.accrual_lamports), 0n);
+      if (e.merged_into !== null) {
+        if (!indices.has(e.merged_into) || e.merged_into === e.epoch.index) {
+          fail("an epoch merges into another epoch of the distribution");
+        }
+        if (merged !== 0n || e.gross_lamports !== "0" || e.net_lamports !== "0") {
+          fail("an epoch merged away has no slice");
+        }
+        if (e.payable_members !== "0") fail("an epoch merged away has nobody payable");
+      } else if (n(e.gross_lamports) !== n(e.accrual_lamports) + merged) {
+        fail("a slice's gross is its accrual plus the accruals merged into it");
+      }
+      if (
+        n(e.allocated_lamports) + n(e.cap_remainder_lamports) + n(e.dust_lamports) !==
+        n(e.net_lamports)
+      ) {
+        fail("a slice's allocated, cap remainder and dust must reconcile to its net");
+      }
+      const paid = e.members.reduce((s, m) => s + n(m.amount_lamports), 0n);
+      if (paid !== n(e.allocated_lamports)) fail("a slice's members must sum to its allocation");
+    }
+    const s = a.settlement;
+    if (total("accrual_lamports") !== n(s.gross_lamports)) fail("gross must sum the accruals");
+    if (total("gross_lamports") !== n(s.gross_lamports)) fail("gross must sum the slices");
+    if (n(s.fee_lamports) !== (n(s.gross_lamports) * n(s.fee_bps)) / BASIS_POINTS) {
+      fail("fee_lamports must be the floored fee on the gross pot");
+    }
+    if (n(s.net_lamports) !== n(s.gross_lamports) - n(s.fee_lamports)) {
+      fail("net must be gross minus the fee");
+    }
+    if (total("net_lamports") !== n(s.net_lamports)) fail("the slices must share the net exactly");
+    if (total("allocated_lamports") !== n(s.allocated_lamports)) {
+      fail("allocated must sum the slices");
+    }
+    if (total("cap_remainder_lamports") !== n(s.cap_remainder_lamports)) {
+      fail("cap remainder must sum the slices");
+    }
+    if (total("dust_lamports") !== n(s.dust_lamports)) fail("dust must sum the slices");
+    if (!ascending(a.members, (m) => m.member_id)) fail("members must be sorted by member id");
+    if (new Set(a.members.map((m) => m.wallet)).size !== a.members.length) {
+      fail("each wallet has one leaf");
+    }
+    const distributed = a.members.reduce((sum, m) => sum + n(m.amount_lamports), 0n);
+    if (distributed !== n(s.allocated_lamports)) {
+      fail("members' amounts must sum to allocated_lamports");
+    }
+  });
+export type DistributionAuditManifest = z.infer<typeof DistributionAuditManifest>;
+
+export const memberDistributionHash = hashOf(TAGS.memberDistribution, MemberDistributionManifest);
+export const distributionAuditHash = hashOf(TAGS.distributionAudit, DistributionAuditManifest);

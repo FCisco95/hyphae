@@ -152,7 +152,7 @@ describe("tagged hashes (B2)", () => {
   it("separates domains: the same body under another tag is another hash", () => {
     const body = c14n({ a: "1" });
     const hashes = new Set(Object.values(TAGS).map((tag) => taggedHash(tag, body)));
-    expect(hashes.size).toBe(5);
+    expect(hashes.size).toBe(7);
     // A tagged preimage starts with "h" (0x68), never a leaf (0x00) or node (0x01) prefix.
     for (const tag of Object.values(TAGS)) expect(tag.charCodeAt(0)).toBe(0x68);
   });

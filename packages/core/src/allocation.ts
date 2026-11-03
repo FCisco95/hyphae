@@ -41,10 +41,19 @@ export interface Allocation {
   members: MemberAllocation[];
 }
 
-export function allocate(grossLamports: bigint, members: readonly AllocationMember[]): Allocation {
-  if (grossLamports <= 0n || grossLamports > MAX_U64) {
-    throw new RangeError("allocation: gross lamports must be a positive u64");
-  }
+export interface NetShare {
+  netLamports: bigint;
+  capBps: bigint;
+  capLamports: bigint;
+  payableMembers: number;
+  allocatedLamports: bigint;
+  capRemainderLamports: bigint;
+  dustLamports: bigint;
+  // In input order; non-payable members carry zeros.
+  members: MemberAllocation[];
+}
+
+function checkMembers(members: readonly AllocationMember[]): void {
   const seen = new Set<string>();
   for (const m of members) {
     if (seen.has(m.memberId)) throw new Error(`allocation: member ${m.memberId} appears twice`);
@@ -53,12 +62,17 @@ export function allocate(grossLamports: bigint, members: readonly AllocationMemb
       throw new RangeError(`allocation: payable member ${m.memberId} needs positive points`);
     }
   }
-  const payable = members.filter((m) => m.payable);
-  // PG6: nobody payable publishes nothing, so there is nothing to allocate.
-  if (payable.length === 0) throw new Error("allocation: no payable member");
+}
 
-  const feeLamports = (grossLamports * FEE_BPS) / BASIS_POINTS;
-  const netLamports = grossLamports - feeLamports;
+// P6, P10, P11 on a net pot already past the fee: pro rata by point units, floored, capped per
+// wallet. A distribution of several epochs (distribution.ts) shares each epoch's slice of one net
+// this way; a zero net or nobody payable shares nothing and every lamport is dust.
+export function shareNet(netLamports: bigint, members: readonly AllocationMember[]): NetShare {
+  if (netLamports < 0n || netLamports > MAX_U64) {
+    throw new RangeError("allocation: net lamports must be a u64");
+  }
+  checkMembers(members);
+  const payable = members.filter((m) => m.payable);
   const capBps = payable.length >= LARGE_POPULATION ? CAP_BPS_LARGE : CAP_BPS;
   const capLamports = (netLamports * capBps) / BASIS_POINTS;
   const totalUnits = payable.reduce((sum, m) => sum + m.pointUnits, 0n);
@@ -88,15 +102,8 @@ export function allocate(grossLamports: bigint, members: readonly AllocationMemb
       capRemainderLamports: remainder,
     };
   });
-  // The program refuses a zero allocation, so a publish always pays someone.
-  if (allocatedLamports === 0n) {
-    throw new Error("allocation: the net pot pays no payable member a whole lamport");
-  }
 
   return {
-    grossLamports,
-    feeBps: FEE_BPS,
-    feeLamports,
     netLamports,
     capBps,
     capLamports,
@@ -106,4 +113,24 @@ export function allocate(grossLamports: bigint, members: readonly AllocationMemb
     dustLamports: netLamports - uncappedTotal,
     members: out,
   };
+}
+
+// P7 on a gross pot: the fee the program charges on publish_epoch.
+export const feeOf = (grossLamports: bigint): bigint => (grossLamports * FEE_BPS) / BASIS_POINTS;
+
+export function allocate(grossLamports: bigint, members: readonly AllocationMember[]): Allocation {
+  if (grossLamports <= 0n || grossLamports > MAX_U64) {
+    throw new RangeError("allocation: gross lamports must be a positive u64");
+  }
+  checkMembers(members);
+  // PG6: nobody payable publishes nothing, so there is nothing to allocate.
+  if (!members.some((m) => m.payable)) throw new Error("allocation: no payable member");
+
+  const feeLamports = feeOf(grossLamports);
+  const share = shareNet(grossLamports - feeLamports, members);
+  // The program refuses a zero allocation, so a publish always pays someone.
+  if (share.allocatedLamports === 0n) {
+    throw new Error("allocation: the net pot pays no payable member a whole lamport");
+  }
+  return { grossLamports, feeBps: FEE_BPS, feeLamports, ...share };
 }
