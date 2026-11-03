@@ -128,7 +128,7 @@ export interface DistributionPart {
 
 export interface DistributedMember {
   memberId: string;
-  // The wallet from the latest epoch in which the member is payable.
+  // The wallet from the latest epoch whose part pays the member (B11 checks the same rule).
   wallet: string;
   amountLamports: bigint;
   // One part per pending epoch the member appears in, by epoch index.
@@ -232,7 +232,7 @@ export function buildDistribution(pending: readonly PendingEpoch[]): Distributio
         amountLamports: amount,
       });
       entry.amountLamports += amount;
-      if (m.payable) {
+      if (amount > 0n) {
         if (m.wallet === null) throw new Error(`distribution: payable ${m.memberId} has no wallet`);
         entry.wallet = m.wallet;
       }

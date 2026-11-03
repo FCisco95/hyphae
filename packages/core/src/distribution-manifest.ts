@@ -9,13 +9,20 @@ import {
   memberDistributionHash,
   memberEpochHash,
 } from "./commitments.js";
-import type { Distribution, PayoutPolicy } from "./distribution.js";
+import {
+  buildDistribution,
+  type Distribution,
+  decide,
+  type PayoutPolicy,
+  type PendingEpoch,
+} from "./distribution.js";
 import { buildTree, getProof, leafHash } from "./merkle.js";
 
 // From a distribution (distribution.ts) and each pending epoch's evidence to what publish_epoch
 // commits: the B10 member manifests, one leaf per wallet under the distribution's index, the root
-// and the B11 audit. The evidence is each epoch's B7 manifests carrying that epoch's slice shares;
-// this module checks them against the distribution instead of trusting them.
+// and the B11 audit. The evidence is each epoch's B7 manifests carrying that epoch's slice shares.
+// Nothing is trusted: the distribution is rebuilt from the B7 verdicts, points and wallets and the
+// decision is re-run, and both must equal what the caller passed (review R1, R5).
 
 export interface DistributionEpochEvidence {
   epoch: MemberEpochManifest["epoch"];
@@ -62,20 +69,61 @@ export function assembleDistribution(input: {
   // One per pending epoch, in the distribution's epoch order.
   epochs: readonly DistributionEpochEvidence[];
 }): AssembledDistribution {
-  const { distribution: d } = input;
+  const { distribution: given } = input;
   const base = {
     network: input.network,
     program_id: input.programId,
     community_id: input.communityId,
     mint: input.mint,
   };
-  const sliceOf = new Map(d.slices.map((s) => [s.epochIndex, s]));
   if (
-    input.epochs.length !== d.epochs.length ||
-    input.epochs.some((e, i) => BigInt(e.epoch.index) !== (d.epochs[i] as { index: bigint }).index)
+    input.epochs.length !== given.epochs.length ||
+    input.epochs.some(
+      (e, i) => BigInt(e.epoch.index) !== (given.epochs[i] as { index: bigint }).index,
+    )
   ) {
     throw new Error("distribution: the evidence lists other epochs than the distribution");
   }
+  for (const e of input.epochs) {
+    for (const m of e.members) {
+      if (
+        m.network !== input.network ||
+        m.program_id !== input.programId ||
+        m.community_id !== input.communityId ||
+        m.mint !== input.mint ||
+        m.config_hash !== e.configHash ||
+        m.epoch.id !== e.epoch.id ||
+        m.epoch.index !== e.epoch.index ||
+        m.epoch.opens_at !== e.epoch.opens_at ||
+        m.epoch.closes_at !== e.epoch.closes_at
+      ) {
+        throw new Error("distribution: a member manifest is from another epoch, config or program");
+      }
+    }
+  }
+  // The one authoritative input: the B7 verdicts, points and wallets, with the recorded accruals.
+  const pending: PendingEpoch[] = input.epochs.map((e, i) => ({
+    index: BigInt(e.epoch.index),
+    accrualLamports: (given.epochs[i] as Distribution["epochs"][number]).accrualLamports,
+    volumeLamports: e.volumeLamports,
+    members: [...e.members]
+      .sort((a, b) => byKey(a.member_id, b.member_id))
+      .map((m) => ({
+        memberId: m.member_id,
+        pointUnits: BigInt(m.point_units),
+        payable: m.settlement.status === "payable",
+        wallet: m.wallet,
+      })),
+  }));
+  const d = buildDistribution(pending);
+  if (fingerprint(d) !== fingerprint(given)) {
+    throw new Error("distribution: the distribution does not follow from its evidence");
+  }
+  const decision = decide(input.policy, pending);
+  if (decision.outcome !== "distribute" || decision.volumeLamports !== input.volumeLamports) {
+    throw new Error("distribution: the decision volume does not follow from the evidence");
+  }
+  const sliceOf = new Map(d.slices.map((s) => [s.epochIndex, s]));
 
   // Per epoch: every B7 manifest, its hash, and the share it must carry.
   const epochHashes = new Map<string, Map<string, { hash: string; m: MemberEpochManifest }>>();
@@ -95,10 +143,14 @@ export function assembleDistribution(input: {
       hashes.set(m.member_id, { hash: memberEpochHash(m), m });
     }
     epochHashes.set(e.epoch.index, hashes);
-    const share = (id: string) =>
-      slice?.members.find((x) => x.memberId === id)?.amountLamports ?? 0n;
     for (const m of ordered) {
-      if (BigInt(m.settlement.amount_lamports) !== share(m.member_id)) {
+      const share = slice?.members.find((x) => x.memberId === m.member_id);
+      const s = m.settlement;
+      if (
+        BigInt(s.amount_lamports) !== (share?.amountLamports ?? 0n) ||
+        BigInt(s.uncapped_lamports) !== (share?.uncappedLamports ?? 0n) ||
+        BigInt(s.cap_remainder_lamports) !== (share?.capRemainderLamports ?? 0n)
+      ) {
         throw new Error(`distribution: member ${m.member_id} carries another share in ${index}`);
       }
     }
@@ -221,4 +273,18 @@ export function assembleDistribution(input: {
     root,
   };
   return { members, leaves, root, audit, auditHash: distributionAuditHash(audit) };
+}
+
+// A distribution's content, independent of the order its members were listed in.
+function fingerprint(d: Distribution): string {
+  const byId = <T extends { memberId: string }>(xs: readonly T[]) =>
+    [...xs].sort((a, b) => byKey(a.memberId, b.memberId));
+  return JSON.stringify(
+    {
+      ...d,
+      slices: d.slices.map((s) => ({ ...s, members: byId(s.members) })),
+      members: byId(d.members),
+    },
+    (_, v) => (typeof v === "bigint" ? v.toString() : v),
+  );
 }

@@ -378,10 +378,14 @@ export const decisionPayloadHash = hashOf(TAGS.decision, DecisionPayload);
 export const memberEpochHash = hashOf(TAGS.memberEpoch, MemberEpochManifest);
 export const epochAuditHash = hashOf(TAGS.epochAudit, EpochAuditManifest);
 
-// B10 and B11 (Organic design 2026-11-03, Â§8): one distribution pays every epoch rolled over
+// B10 and B11 (Organic design 2026-11-03, §8): one distribution pays every epoch rolled over
 // since the last one, under the latest epoch's index. Each epoch keeps its own B7 member-epoch
 // manifests, with the member's share of that epoch's slice; B10 is the leaf's evidence and sums a
 // member's parts; B11 is the on-chain audit hash and reconciles every lamport across the slices.
+
+// Fields the program reads as u64, and the sums that feed them.
+const MAX_U64 = (1n << 64n) - 1n;
+const u64 = dec.refine((v) => BigInt(v) <= MAX_U64, "a field does not fit a u64");
 
 const ascendingDec = <T>(values: readonly T[], key: (v: T) => string) =>
   values.every((v, i) => i === 0 || BigInt(key(values[i - 1] as T)) < BigInt(key(v)));
@@ -392,22 +396,22 @@ export const MemberDistributionManifest = z
     program_id: base58,
     community_id: uuid,
     mint: base58,
-    distribution_index: dec,
+    distribution_index: u64,
     member_id: uuid,
     wallet: base58,
     parts: z
       .array(
         z.strictObject({
-          epoch_index: dec,
+          epoch_index: u64,
           // The B7 manifest of this member in that epoch.
           member_epoch_hash: hash,
-          whole_points: dec,
-          amount_lamports: dec,
+          whole_points: u64,
+          amount_lamports: u64,
         }),
       )
       .min(1),
-    whole_points: dec,
-    amount_lamports: dec,
+    whole_points: u64,
+    amount_lamports: u64,
   })
   .superRefine((m, ctx) => {
     const fail = (message: string) => ctx.addIssue({ code: "custom", message });
@@ -435,23 +439,23 @@ const distributionEpoch = z.strictObject({
       manifest_hash: hash,
       wallet: base58.nullable(),
       point_units: dec,
-      whole_points: dec,
-      amount_lamports: dec,
+      whole_points: u64,
+      amount_lamports: u64,
     }),
   ),
-  accrual_lamports: dec,
+  accrual_lamports: u64,
   // Null when the volume was unknown at the decision.
-  volume_lamports: dec.nullable(),
+  volume_lamports: u64.nullable(),
   // The epoch whose slice carries this accrual when nobody here was payable, else null.
   merged_into: dec.nullable(),
-  gross_lamports: dec,
-  net_lamports: dec,
+  gross_lamports: u64,
+  net_lamports: u64,
   cap_bps: dec,
-  cap_lamports: dec,
+  cap_lamports: u64,
   payable_members: dec,
-  allocated_lamports: dec,
-  cap_remainder_lamports: dec,
-  dust_lamports: dec,
+  allocated_lamports: u64,
+  cap_remainder_lamports: u64,
+  dust_lamports: u64,
   rules_test_id: z.string().min(1),
   hold: z.strictObject({ mint: base58, threshold_raw: dec }),
 });
@@ -471,16 +475,16 @@ export const DistributionAuditManifest = z
     community_id: uuid,
     mint: base58,
     distribution: z.strictObject({
-      index: dec,
+      index: u64,
       policy: z.strictObject({
-        threshold_volume_lamports: dec,
+        threshold_volume_lamports: u64,
         basis: z.enum(["cumulative", "per_epoch"]),
         split: z.literal("per_epoch"),
         volume_source: z.literal("fee_derived"),
         reward_bps_of_volume: dec.nullable(),
       }),
       // The volume the decision compared with the threshold.
-      volume_lamports: dec,
+      volume_lamports: u64,
     }),
     epochs: z.array(distributionEpoch).min(1),
     members: z
@@ -489,20 +493,20 @@ export const DistributionAuditManifest = z
           member_id: uuid,
           manifest_hash: hash,
           wallet: base58,
-          whole_points: dec,
-          amount_lamports: dec,
+          whole_points: u64,
+          amount_lamports: u64,
         }),
       )
       .min(1),
     settlement: z.strictObject({
-      gross_lamports: dec,
+      gross_lamports: u64,
       fee_bps: dec,
-      fee_lamports: dec,
+      fee_lamports: u64,
       fee_recipient: base58,
-      net_lamports: dec,
-      allocated_lamports: dec,
-      cap_remainder_lamports: dec,
-      dust_lamports: dec,
+      net_lamports: u64,
+      allocated_lamports: u64,
+      cap_remainder_lamports: u64,
+      dust_lamports: u64,
     }),
     root: hash,
   })
@@ -515,6 +519,21 @@ export const DistributionAuditManifest = z
     const last = a.epochs[a.epochs.length - 1];
     if (last && last.epoch.index !== a.distribution.index) {
       fail("a distribution is published under its latest epoch's index");
+    }
+    // The decision volume follows from the recorded volumes exactly as decide() computes it.
+    const known = a.epochs.flatMap((e) =>
+      e.volume_lamports === null ? [] : [n(e.volume_lamports)],
+    );
+    const decided =
+      a.distribution.policy.basis === "per_epoch"
+        ? last?.volume_lamports == null
+          ? null
+          : n(last.volume_lamports)
+        : known.length
+          ? known.reduce((x, y) => x + y, 0n)
+          : null;
+    if (decided === null || decided !== n(a.distribution.volume_lamports)) {
+      fail("the decision volume must follow from the epochs' volumes and the basis");
     }
     if (n(a.distribution.volume_lamports) < n(a.distribution.policy.threshold_volume_lamports)) {
       fail("a distribution's volume meets the threshold");
@@ -552,6 +571,11 @@ export const DistributionAuditManifest = z
       if (paid !== n(e.allocated_lamports)) fail("a slice's members must sum to its allocation");
     }
     const s = a.settlement;
+    // P7: the program charges 300 basis points; any other fee would let allocated exceed its net.
+    if (s.fee_bps !== "300") fail("the fee is the program's 300 basis points");
+    if (n(s.gross_lamports) === 0n || n(s.allocated_lamports) === 0n) {
+      fail("a distribution has a positive gross and allocation");
+    }
     if (total("accrual_lamports") !== n(s.gross_lamports)) fail("gross must sum the accruals");
     if (total("gross_lamports") !== n(s.gross_lamports)) fail("gross must sum the slices");
     if (n(s.fee_lamports) !== (n(s.gross_lamports) * n(s.fee_bps)) / BASIS_POINTS) {
@@ -575,6 +599,31 @@ export const DistributionAuditManifest = z
     const distributed = a.members.reduce((sum, m) => sum + n(m.amount_lamports), 0n);
     if (distributed !== n(s.allocated_lamports)) {
       fail("members' amounts must sum to allocated_lamports");
+    }
+    // Each member's leaf is the sum of their epoch rows, with the wallet of the latest epoch that
+    // pays them; equal grand totals must not hide a lamport moved from one person to another.
+    const expected = new Map<string, { amount: bigint; points: bigint; wallet: string | null }>();
+    for (const e of a.epochs) {
+      for (const m of e.members) {
+        const x = expected.get(m.member_id) ?? { amount: 0n, points: 0n, wallet: null };
+        x.amount += n(m.amount_lamports);
+        x.points += n(m.whole_points);
+        if (n(m.amount_lamports) > 0n) x.wallet = m.wallet;
+        expected.set(m.member_id, x);
+      }
+    }
+    const paid = [...expected].filter(([, x]) => x.amount > 0n);
+    if (paid.length !== a.members.length) fail("every paid member has exactly one summary row");
+    for (const m of a.members) {
+      const x = expected.get(m.member_id);
+      if (
+        !x ||
+        x.amount !== n(m.amount_lamports) ||
+        x.points !== n(m.whole_points) ||
+        x.wallet !== m.wallet
+      ) {
+        fail("a member's summary must equal the sum of their epoch rows");
+      }
     }
   });
 export type DistributionAuditManifest = z.infer<typeof DistributionAuditManifest>;

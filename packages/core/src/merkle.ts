@@ -19,7 +19,11 @@ export interface Tree {
   layers: Uint8Array[][]; // layers[0] = leaf hashes
 }
 
+const MAX_U64 = (1n << 64n) - 1n;
+
 function u64le(v: bigint): Uint8Array {
+  // setBigUint64 wraps silently; a leaf must commit to exactly the value the program reads.
+  if (v < 0n || v > MAX_U64) throw new RangeError("leaf: a field does not fit a u64");
   const out = new Uint8Array(8);
   new DataView(out.buffer).setBigUint64(0, v, true);
   return out;

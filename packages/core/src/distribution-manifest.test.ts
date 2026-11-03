@@ -250,3 +250,150 @@ describe("DistributionAuditManifest and MemberDistributionManifest", () => {
     expect(MemberDistributionManifest.safeParse(m).success).toBe(false);
   });
 });
+
+const issues = (a: unknown) =>
+  (DistributionAuditManifest.safeParse(a).error?.issues ?? []).map((i) => i.message).join("; ");
+
+// Regressions from the Codex review of 5e63281 (docs/reviews/2026-11-03-distribution-core-codex.md).
+describe("review R1 to R5", () => {
+  const withEvidence = (
+    edit: (epochs: DistributionEpochEvidence[]) => void,
+    volume = 100n * SOL,
+  ) => {
+    const distribution = buildDistribution(weeks);
+    const epochs = evidence(distribution);
+    edit(epochs);
+    return () =>
+      assembleDistribution({
+        network: "solana:mainnet",
+        programId: PROGRAM,
+        communityId: uuid(900),
+        mint: MINT,
+        feeRecipient: wallet(250),
+        policy,
+        volumeLamports: volume,
+        distribution,
+        epochs,
+      });
+  };
+  const memberOf = (epochs: DistributionEpochEvidence[], epoch: number, id: string) =>
+    must(must(epochs[epoch]).members.find((m) => m.member_id === id));
+
+  it("R1: refuses B7 evidence whose wallet differs from the distribution's", () => {
+    expect(
+      withEvidence((epochs) => {
+        memberOf(epochs, 2, uuid(2)).wallet = wallet(9);
+      }),
+    ).toThrow(/does not follow from its evidence/);
+  });
+
+  it("R1: refuses B7 evidence whose points differ from the distribution's", () => {
+    expect(
+      withEvidence((epochs) => {
+        const m = memberOf(epochs, 2, uuid(2));
+        m.point_units = "100000000";
+        m.whole_points = "1";
+        must(m.entries[0]).point_units = "100000000";
+      }),
+    ).toThrow(/does not follow from its evidence/);
+  });
+
+  it("R1: refuses B7 evidence from another config, program or epoch", () => {
+    expect(
+      withEvidence((epochs) => {
+        memberOf(epochs, 0, uuid(1)).config_hash = hash(8);
+      }),
+    ).toThrow(/another epoch, config or program/);
+    expect(
+      withEvidence((epochs) => {
+        const m = memberOf(epochs, 0, uuid(1));
+        m.epoch = { ...m.epoch, opens_at: "2026-09-01T00:00:00.000000Z" };
+      }),
+    ).toThrow(/another epoch, config or program/);
+  });
+
+  it("R5: refuses a decision volume its own policy would not produce", () => {
+    expect(withEvidence(() => {}, 101n * SOL)).toThrow(/decision volume/);
+  });
+
+  it("R2: refuses an audit that moves a lamport between two members", () => {
+    const a = structuredClone(assemble().audit);
+    const [x, y] = [must(a.members[0]), must(a.members[1])];
+    x.amount_lamports = (BigInt(x.amount_lamports) + 1n).toString();
+    y.amount_lamports = (BigInt(y.amount_lamports) - 1n).toString();
+    expect(DistributionAuditManifest.safeParse(a).success).toBe(false);
+  });
+
+  it("R2: refuses an audit whose member points or wallet differ from the epochs'", () => {
+    const a = structuredClone(assemble().audit);
+    must(a.members[0]).whole_points = "1";
+    expect(DistributionAuditManifest.safeParse(a).success).toBe(false);
+    const b = structuredClone(assemble().audit);
+    must(b.members[0]).wallet = wallet(77);
+    expect(DistributionAuditManifest.safeParse(b).success).toBe(false);
+  });
+
+  it("R3: refuses any fee but the program's 300 basis points", () => {
+    const a = structuredClone(assemble().audit);
+    a.settlement.fee_bps = "0";
+    expect(issues(a)).toMatch(/300 basis points/);
+  });
+
+  it("R3: refuses lamport fields above u64", () => {
+    const a = structuredClone(assemble().audit);
+    a.settlement.dust_lamports = (1n << 64n).toString();
+    expect(issues(a)).toMatch(/u64/);
+  });
+
+  it("R4: refuses a summed score that does not fit the claim's u64", () => {
+    const max = (1n << 64n) - 1n;
+    const big: PendingEpoch[] = [1n, 2n].map((index) => ({
+      index,
+      accrualLamports: 1_000n,
+      volumeLamports: 100n * SOL,
+      members: [{ memberId: uuid(1), pointUnits: max * POINT, payable: true, wallet: wallet(1) }],
+    }));
+    expect(buildDistribution(big).members[0]?.amountLamports).toBe(484n);
+    expect(() =>
+      MemberDistributionManifest.parse({
+        network: "solana:mainnet",
+        program_id: PROGRAM,
+        community_id: uuid(900),
+        mint: MINT,
+        distribution_index: "2",
+        member_id: uuid(1),
+        wallet: wallet(1),
+        parts: [
+          {
+            epoch_index: "1",
+            member_epoch_hash: hash(1),
+            whole_points: max.toString(),
+            amount_lamports: "242",
+          },
+          {
+            epoch_index: "2",
+            member_epoch_hash: hash(2),
+            whole_points: max.toString(),
+            amount_lamports: "242",
+          },
+        ],
+        whole_points: (2n * max).toString(),
+        amount_lamports: "484",
+      }),
+    ).toThrow(/u64/);
+  });
+});
+
+describe("leaf encoding", () => {
+  it("refuses a u64 field out of range instead of wrapping it", () => {
+    const base = {
+      wallet: new Uint8Array(32),
+      epochIndex: 1n,
+      score: 1n,
+      amount: 1n,
+      evidenceHash: new Uint8Array(32),
+    };
+    expect(() => leafHash({ ...base, score: 1n << 64n })).toThrow(/u64/);
+    expect(() => leafHash({ ...base, amount: -1n })).toThrow(/u64/);
+  });
+});
