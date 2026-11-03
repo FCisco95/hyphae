@@ -1,11 +1,12 @@
 // Rehearses scripts/rollout/db.mjs against disposable local Postgres databases (never Neon).
 // Each database is migrated to 0022 and seeded to the shape production has: Hyphae Lab, epochs 1
 // to 6, frozen evidence for epochs 4 and 5, a live reward-recovery queue. The shipped pins are
-// production's, so a copy of the script is pinned to the seed's digests instead; the copy keeps
-// every check and changes nothing else.
+// production's, so a copy of the script is pinned to the seed's digests instead. The copy keeps
+// every check; besides those pins it only moves the base deadline later, so the pass cases do not
+// depend on today's date (the deadline cases bring it earlier with ROLLOUT_DEADLINE).
 //
-// Run: pnpm test:rollout (starts a postgres:18 container; needs Docker). ROLLOUT_TEST_PG_URL=<url
-// of a loopback superuser connection> uses an existing server instead.
+// Run: pnpm test:rollout (starts a postgres:18 container on a free loopback port; needs Docker).
+// ROLLOUT_TEST_PG_URL=<url of a loopback superuser connection> uses an existing server instead.
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -291,7 +292,6 @@ before(async () => {
   if (process.env.ROLLOUT_TEST_PG_URL) {
     adminUrl = process.env.ROLLOUT_TEST_PG_URL;
   } else {
-    const port = process.env.ROLLOUT_TEST_PG_PORT ?? "55433";
     container = `hyphae-rollout-test-${process.pid}`;
     execFileSync("docker", [
       "run",
@@ -300,11 +300,17 @@ before(async () => {
       "--name",
       container,
       "-p",
-      `127.0.0.1:${port}:5432`,
+      // Docker picks a free port, so a parallel run or another container cannot collide.
+      "127.0.0.1::5432",
       "-e",
       "POSTGRES_PASSWORD=test",
       "postgres:18",
     ]);
+    const port = execFileSync("docker", ["port", container, "5432/tcp"], { encoding: "utf8" })
+      .trim()
+      .split("\n")[0]
+      .split(":")
+      .at(-1);
     adminUrl = `postgres://postgres:test@127.0.0.1:${port}/postgres`;
   }
   assert.ok(["127.0.0.1", "localhost"].includes(new URL(adminUrl).hostname), "loopback only");
