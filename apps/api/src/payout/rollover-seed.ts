@@ -30,13 +30,22 @@ export interface RolloverSeed extends ReadySeed {
 // The last epoch closes two days before `now`, so its hold window is over at `now`.
 export async function seedRolloverLane(
   db: Db,
-  opts: { now: Date; chainAddress: string; plan: readonly (readonly ReadyLabel[])[] },
+  opts: {
+    now: Date;
+    // Null leaves the community unbound, for the operator's bind step.
+    chainAddress: string | null;
+    plan: readonly (readonly ReadyLabel[])[];
+    mint?: string;
+    wallets?: Parameters<typeof seedReadyEpoch>[1]["wallets"];
+  },
 ): Promise<RolloverSeed> {
   const weeks = opts.plan.length + 1;
   const t0 = new Date(opts.now.getTime() - weeks * WEEK - 2 * DAY);
   const seed = await seedReadyEpoch(db, {
     now: new Date(t0.getTime() + 8 * DAY),
     chainAddress: opts.chainAddress,
+    ...(opts.mint && { mint: opts.mint }),
+    ...(opts.wallets && { wallets: opts.wallets }),
   });
   const { communityId, mint } = seed;
   const epochs: RolloverSeed["epochs"] = [{ id: seed.epochId, index: 1, closesAt: seed.closesAt }];

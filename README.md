@@ -141,6 +141,20 @@ TELEGRAM_BOT_TOKEN=000000000:local-placeholder-token TELEGRAM_WEBHOOK_SECRET=loc
 
 Then open `http://localhost:8787/docs`. `publish.devnet.test.ts` can add a real devnet publication to the same database (`HYPHAE_DEVNET_DATABASE_URL`).
 
+To prove the automatic settle loop end to end on a local test validator (opt-in, about a minute): it initializes a community whose admin is a throwaway server key with `scripts/init-server-community.ts`, binds it with `scripts/bind-community.ts`, funds the vault in four steps, rolls three epochs over, publishes the fourth as one distribution and claims one leaf. Every key is generated in a temp directory and deleted afterwards; the dumped program stays outside the repo.
+
+```sh
+# In WSL or Linux, from a scratch directory outside the repo: the deployed program, then a validator.
+solana program dump EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E hyphae.so -u m
+solana-test-validator --reset --bpf-program EAz8WkyUbGqr3ewSLpk94GWEoiWsvMENE5zV7Tvh4d6E hyphae.so
+# Elsewhere: a disposable Postgres (a loopback URL is required), then the suite.
+docker run -d --rm --name hyphae-localnet-pg -p 56543:5432 -e POSTGRES_PASSWORD=local -e POSTGRES_DB=hyphae postgres:17
+HYPHAE_LOCALNET_RUN=1 HYPHAE_LOCALNET_DATABASE_URL=postgres://postgres:local@127.0.0.1:56543/hyphae \
+  pnpm --filter @hyphae/api exec vitest run src/payout/settle.localnet.test.ts
+```
+
+`HYPHAE_LOCALNET_RPC` and `HYPHAE_LOCALNET_WS` override `http://127.0.0.1:8899` and `ws://127.0.0.1:8900`. The suite prints every signature and the vault, claimant and fee-recipient balances it checked against the distribution audit.
+
 ## License
 
 [Business Source License 1.1](LICENSE), converting to the GPL v2.0 or later on 2028-10-12. This repository is public; the program, its verifiable build and the rubrics are also published at [FCisco95/hyphae-program](https://github.com/FCisco95/hyphae-program) under the same licence.
