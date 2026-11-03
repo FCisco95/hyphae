@@ -768,3 +768,69 @@ describe("a wallet's record", () => {
     ]);
   });
 });
+
+// D-44 re-initializes MYCEL under a server key, which gives it a new community account. The
+// epochs published under the old account keep their chain records there, so every settlement read
+// checks them under the address stored with the epoch's intent, never the community's current
+// binding.
+describe("a community re-bound to a new on-chain account", () => {
+  it("still reads an epoch published under the old account as published and paid", async () => {
+    const wallet = randomAddress();
+    const p = await published({ effort: wallet });
+    const leaf = p.intent.leaves.find((l) => l.wallet === wallet);
+    if (!leaf) throw new Error("no leaf");
+    const fake = await onChain(p, leaf.amountLamports);
+    await claimed(fake, p, leaf);
+    const rebound = randomAddress();
+    await t.db
+      .update(communities)
+      .set({ chainAddress: rebound })
+      .where(eq(communities.id, p.seed.communityId));
+    const asked: string[] = [];
+    const reader: SettlementReader = {
+      ...fake.reader,
+      accounts: (owner, at) => {
+        asked.push(...at);
+        return fake.reader.accounts(owner, at);
+      },
+    };
+
+    const s = await epochOf(p.seed, reader);
+    expect(s.allocation).toMatchObject({
+      status: "published",
+      community_address: p.community,
+      vault_address: await vaultAddress(HYPHAE_PROGRAM_ID, address(p.community)),
+      epoch_address: p.epoch,
+      publish_tx: PUBLISH_TX,
+    });
+    if (s.payment.status !== "available") throw new Error(s.payment.reason);
+    expect(s.payment.claimed_lamports).toBe(leaf.amountLamports.toString());
+    expect(s.payment.claims.find((c) => c.wallet === wallet)).toMatchObject({
+      status: "paid",
+      claim_tx: CLAIM_TX,
+    });
+    const claim = await readClaim(t.db, p.seed.mint, 1, wallet, NOW, reader);
+    expect(claim).toMatchObject({
+      community_address: p.community,
+      epoch_address: p.epoch,
+      payment: { status: "paid", claim_tx: CLAIM_TX },
+    });
+    const mine = await readWalletClaims(t.db, wallet, { offset: 0, limit: 10 }, NOW, reader);
+    expect(mine.claims.map((c) => [c.community_address, c.payment])).toEqual([
+      [p.community, { status: "paid", claim_tx: CLAIM_TX }],
+    ]);
+    const r = await readWalletRecord(t.db, wallet, { offset: 0, limit: 10 }, NOW, reader);
+    expect(r?.epochs.map((e) => e.payout)).toEqual([
+      {
+        status: "allocated",
+        network: "solana:devnet",
+        amount_lamports: leaf.amountLamports.toString(),
+        payment: { status: "paid", claim_tx: CLAIM_TX },
+      },
+    ]);
+    // Nothing was looked up under the new account: the old epoch has no records there.
+    const underRebound = await epochAddress(HYPHAE_PROGRAM_ID, address(rebound), 1n);
+    expect(asked).not.toContain(underRebound);
+    expect(asked).toContain(p.epoch);
+  });
+});
