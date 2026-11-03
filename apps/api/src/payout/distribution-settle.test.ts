@@ -175,11 +175,55 @@ describe("settleCommunity: one epoch", () => {
       volumeLamports: 50n * SOL,
       distributionEpochId: null,
     });
-    // Decided once: the next run finds nothing due, and reads no balance.
-    const reads = fake.calls.vault;
+    // Decided once: the next run finds nothing due and writes nothing.
     expect(await settle(fake.chain, input.communityId)).toEqual({ status: "nothing_due" });
-    expect(fake.calls.vault).toBe(reads);
+    expect(fake.calls).toMatchObject({ publish: [], found: [] });
     expect(await decisionRows(seed.communityId)).toHaveLength(1);
+  });
+
+  it("stores a fee-derived volume past 2^63 exactly, and settles on it", async () => {
+    const { seed, chainAddress, input } = await ready();
+    // One basis point of each traded lamport reaches the vault: 10^15 lamports of accrual is
+    // 10^19 of volume, past a signed 64-bit integer (review, 2026-11-03).
+    await policyFor(seed.communityId, { rewardBpsOfVolume: 1 });
+    const fake = fakeChain({ community: chainAddress, free: 10n ** 15n });
+    const out = published(await settle(fake.chain, input.communityId));
+    expect(out.grossLamports).toBe(10n ** 15n);
+    const [decision] = await decisionRows(seed.communityId);
+    expect(10n ** 19n > 2n ** 63n).toBe(true);
+    expect(decision?.decision.volumeLamports).toBe(10n ** 19n);
+    const { publication } = await intentOf(seed.epochId);
+    const audit = JSON.parse(publication?.auditManifest as string) as {
+      distribution: { volume_lamports: string };
+    };
+    expect(audit.distribution.volume_lamports).toBe((10n ** 19n).toString());
+  });
+
+  it("decides on one snapshot of the vault balance and the outstanding figure", async () => {
+    const { seed, chainAddress, input } = await ready();
+    await policyFor(seed.communityId);
+    const fake = fakeChain({ community: chainAddress, free: SOL / 2n, outstanding: 100n });
+    // Every chain read lands right after another publication (fee 1, allocation 49). Paired from
+    // two reads, the balance of one would meet the outstanding figure of the other and the free
+    // balance would be off by a publication (review 2026-11-03, P1).
+    const read = fake.chain.readCommunity;
+    const drifting: SettleChain = {
+      ...fake.chain,
+      readCommunity: async (i) => {
+        fake.state.free -= 50n;
+        fake.state.outstanding += 49n;
+        return read(i);
+      },
+    };
+    expect(await settle(drifting, input.communityId)).toMatchObject({
+      status: "rolled_over",
+      accrualLamports: SOL / 2n - 50n,
+    });
+    expect(fake.calls.read).toBe(1);
+    expect((await decisionRows(seed.communityId))[0]?.decision).toMatchObject({
+      freeLamports: SOL / 2n - 50n,
+      accrualLamports: SOL / 2n - 50n,
+    });
   });
 
   it("rolls over, with the accrual kept, when the reward share is unknown", async () => {
@@ -202,7 +246,7 @@ describe("settleCommunity: one epoch", () => {
     const { seed, chainAddress, input } = await ready();
     const fake = fakeChain({ community: chainAddress, free: 2n * SOL });
     expect(await settle(fake.chain, input.communityId)).toEqual({ status: "no_policy" });
-    expect(fake.calls).toEqual({ vault: 0, publish: [], found: [] });
+    expect(fake.calls).toMatchObject({ publish: [], found: [] });
     expect(await decisionRows(seed.communityId)).toHaveLength(0);
 
     const manual: PublishChain = {
@@ -236,7 +280,7 @@ describe("settleCommunity: one epoch", () => {
       status: "refused",
       reason: "community_not_on_chain",
     });
-    expect(fake.calls).toEqual({ vault: 0, publish: [], found: [] });
+    expect(fake.calls).toMatchObject({ publish: [], found: [] });
   });
 
   it("recovers a run that stopped after its send, without sending again", async () => {
@@ -504,7 +548,7 @@ describe("settleCommunity: several epochs", () => {
     });
     expect(await settle(fake.chain, seed.communityId)).toMatchObject({ status: "waiting" });
     expect(await decisionRows(seed.communityId)).toHaveLength(0);
-    expect(fake.calls.vault).toBe(0);
+    expect(fake.calls).toMatchObject({ publish: [], found: [] });
 
     await t.db.insert(holdChecks).values(checks);
     expect(await settle(fake.chain, seed.communityId)).toMatchObject({

@@ -47,6 +47,9 @@ import { clearedMembers } from "./shared-handles.js";
 // any send, only ever re-sent as stored, and an epoch already on-chain must equal it.
 // A community without a payout policy is never touched: the operator's publish path stays as is.
 
+// The community account and its vault, read together in one call so the outstanding figure and
+// the vault balance come from one bank state: two reads could straddle a publication or a claim
+// and pair a balance with a stale outstanding (review 2026-11-03, P1).
 export interface SettleCommunity {
   address: string;
   // The admin key fixed in the community's address: the only key publish_epoch accepts.
@@ -54,10 +57,7 @@ export interface SettleCommunity {
   feeRecipient: string;
   // Lamports reserved by published epochs and not yet claimed.
   outstandingLamports: bigint;
-}
-
-export interface VaultBalance {
-  lamports: bigint;
+  vaultLamports: bigint;
   // The rent-exempt minimum of the vault account on this cluster, read live (never hard-coded).
   rentExemptMinimum: bigint;
 }
@@ -71,10 +71,9 @@ export interface Publisher {
 export interface SettleChain {
   network: MemberEpochManifest["network"];
   programId: string;
-  // The community account the operator bound, or null when there is none at that address for
-  // this mint.
+  // The community account the operator bound, with its vault, as one snapshot; null when there
+  // is no community at that address for this mint.
   readCommunity(input: { mint: string; address: string }): Promise<SettleCommunity | null>;
-  readVault(community: string): Promise<VaultBalance>;
   readEpoch(community: string, index: bigint): Promise<OnChainEpoch | null>;
   // Null when the worker holds no publisher key: a distribution is then planned, not sent.
   publisher: Publisher | null;
@@ -153,6 +152,70 @@ function finalGate(gate: PayoutGate, now: Date): JudgedGate | null {
 const blockersOf = (gate: PayoutGate): Blocker[] =>
   gate.status === "blocked" ? gate.blockers : [];
 
+// Every epoch rolled over since the last distribution, in index order.
+async function pendingDecisions(db: Db, communityId: string) {
+  return db
+    .select({ decision: epochPayoutDecisions, epochId: epochs.id, index: epochs.index })
+    .from(epochPayoutDecisions)
+    .innerJoin(epochs, eq(epochs.id, epochPayoutDecisions.epochId))
+    .where(
+      and(
+        eq(epochPayoutDecisions.communityId, communityId),
+        eq(epochPayoutDecisions.outcome, "rolled_over"),
+        isNull(epochPayoutDecisions.distributionEpochId),
+      ),
+    )
+    .orderBy(asc(epochs.index));
+}
+
+// Under the community row lock, the state this run decided on must still hold: no planned
+// distribution appeared, the epoch is still undecided and the rolled-over set is the one the
+// build used. Otherwise another run overtook this one between its selection and its store, and
+// this one stops without writing; the next sweep starts from the new state (review 2026-11-03,
+// P1: two runs could otherwise store overlapping distributions).
+async function reserveDecision(
+  tx: Db,
+  communityId: string,
+  epochId: string,
+  pending: readonly { epochId: string; accrualLamports: bigint }[],
+): Promise<void> {
+  await tx
+    .select({ id: communities.id })
+    .from(communities)
+    .where(eq(communities.id, communityId))
+    .for("update");
+  const overtaken = (what: string) =>
+    new Error(
+      `settle: another run changed ${what} of community ${communityId} during this run; the next sweep retries`,
+    );
+  const [planned] = await tx
+    .select({ id: epochPayoutDecisions.id })
+    .from(epochPayoutDecisions)
+    .where(
+      and(
+        eq(epochPayoutDecisions.communityId, communityId),
+        eq(epochPayoutDecisions.outcome, "distribution_planned"),
+      ),
+    )
+    .limit(1);
+  if (planned) throw overtaken("the planned distribution");
+  const [decided] = await tx
+    .select({ id: epochPayoutDecisions.id })
+    .from(epochPayoutDecisions)
+    .where(eq(epochPayoutDecisions.epochId, epochId))
+    .limit(1);
+  if (decided) throw overtaken(`epoch ${epochId}'s decision`);
+  const key = (xs: readonly { epochId: string; accrualLamports: bigint }[]) =>
+    xs.map((x) => `${x.epochId}:${x.accrualLamports}`).join(",");
+  const rows = await pendingDecisions(tx, communityId);
+  if (
+    key(rows.map((r) => ({ epochId: r.epochId, accrualLamports: r.decision.accrualLamports }))) !==
+    key(pending)
+  ) {
+    throw overtaken("the rolled-over epochs");
+  }
+}
+
 export async function settleCommunity(
   db: Db,
   chain: SettleChain,
@@ -178,18 +241,6 @@ export async function settleCommunity(
   if (!community) throw new Error(`settle: no community ${communityId}`);
   if (community.chainAddress === null)
     return { status: "refused", reason: "community_not_on_chain" };
-  const onChain = await chain.readCommunity({
-    mint: community.mint,
-    address: community.chainAddress,
-  });
-  if (onChain === null || onChain.address !== community.chainAddress) {
-    return { status: "refused", reason: "community_not_on_chain" };
-  }
-  const settings: PublicationSettings = {
-    network: chain.network,
-    programId: chain.programId,
-    feeRecipient: onChain.feeRecipient,
-  };
 
   // A planned distribution is sent or recorded before any later epoch is decided: deciding past
   // it would count its epochs as pending twice.
@@ -204,6 +255,19 @@ export async function settleCommunity(
         eq(epochPayoutDecisions.outcome, "distribution_planned"),
       ),
     );
+  // One snapshot for the whole run: the balance a decision uses is the one read here.
+  const onChain = await chain.readCommunity({
+    mint: community.mint,
+    address: community.chainAddress,
+  });
+  if (onChain === null || onChain.address !== community.chainAddress) {
+    return { status: "refused", reason: "community_not_on_chain" };
+  }
+  const settings: PublicationSettings = {
+    network: chain.network,
+    programId: chain.programId,
+    feeRecipient: onChain.feeRecipient,
+  };
   if (planned) {
     const intent = await loadDistributionIntent(db, planned.epochId);
     if (!intent) throw new Error(`settle: epoch ${planned.epochId} is planned without an intent`);
@@ -247,25 +311,16 @@ export async function settleCommunity(
     return { status: "waiting", epochIndex: next.index, blockers: blockersOf(gate) };
   }
 
-  // Every epoch rolled over since the last distribution, in index order.
-  const pendingRows = await db
-    .select({ decision: epochPayoutDecisions, epochId: epochs.id, index: epochs.index })
-    .from(epochPayoutDecisions)
-    .innerJoin(epochs, eq(epochs.id, epochPayoutDecisions.epochId))
-    .where(
-      and(
-        eq(epochPayoutDecisions.communityId, communityId),
-        eq(epochPayoutDecisions.outcome, "rolled_over"),
-        isNull(epochPayoutDecisions.distributionEpochId),
-      ),
-    )
-    .orderBy(asc(epochs.index));
+  const pendingRows = await pendingDecisions(db, communityId);
   const pendingLamports = pendingRows.reduce((s, p) => s + p.decision.accrualLamports, 0n);
+  const reserved = pendingRows.map((p) => ({
+    epochId: p.epochId,
+    accrualLamports: p.decision.accrualLamports,
+  }));
 
-  // §6: free = lamports − rent-exempt minimum − outstanding, read now; the accrual is what is
-  // free beyond the epochs already rolled over.
-  const vault = await chain.readVault(onChain.address);
-  const free = vault.lamports - vault.rentExemptMinimum - onChain.outstandingLamports;
+  // §6: free = lamports − rent-exempt minimum − outstanding, from the one snapshot read above;
+  // the accrual is what is free beyond the epochs already rolled over.
+  const free = onChain.vaultLamports - onChain.rentExemptMinimum - onChain.outstandingLamports;
   if (free < 0n) {
     throw new Error("settle: the vault holds less than its rent and its outstanding allocations");
   }
@@ -358,9 +413,12 @@ export async function settleCommunity(
   if (built.status === "waiting") return built;
   if (built.status === "rolled_over") {
     // Guarantee 1: nothing is sent; the lamports stay free in the vault for the next decision.
-    await db
-      .insert(epochPayoutDecisions)
-      .values({ ...decisionRow, outcome: "rolled_over", reason: built.reason });
+    await db.transaction(async (tx) => {
+      await reserveDecision(tx, communityId, next.id, reserved);
+      await tx
+        .insert(epochPayoutDecisions)
+        .values({ ...decisionRow, outcome: "rolled_over", reason: built.reason });
+    });
     return {
       status: "rolled_over",
       epochIndex: next.index,
@@ -370,10 +428,11 @@ export async function settleCommunity(
     };
   }
 
-  // The intent and the planned decision land together, under the row locks clearSharedHandle
-  // takes: a clearance the build did not see refuses the store, and none can land once the
-  // intent exists.
+  // The intent and the planned decision land together, under the community lock (no other run
+  // overtook this one) and the epoch row locks clearSharedHandle takes: a clearance the build did
+  // not see refuses the store, and none can land once the intent exists.
   await db.transaction(async (tx) => {
+    await reserveDecision(tx, communityId, next.id, reserved);
     for (const c of built.cleared) {
       await tx.select({ id: epochs.id }).from(epochs).where(eq(epochs.id, c.epochId)).for("update");
       if ((await clearedMembers(tx, c.epochId)).join() !== c.members.join()) {

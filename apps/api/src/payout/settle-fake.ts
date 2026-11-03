@@ -17,25 +17,28 @@ export function fakeSettleChain(o: {
   // undefined: the publisher is the admin; null: no publisher is configured.
   publisher?: string | null;
 }) {
-  const outstanding = o.outstanding ?? 0n;
-  const state = { free: o.free, onChain: new Map<bigint, OnChainEpoch>() };
-  const calls = { vault: 0, publish: [] as PublishArgs[], found: [] as PublishArgs[] };
+  const state = {
+    free: o.free,
+    outstanding: o.outstanding ?? 0n,
+    onChain: new Map<bigint, OnChainEpoch>(),
+  };
+  const calls = { read: 0, publish: [] as PublishArgs[], found: [] as PublishArgs[] };
   const publisher = o.publisher === undefined ? FAKE_ADMIN : o.publisher;
   const chain: SettleChain = {
     network: "solana:devnet",
     programId: HYPHAE_PROGRAM_ID,
-    readCommunity: async ({ address }) =>
-      address === o.community
-        ? {
-            address,
-            admin: FAKE_ADMIN,
-            feeRecipient: FAKE_FEE_RECIPIENT,
-            outstandingLamports: outstanding,
-          }
-        : null,
-    readVault: async () => {
-      calls.vault += 1;
-      return { lamports: FAKE_RENT + outstanding + state.free, rentExemptMinimum: FAKE_RENT };
+    // One snapshot: the vault's lamports and the outstanding figure come from the same state.
+    readCommunity: async ({ address }) => {
+      calls.read += 1;
+      if (address !== o.community) return null;
+      return {
+        address,
+        admin: FAKE_ADMIN,
+        feeRecipient: FAKE_FEE_RECIPIENT,
+        outstandingLamports: state.outstanding,
+        vaultLamports: FAKE_RENT + state.outstanding + state.free,
+        rentExemptMinimum: FAKE_RENT,
+      };
     },
     readEpoch: async (_community, index) => state.onChain.get(index) ?? null,
     publisher:

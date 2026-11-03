@@ -190,12 +190,74 @@ describe("settleCommunity on Postgres", () => {
     expect((await decisionRows(seed.communityId))[0]?.decision.outcome).toBe("distributed");
   });
 
+  // Review (2026-11-03) P1: worker A passes the planned check; worker B then plans epoch 2 with
+  // epoch 1 inside; A resumes, selects epoch 3 and still finds epoch 1 rolled over. Without the
+  // lock it would store a second distribution that pays epoch 1 again and counts epoch 2 twice.
+  it("aborts a run whose selection another run overtook, instead of overlapping distributions", async () => {
+    const chainAddress = randomAddress();
+    const seed = await seedRolloverLane(a, {
+      now: NOW,
+      chainAddress,
+      plan: [["ordinary"], ["effort", "floor"]],
+    });
+    const [e1, e2, e3] = seed.epochs;
+    if (!e1 || !e2 || !e3) throw new Error("epochs");
+    // auto_publish off: the planned distribution stays stored, which is the review's window.
+    await policyFor(seed.communityId, false);
+    const fake = fakeSettleChain({ community: chainAddress, free: 3n * (SOL / 10n) });
+    expect(await settle(a, fake.chain, seed.communityId)).toMatchObject({
+      status: "rolled_over",
+      epochIndex: 1,
+    });
+    fake.state.free = 12n * (SOL / 10n);
+
+    let release: () => void = () => undefined;
+    const resume = new Promise<void>((r) => {
+      release = r;
+    });
+    let reached: () => void = () => undefined;
+    const paused = new Promise<void>((r) => {
+      reached = r;
+    });
+    // A pauses at its chain read, after the planned check and before selecting its epoch.
+    const pausing: SettleChain = {
+      ...fake.chain,
+      readCommunity: async (i) => {
+        reached();
+        await resume;
+        return fake.chain.readCommunity(i);
+      },
+    };
+    const runA = settle(a, pausing, seed.communityId);
+    await paused;
+    expect(await settle(b, fake.chain, seed.communityId)).toMatchObject({
+      status: "planned",
+      epochIndex: 2,
+      epochs: 2,
+    });
+    release();
+    await expect(runA).rejects.toThrow(/another run/);
+
+    const intents = await a
+      .select({ epochId: distributionPublications.epochId })
+      .from(distributionPublications)
+      .where(eq(distributionPublications.communityId, seed.communityId));
+    expect(intents.map((i) => i.epochId)).toEqual([e2.id]);
+    expect(
+      (await decisionRows(seed.communityId)).map((d) => [d.index, d.decision.outcome]),
+    ).toEqual([
+      [1, "rolled_over"],
+      [2, "distribution_planned"],
+    ]);
+    expect(fake.calls.publish).toHaveLength(0);
+  });
+
   it("does nothing for a community without a policy", async () => {
     const chainAddress = randomAddress();
     const seed = await seedReadyEpoch(a, { now: NOW, chainAddress });
     const fake = fakeSettleChain({ community: chainAddress, free: 2n * SOL });
     expect(await settle(a, fake.chain, seed.communityId)).toEqual({ status: "no_policy" });
-    expect(fake.calls).toEqual({ vault: 0, publish: [], found: [] });
+    expect(fake.calls).toEqual({ read: 0, publish: [], found: [] });
     expect(await decisionRows(seed.communityId)).toHaveLength(0);
   });
 });

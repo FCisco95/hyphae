@@ -73,37 +73,43 @@ export async function settleChain(opts: {
     network: opts.network,
     programId,
     async readCommunity({ mint, address: bound }) {
-      const data = programAccount(programId, await accountInfo(address(bound)));
+      const community = address(bound);
+      const vault = await vaultAddress(programId, community);
+      // One call, one bank state: the outstanding figure and the vault balance belong together.
+      // Two confirmed reads could straddle a publication or a claim (review 2026-11-03, P1).
+      const {
+        value: [communityInfo, vaultInfo],
+      } = await rpc
+        .getMultipleAccounts([community, vault], { encoding: "base64", commitment: "confirmed" })
+        .send();
+      const data = programAccount(programId, communityInfo ?? null);
       if (!data) return null;
-      const community = decodeCommunity(data);
-      const admin = decoder.decode(community.admin);
+      const decoded = decodeCommunity(data);
+      const admin = decoder.decode(decoded.admin);
       // The bound account must be this mint's community at the address its admin derives.
       if (
-        decoder.decode(community.mint) !== mint ||
+        decoder.decode(decoded.mint) !== mint ||
         (await communityAddress(programId, address(mint), admin)) !== bound
       ) {
         return null;
       }
-      return {
-        address: bound,
-        admin,
-        feeRecipient: decoder.decode(community.feeRecipient),
-        outstandingLamports: community.outstandingLamports,
-      };
-    },
-    async readVault(community) {
-      const vault = await vaultAddress(programId, address(community));
-      const value = await accountInfo(vault);
-      if (!value || value.owner !== programId) {
+      if (!vaultInfo || vaultInfo.owner !== programId) {
         throw new Error("chain: the vault account is missing or not the program's");
       }
       // The rent-exempt minimum is asked of the cluster for the account's own size, never
       // hard-coded: mainnet rent differs from the textbook figure.
-      const dataLength = Buffer.from(value.data[0], "base64").length;
+      const dataLength = Buffer.from(vaultInfo.data[0], "base64").length;
       const rentExemptMinimum = await rpc
         .getMinimumBalanceForRentExemption(BigInt(dataLength))
         .send();
-      return { lamports: BigInt(value.lamports), rentExemptMinimum: BigInt(rentExemptMinimum) };
+      return {
+        address: bound,
+        admin,
+        feeRecipient: decoder.decode(decoded.feeRecipient),
+        outstandingLamports: decoded.outstandingLamports,
+        vaultLamports: BigInt(vaultInfo.lamports),
+        rentExemptMinimum: BigInt(rentExemptMinimum),
+      };
     },
     async readEpoch(community, index): Promise<OnChainEpoch | null> {
       const at = await epochAddress(programId, address(community), index);
