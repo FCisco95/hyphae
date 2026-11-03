@@ -173,6 +173,9 @@ describe("payoutOf", () => {
       hold: "pending",
     });
     expect(
+      payoutOf(verdict("not_payable", ["hold_unread_ruled"]), { closed: true, holdRequired: true }),
+    ).toEqual({ status: "not_payable", reasons: ["hold_unread_ruled"], hold: "unread" });
+    expect(
       payoutOf(verdict("not_payable", ["no_verified_wallet"]), {
         closed: true,
         holdRequired: true,

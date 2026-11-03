@@ -1,6 +1,8 @@
 -- Apply this migration before enabling any payout policy: the settle loop and the manual
 -- publish check read payout_policies and epoch_payout_decisions, and settle jobs fail loudly
 -- without them.
+-- It also creates hold_rulings, which rule-unread-holds writes; the payout gate reads it only
+-- when it exists.
 CREATE TABLE "distribution_publication_epoch_members" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"publication_id" uuid NOT NULL,
@@ -52,6 +54,18 @@ CREATE TABLE "epoch_payout_decisions" (
 	CONSTRAINT "epoch_payout_decisions_distribution" CHECK (("epoch_payout_decisions"."outcome" = 'rolled_over') = ("epoch_payout_decisions"."distribution_epoch_id" is null))
 );
 --> statement-breakpoint
+CREATE TABLE "hold_rulings" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"epoch_id" uuid NOT NULL,
+	"member_id" uuid NOT NULL,
+	"verdict" text NOT NULL,
+	"reason" text NOT NULL,
+	"actor" text NOT NULL,
+	"ruled_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "hold_rulings_verdict" CHECK ("hold_rulings"."verdict" = 'not_payable'),
+	CONSTRAINT "hold_rulings_reason_actor" CHECK (btrim("hold_rulings"."reason") <> '' and btrim("hold_rulings"."actor") <> '')
+);
+--> statement-breakpoint
 CREATE TABLE "payout_policies" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"community_id" uuid NOT NULL,
@@ -78,10 +92,13 @@ ALTER TABLE "epoch_payout_decisions" ADD CONSTRAINT "epoch_payout_decisions_comm
 ALTER TABLE "epoch_payout_decisions" ADD CONSTRAINT "epoch_payout_decisions_epoch_id_epochs_id_fk" FOREIGN KEY ("epoch_id") REFERENCES "public"."epochs"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "epoch_payout_decisions" ADD CONSTRAINT "epoch_payout_decisions_policy_id_payout_policies_id_fk" FOREIGN KEY ("policy_id") REFERENCES "public"."payout_policies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "epoch_payout_decisions" ADD CONSTRAINT "epoch_payout_decisions_distribution_epoch_id_epochs_id_fk" FOREIGN KEY ("distribution_epoch_id") REFERENCES "public"."epochs"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "hold_rulings" ADD CONSTRAINT "hold_rulings_epoch_id_epochs_id_fk" FOREIGN KEY ("epoch_id") REFERENCES "public"."epochs"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "hold_rulings" ADD CONSTRAINT "hold_rulings_member_id_members_id_fk" FOREIGN KEY ("member_id") REFERENCES "public"."members"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payout_policies" ADD CONSTRAINT "payout_policies_community_id_communities_id_fk" FOREIGN KEY ("community_id") REFERENCES "public"."communities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "distribution_publication_epoch_members_publication_epoch_member" ON "distribution_publication_epoch_members" USING btree ("publication_id","epoch_id","member_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "distribution_publication_members_publication_member" ON "distribution_publication_members" USING btree ("publication_id","member_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "distribution_publications_epoch" ON "distribution_publications" USING btree ("epoch_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "epoch_payout_decisions_epoch" ON "epoch_payout_decisions" USING btree ("epoch_id");--> statement-breakpoint
 CREATE INDEX "epoch_payout_decisions_community" ON "epoch_payout_decisions" USING btree ("community_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "hold_rulings_epoch_member" ON "hold_rulings" USING btree ("epoch_id","member_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "payout_policies_community_from" ON "payout_policies" USING btree ("community_id","effective_from_index");

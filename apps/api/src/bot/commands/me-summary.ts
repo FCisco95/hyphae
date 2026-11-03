@@ -40,6 +40,10 @@ const MISSED: [Reason, string][] = [
   ["no_rules_test", "the rules test was not passed by the close"],
   ["no_points", "no points"],
   ["shared_handle", "an X account is shared with another member and not cleared"],
+  [
+    "hold_unread_ruled",
+    "the balance could not be read after the close, so this epoch was ruled unpaid",
+  ],
 ];
 
 // The /me payout checklist: the payout gate's status for this member, three checks and the one
@@ -93,6 +97,7 @@ export function payoutChecklist(c: {
     pending: "⏳ Hold: being checked",
     holder: "✅ Hold: confirmed",
     below: `❌ Hold: under ${c.holdMin ?? "the minimum"} after the close`,
+    unread: "❌ Hold: the balance could not be read after the close",
     not_checked:
       has("no_verified_wallet") || has("no_rules_test")
         ? "➖ Hold: not checked, since the wallet or rules test was missing"

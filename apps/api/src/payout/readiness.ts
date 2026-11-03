@@ -15,7 +15,8 @@ import type { RulesTest } from "./rules-test.js";
 export type PayoutVerdictV1 = {
   status: MemberVerdict["status"];
   reasons: MemberVerdict["reasons"];
-  hold: "at_close" | "pending" | "holder" | "below" | "not_checked" | "not_required";
+  // unread: the read never completed in the window, and a recorded ruling decided the epoch.
+  hold: "at_close" | "pending" | "holder" | "below" | "unread" | "not_checked" | "not_required";
 };
 export type PayoutV1 = { status: "unpaid_epoch" | "published" } | PayoutVerdictV1;
 
@@ -38,7 +39,9 @@ export function payoutOf(
     ? v.holdResult.check.status
     : v.reasons.includes("hold_pending")
       ? "pending"
-      : "not_checked";
+      : v.reasons.includes("hold_unread_ruled")
+        ? "unread"
+        : "not_checked";
   return { status: v.status, reasons: [...v.reasons], hold };
 }
 

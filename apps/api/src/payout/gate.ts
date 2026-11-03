@@ -3,6 +3,7 @@ import {
   type Db,
   epochs,
   holdChecks,
+  holdRulings,
   members as membersTable,
   rewardConfigs,
   rewardDecisions,
@@ -38,7 +39,9 @@ export type MemberReason =
   | "no_rules_test"
   | "shared_handle"
   | "below_hold"
-  | "hold_pending";
+  | "hold_pending"
+  // The hold read never completed in the window and a recorded ruling says not payable.
+  | "hold_unread_ruled";
 
 // A hold result the gate applied: decided, for this wallet, mint and pinned threshold, and read in
 // the window.
@@ -310,6 +313,22 @@ export async function payoutGateIn(
   };
 }
 
+// The members of an epoch with a recorded hold ruling. The gate runs before migration 0023 is
+// applied, so the table is probed by name: without it no ruling can exist, and every verdict is
+// exactly what it was before rulings existed. With it, every error propagates.
+async function ruledMembers(tx: Db, epochId: string): Promise<Set<string>> {
+  const [probe] = await tx
+    .select({ table: sql<string | null>`to_regclass('public.hold_rulings')::text` })
+    .from(epochs)
+    .where(eq(epochs.id, epochId));
+  if (!probe?.table) return new Set();
+  const rows = await tx
+    .select({ memberId: holdRulings.memberId })
+    .from(holdRulings)
+    .where(and(eq(holdRulings.epochId, epochId), eq(holdRulings.verdict, "not_payable")));
+  return new Set(rows.map((r) => r.memberId));
+}
+
 // The gate's member stage (P9, P16) over `totals`, in their order. The gate runs it on the frozen
 // totals; the read API runs it on an open epoch's live totals, where the link valid at closes_at
 // is the current one and no hold result can count yet.
@@ -357,6 +376,7 @@ export async function judgeMembers(
         .where(eq(sharedHandleClearances.epochId, epoch.id))
     ).map((c) => c.memberId),
   );
+  const ruled = await ruledMembers(tx, epoch.id);
 
   const members: MemberVerdict[] = [];
   for (const m of input.totals) {
@@ -386,8 +406,14 @@ export async function judgeMembers(
       ) {
         applied = h as AppliedHold;
       }
+      // A recorded ruling decides only a read that never completed (pending or uncertain) once
+      // the window is over; a holder or below observation is never overridden by one.
+      const unread =
+        h !== undefined && (h.check.status === "pending" || h.check.status === "uncertain");
       if (applied?.check.status === "below") reasons.push("below_hold");
-      else if (!applied) reasons.push("hold_pending");
+      else if (!applied && windowOver && unread && ruled.has(m.memberId)) {
+        reasons.push("hold_unread_ruled");
+      } else if (!applied) reasons.push("hold_pending");
     }
     let status: MemberVerdict["status"] =
       reasons.length === 0

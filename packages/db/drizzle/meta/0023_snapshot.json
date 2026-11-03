@@ -1,5 +1,5 @@
 {
-  "id": "f3fb0405-c63d-408e-a059-51d07a12ccc8",
+  "id": "d1a83e53-a540-496a-a5f4-f2eecc1d4093",
   "prevId": "c64a2d48-f5f1-4de0-a5b8-f1d10cc4133a",
   "version": "7",
   "dialect": "postgresql",
@@ -1218,6 +1218,113 @@
         "hold_checks_observation": {
           "name": "hold_checks_observation",
           "value": "(\"hold_checks\".\"status\" in ('holder', 'below')) = (\"hold_checks\".\"raw_amount\" is not null and \"hold_checks\".\"decimals\" is not null and \"hold_checks\".\"provider\" is not null and \"hold_checks\".\"slot\" is not null and \"hold_checks\".\"observed_at\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.hold_rulings": {
+      "name": "hold_rulings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "epoch_id": {
+          "name": "epoch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "member_id": {
+          "name": "member_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verdict": {
+          "name": "verdict",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor": {
+          "name": "actor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ruled_at": {
+          "name": "ruled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "hold_rulings_epoch_member": {
+          "name": "hold_rulings_epoch_member",
+          "columns": [
+            {
+              "expression": "epoch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "member_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "hold_rulings_epoch_id_epochs_id_fk": {
+          "name": "hold_rulings_epoch_id_epochs_id_fk",
+          "tableFrom": "hold_rulings",
+          "tableTo": "epochs",
+          "columnsFrom": ["epoch_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "hold_rulings_member_id_members_id_fk": {
+          "name": "hold_rulings_member_id_members_id_fk",
+          "tableFrom": "hold_rulings",
+          "tableTo": "members",
+          "columnsFrom": ["member_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "hold_rulings_verdict": {
+          "name": "hold_rulings_verdict",
+          "value": "\"hold_rulings\".\"verdict\" = 'not_payable'"
+        },
+        "hold_rulings_reason_actor": {
+          "name": "hold_rulings_reason_actor",
+          "value": "btrim(\"hold_rulings\".\"reason\") <> '' and btrim(\"hold_rulings\".\"actor\") <> ''"
         }
       },
       "isRLSEnabled": false

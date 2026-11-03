@@ -1101,6 +1101,32 @@ export const holdChecks = pgTable(
   ],
 );
 
+// Insert-only. A recorded ruling, member by member, for a hold read that never completed in its
+// window (ruled 2026-11-03 for MYCEL epoch 5, after a provider outage): the member is not payable
+// for that epoch. The gate applies it only to a check still pending or uncertain once the window
+// is over, so it can never override a holder or below observation.
+export const holdRulings = pgTable(
+  "hold_rulings",
+  {
+    id: id(),
+    epochId: uuid("epoch_id")
+      .notNull()
+      .references(() => epochs.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    verdict: text("verdict").notNull(),
+    reason: text("reason").notNull(),
+    actor: text("actor").notNull(),
+    ruledAt: timestamp("ruled_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("hold_rulings_epoch_member").on(t.epochId, t.memberId),
+    check("hold_rulings_verdict", sql`${t.verdict} = 'not_payable'`),
+    check("hold_rulings_reason_actor", sql`btrim(${t.reason}) <> '' and btrim(${t.actor}) <> ''`),
+  ],
+);
+
 // Raids posted by Organic's server through the signed integration route (contract 2026-10-30 §7).
 // One row per community and idempotency key: the hash of the request it answers, the signing key
 // and the actor Organic vouched for (kept for audit), and the first answer, which a repeat of the

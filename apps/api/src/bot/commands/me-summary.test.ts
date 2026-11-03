@@ -345,6 +345,10 @@ describe("payoutChecklist", () => {
       "❌ Hold: under 100,000 MYCEL after the close",
       "Not payable: the wallet held less than the minimum after the close.",
     ]);
+    expect(at(signed, v("not_payable", ["hold_unread_ruled"], "unread")).lines.slice(3)).toEqual([
+      "❌ Hold: the balance could not be read after the close",
+      "Not payable: the balance could not be read after the close, so this epoch was ruled unpaid.",
+    ]);
     expect(at(none, v("not_payable", ["no_verified_wallet"], "not_checked"))).toEqual({
       lines: [
         "To be paid for epoch 3 (closed):",
