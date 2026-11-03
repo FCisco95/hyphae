@@ -452,7 +452,13 @@ export async function settleCommunity(
       distribution,
       epochs: evidence,
     });
-    return { status: "distribute" as const, assembled, cleared };
+    return {
+      status: "distribute" as const,
+      assembled,
+      cleared,
+      // The B7 bytes of every epoch the distribution pays, stored with the intent.
+      epochMembers: evidence.map((e) => ({ epochId: e.epoch.id, members: e.members })),
+    };
   });
 
   if (built.status === "waiting") return built;
@@ -486,7 +492,7 @@ export async function settleCommunity(
         );
       }
     }
-    await insertDistributionIntent(tx, ref, onChain.address, built.assembled);
+    await insertDistributionIntent(tx, ref, onChain.address, built.assembled, built.epochMembers);
     await tx
       .insert(epochPayoutDecisions)
       .values({ ...decisionRow, outcome: "distribution_planned", distributionEpochId: next.id });

@@ -1,6 +1,16 @@
 -- Apply this migration before enabling any payout policy: the settle loop and the manual
 -- publish check read payout_policies and epoch_payout_decisions, and settle jobs fail loudly
 -- without them.
+CREATE TABLE "distribution_publication_epoch_members" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"publication_id" uuid NOT NULL,
+	"epoch_id" uuid NOT NULL,
+	"member_id" uuid NOT NULL,
+	"manifest_hash" text NOT NULL,
+	"manifest" text NOT NULL,
+	CONSTRAINT "distribution_publication_epoch_members_hash" CHECK ("distribution_publication_epoch_members"."manifest_hash" = encode(sha256(convert_to('hyphae/member-epoch/v1', 'UTF8') || '\x00'::bytea || convert_to("distribution_publication_epoch_members"."manifest", 'UTF8')), 'hex'))
+);
+--> statement-breakpoint
 CREATE TABLE "distribution_publication_members" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"publication_id" uuid NOT NULL,
@@ -57,6 +67,9 @@ CREATE TABLE "payout_policies" (
 	CONSTRAINT "payout_policies_reward_bps" CHECK ("payout_policies"."reward_bps_of_volume" is null or "payout_policies"."reward_bps_of_volume" between 1 and 10000)
 );
 --> statement-breakpoint
+ALTER TABLE "distribution_publication_epoch_members" ADD CONSTRAINT "distribution_publication_epoch_members_publication_id_distribution_publications_id_fk" FOREIGN KEY ("publication_id") REFERENCES "public"."distribution_publications"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "distribution_publication_epoch_members" ADD CONSTRAINT "distribution_publication_epoch_members_epoch_id_epochs_id_fk" FOREIGN KEY ("epoch_id") REFERENCES "public"."epochs"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "distribution_publication_epoch_members" ADD CONSTRAINT "distribution_publication_epoch_members_member_id_members_id_fk" FOREIGN KEY ("member_id") REFERENCES "public"."members"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "distribution_publication_members" ADD CONSTRAINT "distribution_publication_members_publication_id_distribution_publications_id_fk" FOREIGN KEY ("publication_id") REFERENCES "public"."distribution_publications"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "distribution_publication_members" ADD CONSTRAINT "distribution_publication_members_member_id_members_id_fk" FOREIGN KEY ("member_id") REFERENCES "public"."members"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "distribution_publications" ADD CONSTRAINT "distribution_publications_epoch_id_epochs_id_fk" FOREIGN KEY ("epoch_id") REFERENCES "public"."epochs"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -66,6 +79,7 @@ ALTER TABLE "epoch_payout_decisions" ADD CONSTRAINT "epoch_payout_decisions_epoc
 ALTER TABLE "epoch_payout_decisions" ADD CONSTRAINT "epoch_payout_decisions_policy_id_payout_policies_id_fk" FOREIGN KEY ("policy_id") REFERENCES "public"."payout_policies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "epoch_payout_decisions" ADD CONSTRAINT "epoch_payout_decisions_distribution_epoch_id_epochs_id_fk" FOREIGN KEY ("distribution_epoch_id") REFERENCES "public"."epochs"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payout_policies" ADD CONSTRAINT "payout_policies_community_id_communities_id_fk" FOREIGN KEY ("community_id") REFERENCES "public"."communities"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "distribution_publication_epoch_members_publication_epoch_member" ON "distribution_publication_epoch_members" USING btree ("publication_id","epoch_id","member_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "distribution_publication_members_publication_member" ON "distribution_publication_members" USING btree ("publication_id","member_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "distribution_publications_epoch" ON "distribution_publications" USING btree ("epoch_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "epoch_payout_decisions_epoch" ON "epoch_payout_decisions" USING btree ("epoch_id");--> statement-breakpoint

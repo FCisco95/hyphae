@@ -1,5 +1,6 @@
 import { HYPHAE_PROGRAM_ID, TAGS, taggedHash } from "@hyphae/core";
 import {
+  distributionPublicationEpochMembers,
   distributionPublicationMembers,
   distributionPublications,
   epochPayoutDecisions,
@@ -11,6 +12,7 @@ import {
 import { asc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb } from "../rewards/test-db.js";
+import { loadDistributionIntent } from "./distribution-intent.js";
 import { type SettleChain, type SettleOutcome, settleCommunity } from "./distribution-settle.js";
 import { buildPublication } from "./publication.js";
 import { type PublishArgs, type PublishChain, publishEpoch } from "./publish.js";
@@ -540,6 +542,90 @@ describe("settleCommunity: several epochs", () => {
       [e4.id, "4", null],
     ]);
     expect(await settle(fake.chain, seed.communityId)).toEqual({ status: "nothing_due" });
+
+    // The B7 bytes of every paid epoch are stored with the intent: epoch 1's four members, epoch
+    // 2's one, none for epoch 3 (nobody posted) and epoch 4's two, each hashing to the hash the
+    // audit and the B10 parts commit to.
+    const b7 = await t.db
+      .select()
+      .from(distributionPublicationEpochMembers)
+      .where(eq(distributionPublicationEpochMembers.publicationId, publication?.id as string));
+    const byEpoch = (id: string) => b7.filter((r) => r.epochId === id);
+    expect([e1, e2, e3, e4].map((e) => byEpoch(e.id).length)).toEqual([4, 1, 0, 2]);
+    const fullAudit = JSON.parse(publication?.auditManifest as string) as {
+      epochs: { epoch: { id: string }; members: { member_id: string; manifest_hash: string }[] }[];
+    };
+    for (const e of fullAudit.epochs) {
+      const rows = byEpoch(e.epoch.id);
+      expect(rows.map((r) => [r.memberId, r.manifestHash]).sort()).toEqual(
+        e.members.map((m) => [m.member_id, m.manifest_hash]).sort(),
+      );
+      for (const r of rows) {
+        expect(taggedHash(TAGS.memberEpoch, r.manifest)).toBe(r.manifestHash);
+        expect(JSON.parse(r.manifest)).toMatchObject({
+          epoch: { id: r.epochId },
+          member_id: r.memberId,
+        });
+      }
+    }
+    const loaded = await loadDistributionIntent(t.db, e4.id);
+    expect(loaded?.epochMembers.map((e) => [e.epochId, e.index, e.members.length])).toEqual([
+      [e1.id, "1", 4],
+      [e2.id, "2", 1],
+      [e3.id, "3", 0],
+      [e4.id, "4", 2],
+    ]);
+    const b7Hashes = new Set(b7.map((r) => r.manifestHash));
+    for (const m of loaded?.members ?? []) {
+      for (const p of m.parts) expect(b7Hashes.has(p.member_epoch_hash)).toBe(true);
+    }
+  });
+
+  it("refuses an intent whose stored B7 bytes are missing or altered", async () => {
+    const chainAddress = randomAddress();
+    const seed = await seedRolloverLane(t.db, { now: NOW, chainAddress, plan: [["ordinary"]] });
+    await policyFor(seed.communityId, { autoPublish: false });
+    const fake = fakeChain({ community: chainAddress, free: 0n });
+    fake.state.free = SOL / 2n;
+    expect(await settle(fake.chain, seed.communityId)).toMatchObject({ status: "rolled_over" });
+    fake.state.free = SOL;
+    expect(await settle(fake.chain, seed.communityId)).toMatchObject({ status: "planned" });
+    const e2 = seed.epochs[1];
+    if (!e2) throw new Error("epoch 2");
+    const { publication } = await intentOf(e2.id);
+    const rows = await t.db
+      .select()
+      .from(distributionPublicationEpochMembers)
+      .where(eq(distributionPublicationEpochMembers.publicationId, publication?.id as string));
+    expect(rows.length).toBeGreaterThan(1);
+    const [victim] = rows;
+    if (!victim) throw new Error("row");
+
+    // The database refuses bytes that no longer hash to the stored hash.
+    const violates = (error: unknown) =>
+      (error as { cause?: { code?: string } }).cause?.code === "23514";
+    await expect(
+      t.db
+        .update(distributionPublicationEpochMembers)
+        .set({ manifest: `${victim.manifest} ` })
+        .where(eq(distributionPublicationEpochMembers.id, victim.id)),
+    ).rejects.toSatisfy(violates);
+
+    // A row pointed at another epoch, or missing, no longer matches the audit: the intent is
+    // refused rather than sent, and the planned run stops.
+    const e1 = seed.epochs[0] as { id: string };
+    const other = victim.epochId === e1.id ? e2.id : e1.id;
+    await t.db
+      .update(distributionPublicationEpochMembers)
+      .set({ epochId: other })
+      .where(eq(distributionPublicationEpochMembers.id, victim.id));
+    await expect(loadDistributionIntent(t.db, e2.id)).rejects.toThrow(/inconsistent/);
+    await t.db
+      .delete(distributionPublicationEpochMembers)
+      .where(eq(distributionPublicationEpochMembers.id, victim.id));
+    await expect(loadDistributionIntent(t.db, e2.id)).rejects.toThrow(/inconsistent/);
+    await expect(settle(fake.chain, seed.communityId)).rejects.toThrow(/inconsistent/);
+    expect(fake.calls.publish).toHaveLength(0);
   });
 
   it("decides epochs in index order: epoch 2 waits while epoch 1 is not final", async () => {

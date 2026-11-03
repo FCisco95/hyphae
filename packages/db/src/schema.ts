@@ -1280,3 +1280,35 @@ export const distributionPublicationMembers = pgTable(
     ),
   ],
 );
+
+// Every member-epoch manifest (B7) of every epoch a distribution pays, byte for byte: the B10
+// parts and the B11 audit commit to these hashes, so the bytes behind a leaf stay readable
+// without a rebuild. epoch_id is the pending epoch the manifest describes, not the index epoch.
+export const distributionPublicationEpochMembers = pgTable(
+  "distribution_publication_epoch_members",
+  {
+    id: id(),
+    publicationId: uuid("publication_id")
+      .notNull()
+      .references(() => distributionPublications.id),
+    epochId: uuid("epoch_id")
+      .notNull()
+      .references(() => epochs.id),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id),
+    manifestHash: text("manifest_hash").notNull(),
+    manifest: text("manifest").notNull(),
+  },
+  (t) => [
+    uniqueIndex("distribution_publication_epoch_members_publication_epoch_member").on(
+      t.publicationId,
+      t.epochId,
+      t.memberId,
+    ),
+    check(
+      "distribution_publication_epoch_members_hash",
+      sql`${t.manifestHash} = ${taggedHashSql("hyphae/member-epoch/v1", t.manifest)}`,
+    ),
+  ],
+);
