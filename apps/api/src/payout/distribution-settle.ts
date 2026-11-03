@@ -18,7 +18,7 @@ import {
   leaves,
   payoutPolicies,
 } from "@hyphae/db";
-import { and, asc, eq, inArray, isNull, notExists, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, notExists, or, sql } from "drizzle-orm";
 import { readOnly } from "../pg.js";
 import { backfillEpochCommitments } from "./commitment-store.js";
 import {
@@ -120,6 +120,8 @@ export interface SettleDeps {
 type PolicyRow = typeof payoutPolicies.$inferSelect;
 type EpochRef = { communityId: string; epochId: string };
 
+const PG_BIGINT_MAX = 9_223_372_036_854_775_807n;
+
 const toPolicy = (row: PolicyRow): PayoutPolicy => ({
   thresholdVolumeLamports: row.thresholdVolumeLamports,
   basis: row.basis === "per_epoch" ? "per_epoch" : "cumulative",
@@ -168,16 +170,46 @@ async function pendingDecisions(db: Db, communityId: string) {
     .orderBy(asc(epochs.index));
 }
 
-// Under the community row lock, the state this run decided on must still hold: no planned
-// distribution appeared, the epoch is still undecided and the rolled-over set is the one the
-// build used. Otherwise another run overtook this one between its selection and its store, and
-// this one stops without writing; the next sweep starts from the new state (review 2026-11-03,
-// P1: two runs could otherwise store overlapping distributions).
+// The community's settlement generation: every decision (epoch, outcome, distribution) and every
+// published epoch, as one comparable string. Captured before the chain snapshot and compared
+// under the community lock at the store, so a run that planned, published and recorded in between
+// is caught even when no planned row remains, the epoch is still undecided and nothing is pending:
+// the snapshot's lamports would otherwise be counted again (review round 2, P1).
+async function settlementGeneration(db: Db, communityId: string): Promise<string> {
+  const decisions = await db
+    .select({
+      epochId: epochPayoutDecisions.epochId,
+      outcome: epochPayoutDecisions.outcome,
+      distributionEpochId: epochPayoutDecisions.distributionEpochId,
+    })
+    .from(epochPayoutDecisions)
+    .where(eq(epochPayoutDecisions.communityId, communityId))
+    .orderBy(asc(epochPayoutDecisions.epochId));
+  const published = await db
+    .select({ id: epochs.id })
+    .from(epochs)
+    .where(
+      and(
+        eq(epochs.communityId, communityId),
+        or(eq(epochs.status, "published"), isNotNull(epochs.root)),
+      ),
+    )
+    .orderBy(asc(epochs.id));
+  return JSON.stringify({ decisions, published: published.map((p) => p.id) });
+}
+
+// Under the community row lock, the state this run decided on must still hold: the settlement
+// generation captured before the chain snapshot, no planned distribution, the epoch still
+// undecided and the rolled-over set the build used. Otherwise another run overtook this one
+// between its snapshot and its store, and this one stops without writing; the next sweep starts
+// from the new state (review 2026-11-03, P1 in both rounds: two runs could otherwise store
+// overlapping distributions, or count lamports a finished run already distributed).
 async function reserveDecision(
   tx: Db,
   communityId: string,
   epochId: string,
   pending: readonly { epochId: string; accrualLamports: bigint }[],
+  generation: string,
 ): Promise<void> {
   await tx
     .select({ id: communities.id })
@@ -188,6 +220,9 @@ async function reserveDecision(
     new Error(
       `settle: another run changed ${what} of community ${communityId} during this run; the next sweep retries`,
     );
+  if ((await settlementGeneration(tx, communityId)) !== generation) {
+    throw overtaken("the settlement state");
+  }
   const [planned] = await tx
     .select({ id: epochPayoutDecisions.id })
     .from(epochPayoutDecisions)
@@ -241,6 +276,8 @@ export async function settleCommunity(
   if (!community) throw new Error(`settle: no community ${communityId}`);
   if (community.chainAddress === null)
     return { status: "refused", reason: "community_not_on_chain" };
+  // Captured before anything else is read, the chain snapshot included; compared at the store.
+  const generation = await settlementGeneration(db, communityId);
 
   // A planned distribution is sent or recorded before any later epoch is decided: deciding past
   // it would count its epochs as pending twice.
@@ -325,6 +362,14 @@ export async function settleCommunity(
     throw new Error("settle: the vault holds less than its rent and its outstanding allocations");
   }
   const accrual = accrualOf(free, pendingLamports);
+  // The decision columns are Postgres bigint, signed: their ceiling is 2^63 − 1, not u64's. The
+  // whole SOL supply is about 5.8e17 lamports, so a value past it is a broken read; it is refused
+  // here with a clear error rather than by the insert (review round 2, P2).
+  if (free > PG_BIGINT_MAX || accrual > PG_BIGINT_MAX) {
+    throw new Error(
+      "settle: the vault's free balance exceeds the decision column's signed 64-bit range",
+    );
+  }
   const volume = feeDerivedVolume(accrual, policy.rewardBpsOfVolume, true);
   const decisionRow = {
     communityId,
@@ -414,7 +459,7 @@ export async function settleCommunity(
   if (built.status === "rolled_over") {
     // Guarantee 1: nothing is sent; the lamports stay free in the vault for the next decision.
     await db.transaction(async (tx) => {
-      await reserveDecision(tx, communityId, next.id, reserved);
+      await reserveDecision(tx, communityId, next.id, reserved, generation);
       await tx
         .insert(epochPayoutDecisions)
         .values({ ...decisionRow, outcome: "rolled_over", reason: built.reason });
@@ -432,7 +477,7 @@ export async function settleCommunity(
   // overtook this one) and the epoch row locks clearSharedHandle takes: a clearance the build did
   // not see refuses the store, and none can land once the intent exists.
   await db.transaction(async (tx) => {
-    await reserveDecision(tx, communityId, next.id, reserved);
+    await reserveDecision(tx, communityId, next.id, reserved, generation);
     for (const c of built.cleared) {
       await tx.select({ id: epochs.id }).from(epochs).where(eq(epochs.id, c.epochId)).for("update");
       if ((await clearedMembers(tx, c.epochId)).join() !== c.members.join()) {

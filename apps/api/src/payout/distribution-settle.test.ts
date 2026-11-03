@@ -226,6 +226,18 @@ describe("settleCommunity: one epoch", () => {
     });
   });
 
+  it("refuses a free balance past the decision column's signed 64-bit range, with a clear error", async () => {
+    const { seed, chainAddress, input } = await ready();
+    await policyFor(seed.communityId);
+    // 2^63 fits a u64 but not a Postgres bigint; the whole SOL supply is near 5.8e17, so this is
+    // a broken read, refused before any write (review round 2, P2).
+    const fake = fakeChain({ community: chainAddress, free: 2n ** 63n });
+    await expect(settle(fake.chain, input.communityId)).rejects.toThrow(/signed 64-bit/);
+    expect(fake.calls.publish).toHaveLength(0);
+    expect(await decisionRows(seed.communityId)).toHaveLength(0);
+    expect((await intentOf(seed.epochId)).publication).toBeUndefined();
+  });
+
   it("rolls over, with the accrual kept, when the reward share is unknown", async () => {
     const { seed, chainAddress, input } = await ready();
     await policyFor(seed.communityId, { rewardBpsOfVolume: null });

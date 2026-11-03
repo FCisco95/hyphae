@@ -252,6 +252,76 @@ describe("settleCommunity on Postgres", () => {
     expect(fake.calls.publish).toHaveLength(0);
   });
 
+  // Review round 2, P1: A holds its chain snapshot; B plans, publishes and records epoch 2 (with
+  // epoch 1 inside) before A selects. A then finds no planned row, an undecided epoch 3 and
+  // nothing pending, so every row-level check passes, yet its snapshot still holds the lamports
+  // B just distributed. The settlement generation captured before the snapshot stops it.
+  it("aborts a run whose snapshot predates another run's full publication", async () => {
+    const chainAddress = randomAddress();
+    const seed = await seedRolloverLane(a, {
+      now: NOW,
+      chainAddress,
+      plan: [["ordinary"], ["effort", "floor"]],
+    });
+    const [e1, e2, e3] = seed.epochs;
+    if (!e1 || !e2 || !e3) throw new Error("epochs");
+    await policyFor(seed.communityId, true);
+    const fake = fakeSettleChain({ community: chainAddress, free: 3n * (SOL / 10n) });
+    expect(await settle(a, fake.chain, seed.communityId)).toMatchObject({
+      status: "rolled_over",
+      epochIndex: 1,
+    });
+    fake.state.free = 12n * (SOL / 10n);
+
+    let release: () => void = () => undefined;
+    const resume = new Promise<void>((r) => {
+      release = r;
+    });
+    let reached: () => void = () => undefined;
+    const paused = new Promise<void>((r) => {
+      reached = r;
+    });
+    // A pauses with its snapshot in hand, before selecting its epoch.
+    const pausing: SettleChain = {
+      ...fake.chain,
+      readCommunity: async (i) => {
+        const snapshot = await fake.chain.readCommunity(i);
+        reached();
+        await resume;
+        return snapshot;
+      },
+    };
+    const runA = settle(a, pausing, seed.communityId);
+    await paused;
+    expect(await settle(b, fake.chain, seed.communityId)).toMatchObject({
+      status: "published",
+      epochIndex: 2,
+      epochs: 2,
+    });
+    // B's publication took the vault's free balance.
+    fake.state.free = 0n;
+    release();
+    await expect(runA).rejects.toThrow(/another run/);
+
+    const intents = await a
+      .select({ epochId: distributionPublications.epochId })
+      .from(distributionPublications)
+      .where(eq(distributionPublications.communityId, seed.communityId));
+    expect(intents.map((i) => i.epochId)).toEqual([e2.id]);
+    expect(
+      (await decisionRows(seed.communityId)).map((d) => [
+        d.index,
+        d.decision.outcome,
+        d.decision.distributionEpochId,
+      ]),
+    ).toEqual([
+      [1, "distributed", e2.id],
+      [2, "distributed", e2.id],
+    ]);
+    expect(fake.calls.publish).toHaveLength(1);
+    expect(await leafRows(e3.id)).toHaveLength(0);
+  });
+
   it("does nothing for a community without a policy", async () => {
     const chainAddress = randomAddress();
     const seed = await seedReadyEpoch(a, { now: NOW, chainAddress });
