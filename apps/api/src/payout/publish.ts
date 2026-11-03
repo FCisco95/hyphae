@@ -87,9 +87,26 @@ export type PlanOutcome =
 
 type PublishInput = { communityId: string; epochId: string; grossLamports: bigint };
 
+// Postgres: the relation named in the query does not exist.
+const UNDEFINED_TABLE = "42P01";
+const undefinedTable = (error: unknown) =>
+  (error as { cause?: { code?: string }; code?: string }).cause?.code === UNDEFINED_TABLE ||
+  (error as { code?: string }).code === UNDEFINED_TABLE;
+
 // Whether the settle loop owns the epoch: a payout policy in force at its index, or a decision
-// already recorded for it. A community without a policy is untouched by this check.
+// already recorded for it. A community without a policy is untouched by this check. Before
+// migration 0023 is applied the two tables do not exist, which means no community is managed yet:
+// the operator's publish then proceeds as it did before this check. Any other error still fails.
 async function policyManaged(db: Db, ref: { communityId: string; epochId: string }) {
+  try {
+    return await policyManagedIn(db, ref);
+  } catch (error) {
+    if (undefinedTable(error)) return false;
+    throw error;
+  }
+}
+
+async function policyManagedIn(db: Db, ref: { communityId: string; epochId: string }) {
   const [epoch] = await db
     .select({ index: epochs.index })
     .from(epochs)

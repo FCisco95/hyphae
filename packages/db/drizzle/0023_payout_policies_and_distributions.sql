@@ -1,3 +1,6 @@
+-- Apply this migration before enabling any payout policy: the settle loop and the manual
+-- publish check read payout_policies and epoch_payout_decisions, and settle jobs fail loudly
+-- without them.
 CREATE TABLE "distribution_publication_members" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"publication_id" uuid NOT NULL,

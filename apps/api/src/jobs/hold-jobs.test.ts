@@ -4,6 +4,7 @@ const m = vi.hoisted(() => ({
   sent: [] as { queue: string; data: unknown }[],
   runs: [] as unknown[],
   checker: async () => ({ kind: "uncertain", reason: "not_configured" }) as const,
+  settles: (async () => 0) as () => Promise<number>,
 }));
 vi.mock("../db.js", () => ({ db: { tag: "db" } }));
 vi.mock("../env.js", () => ({
@@ -30,7 +31,7 @@ vi.mock("../rewards/close.js", () => ({
   closeEpoch: async () => ({ status: "closed", created: true, entries: [] }),
   dueCloses: async () => [],
 }));
-vi.mock("./settle-jobs.js", () => ({ enqueueDueSettles: async () => 0 }));
+vi.mock("./settle-jobs.js", () => ({ enqueueDueSettles: () => m.settles() }));
 vi.mock("../rewards/copy.js", () => ({
   openCopyEpochs: async () => [],
   reconcileEpoch: async () => undefined,
@@ -55,6 +56,7 @@ const { checkEpochHolds, closeRewardEpoch, recoverRewardWork } = await import(".
 beforeEach(() => {
   m.sent = [];
   m.runs = [];
+  m.settles = async () => 0;
 });
 
 describe("hold-check jobs", () => {
@@ -66,6 +68,30 @@ describe("hold-check jobs", () => {
   it("the recovery sweep re-sends every due hold check", async () => {
     await recoverRewardWork();
     expect(m.sent).toEqual([{ queue: "hold-check", data: { communityId: "c1", epochId: "e9" } }]);
+  });
+
+  // Deploy order: an image with the settle loop may run before migration 0023 is applied. The
+  // settle enqueue then fails on the missing tables, and the rest of the sweep (closes, hold
+  // checks, stranded work) must run exactly as before.
+  it("the recovery sweep logs a failing settle enqueue and still sends its other work", async () => {
+    m.settles = async () => {
+      throw new Error('relation "payout_policies" does not exist');
+    };
+    const errors: unknown[][] = [];
+    const original = console.error;
+    console.error = (...args: unknown[]) => {
+      errors.push(args);
+    };
+    try {
+      await expect(recoverRewardWork()).resolves.toBeUndefined();
+    } finally {
+      console.error = original;
+    }
+    expect(m.sent).toEqual([{ queue: "hold-check", data: { communityId: "c1", epochId: "e9" } }]);
+    expect(errors.map((e) => String(e[0]))).toEqual([
+      expect.stringContaining('"settles":"failed"'),
+    ]);
+    expect(String(errors[0]?.[0])).toContain("payout_policies");
   });
 
   it("a hold-check job runs the checks with the process's checker", async () => {

@@ -148,8 +148,12 @@ export async function recoverRewardWork(): Promise<void> {
   const holds = await dueHoldChecks(db, now);
   for (const job of holds) await boss.send(QUEUES.holdCheck, job satisfies HoldCheckJob);
   // The settle loop: one job per community under a payout policy; the job itself decides whether
-  // an epoch is due.
-  const settles = await enqueueDueSettles();
+  // an epoch is due. Isolated: before migration 0023 is applied its tables do not exist, and a
+  // failure here must not stop the closes, hold checks and stranded work around it.
+  const settles = await enqueueDueSettles().catch((e: unknown) => {
+    console.error(JSON.stringify({ job: "reward-recovery", settles: "failed", error: String(e) }));
+    return 0;
+  });
   // Settles what a budget-limited reconciliation left, before the messages below are chosen.
   // One epoch that fails to reconcile must not stop the closes, retries and messages around it.
   for (const epoch of await openCopyEpochs(db, now)) {
