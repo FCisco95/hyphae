@@ -472,7 +472,11 @@ describe("a distributed epoch's public reads", { timeout: 30_000 }, () => {
 
     it("serves no intent when both intents carry the recorded pot as their gross", async () => {
       const { row, loaders, plan, intent } = await sharedRootLane();
-      const twin = { ...plan, audit: { ...plan.audit, settlement: intent.audit.settlement } };
+      const gross = intent.audit.settlement.gross_lamports;
+      const twin = {
+        ...plan,
+        audit: { ...plan.audit, settlement: { ...plan.audit.settlement, gross_lamports: gross } },
+      };
       const got = await storedIntent(t.db, await row(), { ...loaders, own: async () => twin });
       expect(got).toBeNull();
     });
