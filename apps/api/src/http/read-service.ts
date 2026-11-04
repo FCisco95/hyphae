@@ -51,6 +51,7 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { loadDistributionIntent } from "../payout/distribution-intent.js";
 import { HOLD_WINDOW_MS } from "../payout/gate.js";
 import { loadIntent } from "../payout/intent.js";
@@ -515,32 +516,56 @@ async function publicationFacts(
   };
 }
 
-// The stored intent whose root the epoch was recorded with. An epoch can hold an unsent
-// single-epoch plan beside the distribution later published under its index (review F1,
-// 2026-11-03), so neither is preferred: the recorded root picks one, and the chosen intent is
-// loaded in full, every stored byte checked (a distribution's B7 manifests included). The audit
-// hash is then checked against the epoch account by the settlement read. The distribution table
-// is read only when the epoch's own intent does not match, as before migration 0023.
+// The stored intent the epoch was recorded with. An epoch can hold an unsent single-epoch plan
+// beside the distribution later published under its index (review F1, 2026-11-03), so neither is
+// preferred: the recorded root picks one, and the chosen intent is loaded in full, every stored
+// byte checked (a distribution's B7 manifests included). The audit hash is then checked against
+// the epoch account by the settlement read. When both roots match, the pot the epoch recorded
+// must equal exactly one intent's gross; a pot that fits both, neither, or was never recorded
+// serves no intent (Codex re-review, 2026-11-04).
 async function storedIntent(tx: Db, epoch: EpochRow) {
   if (epoch.root === null) return null;
   const [own] = await tx
-    .select({ root: epochPublications.root })
+    .select({ root: epochPublications.root, gross: grossOf(epochPublications.auditManifest) })
     .from(epochPublications)
     .where(eq(epochPublications.epochId, epoch.id));
-  if (own?.root === epoch.root) {
+  const [distribution] = await tx
+    .select({
+      root: distributionPublications.root,
+      gross: grossOf(distributionPublications.auditManifest),
+    })
+    .from(distributionPublications)
+    .where(eq(distributionPublications.epochId, epoch.id));
+  const ownMatches = own?.root === epoch.root;
+  const distributionMatches = distribution?.root === epoch.root;
+  const pot = epoch.potLamports?.toString() ?? null;
+  const choice =
+    ownMatches && distributionMatches
+      ? pot === null || (own?.gross === pot) === (distribution?.gross === pot)
+        ? null
+        : own?.gross === pot
+          ? "own"
+          : "distribution"
+      : ownMatches
+        ? "own"
+        : distributionMatches
+          ? "distribution"
+          : null;
+  if (choice === "own") {
     const intent = await loadIntent(tx, epoch.id);
     return intent ? settlementIntentOf(intent) : null;
   }
-  const [distribution] = await tx
-    .select({ root: distributionPublications.root })
-    .from(distributionPublications)
-    .where(eq(distributionPublications.epochId, epoch.id));
-  if (distribution?.root === epoch.root) {
+  if (choice === "distribution") {
     const intent = await loadDistributionIntent(tx, epoch.id);
     return intent ? settlementIntentOfDistribution(intent) : null;
   }
   return null;
 }
+
+// The gross an audit manifest records, read from its stored canonical JSON without loading the
+// intent (a decimal string, as the manifest holds it).
+const grossOf = (manifest: AnyPgColumn) =>
+  sql<string | null>`(${manifest}::jsonb -> 'settlement' ->> 'gross_lamports')`;
 
 type PayoutDecision = NonNullable<EpochV1["payout"]>;
 

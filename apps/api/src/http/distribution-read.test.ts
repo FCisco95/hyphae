@@ -8,7 +8,12 @@ import {
   receiptAddress,
   vaultAddress,
 } from "@hyphae/core";
-import { distributionPublicationEpochMembers, payoutPolicies } from "@hyphae/db";
+import {
+  distributionPublicationEpochMembers,
+  epochPublications,
+  epochs,
+  payoutPolicies,
+} from "@hyphae/db";
 import { sha256 } from "@noble/hashes/sha2.js";
 import { hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 import { address, createNoopSigner, getAddressEncoder, type Instruction } from "@solana/kit";
@@ -405,6 +410,49 @@ describe("a distributed epoch's public reads", { timeout: 30_000 }, () => {
       .delete(distributionPublicationEpochMembers)
       .where(eq(distributionPublicationEpochMembers.id, b7.id));
     await expect(readEpoch(t.db, seed.mint, 4, NOW, reader)).rejects.toThrow(/inconsistent/);
+  });
+
+  // Codex re-review (2026-11-04): when the unsent plan and the distribution both carry the epoch's
+  // recorded root, the plan must not win by default. The epoch's recorded pot picks the intent
+  // whose gross matches it; a pot that picks none fails closed.
+  describe("when the single-epoch plan and the distribution share the recorded root", () => {
+    async function sharedRootLane() {
+      const lane = await distributedLane({ autoPublish: true, staleEpochPlan: true });
+      const e4 = lane.seed.epochs[3];
+      if (!e4) throw new Error("epoch 4");
+      await t.db
+        .update(epochPublications)
+        .set({ root: lane.intent.root })
+        .where(eq(epochPublications.epochId, e4.id));
+      const [row] = await t.db
+        .select({ pot: epochs.potLamports, root: epochs.root })
+        .from(epochs)
+        .where(eq(epochs.id, e4.id));
+      expect(row?.root).toBe(lane.intent.root);
+      expect(row?.pot).toBe(BigInt(lane.intent.audit.settlement.gross_lamports));
+      expect(row?.pot).not.toBe(SOL);
+      return { ...lane, e4 };
+    }
+
+    it("serves the distribution whose gross matches the recorded pot", async () => {
+      const { seed, chainAddress, intent } = await sharedRootLane();
+      const { reader, epoch } = await chainHolding(chainAddress, 4n, intent, [seed.wallets.effort]);
+      const read = EpochSchema.parse(await readEpoch(t.db, seed.mint, 4, NOW, reader));
+      expect(read.settlement?.allocation).toMatchObject({
+        status: "published",
+        epoch_address: epoch,
+        root: intent.root,
+        audit_hash: intent.auditHash,
+      });
+    });
+
+    it("serves no intent when the recorded pot matches neither gross", async () => {
+      const { seed, chainAddress, intent, e4 } = await sharedRootLane();
+      await t.db.update(epochs).set({ potLamports: 7n }).where(eq(epochs.id, e4.id));
+      const { reader } = await chainHolding(chainAddress, 4n, intent, [seed.wallets.effort]);
+      const read = EpochSchema.parse(await readEpoch(t.db, seed.mint, 4, NOW, reader));
+      expect(read.settlement?.allocation.status).toBe("unavailable");
+    });
   });
 
   // Review F3 (2026-11-03): a member paid by the distribution with no intake in the index epoch
