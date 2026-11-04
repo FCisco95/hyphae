@@ -26,6 +26,7 @@ import { type PublishChain, planPublication } from "../payout/publish.js";
 import { randomAddress } from "../payout/ready-seed.js";
 import { seedRolloverLane } from "../payout/rollover-seed.js";
 import { FAKE_FEE_RECIPIENT, fakeSettleChain } from "../payout/settle-fake.js";
+import { StoredIntentInconsistent } from "../payout/stored-intent-error.js";
 import { createTestDb } from "../rewards/test-db.js";
 import {
   readClaim,
@@ -501,6 +502,94 @@ describe("a distributed epoch's public reads", { timeout: 30_000 }, () => {
       const { reader } = await chainHolding(chainAddress, 4n, intent, [seed.wallets.effort]);
       const read = EpochSchema.parse(await readEpoch(t.db, seed.mint, 4, NOW, reader));
       expect(read.settlement?.allocation.status).toBe("unavailable");
+    });
+  });
+
+  // Codex delta review D1 (2026-11-04): a stored text that parses but cannot be rebuilt (c14n
+  // refuses a lone surrogate) is a verdict on that intent whatever its message says, not an
+  // infrastructure failure: it must not hide a valid candidate or turn into a 503.
+  describe("when the single-epoch plan's stored audit holds a lone surrogate", () => {
+    async function surrogateLane() {
+      const lane = await distributedLane({ autoPublish: true, staleEpochPlan: true });
+      const e4 = lane.seed.epochs[3];
+      if (!e4) throw new Error("epoch 4");
+      const [row] = await t.db
+        .select({ manifest: epochPublications.auditManifest })
+        .from(epochPublications)
+        .where(eq(epochPublications.epochId, e4.id));
+      if (!row) throw new Error("no stale single-epoch intent");
+      // Six characters inside a JSON string: valid JSON, a lone surrogate once parsed.
+      const loneSurrogate = `${"\\"}${"ud800"}`;
+      const bad = row.manifest.replace(
+        /("cutoff_assumption":")[^"]*(")/,
+        (_m, open: string, close: string) => `${open}${loneSurrogate}${close}`,
+      );
+      expect(bad).not.toBe(row.manifest);
+      await t.db.execute(sql`
+        update epoch_publications
+        set audit_manifest = ${bad},
+            audit_hash = encode(sha256(convert_to('hyphae/epoch-audit/v1', 'UTF8')
+              || decode('00', 'hex') || convert_to(${bad}, 'UTF8')), 'hex')
+        where epoch_id = ${e4.id}`);
+      const calls: string[] = [];
+      const loaders = {
+        own: async (...args: Parameters<typeof loadIntent>) => {
+          calls.push("own");
+          return loadIntent(...args);
+        },
+        distribution: async (...args: Parameters<typeof loadDistributionIntent>) => {
+          calls.push("distribution");
+          return loadDistributionIntent(...args);
+        },
+      };
+      const epochRow = async () => {
+        const [epoch] = await t.db.select().from(epochs).where(eq(epochs.id, e4.id));
+        if (!epoch) throw new Error("epoch 4 row");
+        return epoch;
+      };
+      return { ...lane, e4, calls, loaders, epochRow };
+    }
+
+    it("is a typed inconsistency, not a plain error", async () => {
+      const { e4 } = await surrogateLane();
+      await expect(loadIntent(t.db, e4.id)).rejects.toBeInstanceOf(StoredIntentInconsistent);
+    });
+
+    it("calls both loaders when both roots match, and serves no intent", async () => {
+      const { e4, intent, calls, loaders, epochRow } = await surrogateLane();
+      await t.db
+        .update(epochPublications)
+        .set({ root: intent.root })
+        .where(eq(epochPublications.epochId, e4.id));
+      expect(await storedIntent(t.db, await epochRow(), loaders)).toBeNull();
+      expect(calls).toEqual(["own", "distribution"]);
+    });
+
+    it("does not turn the read into an error when both roots match", async () => {
+      const { seed, e4, chainAddress, intent } = await surrogateLane();
+      await t.db
+        .update(epochPublications)
+        .set({ root: intent.root })
+        .where(eq(epochPublications.epochId, e4.id));
+      const { reader } = await chainHolding(chainAddress, 4n, intent, [seed.wallets.effort]);
+      const read = EpochSchema.parse(await readEpoch(t.db, seed.mint, 4, NOW, reader));
+      expect(read.settlement?.allocation.status).toBe("unavailable");
+    });
+
+    it("still refuses, and never serves it, when it is the only matching intent", async () => {
+      const { e4, calls, loaders, epochRow } = await surrogateLane();
+      const [own] = await t.db
+        .select({ root: epochPublications.root })
+        .from(epochPublications)
+        .where(eq(epochPublications.epochId, e4.id));
+      await t.db
+        .update(epochs)
+        .set({ root: own?.root ?? null })
+        .where(eq(epochs.id, e4.id));
+      await expect(storedIntent(t.db, await epochRow(), loaders)).rejects.toBeInstanceOf(
+        StoredIntentInconsistent,
+      );
+      expect(calls).toEqual(["own"]);
     });
   });
 

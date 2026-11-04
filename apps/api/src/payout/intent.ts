@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 import type { z } from "zod";
 import { leavesOf, type Publication, type PublishedLeaf } from "./publication.js";
 import { clearedMembers } from "./shared-handles.js";
+import { rebuildingStored, StoredIntentInconsistent } from "./stored-intent-error.js";
 
 // The publication intent (migration 0011): the exact bytes a publish sends, stored before the
 // send. Every later run sends or records these bytes; nothing is taken from a rebuild after a send.
@@ -51,8 +52,17 @@ export async function loadIntent(db: Db, epochId: string): Promise<PublicationIn
     .from(epochPublicationMembers)
     .where(eq(epochPublicationMembers.publicationId, row.id));
   const inconsistent = (what: string) =>
-    new Error(`publish: the stored intent for epoch ${epochId} is inconsistent (${what})`);
+    new StoredIntentInconsistent(
+      `publish: the stored intent for epoch ${epochId} is inconsistent (${what})`,
+    );
+  return rebuildingStored(inconsistent, () => rebuiltIntent(row, rows, inconsistent));
+}
 
+function rebuiltIntent(
+  row: typeof epochPublications.$inferSelect,
+  rows: (typeof epochPublicationMembers.$inferSelect)[],
+  inconsistent: (what: string) => Error,
+): PublicationIntent {
   const audit = parsed(EpochAuditManifest, row.auditManifest);
   if (!audit || c14n(audit) !== row.auditManifest || epochAuditHash(audit) !== row.auditHash) {
     throw inconsistent("audit manifest");

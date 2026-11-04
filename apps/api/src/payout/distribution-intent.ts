@@ -22,6 +22,7 @@ import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
 import { getAddressEncoder } from "@solana/kit";
 import { eq } from "drizzle-orm";
 import type { z } from "zod";
+import { rebuildingStored, StoredIntentInconsistent } from "./stored-intent-error.js";
 
 // The distribution intent (migration 0023): the exact B11 audit and B10 member bytes a
 // distribution publish sends, stored before the send, like the single-epoch intent (intent.ts),
@@ -107,11 +108,25 @@ export async function loadDistributionIntent(
     .select()
     .from(distributionPublicationMembers)
     .where(eq(distributionPublicationMembers.publicationId, row.id));
+  const epochRows = await db
+    .select()
+    .from(distributionPublicationEpochMembers)
+    .where(eq(distributionPublicationEpochMembers.publicationId, row.id));
   const inconsistent = (what: string) =>
-    new Error(
+    new StoredIntentInconsistent(
       `settle: the stored distribution intent for epoch ${epochId} is inconsistent (${what})`,
     );
+  return rebuildingStored(inconsistent, () =>
+    rebuiltDistribution(row, rows, epochRows, inconsistent),
+  );
+}
 
+function rebuiltDistribution(
+  row: typeof distributionPublications.$inferSelect,
+  rows: (typeof distributionPublicationMembers.$inferSelect)[],
+  epochRows: readonly EpochMemberRow[],
+  inconsistent: (what: string) => Error,
+): DistributionIntent {
   const audit = parsed(DistributionAuditManifest, row.auditManifest);
   if (
     !audit ||
@@ -140,14 +155,7 @@ export async function loadDistributionIntent(
   }
   const { leaves, root } = distributionLeavesOf(members, BigInt(audit.distribution.index));
   if (root !== row.root || root !== audit.root) throw inconsistent("root");
-  const epochMembers = epochMembersOf(
-    audit,
-    await db
-      .select()
-      .from(distributionPublicationEpochMembers)
-      .where(eq(distributionPublicationEpochMembers.publicationId, row.id)),
-    inconsistent,
-  );
+  const epochMembers = epochMembersOf(audit, epochRows, inconsistent);
   // Every B10 part names a stored B7 manifest of its epoch.
   const stored = new Map(
     epochMembers.map((e) => [e.index, new Set(e.members.map(memberEpochHash))]),

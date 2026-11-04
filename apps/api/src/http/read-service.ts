@@ -54,6 +54,7 @@ import {
 import { type DistributionIntent, loadDistributionIntent } from "../payout/distribution-intent.js";
 import { HOLD_WINDOW_MS } from "../payout/gate.js";
 import { loadIntent, type PublicationIntent } from "../payout/intent.js";
+import { StoredIntentInconsistent } from "../payout/stored-intent-error.js";
 import { isoUs, readOnly } from "../pg.js";
 import { amendmentsOf } from "../rewards/amendment.js";
 import { RewardConfigPayload } from "../rewards/config.js";
@@ -578,13 +579,13 @@ async function bothMatching(tx: Db, epoch: EpochRow, loaders: IntentLoaders) {
   return ownFits ? settlementIntentOf(own) : settlementIntentOfDistribution(distribution);
 }
 
-// A stored intent that fails its own consistency checks is no intent; any other error (the
-// database, say) is not a verdict on the intent and propagates.
+// A stored intent that fails its own consistency checks is no intent (matched by class, whatever
+// the message); any other error (the database, say) is not a verdict on the intent and propagates.
 async function validated<T>(load: () => Promise<T | null>): Promise<T | null> {
   try {
     return await load();
   } catch (error) {
-    if (error instanceof Error && /is inconsistent/.test(error.message)) return null;
+    if (error instanceof StoredIntentInconsistent) return null;
     throw error;
   }
 }
