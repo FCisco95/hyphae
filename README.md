@@ -38,7 +38,7 @@ No API key, database, wallet or real identity is needed. There is no live mode, 
 
 This is an explanatory pipeline from source, **not a recording of the fixture app**:
 
-![Explanatory pipeline: contribution, versioned rules, LLM evaluation, code-enforced credit, explanation, audit commitment, separately authorized settlement.](docs/portfolio/diagrams/contribution-flow.svg)
+<img src="docs/portfolio/diagrams/contribution-flow.svg" alt="Explanatory pipeline: contribution, versioned rules, LLM evaluation, code-enforced credit, explanation, audit commitment, separately authorized settlement." width="420">
 
 - **Explicit rules.** Public rubrics define criteria and flags. Epoch configuration pins scoring inputs; amendments and decision revisions have their own records.
 - **AI with a bounded role.** Scorers return structured judgements and explanations. Code applies hard-zero flags, caps, the credit floor and timing rules. An explanation is evidence of a decision, not proof that the judgement is correct.
