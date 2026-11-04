@@ -598,8 +598,12 @@ describe("settleCommunity: several epochs", () => {
       .from(distributionPublicationEpochMembers)
       .where(eq(distributionPublicationEpochMembers.publicationId, publication?.id as string));
     expect(rows.length).toBeGreaterThan(1);
-    const [victim] = rows;
-    if (!victim) throw new Error("row");
+    // The row is moved to the other epoch below, so its member must have no row there already:
+    // the unique index on (publication, epoch, member) would refuse the move.
+    const victim = rows.find(
+      (r) => !rows.some((o) => o.memberId === r.memberId && o.epochId !== r.epochId),
+    );
+    if (!victim) throw new Error("no row whose member is absent from the other epoch");
 
     // The database refuses bytes that no longer hash to the stored hash.
     const violates = (error: unknown) =>
