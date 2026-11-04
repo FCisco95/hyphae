@@ -15,7 +15,10 @@ import { seedReadyEpoch } from "./ready-seed.js";
 const url = process.env.HYPHAE_TEST_PG_URL;
 if (!url) throw new Error("HYPHAE_TEST_PG_URL is not set; run `pnpm test:pg`");
 const writer = createDb(url);
-const ruler = createDb(url);
+// The ruler connection is named so the test can see it wait: postgres-js passes the URL parameter
+// to Postgres as application_name.
+const RULER = "hold-rulings-test-ruler";
+const ruler = createDb(`${url}${url.includes("?") ? "&" : "?"}application_name=${RULER}`);
 
 beforeAll(async () => {
   await migrate(writer, {
@@ -28,6 +31,18 @@ afterAll(async () => {
 
 const NOW = new Date("2026-11-20T12:00:00.000Z");
 const RULING = { reason: "Helius outage: hold read lost", actor: "cisco" };
+
+async function untilRulerWaitsOnLock(db: typeof writer, timeoutMs = 10_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const rows = await db.$client`
+      select 1 from pg_stat_activity
+      where application_name = ${RULER} and wait_event_type = 'Lock'`;
+    if (rows.length > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error(`the ruler never waited on a lock within ${timeoutMs} ms`);
+}
 
 describe("recording hold rulings on Postgres", () => {
   it("waits for an in-flight holder result and rules only the reads still unread", async () => {
@@ -85,8 +100,17 @@ describe("recording hold rulings on Postgres", () => {
     }).finally(() => {
       settled = true;
     });
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    // The ruling waits on floor's claimed row instead of judging it pending.
+    // The ruling waits on floor's claimed row instead of judging it pending. Time alone proves
+    // nothing (a query that starts after release() would also look settled late), so wait until
+    // Postgres reports the ruler's backend blocked on a lock, and only then release the run.
+    try {
+      await untilRulerWaitsOnLock(writer);
+    } catch (error) {
+      // Let the run and the ruling finish so a failed wait leaves nothing hanging.
+      release();
+      await Promise.allSettled([run, ruling]);
+      throw error;
+    }
     const waited = !settled;
     release();
     await run;
