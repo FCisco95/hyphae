@@ -66,6 +66,42 @@ The [integration guide](docs/community/INTEGRATING.md) covers the public read AP
 
 Real community setup is [operator-assisted](docs/community/SETUP-INTEGRATION.md). Adding the bot alone does not register a group. The [member receipt guide](docs/community/MEMBER-RECEIPTS.md) explains results and issues. Rules-test and hold checklists stay private; published allocation and payment receipts are public.
 
+<details>
+<summary>Read API integration example — makes live requests</summary>
+
+This optional integration example queries the real read API. It is separate from the offline fixture tour above; it was not executed for this presentation.
+
+## Integrate in 10 lines
+
+A wallet's leaves in every community, newest first, each with its proof and its payment status (`paid` with the claim transaction, `claimable`, or `unavailable` with a reason). This reads the first 100; `total_claims` counts them all, and `offset` pages on. A wallet with no leaf in a published epoch gets `total_claims: 0` and an empty `claims`, not a `404`.
+
+```js
+const API = process.env.HYPHAE_API ?? "https://hyphae-api.fly.dev/v1";
+const wallet = process.argv[2];
+const { claims } = await (await fetch(`${API}/wallets/${wallet}/claims?limit=100`)).json();
+```
+
+Check each proof yourself: rebuild the 89-byte leaf, then hash up the sorted pairs to the root. It is the same computation the program runs before it pays.
+
+```js
+import { createHash } from "node:crypto";
+import { getAddressEncoder } from "@solana/kit";
+
+const sha = (...parts) => createHash("sha256").update(Buffer.concat(parts)).digest();
+const u64 = (v) => { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(v)); return b; };
+for (const c of claims) {
+  let node = sha(Buffer.of(0), Buffer.from(getAddressEncoder().encode(wallet)), u64(c.epoch.index),
+    u64(c.score), u64(c.amount_lamports), Buffer.from(c.evidence_hash, "hex"));
+  for (const p of c.proof.map((h) => Buffer.from(h, "hex")))
+    node = sha(Buffer.of(1), ...(Buffer.compare(node, p) <= 0 ? [node, p] : [p, node]));
+  console.log(c.community.mint, c.epoch.index, c.amount_lamports, c.payment.status, node.toString("hex") === c.root);
+}
+```
+
+`root` is the root of the epoch account at `epoch_address`. Read that account to check it without trusting the API. To claim, read `/v1/communities/{mint}/epochs/{index}/claims/{wallet}` right before signing: it adds a recent blockhash.
+
+</details>
+
 ## Limits and trust
 
 LLM evaluation can be wrong. The [evaluation harness](docs/rubrics/eval/README.md), [calibration report](docs/rubrics/eval/reward-eval-2-calibration.md) and [injection checks](docs/rubrics/eval/reward-eval-2-injection.md) document bounded experiments, not universal fairness or prompt-injection immunity.
