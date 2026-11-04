@@ -57,6 +57,23 @@ docs/*
 !docs/community/
 !docs/evals/
 !docs/rubrics/
+!docs/portfolio/
+
+# Selected public portfolio evidence; owner notes and preview output stay private.
+docs/portfolio/*
+!docs/portfolio/ENGINEERING.md
+!docs/portfolio/media-plan.md
+!docs/portfolio/VALIDATION.md
+!docs/portfolio/diagrams/
+docs/portfolio/diagrams/*
+!docs/portfolio/diagrams/contribution-flow.svg
+!docs/portfolio/diagrams/architecture.svg
+!docs/portfolio/media/
+docs/portfolio/media/*
+!docs/portfolio/media/read-overview.png
+!docs/portfolio/media/read-unavailable.png
+!docs/portfolio/media/read-mobile.png
+!docs/portfolio/media/read-demo-reviewed.webm
 docs/community/*
 !docs/community/INTEGRATING.md
 !docs/community/SETUP-INTEGRATION.md
