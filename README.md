@@ -72,6 +72,10 @@ LLM evaluation can be wrong. The [evaluation harness](docs/rubrics/eval/README.m
 
 The publisher chooses the payout list. The program verifies proofs and prevents repeat claims, but remains upgradeable. Points do not guarantee eligibility, funding or payment. Read [Security](docs/SECURITY.md), [Wallets](docs/WALLETS.md) and the [whitepaper](docs/WHITEPAPER.md) before real interaction. The demo needs no funds.
 
+## Custody during the pilot
+
+**Pilot policy.** Hyphae's publisher key sets each epoch's payout list, so you trust it with that epoch's pot. We keep that key on a hardware wallet and fund one epoch at a time, just before it pays. The program has no withdraw instruction: SOL leaves the vault only through member claims and the 3% fee. The program can still be upgraded. The upgrade key is held the same way, and any upgrade is announced here before it is used.
+
 ## Develop
 
 The workspace uses TypeScript, Next.js, Hono, grammY, pg-boss and Drizzle/Postgres, with an Anchor Solana program. Node 22 and pnpm 10 run JS checks; program builds use WSL/Linux, Anchor 1.0.1 and Solana CLI 3.1.
@@ -90,7 +94,7 @@ anchor build && cargo test -p hyphae --tests
 python3 tests/h_contract_vectors.py
 ```
 
-No product suite was re-run for this documentation-only candidate. [Engineering and evidence](docs/portfolio/ENGINEERING.md) distinguishes check configuration from dated results; [Testing](docs/TESTING.md) also documents the real pilot's participation boundaries.
+Publication uses the repository pre-push test/typecheck/lint gate. [Engineering and evidence](docs/portfolio/ENGINEERING.md) distinguishes check configuration from dated results; [Testing](docs/TESTING.md) also documents the real pilot's participation boundaries.
 
 ## License
 
