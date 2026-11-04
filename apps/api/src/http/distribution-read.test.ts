@@ -17,7 +17,7 @@ import {
 import { sha256 } from "@noble/hashes/sha2.js";
 import { hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
 import { address, createNoopSigner, getAddressEncoder, type Instruction } from "@solana/kit";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { type DistributionIntent, loadDistributionIntent } from "../payout/distribution-intent.js";
 import { settleCommunity } from "../payout/distribution-settle.js";
@@ -33,6 +33,7 @@ import {
   readEpoch,
   readWalletClaims,
   readWalletRecord,
+  storedIntent,
 } from "./read-service.js";
 import { EpochSchema } from "./schemas.js";
 import type { SettlementReader } from "./settlement.js";
@@ -412,46 +413,115 @@ describe("a distributed epoch's public reads", { timeout: 30_000 }, () => {
     await expect(readEpoch(t.db, seed.mint, 4, NOW, reader)).rejects.toThrow(/inconsistent/);
   });
 
-  // Codex re-review (2026-11-04): when the unsent plan and the distribution both carry the epoch's
-  // recorded root, the plan must not win by default. The epoch's recorded pot picks the intent
-  // whose gross matches it; a pot that picks none fails closed.
+  // Codex re-reviews (2026-11-04): when the unsent plan and the distribution both carry the epoch's
+  // recorded root, both are loaded and validated in full, and the epoch's recorded pot then picks
+  // the intent whose gross matches it. A candidate that fails validation, or a pot that picks none
+  // or both, serves no intent. Two intents of different kinds cannot share a root unless a leaf
+  // hash collides, so the fixture states the recorded root on both publication rows and hands
+  // the plan's already validated intent to the loader.
   describe("when the single-epoch plan and the distribution share the recorded root", () => {
     async function sharedRootLane() {
       const lane = await distributedLane({ autoPublish: true, staleEpochPlan: true });
       const e4 = lane.seed.epochs[3];
       if (!e4) throw new Error("epoch 4");
+      const plan = await loadIntent(t.db, e4.id);
+      if (!plan) throw new Error("no stale single-epoch intent");
       await t.db
         .update(epochPublications)
         .set({ root: lane.intent.root })
         .where(eq(epochPublications.epochId, e4.id));
-      const [row] = await t.db
-        .select({ pot: epochs.potLamports, root: epochs.root })
-        .from(epochs)
-        .where(eq(epochs.id, e4.id));
-      expect(row?.root).toBe(lane.intent.root);
-      expect(row?.pot).toBe(BigInt(lane.intent.audit.settlement.gross_lamports));
-      expect(row?.pot).not.toBe(SOL);
-      return { ...lane, e4 };
+      const loaders = {
+        own: async () => plan,
+        distribution: loadDistributionIntent,
+      };
+      const row = async () => {
+        const [epoch] = await t.db.select().from(epochs).where(eq(epochs.id, e4.id));
+        if (!epoch) throw new Error("epoch 4 row");
+        return epoch;
+      };
+      expect((await row()).root).toBe(lane.intent.root);
+      expect((await row()).potLamports).toBe(BigInt(lane.intent.audit.settlement.gross_lamports));
+      expect(plan.audit.settlement.gross_lamports).not.toBe(
+        lane.intent.audit.settlement.gross_lamports,
+      );
+      const setPot = (pot: bigint | null) =>
+        t.db.update(epochs).set({ potLamports: pot }).where(eq(epochs.id, e4.id));
+      return { ...lane, e4, plan, loaders, row, setPot };
     }
 
-    it("serves the distribution whose gross matches the recorded pot", async () => {
-      const { seed, chainAddress, intent } = await sharedRootLane();
-      const { reader, epoch } = await chainHolding(chainAddress, 4n, intent, [seed.wallets.effort]);
-      const read = EpochSchema.parse(await readEpoch(t.db, seed.mint, 4, NOW, reader));
-      expect(read.settlement?.allocation).toMatchObject({
-        status: "published",
-        epoch_address: epoch,
-        root: intent.root,
-        audit_hash: intent.auditHash,
-      });
+    it("serves the distribution when only its gross matches the recorded pot", async () => {
+      const { row, loaders, intent } = await sharedRootLane();
+      const got = await storedIntent(t.db, await row(), loaders);
+      expect(got?.auditHash).toBe(intent.auditHash);
     });
 
-    it("serves no intent when the recorded pot matches neither gross", async () => {
-      const { seed, chainAddress, intent, e4 } = await sharedRootLane();
-      await t.db.update(epochs).set({ potLamports: 7n }).where(eq(epochs.id, e4.id));
+    it("serves the plan when only its gross matches the recorded pot", async () => {
+      const { row, loaders, plan, setPot } = await sharedRootLane();
+      await setPot(BigInt(plan.audit.settlement.gross_lamports));
+      const got = await storedIntent(t.db, await row(), loaders);
+      expect(got?.auditHash).toBe(plan.auditHash);
+    });
+
+    it("serves no intent when the recorded pot matches neither gross, both, or none", async () => {
+      const { row, loaders, setPot } = await sharedRootLane();
+      await setPot(7n);
+      expect(await storedIntent(t.db, await row(), loaders)).toBeNull();
+      await setPot(null);
+      expect(await storedIntent(t.db, await row(), loaders)).toBeNull();
+    });
+
+    it("serves no intent when both intents carry the recorded pot as their gross", async () => {
+      const { row, loaders, plan, intent } = await sharedRootLane();
+      const twin = { ...plan, audit: { ...plan.audit, settlement: intent.audit.settlement } };
+      const got = await storedIntent(t.db, await row(), { ...loaders, own: async () => twin });
+      expect(got).toBeNull();
+    });
+
+    it("serves no intent when the winner's rival has a missing B7 manifest", async () => {
+      const { row, loaders, plan, e4, setPot } = await sharedRootLane();
+      await setPot(BigInt(plan.audit.settlement.gross_lamports));
+      const [b7] = await t.db
+        .select({ id: distributionPublicationEpochMembers.id })
+        .from(distributionPublicationEpochMembers)
+        .where(eq(distributionPublicationEpochMembers.epochId, e4.id))
+        .limit(1);
+      if (!b7) throw new Error("no B7 row for epoch 4");
+      await t.db
+        .delete(distributionPublicationEpochMembers)
+        .where(eq(distributionPublicationEpochMembers.id, b7.id));
+      expect(await storedIntent(t.db, await row(), loaders)).toBeNull();
+    });
+
+    it("serves no intent through the read when the plan is stored with another root", async () => {
+      const { seed, chainAddress, intent } = await sharedRootLane();
       const { reader } = await chainHolding(chainAddress, 4n, intent, [seed.wallets.effort]);
       const read = EpochSchema.parse(await readEpoch(t.db, seed.mint, 4, NOW, reader));
       expect(read.settlement?.allocation.status).toBe("unavailable");
+    });
+  });
+
+  // Codex round 2 (2026-11-04): only a publication whose root matches the epoch is parsed, so a
+  // malformed manifest on the other one cannot break the read.
+  it("reads the matching distribution though the unsent plan's manifest is malformed", async () => {
+    const { seed, chainAddress, intent } = await distributedLane({
+      autoPublish: true,
+      staleEpochPlan: true,
+    });
+    const e4 = seed.epochs[3];
+    if (!e4) throw new Error("epoch 4");
+    const bad = "{not json";
+    await t.db.execute(sql`
+      update epoch_publications
+      set audit_manifest = ${bad},
+          audit_hash = encode(sha256(convert_to('hyphae/epoch-audit/v1', 'UTF8')
+            || decode('00', 'hex') || convert_to(${bad}, 'UTF8')), 'hex')
+      where epoch_id = ${e4.id}`);
+    const { reader, epoch } = await chainHolding(chainAddress, 4n, intent, [seed.wallets.effort]);
+    const read = EpochSchema.parse(await readEpoch(t.db, seed.mint, 4, NOW, reader));
+    expect(read.settlement?.allocation).toMatchObject({
+      status: "published",
+      epoch_address: epoch,
+      root: intent.root,
     });
   });
 

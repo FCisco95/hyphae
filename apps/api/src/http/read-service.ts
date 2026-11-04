@@ -51,10 +51,9 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { loadDistributionIntent } from "../payout/distribution-intent.js";
+import { type DistributionIntent, loadDistributionIntent } from "../payout/distribution-intent.js";
 import { HOLD_WINDOW_MS } from "../payout/gate.js";
-import { loadIntent } from "../payout/intent.js";
+import { loadIntent, type PublicationIntent } from "../payout/intent.js";
 import { isoUs, readOnly } from "../pg.js";
 import { amendmentsOf } from "../rewards/amendment.js";
 import { RewardConfigPayload } from "../rewards/config.js";
@@ -519,53 +518,76 @@ async function publicationFacts(
 // The stored intent the epoch was recorded with. An epoch can hold an unsent single-epoch plan
 // beside the distribution later published under its index (review F1, 2026-11-03), so neither is
 // preferred: the recorded root picks one, and the chosen intent is loaded in full, every stored
-// byte checked (a distribution's B7 manifests included). The audit hash is then checked against
-// the epoch account by the settlement read. When both roots match, the pot the epoch recorded
-// must equal exactly one intent's gross; a pot that fits both, neither, or was never recorded
-// serves no intent (Codex re-review, 2026-11-04).
-async function storedIntent(tx: Db, epoch: EpochRow) {
+// byte checked (a distribution's B7 manifests included). Only the roots are read first, so a
+// publication whose root does not match is never parsed. The audit hash is then checked against
+// the epoch account by the settlement read.
+//
+// When both roots match, both intents are loaded and validated in full before either is
+// preferred (Codex round 2, 2026-11-04): the pot the epoch recorded must equal exactly one
+// intent's gross. A candidate that fails validation, a pot that fits both, neither, or was never
+// recorded serves no intent.
+export interface IntentLoaders {
+  own: (tx: Db, epochId: string) => Promise<PublicationIntent | null>;
+  distribution: (tx: Db, epochId: string) => Promise<DistributionIntent | null>;
+}
+
+const DEFAULT_LOADERS: IntentLoaders = {
+  own: loadIntent,
+  distribution: loadDistributionIntent,
+};
+
+export async function storedIntent(
+  tx: Db,
+  epoch: EpochRow,
+  loaders: IntentLoaders = DEFAULT_LOADERS,
+) {
   if (epoch.root === null) return null;
   const [own] = await tx
-    .select({ root: epochPublications.root, gross: grossOf(epochPublications.auditManifest) })
+    .select({ root: epochPublications.root })
     .from(epochPublications)
     .where(eq(epochPublications.epochId, epoch.id));
-  const [distribution] = await tx
-    .select({
-      root: distributionPublications.root,
-      gross: grossOf(distributionPublications.auditManifest),
-    })
-    .from(distributionPublications)
-    .where(eq(distributionPublications.epochId, epoch.id));
   const ownMatches = own?.root === epoch.root;
-  const distributionMatches = distribution?.root === epoch.root;
-  const pot = epoch.potLamports?.toString() ?? null;
-  const choice =
-    ownMatches && distributionMatches
-      ? pot === null || (own?.gross === pot) === (distribution?.gross === pot)
-        ? null
-        : own?.gross === pot
-          ? "own"
-          : "distribution"
-      : ownMatches
-        ? "own"
-        : distributionMatches
-          ? "distribution"
-          : null;
-  if (choice === "own") {
-    const intent = await loadIntent(tx, epoch.id);
+  if (ownMatches) {
+    const [distribution] = await tx
+      .select({ root: distributionPublications.root })
+      .from(distributionPublications)
+      .where(eq(distributionPublications.epochId, epoch.id));
+    if (distribution?.root === epoch.root) return bothMatching(tx, epoch, loaders);
+    const intent = await loaders.own(tx, epoch.id);
     return intent ? settlementIntentOf(intent) : null;
   }
-  if (choice === "distribution") {
-    const intent = await loadDistributionIntent(tx, epoch.id);
+  const [distribution] = await tx
+    .select({ root: distributionPublications.root })
+    .from(distributionPublications)
+    .where(eq(distributionPublications.epochId, epoch.id));
+  if (distribution?.root === epoch.root) {
+    const intent = await loaders.distribution(tx, epoch.id);
     return intent ? settlementIntentOfDistribution(intent) : null;
   }
   return null;
 }
 
-// The gross an audit manifest records, read from its stored canonical JSON without loading the
-// intent (a decimal string, as the manifest holds it).
-const grossOf = (manifest: AnyPgColumn) =>
-  sql<string | null>`(${manifest}::jsonb -> 'settlement' ->> 'gross_lamports')`;
+async function bothMatching(tx: Db, epoch: EpochRow, loaders: IntentLoaders) {
+  const own = await validated(() => loaders.own(tx, epoch.id));
+  const distribution = await validated(() => loaders.distribution(tx, epoch.id));
+  if (!own || !distribution || epoch.potLamports === null) return null;
+  const pot = epoch.potLamports.toString();
+  const ownFits = own.audit.settlement.gross_lamports === pot;
+  const distributionFits = distribution.audit.settlement.gross_lamports === pot;
+  if (ownFits === distributionFits) return null;
+  return ownFits ? settlementIntentOf(own) : settlementIntentOfDistribution(distribution);
+}
+
+// A stored intent that fails its own consistency checks is no intent; any other error (the
+// database, say) is not a verdict on the intent and propagates.
+async function validated<T>(load: () => Promise<T | null>): Promise<T | null> {
+  try {
+    return await load();
+  } catch (error) {
+    if (error instanceof Error && /is inconsistent/.test(error.message)) return null;
+    throw error;
+  }
+}
 
 type PayoutDecision = NonNullable<EpochV1["payout"]>;
 
