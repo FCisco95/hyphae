@@ -1,8 +1,8 @@
 "use client";
 
-import { PrivyProvider, useLinkAccount, useLogin, usePrivy } from "@privy-io/react-auth";
-import { toSolanaWalletConnectors } from "@privy-io/react-auth/solana";
+import { useLinkAccount, useLogin, usePrivy } from "@privy-io/react-auth";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CommunityLoginProvider } from "./community-login-provider.js";
 import { MemberAccountView, type MemberViewState } from "./member-account.js";
 import { readMemberState, requestGeneration } from "./member-session.js";
 
@@ -10,19 +10,9 @@ type Community = { mint: string; name: string };
 
 export function MemberProvider({ appId, community }: { appId: string; community: Community }) {
   return (
-    <PrivyProvider
-      appId={appId}
-      config={{
-        loginMethods: ["email", "wallet"],
-        appearance: { theme: "light", accentColor: "#171717", walletChainType: "solana-only" },
-        externalWallets: {
-          solana: { connectors: toSolanaWalletConnectors({ shouldAutoConnect: false }) },
-        },
-        embeddedWallets: { ethereum: { createOnLogin: "off" }, solana: { createOnLogin: "off" } },
-      }}
-    >
+    <CommunityLoginProvider appId={appId}>
       <MemberSession community={community} />
-    </PrivyProvider>
+    </CommunityLoginProvider>
   );
 }
 

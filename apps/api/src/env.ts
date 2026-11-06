@@ -28,6 +28,8 @@ const Env = z.object({
   READ_RPC_URL: z.url().optional(),
   // Shared with the web server, whose read calls are then limited per visitor, not per address.
   READ_API_WEB_TOKEN: z.string().min(32).optional(),
+  // Private community overview and intake controls. Activation is a separate operator step.
+  ADMIN_API_ENABLED: z.enum(["on", "off"]).default("off"),
   // A partial/invalid member-auth configuration disables this separate surface.
   PRIVY_APP_ID: z.string().optional(),
   PRIVY_APP_SECRET: z.string().optional(),

@@ -84,3 +84,42 @@ node examples/read-sdk-demo/run.mjs
 Open `http://127.0.0.1:8788`. The persistent LOCAL FIXTURES label identifies synthetic data. Controls exercise healthy,503,429,malformed and slow responses; errors clear stale values to Unavailable. See [review results](../evidence/REVIEWS.md) for verification and source. Browser proof covers both communities, recovery/cancelled-read isolation, keyboard controls and1280/390/320px without overflow. It creates no real registrations, transactions or phone proof.
 
 The SDK and adopter example were independently reviewed and accepted; see the curated review results.
+
+## Private community administration
+
+The source includes a management page at `/c/{mint}/manage` and a separate, locally buildable
+[`@hyphae/admin-client`](../../packages/admin-client/README.md). The page groups existing public
+community status and reward-vault reads. Private controls are disabled by default; having this
+source or opening the page does not prove that the administration API is installed or enabled.
+
+| Operation | Private interface | Result |
+|---|---|---|
+| Read the administrator's current community state | `GET /admin/v1/communities/{mint}` | Community identity, intake pause state and observation time. |
+| Pause or resume new reward submissions | `PUT /admin/v1/communities/{mint}/intake` | The updated state, after authorization and a concurrent-edit check. |
+
+Both routes require an app-bound Privy bearer token, a current linked Telegram identity, the
+community's designated administrator and a fresh Telegram administrator/creator check. A connected
+wallet, the public community page, or the web server's technical token does not grant this role.
+The website forwards its verified session cookie through a private same-origin proxy; applications
+using the SDK supply a fresh user access token for each request. Credentials must not go into
+URLs, public configuration, logs or shared caches.
+
+The update body is strictly `{ paused: boolean, expected_paused_at: string | null }`. Copy
+`expected_paused_at` from the authenticated overview. A conflicting edit returns HTTP 409; read
+again and let the administrator decide. No client automatically retries a write. After a timeout
+or lost response, read the current state before deliberately submitting another change.
+
+Pausing stops new reward intake. It does not stop the epoch calendar, erase admitted work, change
+scoring, release a payout hold, publish an allocation or disable existing claims. The stored pause
+timestamp is current state, not a permanent history of administrator actions. Registration,
+rubrics, custody, payout policies and transfers remain outside this interface.
+
+Availability requires a compatible API with `ADMIN_API_ENABLED=on`, and the website additionally
+requires `HYPHAE_ADMIN_ENABLED=on` plus its existing exact-host Privy login configuration. Both new
+flags default to `off`; enabling them and verifying real provider login are separate operational
+steps. The public management view remains usable with the earlier read API.
+
+The treasury view displays the community's **reward vault**, its SOL balance and obligations to
+published epochs separately. These are not an atomic spendable-balance calculation, a general
+wallet portfolio, or the balance of the fee-recipient wallet. Unavailable data stays unavailable;
+all lamport amounts remain exact decimal strings.

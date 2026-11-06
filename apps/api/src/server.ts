@@ -3,6 +3,8 @@ import { communities } from "@hyphae/db";
 import { createSolanaRpc } from "@solana/kit";
 import { Api, webhookCallback } from "grammy";
 import { Hono } from "hono";
+import { adminRoutes } from "./admin/routes.js";
+import { telegramAdministrator } from "./admin/telegram.js";
 import { registerCommandMenus } from "./bot/command-menus.js";
 import { bot } from "./bot/index.js";
 import { webhookOptions } from "./bot/webhook-options.js";
@@ -51,12 +53,23 @@ app.route(
 );
 app.route("/docs", docsRoutes());
 const memberConfig = memberAuthConfig(env);
+const memberIdentity = memberConfig ? privyIdentity(memberConfig) : undefined;
 app.route(
   "/member/v1",
   memberRoutes({
     db,
-    ...(memberConfig ? { identity: privyIdentity(memberConfig) } : {}),
+    ...(memberIdentity ? { identity: memberIdentity } : {}),
     chatMember: telegramMembership(notifyApi),
+    ...(env.READ_API_WEB_TOKEN ? { webToken: env.READ_API_WEB_TOKEN } : {}),
+  }),
+);
+app.route(
+  "/admin/v1",
+  adminRoutes({
+    db,
+    enabled: env.ADMIN_API_ENABLED === "on",
+    ...(memberIdentity ? { identity: memberIdentity } : {}),
+    telegramAdmin: telegramAdministrator(notifyApi),
     ...(env.READ_API_WEB_TOKEN ? { webToken: env.READ_API_WEB_TOKEN } : {}),
   }),
 );

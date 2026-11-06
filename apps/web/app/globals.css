@@ -1569,6 +1569,35 @@ td:first-child {
   margin: 24px 0;
 }
 
+.management-heading {
+  margin: 2rem 0;
+  max-width: 48rem;
+}
+
+.management-heading h1 {
+  margin: 0.25rem 0 0.75rem;
+}
+
+.management-status {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.management-treasury {
+  margin: 2.5rem 0;
+}
+
+.management-treasury > h2 {
+  margin-bottom: 0.5rem;
+}
+
+.admin-confirm {
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+
 .member-wallet {
   overflow-wrap: anywhere;
   padding: 20px 0;
