@@ -1,7 +1,8 @@
-# Local administration candidate — November 6
+# Administration verification — November 6
 
-This is source and local-fixture evidence. The candidate is committed locally and has not been
-pushed, installed or activated. It does not establish current provider permissions or production behavior.
+This records source and local-fixture verification before publication. Publishing the source or
+website does not install or activate the administration API. This evidence does not establish
+current provider permissions or private administration behavior in production.
 
 ## Implemented scope
 

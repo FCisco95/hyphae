@@ -13,18 +13,18 @@ These annotated Git tags mark readable public snapshots. Milestone dates describ
 | October 11 | [community-onboarding-2026-10-11](https://github.com/FCisco95/hyphae/tree/community-onboarding-2026-10-11) | Homepage setup prompt shipped in 1fa0f78; [operator-assisted setup](community/SETUP-INTEGRATION.md) |
 | October 11 | [hackathon-demo-2026-10-11](https://github.com/FCisco95/hyphae/tree/hackathon-demo-2026-10-11) | [Judge tour, Telegram member path and public rules](../README.md#quick-tour); Cursor, Claude Code and OpenAI logos on the setup prompt |
 
-## November 6 — Administration candidate built locally
+## November 6 — Administration interfaces and local verification
 
 Shared administration schemas (`d65494f`), gated API/web controls and a private typed client
-(`127ba58`), and a packaged generated OpenAPI contract (`769f517`) are committed locally,
-**not pushed or activated**. The public management view reuses existing reads; private pause/resume
+(`127ba58`), and a packaged generated OpenAPI contract (`769f517`) define the administration surface.
+**Private controls default to off.** The public management view reuses existing reads; private pause/resume
 changes new intake only. Fresh Claude reviews accepted the implementation and contract. Three Low
 documentation findings were corrected in `cbb3927`. The local gate passed 2,332 package tests,
 workspace types and lint; the separate full PostgreSQL suite passed 113 tests in 23 files, and the
 packed consumer and actual-component browser fixtures passed. Browser transport replay after a
 socket disconnect was rejected by timestamp CAS; documentation records that limitation.
-[Evidence and limits](evidence/2026-11-06-administration.md). Next: publication and real-provider
-activation require their separate operational decisions and checks.
+[Evidence and limits](evidence/2026-11-06-administration.md). API installation and real-provider
+activation require separate operational decisions and checks.
 
 ## October 11 — Community setup prompt
 
