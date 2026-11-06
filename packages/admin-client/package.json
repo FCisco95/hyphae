@@ -12,16 +12,19 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./openapi.json": "./dist/openapi.json"
   },
   "files": [
     "dist/index.js",
     "dist/index.d.ts",
+    "dist/openapi.json",
     "LICENSE",
     "README.md"
   ],
   "scripts": {
     "build": "tsup && node scripts/copy-license.mjs",
+    "prepack": "pnpm build",
     "test": "pnpm build && vitest run",
     "typecheck": "pnpm build && tsc --noEmit"
   },

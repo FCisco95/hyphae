@@ -66,6 +66,9 @@ deadline covers token retrieval, fetch, and body consumption; the default is
 limited to **16 KiB of bytes**, including streamed bodies without Content-Length.
 Abort/deadline stops this client waiting and cancels its transport; it cannot
 undo a server write already accepted, so refresh before deciding whether to submit again.
+For `setIntakePaused`, `unavailable`, `timeout`, `network_error`, `aborted`, or an unreadable
+response can mean **outcome unknown**: read the authenticated current state before deciding
+on another deliberately confirmed change.
 
 `HyphaeAdminError` exposes `code`, optional HTTP `status`, and optional
 `retryAfterSeconds` for 429. HTTP mappings: 400 `bad_request`, 401 `unauthorized`,
@@ -78,6 +81,12 @@ Request-input/configuration errors throw synchronously; transport/authentication
 and response errors reject the operation's promise.
 
 ## Local verification
+
+The built package exports `@hyphae/admin-client/openapi.json`, a standalone OpenAPI 3.1
+contract for tooling. Resolve it with `import.meta.resolve("@hyphae/admin-client/openapi.json")`
+or read `dist/openapi.json` after building. It includes strict canonical schemas, pause
+timestamp consistency, bearer authority, CAS and error/recovery semantics. No deployed
+server URL is assumed; this artifact creates no runtime endpoint or API activation.
 
 ```sh
 pnpm --filter @hyphae/admin-client test

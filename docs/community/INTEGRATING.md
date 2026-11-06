@@ -91,6 +91,8 @@ The source includes a management page at `/c/{mint}/manage` and a separate, loca
 [`@hyphae/admin-client`](../../packages/admin-client/README.md). The page groups existing public
 community status and reward-vault reads. Private controls are disabled by default; having this
 source or opening the page does not prove that the administration API is installed or enabled.
+The local package also includes `@hyphae/admin-client/openapi.json`: a standalone OpenAPI 3.1
+contract generated during its build, without an assumed deployed server URL or a new runtime route.
 
 | Operation | Private interface | Result |
 |---|---|---|
