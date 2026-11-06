@@ -53,15 +53,18 @@ does not verify signatures or establish those permissions.
   and must match the requested mint. Mint selectors are 1–64 ASCII alphanumeric characters.
 - Pause controls **new submissions only**, not payouts. Copy `expected_paused_at`
   from the latest authenticated overview. Conflicts require a refresh; writes
-  are never retried automatically. Repeating a pause preserves the server timestamp.
+  have no application-level automatic retry. Repeating a pause preserves the server timestamp.
 
 The required `baseUrl` ends in exactly `/admin/v1` (a trailing slash is accepted).
 HTTPS is required except HTTP on `localhost`, `127.0.0.1`, or `[::1]`. Credentials,
 query strings and fragments in the base URL are rejected. An optional `fetch`
 implementation must implement the standard Fetch API and honor request settings.
 
-Requests omit cookies, reject redirects, disable caching and never retry. One
-deadline covers token retrieval, fetch, and body consumption; the default is
+Requests omit cookies, reject redirects and disable caching. Each SDK operation makes one Fetch
+call with no application-level retry loop; the HTTP transport may independently replay a request.
+Timestamp CAS rejects stale updates; read the authenticated current state after an uncertain result
+before confirming another change. One deadline covers token retrieval, fetch, and body consumption;
+the default is
 10 seconds. Callers may also abort any operation with `signal`. Responses are
 limited to **16 KiB of bytes**, including streamed bodies without Content-Length.
 Abort/deadline stops this client waiting and cancels its transport; it cannot

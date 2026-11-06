@@ -108,8 +108,10 @@ URLs, public configuration, logs or shared caches.
 
 The update body is strictly `{ paused: boolean, expected_paused_at: string | null }`. Copy
 `expected_paused_at` from the authenticated overview. A conflicting edit returns HTTP 409; read
-again and let the administrator decide. No client automatically retries a write. After a timeout
-or lost response, read the current state before deliberately submitting another change.
+again and let the administrator decide. The administration clients have no application-level write
+retry loop. An underlying HTTP transport can independently replay a PUT; timestamp CAS rejects
+stale updates. After a conflict, timeout or lost response, read the current state before deliberately
+confirming another change.
 
 Pausing stops new reward intake. It does not stop the epoch calendar, erase admitted work, change
 scoring, release a payout hold, publish an allocation or disable existing claims. The stored pause

@@ -83,7 +83,7 @@ export function adminOpenApiDocument() {
           operationId: "setAdminIntakePaused",
           summary: "Pause or resume new reward submissions",
           description:
-            "Requires deliberate administrator confirmation. Copy expected_paused_at from the latest authenticated read; CAS is checked under the shared community lock. Same-state updates preserve the timestamp. Does not change payouts, epoch dates, rubrics or custody. Never retry automatically. On 409 refresh before deciding; on timeout, abort, network error, 503, a gateway 5xx or an unreadable response the write outcome can be unknown: read current state before another deliberate change.",
+            "Requires deliberate administrator confirmation. Copy expected_paused_at from the latest authenticated read; CAS is checked under the shared community lock. Same-state updates preserve the timestamp. Does not change payouts, epoch dates, rubrics or custody. Clients must not add automatic retry loops. An HTTP transport may independently replay a request; timestamp CAS rejects stale updates. On 409 refresh before deciding; on timeout, abort, network error, 503, a gateway 5xx or an unreadable response the write outcome can be unknown: read current state before another deliberate change.",
           security: [{ adminToken: [] }],
           parameters,
           requestBody: {

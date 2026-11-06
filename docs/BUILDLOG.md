@@ -13,6 +13,19 @@ These annotated Git tags mark readable public snapshots. Milestone dates describ
 | October 11 | [community-onboarding-2026-10-11](https://github.com/FCisco95/hyphae/tree/community-onboarding-2026-10-11) | Homepage setup prompt shipped in 1fa0f78; [operator-assisted setup](community/SETUP-INTEGRATION.md) |
 | October 11 | [hackathon-demo-2026-10-11](https://github.com/FCisco95/hyphae/tree/hackathon-demo-2026-10-11) | [Judge tour, Telegram member path and public rules](../README.md#quick-tour); Cursor, Claude Code and OpenAI logos on the setup prompt |
 
+## November 6 — Administration candidate built locally
+
+Shared administration schemas (`d65494f`), gated API/web controls and a private typed client
+(`127ba58`), and a packaged generated OpenAPI contract (`769f517`) are committed locally,
+**not pushed or activated**. The public management view reuses existing reads; private pause/resume
+changes new intake only. Fresh Claude reviews accepted the implementation and contract. Three Low
+documentation findings were corrected in `cbb3927`. The local gate passed 2,332 package tests,
+workspace types and lint; the separate full PostgreSQL suite passed 113 tests in 23 files, and the
+packed consumer and actual-component browser fixtures passed. Browser transport replay after a
+socket disconnect was rejected by timestamp CAS; documentation records that limitation.
+[Evidence and limits](evidence/2026-11-06-administration.md). Next: publication and real-provider
+activation require their separate operational decisions and checks.
+
 ## October 11 — Community setup prompt
 
 The homepage offers a copyable agent prompt linked to the [community setup guide](community/SETUP-INTEGRATION.md). It prepares a private setup brief for operator review and states the current assisted-registration boundary. Copy confirmation, manual-copy recovery and dismissal pass three interaction tests. Fresh desktop and phone checks cover both color schemes, clipboard success/denial, and layouts down to 320 pixels. The prompt shipped in 1fa0f78; the copy button now identifies Cursor, Claude Code and OpenAI with locally served official logo assets and [source attribution](../apps/web/public/brand/agents/NOTICE.txt).
