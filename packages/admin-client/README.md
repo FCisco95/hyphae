@@ -66,8 +66,8 @@ deadline covers token retrieval, fetch, and body consumption; the default is
 limited to **16 KiB of bytes**, including streamed bodies without Content-Length.
 Abort/deadline stops this client waiting and cancels its transport; it cannot
 undo a server write already accepted, so refresh before deciding whether to submit again.
-For `setIntakePaused`, `unavailable`, `timeout`, `network_error`, `aborted`, or an unreadable
-response can mean **outcome unknown**: read the authenticated current state before deciding
+For `setIntakePaused`, `unavailable`, `timeout`, `network_error`, `aborted`, `http_error`
+for a gateway 5xx, or an unreadable response can mean **outcome unknown**: read current state before deciding
 on another deliberately confirmed change.
 
 `HyphaeAdminError` exposes `code`, optional HTTP `status`, and optional

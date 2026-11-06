@@ -23,7 +23,7 @@ const error = (code: string, description: string) => ({
     },
   },
 });
-const responses = {
+const responses = (method: "GET" | "PUT") => ({
   "200": { description: "Authorized current state.", headers, content: content("AdminCommunity") },
   "400": error("invalid_request", "Malformed mint, query string, content type or update body."),
   "401": error("unauthorized", "Missing, malformed or invalid app-bound user credential."),
@@ -34,14 +34,19 @@ const responses = {
   "404": error("not_found", "Disabled administration surface or unknown community."),
   "405": {
     ...error("invalid_request", "Unsupported method; Allow identifies the supported method."),
-    headers: { ...headers, Allow: { schema: { type: "string", enum: ["GET", "PUT"] } } },
+    headers: { ...headers, Allow: { schema: { type: "string", const: method } } },
   },
   "429": {
     ...error("unavailable", "Too many requests. Wait before a deliberate new request."),
     headers: { ...headers, "Retry-After": { schema: { type: "string", pattern: "^[0-9]+$" } } },
   },
-  "503": error("unavailable", "Provider/database/deadline failure. A write may have committed."),
-};
+  "503": error(
+    "unavailable",
+    method === "GET"
+      ? "Provider/database/deadline failure; this read does not change state."
+      : "Provider/database/deadline failure. A write may have committed.",
+  ),
+});
 const parameters = [
   {
     name: "mint",
@@ -70,7 +75,7 @@ export function adminOpenApiDocument() {
             "Fresh identity and Telegram authority checks; no public administrator data.",
           security: [{ adminToken: [] }],
           parameters,
-          responses,
+          responses: responses("GET"),
         },
       },
       "/admin/v1/communities/{mint}/intake": {
@@ -78,7 +83,7 @@ export function adminOpenApiDocument() {
           operationId: "setAdminIntakePaused",
           summary: "Pause or resume new reward submissions",
           description:
-            "Requires deliberate administrator confirmation. Copy expected_paused_at from the latest authenticated read; CAS is checked under the shared community lock. Same-state updates preserve the timestamp. Does not change payouts, epoch dates, rubrics or custody. Never retry automatically. On 409 refresh before deciding; on timeout, abort, network error, 503 or an unreadable response the write outcome can be unknown: read current state before another deliberate change.",
+            "Requires deliberate administrator confirmation. Copy expected_paused_at from the latest authenticated read; CAS is checked under the shared community lock. Same-state updates preserve the timestamp. Does not change payouts, epoch dates, rubrics or custody. Never retry automatically. On 409 refresh before deciding; on timeout, abort, network error, 503, a gateway 5xx or an unreadable response the write outcome can be unknown: read current state before another deliberate change.",
           security: [{ adminToken: [] }],
           parameters,
           requestBody: {
@@ -87,7 +92,7 @@ export function adminOpenApiDocument() {
             content: content("AdminIntakeUpdate"),
           },
           responses: {
-            ...responses,
+            ...responses("PUT"),
             "409": error("conflict", "Pause timestamp changed; refresh before a new confirmation."),
           },
         },

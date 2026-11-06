@@ -49,5 +49,13 @@ it.each([
     expect(unsupported.status).toBe(405);
     expect(unsupported.headers.get("Allow")).toBe(allow);
     expect(await unsupported.json()).toEqual({ error: "invalid_request" });
+    const documented =
+      method === "GET"
+        ? document.paths["/admin/v1/communities/{mint}"].get
+        : document.paths["/admin/v1/communities/{mint}/intake"].put;
+    expect(documented.responses["405"].headers.Allow.schema).toEqual({
+      type: "string",
+      const: unsupported.headers.get("Allow"),
+    });
   },
 );
