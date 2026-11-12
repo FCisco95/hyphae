@@ -7,6 +7,7 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { seedAuditDemo } from "./demo-seed.js";
 import { readWalletRecord } from "./read-service.js";
+import { readStats } from "./stats.js";
 
 // Read-path query plans on Postgres 17 through postgres-js (scripts/test-pg.sh).
 const url = process.env.HYPHAE_TEST_PG_URL;
@@ -78,5 +79,18 @@ describe("a wallet's record", () => {
     ]);
     expect(r.totals).toMatchObject({ contributions: 3, counted: 3, credited: 2, points: "325" });
     expect(await readWalletRecord(db, demo.pastedWallet, { offset: 0, limit: 50 }, now)).toBeNull();
+  });
+});
+
+describe("a community's stats", () => {
+  it("counts members and totals publications through the production driver", async () => {
+    const now = new Date("2026-11-20T12:00:00.000Z");
+    const demo = await seedAuditDemo(db, now);
+    const stats = ReadApiV1.communityStats.parse(await readStats(db, demo.mint, now));
+    expect(stats.members.registered).toBeGreaterThanOrEqual(stats.members.ever_scored);
+    expect(stats.members.ever_scored).toBeGreaterThan(0);
+    expect(stats.epochs.served).toBe(2);
+    expect(stats.payouts).toMatchObject({ status: "available", epochs_paid: 0, network: null });
+    expect(await readStats(db, "NoSuchMint", now)).toBeNull();
   });
 });
