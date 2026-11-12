@@ -350,6 +350,11 @@ function readApiSchemas(strict: boolean) {
             fee_recipient: base58,
             balance_lamports: uint,
             outstanding_lamports: uint,
+            // Added inside v1 (A4). The vault's rent-exempt minimum, and what the program would let
+            // the next epoch take: balance less rent less what published epochs still owe. Null
+            // when it could not be read or computed, never zero.
+            rent_lamports: uint.nullable().optional(),
+            unassigned_lamports: uint.nullable().optional(),
           }),
           unavailable,
         ])
@@ -495,6 +500,49 @@ function readApiSchemas(strict: boolean) {
       ),
     }),
     walletRecord: walletRecordSchema(),
+    // A community's totals, added inside v1 (A4). Counts come from the database; every SOL figure
+    // is read against the chain, so a figure the chain cannot confirm is `unavailable`, never a
+    // zero. No member, handle or wallet appears here.
+    communityStats: obj({
+      community: obj({ mint: z.string().min(1) }),
+      as_of: iso,
+      members: obj({
+        // Members the community has on record, with or without a wallet.
+        registered: count,
+        // Members with more than zero points in any served epoch.
+        ever_scored: count,
+      }),
+      epochs: obj({ served: count }),
+      payouts: z.union([
+        obj({
+          status: z.literal("available"),
+          // Null while no epoch has been published.
+          network: network.nullable(),
+          program_id: base58,
+          // Epochs with a publication the chain confirmed. A distribution counts once, however
+          // many epochs it pays.
+          epochs_paid: count,
+          gross_lamports: uint,
+          fee_lamports: uint,
+          // Assigned to members; claimed is what members have taken out, so the rest is unclaimed.
+          allocated_lamports: uint,
+          claimed_lamports: uint,
+          unclaimed_lamports: uint,
+          publications: z.array(
+            obj({
+              index: count,
+              epoch_address: base58,
+              publish_tx: signature,
+              published_at: iso,
+              root: hex64,
+              allocated_lamports: uint,
+              claimed_lamports: uint,
+            }),
+          ),
+        }),
+        unavailable,
+      ]),
+    }),
     error: obj({ error: z.enum(["not_found", "bad_request", "unavailable"]) }),
   };
 }
@@ -503,6 +551,7 @@ export const ReadApiV1 = readApiSchemas(true);
 export const ReadApiV1Loose = readApiSchemas(false);
 
 export type CommunityV1 = z.infer<typeof ReadApiV1.community>;
+export type CommunityStatsV1 = z.infer<typeof ReadApiV1.communityStats>;
 export type EpochV1 = z.infer<typeof ReadApiV1.epoch>;
 export type ContributionsV1 = z.infer<typeof ReadApiV1.contributions>;
 export type ContributionRowV1 = ContributionsV1["contributions"][number];

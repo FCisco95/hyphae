@@ -41,6 +41,25 @@ describe("the chain reader", () => {
     expect(calls.filter((c) => c.method === "getGenesisHash")).toHaveLength(1);
   });
 
+  it("asks the cluster for an account's rent minimum at its own size, once per address", async () => {
+    const { rpc, calls } = rpcWith(({ method }) =>
+      method === "getAccountInfo"
+        ? { context: { slot: 1 }, value: account(HYPHAE_PROGRAM_ID, [1, 2, 3]) }
+        : 1_002_240,
+    );
+    const reader = settlementReader(rpc);
+    expect(await reader.rentExempt?.(A)).toBe(1_002_240n);
+    expect(await reader.rentExempt?.(A)).toBe(1_002_240n);
+    expect(calls.filter((c) => c.method === "getAccountInfo")).toHaveLength(1);
+    const rent = calls.filter((c) => c.method === "getMinimumBalanceForRentExemption");
+    expect(rent.map((c) => c.params[0])).toEqual([3n]);
+  });
+
+  it("does not guess a rent minimum for an account that does not exist", async () => {
+    const { rpc } = rpcWith(() => ({ context: { slot: 1 }, value: null }));
+    await expect(settlementReader(rpc).rentExempt?.(A)).rejects.toThrow(/does not exist/);
+  });
+
   it("refuses a cluster it does not know", async () => {
     const { rpc } = rpcWith(() => "4uhcVJyU9pJkvQyS88uRDiswHXSCkY3zQawwpjk2NsNY");
     await expect(settlementReader(rpc).network()).rejects.toThrow(/unknown cluster/);

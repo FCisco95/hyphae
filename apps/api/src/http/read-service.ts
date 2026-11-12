@@ -92,9 +92,9 @@ export interface Page {
   member?: string | undefined;
 }
 
-const dateUs = (d: Date) => d.toISOString().replace("Z", "000Z");
+export const dateUs = (d: Date) => d.toISOString().replace("Z", "000Z");
 
-async function findCommunity(tx: Db, mint: string) {
+export async function findCommunity(tx: Db, mint: string) {
   const [row] = await tx
     .select({
       id: communities.id,
@@ -116,7 +116,11 @@ interface EpochView {
   snapshot: { id: string; closedAt: string; cutoffAssumption: string } | null;
 }
 
-async function findEpochs(tx: Db, communityId: string, index?: number): Promise<EpochView[]> {
+export async function findEpochs(
+  tx: Db,
+  communityId: string,
+  index?: number,
+): Promise<EpochView[]> {
   const rows = await tx
     .select({
       row: epochs,
@@ -153,7 +157,7 @@ const isClosed = (e: EpochRow, now: Date) => now.getTime() >= e.closesAt.getTime
 // The time a read is as of: a fixed time, or the database's clock read as the first statement of
 // the read's transaction, so `closed` and `as_of` agree with the snapshot the read sees.
 export type ReadClock = Date | ((tx: Db) => Promise<Date>);
-const timeIn = (tx: Db, clock: ReadClock) =>
+export const timeIn = (tx: Db, clock: ReadClock) =>
   clock instanceof Date ? Promise.resolve(clock) : clock(tx);
 
 function epochStatus(e: EpochView, now: Date): EpochV1["status"] {
@@ -495,7 +499,7 @@ export async function readCommunity(
 // The recorded publication of an epoch, as the settlement sections need it: the epoch's own
 // publication, or the distribution published under its index (the settle loop's, which pays every
 // epoch rolled over before it).
-async function publicationFacts(
+export async function publicationFacts(
   tx: Db,
   epoch: EpochRow,
   firstPaidEpoch: number | null,
@@ -1084,7 +1088,7 @@ interface MemberCounts {
 const noCounts = (): MemberCounts => ({ contributions: 0, counted: 0, pending: 0 });
 
 // One epoch's points per member: the frozen snapshot once it exists, else the live selection.
-async function epochTotals(tx: Db, epoch: EpochView): Promise<MemberTotal[]> {
+export async function epochTotals(tx: Db, epoch: EpochView): Promise<MemberTotal[]> {
   if (epoch.snapshot) {
     return tx
       .select({

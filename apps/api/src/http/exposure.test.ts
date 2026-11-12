@@ -86,6 +86,16 @@ describe("read API data exposure", () => {
     };
 
     await fetchJson(`/communities/${demo.mint}`);
+    const stats = await fetchJson(`/communities/${demo.mint}/stats`);
+    // Counts and chain totals only: never a handle, a wallet or a member beside one.
+    expect(Object.keys(stats).sort()).toEqual([
+      "as_of",
+      "community",
+      "epochs",
+      "members",
+      "payouts",
+    ]);
+    await fetchJson(`/communities/${demo.mint}/leaderboard?epoch=all`);
     const ids = new Set<string>([unfinished]);
     for (const index of [1, 2]) {
       await fetchJson(`/communities/${demo.mint}/epochs/${index}`);
@@ -118,7 +128,14 @@ describe("read API data exposure", () => {
     const allKeys = bodies.flatMap((b) => keys(JSON.parse(b)));
     expect(allKeys.filter((k) => FORBIDDEN_KEY.test(k))).toEqual([]);
     expect(allKeys.filter((k) => k === "input" || k === "output")).toEqual([]);
-    // The signed wallet is the one address that may appear.
+    // The signed wallet is the one address that may appear, and only where a wallet belongs: the
+    // community's totals name no member, handle or wallet at all.
     expect(all).toContain(demo.signedWallet);
+    const statsText = JSON.stringify(stats);
+    for (const wallet of [demo.signedWallet, demo.pastedWallet]) {
+      expect(statsText, wallet).not.toContain(wallet);
+    }
+    for (const member of Object.values(demo.members)) expect(statsText).not.toContain(member);
+    expect(statsText).not.toMatch(/handle|x\.com|twitter|wallet"/i);
   });
 });

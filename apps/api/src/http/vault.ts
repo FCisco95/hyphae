@@ -36,6 +36,13 @@ export async function readVault(
       return unavailable("chain_mismatch");
     }
     const vault = await vaultAddress(HYPHAE_PROGRAM_ID, derived);
+    const [balance, rent] = await Promise.all([
+      reader.balance(vault),
+      // Rent is the one figure that may fail alone: the vault and its balance are still true.
+      reader.rentExempt ? reader.rentExempt(vault).catch(() => null) : null,
+    ]);
+    // The program's own rule (publish_epoch, P6): balance less rent less what is still owed.
+    const free = rent === null ? null : balance - rent - onChain.outstandingLamports;
     return {
       status: "available",
       network,
@@ -44,8 +51,10 @@ export async function readVault(
       vault_address: vault,
       admin,
       fee_recipient: toAddress(onChain.feeRecipient),
-      balance_lamports: String(await reader.balance(vault)),
+      balance_lamports: String(balance),
       outstanding_lamports: String(onChain.outstandingLamports),
+      rent_lamports: rent === null ? null : String(rent),
+      unassigned_lamports: free === null || free < 0n ? null : String(free),
     };
   })().catch(() => unavailable("chain_unavailable"));
   return byDeadline(work, until, unavailable("chain_unavailable"));

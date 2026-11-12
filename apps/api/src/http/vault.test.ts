@@ -23,8 +23,12 @@ function communityAccount(mint: string, outstanding: bigint) {
   return out;
 }
 
-function fakeReader(accounts: Map<string, Uint8Array>, balances: Map<string, bigint>) {
-  const state = { down: false, hang: false };
+function fakeReader(
+  accounts: Map<string, Uint8Array>,
+  balances: Map<string, bigint>,
+  rent: bigint | null = null,
+) {
+  const state = { down: false, hang: false, rentDown: false };
   const reader: SettlementReader = {
     network: async () => "solana:mainnet",
     accounts: async (owner, at) => {
@@ -36,6 +40,14 @@ function fakeReader(accounts: Map<string, Uint8Array>, balances: Map<string, big
     balance: async (at) => balances.get(at) ?? 0n,
     creation: async () => null,
     latestBlockhash: async () => ({ blockhash: "x", lastValidBlockHeight: 0n }),
+    ...(rent === null
+      ? {}
+      : {
+          rentExempt: async () => {
+            if (state.rentDown) throw new Error("rpc down");
+            return rent;
+          },
+        }),
   };
   return { reader, state };
 }
@@ -49,6 +61,7 @@ describe("readVault", () => {
     const { reader } = fakeReader(
       new Map([[community, communityAccount(MINT, 250_000_000n)]]),
       new Map([[vault, 1_500_000_000n]]),
+      890_880n,
     );
     expect(await readVault({ mint: MINT, chainAddress: community }, reader, later())).toEqual({
       status: "available",
@@ -60,7 +73,47 @@ describe("readVault", () => {
       fee_recipient: FEE,
       balance_lamports: "1500000000",
       outstanding_lamports: "250000000",
+      rent_lamports: "890880",
+      // What the program lets the next epoch take: balance less rent less what is owed.
+      unassigned_lamports: "1249109120",
     });
+  });
+
+  it("says rent and unassigned are unknown, never zero, when rent cannot be read", async () => {
+    const community = await communityAddress(HYPHAE_PROGRAM_ID, address(MINT), address(ADMIN));
+    const vault = await vaultAddress(HYPHAE_PROGRAM_ID, community);
+    const accounts = new Map([[community, communityAccount(MINT, 250_000_000n)]]);
+    const balances = new Map([[vault, 1_500_000_000n]]);
+    const down = fakeReader(accounts, balances, 890_880n);
+    down.state.rentDown = true;
+    const none = fakeReader(accounts, balances);
+    for (const { reader } of [down, none]) {
+      expect(
+        await readVault({ mint: MINT, chainAddress: community }, reader, later()),
+      ).toMatchObject({
+        status: "available",
+        balance_lamports: "1500000000",
+        outstanding_lamports: "250000000",
+        rent_lamports: null,
+        unassigned_lamports: null,
+      });
+    }
+  });
+
+  it("has no unassigned figure when the balance cannot cover rent and what is owed", async () => {
+    const community = await communityAddress(HYPHAE_PROGRAM_ID, address(MINT), address(ADMIN));
+    const vault = await vaultAddress(HYPHAE_PROGRAM_ID, community);
+    const { reader } = fakeReader(
+      new Map([[community, communityAccount(MINT, 250_000_000n)]]),
+      new Map([[vault, 100_000_000n]]),
+      890_880n,
+    );
+    expect(await readVault({ mint: MINT, chainAddress: community }, reader, later())).toMatchObject(
+      {
+        rent_lamports: "890880",
+        unassigned_lamports: null,
+      },
+    );
   });
 
   it("says the community is not on chain before the operator binds it", async () => {

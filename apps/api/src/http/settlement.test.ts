@@ -29,6 +29,7 @@ import { createTestDb } from "../rewards/test-db.js";
 import { readClaim, readEpoch, readWalletClaims, readWalletRecord } from "./read-service.js";
 import { EpochSchema } from "./schemas.js";
 import { LOOKUPS_AT_ONCE, mapLimit, type SettlementReader } from "./settlement.js";
+import { readStats } from "./stats.js";
 
 // The deadline tests time the read path, not program-address derivation: each derivation is a
 // SHA-256 round trip of about 1 ms, forty of them stand between the deadline's start and the first
@@ -832,5 +833,124 @@ describe("a community re-bound to a new on-chain account", () => {
     const underRebound = await epochAddress(HYPHAE_PROGRAM_ID, address(rebound), 1n);
     expect(asked).not.toContain(underRebound);
     expect(asked).toContain(p.epoch);
+  });
+});
+
+describe("a community's stats", () => {
+  const statsOf = async (mint: string, reader?: SettlementReader, deadlineMs?: number) => {
+    const body = await readStats(t.db, mint, NOW, reader, deadlineMs);
+    if (!body) throw new Error("no stats");
+    return ReadApiV1.communityStats.parse(body);
+  };
+  const unavailable = (reason: string) => ({ status: "unavailable", reason });
+
+  it("counts members from the database and owes nothing before an epoch is published", async () => {
+    const seed = await seedReadyEpoch(t.db, { now: NOW });
+    const body = await statsOf(seed.mint);
+    expect(body.members).toEqual({ registered: 4, ever_scored: 4 });
+    // The closed epoch 1 and the open epoch 2 the bootstrap created behind it.
+    expect(body.epochs).toEqual({ served: 2 });
+    // Nothing recorded as published, so there is nothing for a chain to confirm: zero is true.
+    expect(body.payouts).toEqual({
+      status: "available",
+      network: null,
+      program_id: HYPHAE_PROGRAM_ID,
+      epochs_paid: 0,
+      gross_lamports: "0",
+      fee_lamports: "0",
+      allocated_lamports: "0",
+      claimed_lamports: "0",
+      unclaimed_lamports: "0",
+      publications: [],
+    });
+  });
+
+  it("is not found for an unknown mint", async () => {
+    expect(await readStats(t.db, randomAddress(), NOW)).toBeNull();
+  });
+
+  it("totals a confirmed publication: pot, fee, allocation, and what members have claimed", async () => {
+    const p = await published();
+    const fake = await onChain(p);
+    const s = p.intent.audit.settlement;
+    const before = await statsOf(p.seed.mint, fake.reader);
+    expect(before.payouts).toEqual({
+      status: "available",
+      network: "solana:devnet",
+      program_id: HYPHAE_PROGRAM_ID,
+      epochs_paid: 1,
+      gross_lamports: s.gross_lamports,
+      fee_lamports: s.fee_lamports,
+      allocated_lamports: s.allocated_lamports,
+      claimed_lamports: "0",
+      unclaimed_lamports: s.allocated_lamports,
+      publications: [
+        {
+          index: 1,
+          epoch_address: p.epoch,
+          publish_tx: PUBLISH_TX,
+          published_at: expect.any(String),
+          root: p.intent.root,
+          allocated_lamports: s.allocated_lamports,
+          claimed_lamports: "0",
+        },
+      ],
+    });
+
+    const leaf = p.intent.leaves[0] as Leaf;
+    const taken = await onChain(p, leaf.amountLamports);
+    const after = await statsOf(p.seed.mint, taken.reader);
+    expect(after.payouts).toMatchObject({
+      status: "available",
+      claimed_lamports: leaf.amountLamports.toString(),
+      unclaimed_lamports: (BigInt(s.allocated_lamports) - leaf.amountLamports).toString(),
+    });
+  });
+
+  it("reads each epoch account once and no receipt: the cost does not grow with members", async () => {
+    const p = await published();
+    const fake = await onChain(p);
+    await statsOf(p.seed.mint, fake.reader);
+    expect(fake.hints.map((h) => h.at)).toEqual([p.epoch]);
+  });
+
+  it("is unavailable, never zero, when the chain cannot confirm a recorded publication", async () => {
+    const p = await published();
+    const body = async (reader?: SettlementReader) => (await statsOf(p.seed.mint, reader)).payouts;
+    expect(await body()).toEqual(unavailable("chain_unconfigured"));
+
+    const down = await onChain(p);
+    down.state.down = true;
+    expect(await statsOf(p.seed.mint, down.reader).then((b) => b.payouts)).toEqual(
+      unavailable("chain_unavailable"),
+    );
+
+    const wrong = await onChain(p);
+    wrong.accounts.set(p.epoch, epochAccount(p.community, p.intent, 0n, { root: "ab".repeat(32) }));
+    expect(await statsOf(p.seed.mint, wrong.reader).then((b) => b.payouts)).toEqual(
+      unavailable("chain_mismatch"),
+    );
+
+    const missing = fakeReader();
+    expect(await statsOf(p.seed.mint, missing.reader).then((b) => b.payouts)).toEqual(
+      unavailable("chain_mismatch"),
+    );
+
+    const slow = await onChain(p);
+    slow.state.slow.add(p.epoch);
+    expect(await statsOf(p.seed.mint, slow.reader, 50).then((b) => b.payouts)).toEqual(
+      unavailable("chain_unavailable"),
+    );
+    // The counts do not depend on the chain.
+    expect((await statsOf(p.seed.mint, down.reader)).members.registered).toBe(4);
+  });
+
+  it("serves no handle, wallet, member id or contribution link", async () => {
+    const p = await published();
+    const fake = await onChain(p, 0n);
+    const text = JSON.stringify(await statsOf(p.seed.mint, fake.reader));
+    for (const wallet of Object.values(p.seed.wallets)) expect(text).not.toContain(wallet);
+    for (const member of Object.values(p.seed.members)) expect(text).not.toContain(member);
+    expect(text).not.toMatch(/x\.com|twitter|handle|telegram/i);
   });
 });

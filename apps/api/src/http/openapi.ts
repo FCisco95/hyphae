@@ -10,6 +10,7 @@ import { AllTimeLeaderboardSchema, EpochSchema } from "./schemas.js";
 const schemas = {
   Community: ReadApiV1.community,
   Raids: PublicRaidsSchema,
+  CommunityStats: ReadApiV1.communityStats,
   Epoch: EpochSchema,
   Contributions: ReadApiV1.contributions,
   Leaderboard: ReadApiV1.leaderboard,
@@ -139,8 +140,19 @@ export function openApiDocument() {
     paths: {
       "/v1/communities/{mint}": get(
         "A community",
-        "Its name, current epoch and every served epoch. An epoch the automatic settle loop has decided carries `payout`: `rolled_over` (its accrual waits in the vault for a later distribution), `distribution_planned` or `distributed`, with `distributed_in` the index the distribution is published under.",
+        "Its name, current epoch, every served epoch and the vault to fund: its address, balance, `outstanding_lamports` (allocated to published epochs and not yet claimed), `rent_lamports` (the vault's rent-exempt minimum) and `unassigned_lamports` (balance less rent less outstanding: what the program would let the next epoch take). The last two are null when they cannot be read, never zero. An epoch the automatic settle loop has decided carries `payout`: `rolled_over` (its accrual waits in the vault for a later distribution), `distribution_planned` or `distributed`, with `distributed_in` the index the distribution is published under.",
         "Community",
+        [mint],
+        "No community with this mint.",
+      ),
+      "/v1/communities/{mint}/stats": get(
+        "A community's totals",
+        [
+          "Members the community has on record (`registered`, with or without a wallet) and those with more than zero points in any served epoch (`ever_scored`), from the database. No member, handle or wallet is named.",
+          "`payouts` is read against Solana through the epoch accounts: the pot, the 3% fee, what was allocated to members, what they have claimed and the rest unclaimed, summed over every published epoch, each listed with its publish transaction and root. A distribution counts once, however many epochs it pays. `network` is null while nothing is published. If a recorded publication cannot be confirmed, `payouts` is `{ status: 'unavailable', reason }`: a total never silently leaves an epoch out. The vault's rent and unassigned balance are on the community read.",
+          "Kept for 30 seconds, so a burst of readers costs the chain one read.",
+        ].join("\n\n"),
+        "CommunityStats",
         [mint],
         "No community with this mint.",
       ),

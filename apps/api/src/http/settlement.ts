@@ -93,6 +93,8 @@ export interface SettlementReader {
   balance(at: string): Promise<bigint>;
   // The decimals of the token mint `mint`.
   mintDecimals?(mint: string): Promise<number>;
+  // The rent-exempt minimum of the account `at`, for its own size.
+  rentExempt?(at: string): Promise<bigint>;
 }
 
 // The chain is read after the database, under one deadline, because the web client gives up at
@@ -113,7 +115,7 @@ export interface PublicationFacts {
   intent: SettlementIntent | null;
 }
 
-interface Verified {
+export interface Verified {
   intent: SettlementIntent;
   program: Address;
   community: Address;
@@ -167,7 +169,7 @@ export async function mapLimit<T, R>(
 
 // The stored intent, confirmed by the epoch account it was published to and the publish_epoch
 // that created that account.
-async function verifyPublication(
+export async function verifyPublication(
   facts: PublicationFacts,
   reader: SettlementReader | undefined,
 ): Promise<Verified | Unavailable> {
@@ -240,6 +242,29 @@ function decoded<T>(decode: (data: Uint8Array) => T, data: Uint8Array): T | null
   } catch {
     return null;
   }
+}
+
+// Every recorded publication of a community, each confirmed by its epoch account and the
+// transaction that created it, but not its members' receipts: a claimed total is the epoch
+// account's own, so the cost is the epoch count, never the member count. One that cannot be
+// confirmed makes the whole answer unavailable, so a total never silently omits an epoch.
+export async function publicationsOf(
+  facts: readonly PublicationFacts[],
+  reader: SettlementReader | undefined,
+  until: number,
+): Promise<{ index: number; verified: Verified }[] | Unavailable> {
+  const work = mapLimit(facts, LOOKUPS_AT_ONCE, async (f) => ({
+    index: f.index,
+    checked: await verifyPublication(f, reader),
+  })).catch(() => null);
+  const rows = await byDeadline(work, until, null);
+  if (!rows) return late;
+  const verified: { index: number; verified: Verified }[] = [];
+  for (const { index, checked } of rows) {
+    if ("status" in checked) return checked;
+    verified.push({ index, verified: checked });
+  }
+  return verified;
 }
 
 function allocationOf(v: Verified | Unavailable): AllocationV1 {

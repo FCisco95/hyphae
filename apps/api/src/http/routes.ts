@@ -20,6 +20,7 @@ import {
 } from "./read-service.js";
 import type { EpochApi } from "./schemas.js";
 import type { SettlementReader } from "./settlement.js";
+import { cachedStats } from "./stats.js";
 
 // Public read API v1 (H-CONTRACT Part A): GET only, no auth, fixed error bodies (A11).
 
@@ -95,9 +96,12 @@ export function readRoutes(deps: {
   limit?: RateLimit;
   // The web server's bearer token: its calls are counted per visitor (see budgets).
   webToken?: string | undefined;
+  // How long a community's stats are kept, so the chain is read once per window; 0 keeps none.
+  statsTtlMs?: number;
 }) {
   const { db } = deps;
   const clock: ReadClock = deps.clock ?? databaseNow;
+  const stats = cachedStats(deps.statsTtlMs);
   const app = new Hono();
 
   app.use("*", async (c, next) => {
@@ -116,6 +120,9 @@ export function readRoutes(deps: {
 
   app.get("/communities/:mint", async (c) =>
     send(c, await readCommunity(db, mint(c.req.param("mint")), clock, deps.chain)),
+  );
+  app.get("/communities/:mint/stats", async (c) =>
+    send(c, await stats(db, mint(c.req.param("mint")), clock, deps.chain)),
   );
   app.get("/communities/:mint/raids", async (c) =>
     send(c, await readRaids(db, mint(c.req.param("mint")), clock)),

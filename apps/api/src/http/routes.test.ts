@@ -60,6 +60,7 @@ describe("read routes v1", () => {
     const m = demo.mint;
     const cases: [string, { parse: (v: unknown) => unknown }][] = [
       [`/communities/${m}`, ReadApiV1.community],
+      [`/communities/${m}/stats`, ReadApiV1.communityStats],
       [`/communities/${m}/epochs/1`, EpochSchema],
       [`/communities/${m}/epochs/1/contributions`, ReadApiV1.contributions],
       [`/communities/${m}/leaderboard?epoch=1`, ReadApiV1.leaderboard],
@@ -88,6 +89,9 @@ describe("read routes v1", () => {
     expect((await get(`/communities/${m}`)).headers.get("cache-control")).toBe(
       "public, max-age=15",
     );
+    expect((await get(`/communities/${m}/stats`)).headers.get("cache-control")).toBe(
+      "public, max-age=15",
+    );
     expect((await get(`/wallets/${demo.signedWallet}/record`)).headers.get("cache-control")).toBe(
       "public, max-age=15",
     );
@@ -106,6 +110,7 @@ describe("read routes v1", () => {
   it("answer 404 for anything unknown, including a legacy or missing epoch", async () => {
     for (const path of [
       "/communities/NoSuchMint",
+      "/communities/NoSuchMint/stats",
       `/communities/${demo.mint}/epochs/9`,
       `/communities/${demo.mint}/epochs/9/contributions`,
       `/communities/${demo.mint}/leaderboard?epoch=9`,
@@ -159,6 +164,7 @@ describe("read routes v1", () => {
       `/communities/${demo.mint}/epochs/1/contributions?member=not-a-uuid`,
       "/contributions/not-a-uuid",
       `/communities/${"x".repeat(65)}`,
+      `/communities/${"x".repeat(65)}/stats`,
       `/communities/${demo.mint}/epochs/1/claims/0OIl-not-base58`,
       "/wallets/0OIl-not-base58/claims",
       `/wallets/${WALLET}/claims?limit=101`,
@@ -189,6 +195,41 @@ describe("read routes v1", () => {
     expect(r.status).toBe(503);
     expect(await r.json()).toEqual({ error: "unavailable" });
     expect(JSON.stringify(err.mock.calls)).not.toContain("secret-dsn");
+    err.mockRestore();
+  });
+
+  it("keep a community's stats briefly, so a burst of readers costs one read, and keep no failure", async () => {
+    let reads = 0;
+    const counted = async () => {
+      reads += 1;
+      return NOW;
+    };
+    const kept = readRoutes({ db: t.db, clock: counted, statsTtlMs: 60_000 });
+    for (let i = 0; i < 3; i++) {
+      expect((await kept.request(`/communities/${demo.mint}/stats`)).status).toBe(200);
+    }
+    expect(reads).toBe(1);
+    // An unknown mint is never kept.
+    for (let i = 0; i < 2; i++) await kept.request("/communities/NoSuchMint/stats");
+    expect(reads).toBe(3);
+    const live = readRoutes({ db: t.db, clock: counted, statsTtlMs: 0 });
+    await live.request(`/communities/${demo.mint}/stats`);
+    await live.request(`/communities/${demo.mint}/stats`);
+    expect(reads).toBe(5);
+
+    let failing = true;
+    const flaky = readRoutes({
+      db: t.db,
+      clock: async () => {
+        if (failing) throw new Error("db down");
+        return NOW;
+      },
+      statsTtlMs: 60_000,
+    });
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect((await flaky.request(`/communities/${demo.mint}/stats`)).status).toBe(503);
+    failing = false;
+    expect((await flaky.request(`/communities/${demo.mint}/stats`)).status).toBe(200);
     err.mockRestore();
   });
 

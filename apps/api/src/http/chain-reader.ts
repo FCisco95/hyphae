@@ -19,6 +19,9 @@ export function settlementReader(rpc: Rpc<SolanaRpcApi>, timeoutMs = 1_500): Set
   const proven = new Map<string, Creation>();
   // A mint's decimals never change; only a successful read is kept.
   const decimals = new Map<string, number>();
+  // A vault's size is fixed when it is created and the cluster's rent rate changes only by a
+  // network ruling, so its minimum is read once per process and address.
+  const rent = new Map<string, bigint>();
   return {
     network() {
       network ??= rpc
@@ -67,6 +70,21 @@ export function settlementReader(rpc: Rpc<SolanaRpcApi>, timeoutMs = 1_500): Set
         .getBalance(address(at), { commitment: "confirmed" })
         .send({ abortSignal: abortSignal() });
       return value;
+    },
+    async rentExempt(at) {
+      const known = rent.get(at);
+      if (known !== undefined) return known;
+      const { value } = await rpc
+        .getAccountInfo(address(at), { encoding: "base64", commitment: "confirmed" })
+        .send({ abortSignal: abortSignal() });
+      if (!value) throw new Error("chain: the account does not exist");
+      const size = BigInt(Buffer.from(value.data[0], "base64").length);
+      const minimum = await rpc
+        .getMinimumBalanceForRentExemption(size)
+        .send({ abortSignal: abortSignal() });
+      if (rent.size >= PROVEN) rent.delete(rent.keys().next().value as string);
+      rent.set(at, BigInt(minimum));
+      return BigInt(minimum);
     },
     async mintDecimals(mint) {
       const known = decimals.get(mint);
