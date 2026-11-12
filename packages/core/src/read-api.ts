@@ -321,6 +321,33 @@ function readApiSchemas(strict: boolean) {
     distributed_in: count.nullable(),
   }).refine((p) => (p.status === "rolled_over") === (p.distributed_in === null));
 
+  const leaderboard = obj({
+    community: obj({ mint: z.string().min(1) }),
+    epoch: obj({ index: count, opens_at: iso, closes_at: iso }),
+    closed: z.boolean(),
+    final: z.boolean(),
+    as_of: iso,
+    total_entries: count,
+    total_contributions: count,
+    offset: count,
+    limit: z.number().int().min(1).max(100),
+    entries: z.array(
+      obj({
+        rank: z.number().int().positive(),
+        member_id: uuid,
+        ...walletShape,
+        point_units: uint,
+        points: decimal,
+        whole_points: uint,
+        contributions: count,
+        counted: count,
+        pending: count,
+      }).refine(walletRule),
+    ),
+  });
+  // `epoch=all`: every served epoch summed per member, in the same shape with `epoch: null`.
+  const allTimeLeaderboard = leaderboard.extend({ epoch: z.null() });
+
   return {
     community: obj({
       mint: z.string().min(1),
@@ -424,30 +451,8 @@ function readApiSchemas(strict: boolean) {
       limit: z.number().int().min(1).max(100),
       contributions: z.array(row),
     }),
-    leaderboard: obj({
-      community: obj({ mint: z.string().min(1) }),
-      epoch: obj({ index: count, opens_at: iso, closes_at: iso }),
-      closed: z.boolean(),
-      final: z.boolean(),
-      as_of: iso,
-      total_entries: count,
-      total_contributions: count,
-      offset: count,
-      limit: z.number().int().min(1).max(100),
-      entries: z.array(
-        obj({
-          rank: z.number().int().positive(),
-          member_id: uuid,
-          ...walletShape,
-          point_units: uint,
-          points: decimal,
-          whole_points: uint,
-          contributions: count,
-          counted: count,
-          pending: count,
-        }).refine(walletRule),
-      ),
-    }),
+    leaderboard,
+    allTimeLeaderboard,
     contribution: obj({
       ...rowShape,
       community: obj({ mint: z.string().min(1) }),
@@ -556,6 +561,7 @@ export type EpochV1 = z.infer<typeof ReadApiV1.epoch>;
 export type ContributionsV1 = z.infer<typeof ReadApiV1.contributions>;
 export type ContributionRowV1 = ContributionsV1["contributions"][number];
 export type LeaderboardV1 = z.infer<typeof ReadApiV1.leaderboard>;
+export type AllTimeLeaderboardV1 = z.infer<typeof ReadApiV1.allTimeLeaderboard>;
 export type LeaderboardEntryV1 = LeaderboardV1["entries"][number];
 export type ContributionV1 = z.infer<typeof ReadApiV1.contribution>;
 export type RevisionV1 = ContributionV1["revisions"][number];

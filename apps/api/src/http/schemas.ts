@@ -21,7 +21,7 @@ export const EligibilitySchema = z.strictObject({
 
 export const EpochSchema = ReadApiV1.epoch.extend({ eligibility: EligibilitySchema });
 // `epoch=all`: every served epoch of the community summed per member (contract §5).
-export const AllTimeLeaderboardSchema = ReadApiV1.leaderboard.extend({ epoch: z.null() });
+export const AllTimeLeaderboardSchema = ReadApiV1.allTimeLeaderboard;
 
 export type Eligibility = z.infer<typeof EligibilitySchema>;
 export type EpochApi = z.infer<typeof EpochSchema>;

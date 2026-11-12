@@ -28,7 +28,7 @@ import {
 import { APP_REPO } from "../lib/links.js";
 import { walletPath } from "../lib/record.js";
 import { settlementOf } from "../lib/settlement.js";
-import { CommunityOverview } from "./community.js";
+import { CommunityOverview, type CommunityPanels } from "./community.js";
 import { FundPanel } from "./fund.js";
 import { ButtonLink, EvidenceLink, Panel, Stat, Stats, StatusPill, type Tone } from "./ui.js";
 
@@ -87,11 +87,13 @@ export function CommunityView({
   presentation,
   raids,
   loginEnabled,
+  panels,
 }: {
   community: CommunityV1;
   presentation?: CommunityPresentation;
   raids?: Result<PublicRaids>;
   loginEnabled?: boolean;
+  panels?: CommunityPanels;
 }) {
   return (
     <>
@@ -100,6 +102,7 @@ export function CommunityView({
         presentation={presentation}
         raids={raids}
         loginEnabled={loginEnabled}
+        panels={panels}
       />
       <section id="epochs" className="community-history" aria-labelledby="epoch-history-title">
         <div className="community-section-head">
@@ -109,7 +112,8 @@ export function CommunityView({
             Follow each period from contributions to its actual settlement state.
           </p>
         </div>
-        {community.vault ? <FundPanel vault={community.vault} /> : null}
+        {/* With the stats read the vault is in the treasury panel near the top. */}
+        {community.vault && !panels ? <FundPanel vault={community.vault} /> : null}
         {community.epochs.length === 0 ? (
           <p className="empty">No reward epoch yet.</p>
         ) : (

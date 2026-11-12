@@ -180,3 +180,42 @@ it("explains deliberately withheld scheduled and cancelled post details", () => 
     );
   }
 });
+
+describe("raids as a row to swipe", () => {
+  const second = {
+    ...feed.raids[0],
+    id: "00000000-0000-4000-8000-000000000002",
+  } as PublicRaids["raids"][number];
+  const closed = {
+    ...feed.raids[0],
+    id: "00000000-0000-4000-8000-000000000003",
+    status: "closed",
+  } as PublicRaids["raids"][number];
+
+  it("puts live raids in one focusable scrolling row that never moves by itself", () => {
+    const html = renderToStaticMarkup(
+      <RaidsView
+        community={community}
+        result={{ ok: true, data: { ...feed, raids: [...feed.raids, second] } }}
+      />,
+    );
+    expect(html).toContain('class="raid-row"');
+    expect(html).toContain('tabindex="0"');
+    expect(html).toContain("scroll sideways");
+    expect(html.match(/class="raid-card"/g)).toHaveLength(2);
+    expect(html).not.toMatch(/autoplay|setInterval|carousel/i);
+  });
+
+  it("lists finished raids compactly, inside the collapsed block", () => {
+    const html = renderToStaticMarkup(
+      <RaidsView
+        community={community}
+        result={{ ok: true, data: { ...feed, raids: [...feed.raids, closed] } }}
+      />,
+    );
+    expect(html).toContain("Recently closed raids (1)");
+    expect(html).toContain('class="raid-past"');
+    expect(html.match(/class="raid-card"/g)).toHaveLength(1);
+    expect(html).toContain("Original post");
+  });
+});

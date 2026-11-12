@@ -35,6 +35,20 @@ describe("FundPanel", () => {
     expect(t).toContain("3% fee");
   });
 
+  it("shows what is reserved for rent and what is free for the next epoch, never a guessed zero", () => {
+    const t = text({ ...available, rent_lamports: "890880", unassigned_lamports: "1249109120" });
+    expect(t).toContain("Rent reserve 0.00089088 SOL");
+    expect(t).toContain("Free for the next epoch 1.24910912 SOL");
+    const unknown = text({ ...available, rent_lamports: null, unassigned_lamports: null });
+    expect(unknown).toContain("Rent reserve Unavailable right now");
+    expect(unknown).toContain("Free for the next epoch Unavailable right now");
+    expect(unknown).not.toContain("0 SOL");
+    // An older api without the fields: the rows are left out.
+    const older = text(available);
+    expect(older).not.toContain("Rent reserve");
+    expect(older).not.toContain("Free for the next epoch");
+  });
+
   it("links a devnet vault to the devnet explorer", () => {
     const html = renderToStaticMarkup(
       <FundPanel vault={{ ...available, network: "solana:devnet" }} />,

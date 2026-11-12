@@ -2,6 +2,9 @@ import type { CommunityV1 } from "@hyphae/core";
 import { explorerAddress, networkName, shortWallet, sol } from "../lib/format.js";
 import { EvidenceLink, Panel, Stat, Stats } from "./ui.js";
 
+const lamportsOrUnknown = (lamports: string | null) =>
+  lamports === null ? "Unavailable right now" : sol(lamports);
+
 // Where to fund the community, read from its account on Solana. Until the chain confirms it there
 // is no address to show, and the page says not to send anything.
 export function FundPanel({ vault }: { vault: NonNullable<CommunityV1["vault"]> }) {
@@ -33,6 +36,15 @@ export function FundPanel({ vault }: { vault: NonNullable<CommunityV1["vault"]> 
         />
         <Stat label="Balance" value={sol(vault.balance_lamports)} />
         <Stat label="Owed to published epochs" value={sol(vault.outstanding_lamports)} />
+        {vault.rent_lamports !== undefined && (
+          <Stat label="Rent reserve" value={lamportsOrUnknown(vault.rent_lamports)} />
+        )}
+        {vault.unassigned_lamports !== undefined && (
+          <Stat
+            label="Free for the next epoch"
+            value={lamportsOrUnknown(vault.unassigned_lamports)}
+          />
+        )}
         <Stat
           label="Fee recipient"
           value={

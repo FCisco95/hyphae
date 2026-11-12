@@ -1,10 +1,15 @@
-import type { CommunityV1, PublicRaids } from "@hyphae/core";
+import type { CommunityStatsV1, CommunityV1, PublicRaids } from "@hyphae/core";
 import type { Result } from "../lib/api.js";
 import { communityIntake } from "../lib/community-intake.js";
 import type { CommunityPresentation } from "../lib/community-presentation.js";
+import { nextRaidEnd, shownEpoch } from "../lib/epoch-phase.js";
 import { utc } from "../lib/format.js";
-import { BOT, RUBRICS } from "../lib/links.js";
+import { API_DOCS, BOT, RUBRICS } from "../lib/links.js";
+import { type BoardScope, CommunityBoard } from "./board.js";
+import { EpochClock } from "./live.js";
 import { RaidsView } from "./raids.js";
+import { StatsStrip } from "./stats-strip.js";
+import { TreasuryPanel } from "./treasury.js";
 import { ButtonLink, Panel, StatusPill } from "./ui.js";
 
 type CommunityProps = {
@@ -98,13 +103,59 @@ function CommunityIntro({
   );
 }
 
+// The panels built on the stats read. A page without that read does not have them at all.
+export interface CommunityPanels {
+  stats: CommunityStatsV1;
+  board: {
+    scope: BoardScope;
+    epochIndex: number | null;
+    result: Parameters<typeof CommunityBoard>[0]["board"];
+  };
+}
+
+function ProjectInfo({ community }: { community: CommunityV1 }) {
+  const base = `/c/${encodeURIComponent(community.mint)}`;
+  return (
+    <section className="project-info" aria-labelledby="project-info-title">
+      <div className="community-section-head">
+        <p className="eyebrow">Project info</p>
+        <h2 id="project-info-title">{community.name}</h2>
+      </div>
+      <p>
+        Hyphae records work done for a token community. Members submit their own work, an AI reviews
+        it against the published rubric, and code applies the pinned credit rules. Points do not
+        promise payment.
+      </p>
+      <ul className="project-links">
+        <li>
+          <a href={`${base}/about`}>How it works</a>
+        </li>
+        <li>
+          <a href={`${base}/join`}>Join and contribute</a>
+        </li>
+        <li>
+          <a href={RUBRICS}>The rubrics</a>
+        </li>
+        <li>
+          <a href="/security">Security and trust</a>
+        </li>
+        <li>
+          <a href={API_DOCS}>The public API</a>
+        </li>
+      </ul>
+    </section>
+  );
+}
+
 export function CommunityOverview({
   community,
   presentation,
   raids,
   loginEnabled,
-}: CommunityProps) {
+  panels,
+}: CommunityProps & { panels?: CommunityPanels }) {
   const base = `/c/${encodeURIComponent(community.mint)}`;
+  const shown = shownEpoch(community);
   const result = raids ?? { ok: false as const, reason: "unavailable" as const };
   const { epoch: current, accepting, state } = communityIntake(community, result);
   return (
@@ -115,7 +166,28 @@ export function CommunityOverview({
         page="overview"
         raids={result}
       />
+      {panels ? <StatsStrip stats={panels.stats} vault={community.vault} /> : null}
+      {panels && shown ? (
+        <EpochClock
+          epoch={shown}
+          payouts={panels.stats.payouts}
+          raidEnd={nextRaidEnd(result.ok ? result.data : null, Date.parse(community.as_of))}
+          asOf={community.as_of}
+        />
+      ) : null}
       <RaidsView community={community} result={result} loginEnabled={loginEnabled} />
+      {panels ? (
+        <>
+          <CommunityBoard
+            base={base}
+            scope={panels.board.scope}
+            epochIndex={panels.board.epochIndex}
+            board={panels.board.result}
+          />
+          {community.vault ? <TreasuryPanel vault={community.vault} stats={panels.stats} /> : null}
+          <ProjectInfo community={community} />
+        </>
+      ) : null}
       <section className="community-path" aria-labelledby="community-path-title">
         <div className="community-section-head">
           <p className="eyebrow">Your next step</p>

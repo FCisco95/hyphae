@@ -1,5 +1,6 @@
 import type {
   ClaimV1,
+  CommunityStatsV1,
   CommunityV1,
   ContributionRowV1,
   ContributionsV1,
@@ -423,4 +424,34 @@ export const claim: ClaimV1 = {
   root: "a".repeat(64),
   payment: { status: "claimable", recent_blockhash: addr[3], last_valid_block_height: "1000" },
   as_of: ts(9, 2),
+};
+
+// A mainnet community with one published epoch, partly claimed.
+export const communityStats: CommunityStatsV1 = {
+  community: { mint: "MintAbc" },
+  as_of: ts(3),
+  members: { registered: 12, ever_scored: 9 },
+  epochs: { served: 2 },
+  payouts: {
+    status: "available",
+    network: "solana:mainnet",
+    program_id: PROGRAM,
+    epochs_paid: 1,
+    gross_lamports: "500000000",
+    fee_lamports: "15000000",
+    allocated_lamports: "485000000",
+    claimed_lamports: "200000000",
+    unclaimed_lamports: "285000000",
+    publications: [
+      {
+        index: 1,
+        epoch_address: addr[2],
+        publish_tx: PUBLISH_TX,
+        published_at: ts(2, 1),
+        root: "a".repeat(64),
+        allocated_lamports: "485000000",
+        claimed_lamports: "200000000",
+      },
+    ],
+  },
 };

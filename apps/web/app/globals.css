@@ -1831,3 +1831,160 @@ td:first-child {
     padding: 18px;
   }
 }
+
+/* ---------- community page v2: stats, epoch clock, board, treasury ---------- */
+
+.stats-strip,
+.epoch-clock,
+.board,
+.treasury,
+.project-info {
+  margin: 0 0 48px;
+}
+.stats-strip-head,
+.board-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.stats-strip-head h2,
+.board-head h2 {
+  margin: 0;
+  font-size: var(--step-1);
+}
+
+.epoch-clock {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 24px 40px;
+  align-items: center;
+  padding: clamp(18px, 3vw, 28px);
+  background: var(--wash);
+  border-radius: var(--radius);
+}
+.epoch-clock h2 {
+  margin: 0 0 8px;
+  font-size: var(--step-2);
+}
+.countdown {
+  margin: 4px 0;
+  font-variant-numeric: tabular-nums;
+}
+.countdown-label {
+  color: var(--ink-3);
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+.countdown time {
+  font-weight: 700;
+}
+
+.phase-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.phase-stepper li {
+  display: grid;
+  gap: 6px;
+  color: var(--ink-3);
+  font-size: var(--step--1);
+  font-weight: 600;
+}
+.phase-dot {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--rule);
+}
+.phase-stepper li[data-state="done"] {
+  color: var(--ink-2);
+}
+.phase-stepper li[data-state="done"] .phase-dot {
+  background: var(--verified);
+}
+.phase-stepper li[data-state="current"] {
+  color: var(--ink);
+}
+.phase-stepper li[data-state="current"] .phase-dot {
+  background: var(--ink);
+}
+
+.board-toggle {
+  display: flex;
+  gap: 4px;
+}
+.board-toggle a {
+  padding: 6px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  font-size: var(--step--1);
+  font-weight: 600;
+  text-decoration: none;
+}
+.board-toggle a[aria-current="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.project-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Raids: a row to swipe or scroll, never one that moves on its own. */
+.raid-row {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 12px;
+}
+.raid-row > .raid-card {
+  flex: 0 0 min(88%, 460px);
+  scroll-snap-align: start;
+}
+.raid-row:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.raid-past {
+  display: grid;
+  gap: 0;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.raid-past-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--rule);
+  font-size: var(--step--1);
+}
+.raid-past-title {
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .epoch-clock {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .phase-stepper {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}

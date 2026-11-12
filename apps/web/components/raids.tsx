@@ -81,6 +81,32 @@ function RaidCard({
   );
 }
 
+// A finished raid on one line: what it was, how it ended, where to read it.
+function PastRaid({ raid }: { raid: PublicRaid }) {
+  return (
+    <li className="raid-past-item">
+      <span className={`raid-status raid-status-${raid.status}`}>
+        {raid.status === "cancelled" ? "Cancelled" : "Closed"}
+      </span>
+      <span className="raid-past-title">
+        {raid.post?.handle ? `Post by @${raid.post.handle}` : "Community raid"}
+      </span>
+      <time dateTime={raid.closes_at}>{utc(raid.closes_at)}</time>
+      {raid.post && raid.status !== "cancelled" ? (
+        <a href={raid.post.url} target="_blank" rel="noopener noreferrer">
+          Original post
+        </a>
+      ) : (
+        <span className="muted">
+          {raid.status === "cancelled"
+            ? "Post details are hidden for cancelled raids."
+            : "The original post link is unavailable."}
+        </span>
+      )}
+    </li>
+  );
+}
+
 export function RaidsView({
   community,
   result,
@@ -119,11 +145,18 @@ export function RaidsView({
               </p>
             </div>
           ) : active.length ? (
-            <div className="raid-list">
+            // A row you swipe or scroll, never one that moves on its own: a raid that slid away
+            // while someone read it would hide the work it asks for.
+            <section
+              className="raid-row"
+              aria-label="Live raids, scroll sideways for more"
+              // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrolling region must take focus, or keyboard users cannot scroll it
+              tabIndex={0}
+            >
               {active.map((raid) => (
                 <RaidCard key={raid.id} raid={raid} accepting={accepting} base={base} />
               ))}
-            </div>
+            </section>
           ) : (
             <div className="raid-empty">
               <h3 className="raid-empty-title">No open raids right now</h3>
@@ -142,11 +175,11 @@ export function RaidsView({
           {recent.length ? (
             <details className="raid-recent">
               <summary>Recently closed raids ({recent.length})</summary>
-              <div className="raid-list">
+              <ul className="raid-past">
                 {recent.map((raid) => (
-                  <RaidCard key={raid.id} raid={raid} accepting={false} base={base} />
+                  <PastRaid key={raid.id} raid={raid} />
                 ))}
-              </div>
+              </ul>
             </details>
           ) : null}
         </div>

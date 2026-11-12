@@ -21,6 +21,27 @@ export async function readRaids(mint: string, { fresh = false }: { fresh?: boole
     return { ok: false, reason: "unavailable" } as const;
   return result;
 }
+// The page's optional panels: an API without these routes (404), one that answers late or in a
+// shape this site does not know yields no panel, never an error page.
+const OPTIONAL_MS = 2_000;
+export const readStats = (mint: string) =>
+  getJson(`/v1/communities/${enc(mint)}/stats`, ReadApiV1Loose.communityStats, fetch, {
+    timeoutMs: OPTIONAL_MS,
+  });
+export const readTopOfEpoch = (mint: string, index: number) =>
+  getJson(
+    `/v1/communities/${enc(mint)}/leaderboard?epoch=${index}&limit=10`,
+    ReadApiV1Loose.leaderboard,
+    fetch,
+    { timeoutMs: OPTIONAL_MS },
+  );
+export const readTopAllTime = (mint: string) =>
+  getJson(
+    `/v1/communities/${enc(mint)}/leaderboard?epoch=all&limit=10`,
+    ReadApiV1Loose.allTimeLeaderboard,
+    fetch,
+    { timeoutMs: OPTIONAL_MS },
+  );
 export const readEpoch = (mint: string, index: string) =>
   getJson(`/v1/communities/${enc(mint)}/epochs/${enc(index)}`, ReadApiV1Loose.epoch);
 export const readContributions = (mint: string, index: string, offset: number) =>

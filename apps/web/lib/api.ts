@@ -33,7 +33,15 @@ export async function getJson<T>(
     visitor,
     baseUrl,
     anonymous = false,
-  }: { fresh?: boolean; visitor?: string | null; baseUrl?: string; anonymous?: boolean } = {},
+    timeoutMs = TIMEOUT_MS,
+  }: {
+    fresh?: boolean;
+    visitor?: string | null;
+    baseUrl?: string;
+    anonymous?: boolean;
+    // For an optional read: a page that can do without it should not wait the full default.
+    timeoutMs?: number;
+  } = {},
 ): Promise<Result<T>> {
   const base = baseUrl ?? process.env.HYPHAE_API_URL;
   if (!base) {
@@ -51,7 +59,7 @@ export async function getJson<T>(
     }
     const response = await fetchImpl(`${base.replace(/\/$/, "")}${path}`, {
       headers,
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
       ...(fresh ? { cache: "no-store" } : { next: { revalidate: 15 } }),
     } as RequestInit);
     // 400 means the path was malformed: for a visitor, a URL that leads nowhere.
