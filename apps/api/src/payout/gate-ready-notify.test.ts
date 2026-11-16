@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { gateReadyJobId, toGateReadyJob } from "./gate-ready.js";
-import { deliverGateReady, queueGateReady } from "./gate-ready-notify.js";
+import { deliverGateReady, GATE_READY_QUEUE_OPTIONS, queueGateReady } from "./gate-ready-notify.js";
 
 const note = {
   communityId: "c",
@@ -11,6 +11,7 @@ const note = {
   payable: 4,
   topUpLamports: 0n,
   adminTelegramUserId: 42n,
+  outcome: "planned" as const,
 };
 
 describe("queueGateReady", () => {
@@ -44,6 +45,13 @@ describe("deliverGateReady", () => {
     });
     expect(sent).toHaveLength(1);
     expect(sent[0]?.[0]).toBe(42n);
-    expect(sent[0]?.[1]).toContain("epoch 2 is ready to pay");
+    expect(sent[0]?.[1]).toContain("epoch 2");
+  });
+});
+
+describe("GATE_READY_QUEUE_OPTIONS", () => {
+  it("never retries (a retry would send the message twice) and keeps finished jobs for good", () => {
+    expect(GATE_READY_QUEUE_OPTIONS.retryLimit).toBe(0);
+    expect(GATE_READY_QUEUE_OPTIONS.deleteAfterSeconds).toBe(0);
   });
 });

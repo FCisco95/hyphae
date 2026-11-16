@@ -320,7 +320,23 @@ describe("settleCommunity: one epoch", () => {
     );
     const { publication } = await intentOf(seed.epochId);
 
-    const out = published(await settle(fake.chain, input.communityId));
+    // The operator is not asked to approve anything for an epoch already on-chain.
+    let asked = 0;
+    const out = published(
+      await settleCommunity(
+        t.db,
+        fake.chain,
+        { communityId: input.communityId },
+        {
+          clock: () => NOW,
+          operatorPublish: true,
+          beforeSend: async () => {
+            asked += 1;
+          },
+        },
+      ),
+    );
+    expect(asked).toBe(0);
     expect(out).toMatchObject({
       recovered: true,
       signature: "sig-found-on-chain",

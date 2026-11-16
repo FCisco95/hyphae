@@ -33,6 +33,7 @@ const note = {
   payable: 2,
   topUpLamports: 5n,
   adminTelegramUserId: 7n,
+  outcome: "planned" as const,
 };
 const send = (b: PgBoss) => (job: object, opts: { id: string }) => b.send(queue, job, opts);
 
@@ -50,5 +51,17 @@ describe("gate-ready queue on Postgres", () => {
     boss = await open();
     expect(await queueGateReady([note], send(boss))).toBe(0);
     expect(await queueGateReady([{ ...note, epochId: randomUUID() }], send(boss))).toBe(1);
+  });
+
+  it("never runs a message twice: a handler that fails after Telegram accepted it is not retried", async () => {
+    const failing = { ...note, epochId: randomUUID() };
+    expect(await queueGateReady([failing], send(boss))).toBe(1);
+    const [first] = await boss.fetch(queue);
+    expect(first).toBeDefined();
+    await boss.fail(queue, (first as { id: string }).id);
+    // retryLimit 0: the failed job is terminal, so nothing is handed to a worker again, and the
+    // epoch's id is still refused.
+    expect(await boss.fetch(queue)).toEqual([]);
+    expect(await queueGateReady([failing], send(boss))).toBe(0);
   });
 });

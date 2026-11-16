@@ -11,6 +11,7 @@ import { and, eq, lte, sql } from "drizzle-orm";
 import { readOnly } from "../pg.js";
 import { backfillEpochCommitments } from "./commitment-store.js";
 import { type Blocker, evaluatePayoutGate } from "./gate.js";
+import { communityHold } from "./holds.js";
 import { loadIntent, type PublicationIntent, storeIntent } from "./intent.js";
 import { buildPublication } from "./publication.js";
 import type { RulesTest } from "./rules-test.js";
@@ -71,7 +72,7 @@ export type PublishOutcome =
 // policy_managed: the settle loop owns the epoch (a payout policy is in force for its index, or
 // it has a payout decision); a manual publish would pay it again under another index, or strand
 // the stored distribution (review 2026-11-03, P1). The worker publishes such an epoch.
-export type RefusalReason = "community_not_on_chain" | "policy_managed";
+export type RefusalReason = "community_not_on_chain" | "policy_managed" | "community_held";
 
 export type PlanOutcome =
   | { status: "refused"; reason: RefusalReason }
@@ -148,6 +149,9 @@ export async function planPublication(
     .from(communities)
     .where(eq(communities.id, input.communityId));
   if (!community) throw new Error(`publish: no community ${input.communityId}`);
+  // A recorded hold (holds.ts) stops every publish path, this manual one included, before any
+  // chain read, backfill or stored intent.
+  if (communityHold(community.mint)) return { status: "refused", reason: "community_held" };
   if (await policyManaged(db, input)) return { status: "refused", reason: "policy_managed" };
   // The operator binds a community to its initialized on-chain account; until then nothing is
   // published. The fee recipient comes from that account, so the audit commits the one it pays.

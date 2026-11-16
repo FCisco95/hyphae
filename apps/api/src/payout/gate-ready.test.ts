@@ -1,6 +1,8 @@
-import { payoutPolicies } from "@hyphae/db";
+import { epochs, payoutPolicies } from "@hyphae/db";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb } from "../rewards/test-db.js";
+import { settleCommunity } from "./distribution-settle.js";
 import {
   dueGateReady,
   fromGateReadyJob,
@@ -56,6 +58,18 @@ describe("topUpToThreshold", () => {
     expect(((need as bigint) - 1n) * 10_000n).toBeLessThan((100n * SOL + 1n) * 300n);
   });
 
+  it("is zero when the pending volume already meets the threshold, even with no reward share", () => {
+    expect(
+      topUpToThreshold(policy({ rewardBpsOfVolume: null, pendingVolumeLamports: 100n * SOL })),
+    ).toBe(0n);
+    // A per-epoch threshold counts no pending volume, so the share is needed there.
+    expect(
+      topUpToThreshold(
+        policy({ rewardBpsOfVolume: null, basis: "per_epoch", pendingVolumeLamports: 100n * SOL }),
+      ),
+    ).toBeNull();
+  });
+
   it("is unknown when the reward share is unset", () => {
     expect(topUpToThreshold(policy({ rewardBpsOfVolume: null }))).toBeNull();
   });
@@ -83,19 +97,28 @@ describe("gateReadyText", () => {
     payable: 3,
     topUpLamports: 600_000_000n,
     adminTelegramUserId: 1n,
+    outcome: "rolled_over" as const,
   };
-  it("names the epoch, the payable count and the top-up", () => {
+  it("tells a rolled-over epoch's top-up, and that nothing is paid yet", () => {
     const text = gateReadyText(note);
     expect(text).toContain("epoch 3");
     expect(text).toContain("3 payable");
+    expect(text).toMatch(/rolled over/i);
     expect(text).toContain("0.6 SOL");
     expect(text).toContain("600000000 lamports");
+    expect(text).not.toContain("publish-epoch run");
   });
-  it("says no top-up is needed when the threshold is met", () => {
+  it("says no top-up is needed when the threshold is already met", () => {
     expect(gateReadyText({ ...note, topUpLamports: 0n })).toMatch(/no top-up/i);
   });
   it("says the top-up is unknown when the reward share is unset", () => {
     expect(gateReadyText({ ...note, topUpLamports: null })).toMatch(/top-up unknown/i);
+  });
+  it("tells a planned distribution to be published with the Ledger command", () => {
+    const text = gateReadyText({ ...note, outcome: "planned", topUpLamports: 0n });
+    expect(text).toMatch(/planned/i);
+    expect(text).toContain("publish-epoch run --mint M");
+    expect(text).not.toMatch(/top-up/i);
   });
 });
 
@@ -114,24 +137,65 @@ const addPolicy = async (communityId: string) => {
     autoPublish: false,
   });
 };
-const due = (communityId: string, chain: ReturnType<typeof fakeSettleChain>["chain"]) =>
+type Chain = ReturnType<typeof fakeSettleChain>["chain"];
+const due = (communityId: string, chain: Chain) =>
   dueGateReady(t.db, chain, { communityId }, { clock: () => NOW });
+// The settle loop decides a ready epoch as soon as it runs; the message follows that decision.
+const decide = (communityId: string, chain: Chain) =>
+  settleCommunity(t.db, chain, { communityId }, { clock: () => NOW });
 
 describe("dueGateReady", () => {
-  it("reports a ready epoch with its payable count and the top-up", async () => {
+  it("says nothing about a ready epoch the settle loop has not decided yet", async () => {
     const { seed, chainAddress } = await ready();
     await addPolicy(seed.communityId);
-    const fake = fakeSettleChain({ community: chainAddress, free: 4n * (SOL / 10n) });
+    const fake = fakeSettleChain({ community: chainAddress, free: 2n * SOL });
+    expect(await due(seed.communityId, fake.chain)).toEqual([]);
+  });
+
+  it("reports a planned distribution as ready to publish, with its payable count", async () => {
+    const { seed, chainAddress } = await ready();
+    await addPolicy(seed.communityId);
+    const fake = fakeSettleChain({ community: chainAddress, free: 2n * SOL });
+    expect(await decide(seed.communityId, fake.chain)).toMatchObject({ status: "planned" });
     const notes = await due(seed.communityId, fake.chain);
     expect(notes).toHaveLength(1);
     expect(notes[0]).toMatchObject({
       communityId: seed.communityId,
       epochId: seed.epochId,
       epochIndex: 1,
+      outcome: "planned",
       payable: 3,
-      topUpLamports: 6n * (SOL / 10n),
+      topUpLamports: 0n,
       adminTelegramUserId: 1n,
     });
+  });
+
+  it("reports a rolled-over epoch with the top-up its next decision needs", async () => {
+    const { seed, chainAddress } = await ready();
+    await addPolicy(seed.communityId);
+    const fake = fakeSettleChain({ community: chainAddress, free: 4n * (SOL / 10n) });
+    expect(await decide(seed.communityId, fake.chain)).toMatchObject({ status: "rolled_over" });
+    const notes = await due(seed.communityId, fake.chain);
+    // 0.4 SOL of accrual was 40 SOL of volume; 60 SOL more is 0.6 SOL at 100 bps.
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toMatchObject({
+      outcome: "rolled_over",
+      payable: 3,
+      topUpLamports: 6n * (SOL / 10n),
+    });
+  });
+
+  it("stops reporting an epoch once its distribution is published", async () => {
+    const { seed, chainAddress } = await ready();
+    await addPolicy(seed.communityId);
+    const fake = fakeSettleChain({ community: chainAddress, free: 2n * SOL });
+    await decide(seed.communityId, fake.chain);
+    expect(await due(seed.communityId, fake.chain)).toHaveLength(1);
+    await t.db
+      .update(epochs)
+      .set({ status: "published", root: "ab".repeat(32), publishTx: "sig", publishedAt: NOW })
+      .where(eq(epochs.id, seed.epochId));
+    expect(await due(seed.communityId, fake.chain)).toEqual([]);
   });
 
   it("reports nothing for a community without a payout policy", async () => {
@@ -166,6 +230,7 @@ describe("the queued job", () => {
       payable: 5,
       topUpLamports: 123n,
       adminTelegramUserId: 99n,
+      outcome: "planned" as const,
     };
     const wire = JSON.parse(JSON.stringify(toGateReadyJob(note)));
     expect(fromGateReadyJob(wire)).toEqual(note);

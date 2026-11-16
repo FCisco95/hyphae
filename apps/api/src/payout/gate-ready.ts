@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { BASIS_POINTS } from "@hyphae/core";
 import { communities, type Db, epochPayoutDecisions, epochs, payoutPolicies } from "@hyphae/db";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, isNull, or } from "drizzle-orm";
 import type { SettleChain } from "./distribution-settle.js";
 import { evaluatePayoutGate, type GateDeps } from "./gate.js";
 import { communityHold } from "./holds.js";
@@ -16,6 +16,9 @@ export interface GateReadyNote {
   communityName: string;
   mint: string;
   epochIndex: number;
+  // planned: the settle loop stored a distribution that waits for the operator's signature.
+  // rolled_over: the volume threshold was not met; nothing is sent until a later decision pays.
+  outcome: "planned" | "rolled_over";
   payable: number;
   // Lamports to add to the vault for the threshold to be met; null when the policy cannot say.
   topUpLamports: bigint | null;
@@ -65,11 +68,13 @@ export function topUpToThreshold(input: {
   // What reached the vault since the last decision.
   accrualLamports: bigint;
 }): bigint | null {
-  const bps = input.rewardBpsOfVolume;
-  if (bps === null || bps <= 0n) return null;
   const counted = input.basis === "cumulative" ? input.pendingVolumeLamports : 0n;
   const volumeNeeded = input.thresholdVolumeLamports - counted;
+  // Decided first, as `decide` does: volume already pending can meet a cumulative threshold
+  // without any reward share.
   if (volumeNeeded <= 0n) return 0n;
+  const bps = input.rewardBpsOfVolume;
+  if (bps === null || bps <= 0n) return null;
   const accrualNeeded = (volumeNeeded * bps + BASIS_POINTS - 1n) / BASIS_POINTS;
   return accrualNeeded > input.accrualLamports ? accrualNeeded - input.accrualLamports : 0n;
 }
@@ -81,6 +86,13 @@ const sol = (lamports: bigint) => {
 };
 
 export function gateReadyText(n: GateReadyNote): string {
+  if (n.outcome === "planned") {
+    return [
+      `${n.communityName}: epoch ${n.epochIndex} is ready and its distribution is planned.`,
+      `${n.payable} payable members.`,
+      `Publish it with the Ledger: publish-epoch run --mint ${n.mint}`,
+    ].join("\n");
+  }
   const top =
     n.topUpLamports === null
       ? "Top-up unknown: the payout policy sets no reward share."
@@ -88,14 +100,13 @@ export function gateReadyText(n: GateReadyNote): string {
         ? "No top-up needed: the vault already meets the threshold."
         : `Top-up needed: ${sol(n.topUpLamports)} SOL (${n.topUpLamports} lamports) to the vault.`;
   return [
-    `${n.communityName}: epoch ${n.epochIndex} is ready to pay.`,
+    `${n.communityName}: epoch ${n.epochIndex} is ready but rolled over: its volume is below the policy threshold, so nothing is paid yet.`,
     `${n.payable} payable members.`,
-    top,
-    `When the vault is ready, publish with the Ledger: publish-epoch run --mint ${n.mint}`,
+    `${top} The next epoch's decision pays every rolled-over epoch once the threshold is met.`,
   ].join("\n");
 }
 
-// Ready epochs of one policy community, with the numbers the message states. Empty for a
+// Decided epochs of one policy community whose gate is ready, with the numbers the message states. Empty for a
 // community without a policy, under a recorded hold, not bound on-chain, or with an unreadable
 // vault: a message that cannot be right is not sent.
 export async function dueGateReady(
@@ -146,20 +157,35 @@ export async function dueGateReady(
   if (free < pendingLamports) return [];
   const accrual = free - pendingLamports;
 
-  const open = await db
-    .select({ id: epochs.id, index: epochs.index })
-    .from(epochs)
+  // Only epochs the settle loop has decided, as it decides them: a planned distribution (the
+  // one `run` publishes) or a rollover still waiting for a later distribution. An undecided
+  // epoch is reported after the loop decides it, so a message never describes a state the loop
+  // is about to change, and an epoch is never counted twice.
+  const decided = await db
+    .select({
+      id: epochs.id,
+      index: epochs.index,
+      outcome: epochPayoutDecisions.outcome,
+    })
+    .from(epochPayoutDecisions)
+    .innerJoin(epochs, eq(epochs.id, epochPayoutDecisions.epochId))
     .where(
       and(
-        eq(epochs.communityId, input.communityId),
+        eq(epochPayoutDecisions.communityId, input.communityId),
+        or(
+          eq(epochPayoutDecisions.outcome, "distribution_planned"),
+          and(
+            eq(epochPayoutDecisions.outcome, "rolled_over"),
+            isNull(epochPayoutDecisions.distributionEpochId),
+          ),
+        ),
         eq(epochs.status, "closed"),
         isNull(epochs.root),
       ),
     )
     .orderBy(asc(epochs.index));
   const notes: GateReadyNote[] = [];
-  for (const e of open) {
-    if (e.index < first.effectiveFromIndex) continue;
+  for (const e of decided) {
     const gate = await evaluatePayoutGate(
       db,
       { communityId: input.communityId, epochId: e.id },
@@ -167,21 +193,26 @@ export async function dueGateReady(
     );
     if (gate.status !== "ready") continue;
     const p = policies.filter((x) => x.effectiveFromIndex <= e.index).at(-1) ?? first;
+    const planned = e.outcome === "distribution_planned";
     notes.push({
       communityId: input.communityId,
       epochId: e.id,
       communityName: community.name,
       mint: community.mint,
       epochIndex: e.index,
+      outcome: planned ? "planned" : "rolled_over",
       payable: gate.payable,
       adminTelegramUserId: community.adminTelegramUserId,
-      topUpLamports: topUpToThreshold({
-        thresholdVolumeLamports: p.thresholdVolumeLamports,
-        basis: p.basis === "per_epoch" ? "per_epoch" : "cumulative",
-        rewardBpsOfVolume: p.rewardBpsOfVolume === null ? null : BigInt(p.rewardBpsOfVolume),
-        pendingVolumeLamports: pendingVolume,
-        accrualLamports: accrual,
-      }),
+      // A planned distribution met its threshold when it was decided.
+      topUpLamports: planned
+        ? 0n
+        : topUpToThreshold({
+            thresholdVolumeLamports: p.thresholdVolumeLamports,
+            basis: p.basis === "per_epoch" ? "per_epoch" : "cumulative",
+            rewardBpsOfVolume: p.rewardBpsOfVolume === null ? null : BigInt(p.rewardBpsOfVolume),
+            pendingVolumeLamports: pendingVolume,
+            accrualLamports: accrual,
+          }),
     });
   }
   return notes;

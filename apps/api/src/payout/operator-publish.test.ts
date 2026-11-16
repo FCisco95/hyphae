@@ -97,6 +97,17 @@ describe("operatorPublish refusals", () => {
     expect(await writes(seed.communityId)).toEqual({ decisions: 0, intents: 0 });
   });
 
+  it("refuses a bound address the chain does not know, before anything is planned", async () => {
+    const { seed } = await setup();
+    const fake = fakeSettleChain({ community: randomAddress(), free: 2n * SOL });
+    expect(await run(seed.mint, fake.chain)).toEqual({
+      status: "refused",
+      reason: "community_not_on_chain",
+    });
+    expect(fake.calls.publish).toEqual([]);
+    expect(await writes(seed.communityId)).toEqual({ decisions: 0, intents: 0 });
+  });
+
   it("refuses a signer that is not the community admin, before anything is planned", async () => {
     const { seed, chainAddress } = await setup();
     const fake = fakeSettleChain({
@@ -151,6 +162,25 @@ describe("operatorPublish", () => {
     expect(fake.calls.publish).toEqual([]);
     const [epoch] = await t.db.select().from(epochs).where(eq(epochs.id, seed.epochId));
     expect(epoch?.status).toBe("closed");
+  });
+
+  it("resumes after a declined run: the stored plan is sent once, with one decision and one intent", async () => {
+    const { seed, chainAddress } = await setup({ autoPublish: false });
+    const fake = fakeSettleChain({ community: chainAddress, free: 2n * SOL });
+    await expect(
+      run(seed.mint, fake.chain, {
+        beforeSend: async () => {
+          throw new Error("declined");
+        },
+      }),
+    ).rejects.toThrow("declined");
+    expect(await writes(seed.communityId)).toEqual({ decisions: 1, intents: 1 });
+    // More lamports arrive meanwhile: the stored distribution, not a new one, is what is sent.
+    const again = fakeSettleChain({ community: chainAddress, free: 3n * SOL });
+    const out = await run(seed.mint, again.chain);
+    expect(out).toMatchObject({ status: "published", grossLamports: 2n * SOL });
+    expect(again.calls.publish).toHaveLength(1);
+    expect(await writes(seed.communityId)).toEqual({ decisions: 1, intents: 1 });
   });
 
   it("does not publish below the volume threshold: the epoch rolls over", async () => {

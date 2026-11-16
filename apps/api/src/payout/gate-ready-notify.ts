@@ -8,11 +8,11 @@ import {
 } from "./gate-ready.js";
 
 // The queue's options. The queue refuses a job id it still holds, so completed jobs are kept for
-// good (deleteAfterSeconds 0): that is what makes a restart unable to queue a message twice. One
-// retry covers a Telegram blip.
+// good (deleteAfterSeconds 0): that is what makes a restart unable to queue a message twice. No
+// retry: a handler that fails after Telegram accepted the message would send it again. At most
+// once: a lost message shows in the logs, a repeated one cannot be taken back.
 export const GATE_READY_QUEUE_OPTIONS = {
-  retryLimit: 1,
-  retryDelay: 60,
+  retryLimit: 0,
   expireInSeconds: 60,
   deleteAfterSeconds: 0,
 } as const;

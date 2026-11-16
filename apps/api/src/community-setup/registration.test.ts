@@ -207,4 +207,20 @@ describe("community registration: payout fields", () => {
     const other = withPayout();
     await expect(apply(other)).rejects.toThrow("registration_conflict");
   });
+
+  it.each([
+    ["chain_address", { chainAddress: "So11111111111111111111111111111111111111112" }],
+    ["first_paid_epoch", { firstPaidEpoch: 3 }],
+  ])(
+    "conflicts when only the database moved %s, with the original manifest",
+    async (_what, patch) => {
+      const m = withPayout();
+      await apply(m);
+      await t.db.update(communities).set(patch).where(eq(communities.id, m.communityId));
+      await expect(checkCommunitySetup(t.db, m, telegramFor(m))).rejects.toThrow(
+        "registration_conflict",
+      );
+      await expect(apply(m)).rejects.toThrow("registration_conflict");
+    },
+  );
 });

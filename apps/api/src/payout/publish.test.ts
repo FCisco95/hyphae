@@ -14,6 +14,7 @@ import {
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb } from "../rewards/test-db.js";
+import { MYCEL_MINT } from "./holds.js";
 import { storeIntent } from "./intent.js";
 import { buildPublication } from "./publication.js";
 import { type OnChainEpoch, type PublishChain, planPublication, publishEpoch } from "./publish.js";
@@ -552,5 +553,43 @@ describe("the stored publication intent", () => {
         .set({ manifestHash: "0".repeat(64) })
         .where(eq(epochPublicationMembers.id, members[0]?.id as string)),
     ).rejects.toSatisfy(violates);
+  });
+});
+
+describe("a recorded community hold (holds.ts)", () => {
+  // One seed: a mint is unique in the shared test database.
+  let seeded_: ReturnType<typeof seedHeld> | undefined;
+  async function seedHeld() {
+    const chainAddress = randomAddress();
+    const seed = await seedReadyEpoch(t.db, { now: NOW, chainAddress, mint: MYCEL_MINT });
+    return { seed, chainAddress, ref: { communityId: seed.communityId, epochId: seed.epochId } };
+  }
+  const held = () => {
+    seeded_ ??= seedHeld();
+    return seeded_;
+  };
+
+  it("refuses to plan a held community, with no policy, a ready epoch and the admin key", async () => {
+    const { chainAddress, ref } = await held();
+    const { chain, calls } = fakeChain(chainAddress);
+    expect(await planPublication(t.db, chain, input(ref))).toEqual({
+      status: "refused",
+      reason: "community_held",
+    });
+    expect(calls.read).toBe(0);
+    expect(
+      await t.db.select().from(epochPublications).where(eq(epochPublications.epochId, ref.epochId)),
+    ).toEqual([]);
+  });
+
+  it("refuses to publish it, and sends and records nothing", async () => {
+    const { seed, chainAddress, ref } = await held();
+    const { chain, calls } = fakeChain(chainAddress);
+    expect(await publishEpoch(t.db, chain, input(ref))).toEqual({
+      status: "refused",
+      reason: "community_held",
+    });
+    expect(calls.publish).toEqual([]);
+    expect((await epochRow(seed.epochId))?.status).toBe("closed");
   });
 });
