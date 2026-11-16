@@ -1,3 +1,5 @@
+// Usage (a community under a payout policy: plan and publish in one run, one Ledger approval):
+//   node --env-file=<abs .env> --import tsx scripts/publish-epoch.ts run //     --mint <mint> --network devnet|mainnet --rpc <https url> [--ws <wss url>] --signer ledger:<path>
 // Usage: node --env-file=<abs .env> --import tsx scripts/publish-epoch.ts plan|publish \
 //   --mint <mint> --epoch <index> --gross <lamports> --network devnet|mainnet --rpc <https url> \
 //   [--ws <wss url>] --signer file:<keypair.json>|ledger:<derivation path, e.g. 44'/501'/2'/0'>
@@ -8,13 +10,47 @@
 import { communities, epochs } from "@hyphae/db";
 import { and, eq } from "drizzle-orm";
 import { solanaChain } from "../src/payout/chain.js";
+import { operatorPublish } from "../src/payout/operator-publish.js";
 import { planPublication, publishEpoch } from "../src/payout/publish.js";
-import { parsePublishArgs, summarizePlan } from "./publish-epoch-cli.js";
+import { settleChain } from "../src/payout/settle-chain.js";
+import {
+  describeRunOutcome,
+  parsePublishArgs,
+  summarizeDistribution,
+  summarizePlan,
+} from "./publish-epoch-cli.js";
 import { openSigner } from "./publish-signer.js";
 
 const args = parsePublishArgs(process.argv.slice(2));
 // Imported after the arguments are checked: a typo must not reach the environment or a database.
 const { db } = await import("../src/db.js");
+
+if (args.command === "run") {
+  // The signer is opened first (a Ledger shows no prompt to read its address); every refusal
+  // inside operatorPublish happens before anything is planned, and the device is asked once, for
+  // the one transaction, after the numbers below are on screen.
+  const signer = await openSigner(args.signer, args.network);
+  const chain = await settleChain({
+    rpcUrl: args.rpcUrl,
+    wsUrl: args.wsUrl,
+    network: args.network,
+    publisher: signer,
+  });
+  const out = await operatorPublish(
+    db,
+    chain,
+    { mint: args.mint },
+    {
+      beforeSend: async (summary) => {
+        console.log(summarizeDistribution(summary));
+        console.log("approve the transaction on the Ledger");
+      },
+    },
+  );
+  const { ok, text } = describeRunOutcome(out);
+  (ok ? console.log : console.error)(text);
+  process.exit(ok ? 0 : 1);
+}
 
 const [community] = await db
   .select({ id: communities.id })

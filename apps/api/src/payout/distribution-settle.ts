@@ -34,6 +34,7 @@ import {
   type PayoutGate,
   payoutGateIn,
 } from "./gate.js";
+import { communityHold } from "./holds.js";
 import { epochManifestsIn, type JudgedGate, type PublicationSettings } from "./publication.js";
 import type { OnChainEpoch, PublishArgs } from "./publish.js";
 import type { RulesTest } from "./rules-test.js";
@@ -97,7 +98,7 @@ export interface DistributionSummary {
 
 export type SettleOutcome =
   | { status: "no_policy" }
-  | { status: "refused"; reason: "community_not_on_chain" }
+  | { status: "refused"; reason: "community_not_on_chain" | "community_held" }
   | { status: "nothing_due" }
   | { status: "waiting"; epochIndex: number; blockers: Blocker[] }
   | {
@@ -115,6 +116,13 @@ export interface SettleDeps {
   clock?: () => Date;
   // Told about a distribution that waits for a human: auto_publish is off or no admin key signs.
   notify?: (planned: Extract<SettleOutcome, { status: "planned" }>) => Promise<void>;
+  // The operator's own run (operator-publish.ts), which holds the admin signer: it publishes a
+  // distribution even when the policy's auto_publish is off, because the person signing is the
+  // approval auto_publish stands in for. A worker never sets it.
+  operatorPublish?: boolean;
+  // Called with the distribution's numbers after it is stored and before anything is sent. A
+  // throw stops the run with nothing sent; the intent stays stored for the next run.
+  beforeSend?: (summary: DistributionSummary) => Promise<void>;
 }
 
 type PolicyRow = typeof payoutPolicies.$inferSelect;
@@ -274,6 +282,8 @@ export async function settleCommunity(
     .from(communities)
     .where(eq(communities.id, communityId));
   if (!community) throw new Error(`settle: no community ${communityId}`);
+  // A recorded hold (holds.ts) stops the loop for this community whatever its policy says.
+  if (communityHold(community.mint)) return { status: "refused", reason: "community_held" };
   if (community.chainAddress === null)
     return { status: "refused", reason: "community_not_on_chain" };
   // Captured before anything else is read, the chain snapshot included; compared at the store.
@@ -576,18 +586,20 @@ async function publishIntent(
     }
     signature = await chain.publishSignature(args);
   } else {
-    const reason: PlannedReason | null = !target.policy.autoPublish
-      ? "auto_publish_off"
-      : chain.publisher === null
-        ? "no_publisher"
-        : chain.publisher.address !== onChain.admin
-          ? "publisher_not_admin"
-          : null;
+    const reason: PlannedReason | null =
+      !target.policy.autoPublish && !deps.operatorPublish
+        ? "auto_publish_off"
+        : chain.publisher === null
+          ? "no_publisher"
+          : chain.publisher.address !== onChain.admin
+            ? "publisher_not_admin"
+            : null;
     if (reason !== null || chain.publisher === null) {
       const planned = { status: "planned" as const, reason: reason ?? "no_publisher", ...summary };
       await deps.notify?.(planned);
       return planned;
     }
+    await deps.beforeSend?.(summary);
     signature = await chain.publisher.publishEpoch(args);
   }
 

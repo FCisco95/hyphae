@@ -4,7 +4,12 @@ import { describe, expect, it } from "vitest";
 import { planPublication } from "../src/payout/publish.js";
 import { randomAddress, seedReadyEpoch } from "../src/payout/ready-seed.js";
 import { createTestDb } from "../src/rewards/test-db.js";
-import { parsePublishArgs, summarizePlan } from "./publish-epoch-cli.js";
+import {
+  describeRunOutcome,
+  parsePublishArgs,
+  summarizeDistribution,
+  summarizePlan,
+} from "./publish-epoch-cli.js";
 
 const MINT = "So11111111111111111111111111111111111111112";
 const base = ["--mint", MINT, "--epoch", "2", "--gross", "500000000"];
@@ -232,4 +237,139 @@ describe("summarizePlan", () => {
       await t.close();
     }
   }, 30_000);
+});
+
+describe("parsePublishArgs run", () => {
+  const rpc = ["--network", "devnet", "--rpc", "https://api.devnet.solana.com"];
+  it("reads the one-command run: a mint, a chain and a signer, no epoch and no pot", () => {
+    expect(
+      parsePublishArgs(["run", "--mint", MINT, ...rpc, "--signer", "file:C:/keys/admin.json"]),
+    ).toEqual({
+      command: "run",
+      mint: MINT,
+      network: "solana:devnet",
+      rpcUrl: "https://api.devnet.solana.com",
+      wsUrl: "wss://api.devnet.solana.com",
+      signer: { kind: "file", path: "C:/keys/admin.json" },
+    });
+  });
+
+  it.each([
+    ["a pot", ["--gross", "500000000"]],
+    ["an epoch", ["--epoch", "2"]],
+  ])("refuses %s: the distribution decides both", (_what, extra) => {
+    expect(() =>
+      parsePublishArgs(["run", "--mint", MINT, ...extra, ...rpc, "--signer", LEDGER]),
+    ).toThrow(/run takes no --epoch or --gross/);
+  });
+
+  it("signs mainnet only on a Ledger, like plan and publish", () => {
+    expect(() =>
+      parsePublishArgs([
+        "run",
+        "--mint",
+        MINT,
+        "--network",
+        "mainnet",
+        "--rpc",
+        "https://r.example",
+        "--signer",
+        "file:k.json",
+      ]),
+    ).toThrow(/--signer ledger:<derivation path>/);
+  });
+
+  it("refuses a mint that is not base58", () => {
+    expect(() => parsePublishArgs(["run", "--mint", "0OIl", ...rpc, "--signer", LEDGER])).toThrow(
+      /--mint/,
+    );
+  });
+});
+
+describe("summarizeDistribution", () => {
+  it("shows the numbers the Ledger approval will commit to", () => {
+    const text = summarizeDistribution({
+      epochIndex: 3,
+      grossLamports: 2_000_000_000n,
+      allocatedLamports: 1_900_000_000n,
+      leaves: 4,
+      epochs: 2,
+      root: "ab".repeat(32),
+      auditHash: "cd".repeat(32),
+    });
+    expect(text).toContain("epoch 3");
+    expect(text).toContain("2 epochs");
+    expect(text).toContain("gross 2000000000");
+    expect(text).toContain("allocated 1900000000 to 4 members");
+    expect(text).toContain("ab".repeat(32));
+    expect(text).toContain("cd".repeat(32));
+  });
+});
+
+describe("describeRunOutcome", () => {
+  const summary = {
+    epochIndex: 3,
+    grossLamports: 5n,
+    allocatedLamports: 4n,
+    leaves: 2,
+    epochs: 1,
+    root: "ab".repeat(32),
+    auditHash: "cd".repeat(32),
+  };
+  it("is a failure for every refusal and says why", () => {
+    for (const reason of [
+      "community_unknown",
+      "community_held",
+      "no_payout_policy",
+      "community_not_on_chain",
+      "no_signer",
+      "publisher_not_admin",
+    ] as const) {
+      const out = describeRunOutcome({ status: "refused", reason });
+      expect(out.ok).toBe(false);
+      expect(out.text).toContain(reason);
+    }
+    expect(
+      describeRunOutcome({ status: "refused", reason: "community_held", detail: "held by ruling" })
+        .text,
+    ).toContain("held by ruling");
+  });
+
+  it("succeeds on a publication and on a rollover, and names the transaction", () => {
+    const published = describeRunOutcome({
+      status: "published",
+      signature: "SIG",
+      recovered: false,
+      ...summary,
+    });
+    expect(published).toMatchObject({ ok: true });
+    expect(published.text).toContain("published: SIG");
+    expect(
+      describeRunOutcome({
+        status: "published",
+        signature: "SIG",
+        recovered: true,
+        ...summary,
+      }).text,
+    ).toContain("already on-chain");
+    const rolled = describeRunOutcome({
+      status: "rolled_over",
+      epochIndex: 3,
+      reason: "below_threshold",
+      accrualLamports: 5n,
+      volumeLamports: 9n,
+    });
+    expect(rolled.ok).toBe(true);
+    expect(rolled.text).toContain("rolled over");
+  });
+
+  it("is a failure when nothing was sent because the epoch waits or is not due", () => {
+    expect(
+      describeRunOutcome({ status: "waiting", epochIndex: 3, blockers: ["not_final"] }).ok,
+    ).toBe(false);
+    expect(describeRunOutcome({ status: "nothing_due" }).ok).toBe(false);
+    expect(describeRunOutcome({ status: "planned", reason: "no_publisher", ...summary }).ok).toBe(
+      false,
+    );
+  });
 });

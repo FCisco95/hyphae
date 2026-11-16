@@ -1,9 +1,11 @@
 import { parseArgs } from "node:util";
+import type { DistributionSummary } from "../src/payout/distribution-settle.js";
+import type { OperatorOutcome } from "../src/payout/operator-publish.js";
 import type { PlanOutcome } from "../src/payout/publish.js";
 import type { SignerSpec } from "./publish-signer.js";
 
 export const USAGE =
-  "usage: publish-epoch plan|publish --mint <mint> --epoch <index> --gross <lamports> --network devnet|mainnet --rpc <https url> [--ws <wss url>] --signer file:<keypair.json>|ledger:<derivation path, e.g. 44'/501'/2'/0'>";
+  "usage: publish-epoch plan|publish --mint <mint> --epoch <index> --gross <lamports> --network devnet|mainnet --rpc <https url> [--ws <wss url>] --signer file:<keypair.json>|ledger:<derivation path, e.g. 44'/501'/2'/0'>\n   or: publish-epoch run --mint <mint> --network devnet|mainnet --rpc <https url> [--ws <wss url>] --signer file:<keypair.json>|ledger:<derivation path> (a community under a payout policy: plan and publish in one run)";
 
 // Where, and as whom, an operator command signs.
 export interface ChainArgs {
@@ -18,6 +20,12 @@ export interface PublishArgs extends ChainArgs {
   mint: string;
   epoch: number;
   grossLamports: bigint;
+}
+
+// The one-command run: no epoch and no pot, the policy's distribution decides both.
+export interface RunArgs extends ChainArgs {
+  command: "run";
+  mint: string;
 }
 
 export const BASE58 = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
@@ -82,7 +90,7 @@ export function parseChainArgs(
   return { network, rpcUrl, wsUrl, signer };
 }
 
-export function parsePublishArgs(argv: string[]): PublishArgs {
+export function parsePublishArgs(argv: string[]): PublishArgs | RunArgs {
   const { values, positionals } = parseArgs({
     args: argv,
     allowPositionals: true,
@@ -97,9 +105,19 @@ export function parsePublishArgs(argv: string[]): PublishArgs {
     },
   });
   const [command] = positionals;
-  if (command !== "plan" && command !== "publish") fail("plan or publish?");
+  if (command !== "plan" && command !== "publish" && command !== "run") {
+    fail("plan, publish or run?");
+  }
   const mint = values.mint ?? "";
   if (!BASE58.test(mint)) fail("--mint must be a base58 address");
+  if (command === "run") {
+    if (values.epoch !== undefined || values.gross !== undefined) {
+      fail(
+        "run takes no --epoch or --gross: the payout policy and the vault's free balance decide both",
+      );
+    }
+    return { command, mint, ...parseChainArgs(values, fail) };
+  }
   if (!/^[1-9]\d{0,8}$/.test(values.epoch ?? "")) fail("--epoch must be a positive index");
   const grossLamports = parseGross(values.gross, fail);
   return {
@@ -125,4 +143,50 @@ export function summarizePlan(plan: Extract<PlanOutcome, { status: "planned" }>)
     ...leaves.map((l) => `  leaf ${l.wallet} ${l.amountLamports} lamports, score ${l.score}`),
     plan.onChain ? "already on-chain: publish records it without sending" : "not on-chain yet",
   ].join("\n");
+}
+
+// What the operator reads before the Ledger approval of a one-command run.
+export function summarizeDistribution(d: DistributionSummary): string {
+  return [
+    `epoch ${d.epochIndex}, paying ${d.epochs} ${d.epochs === 1 ? "epoch" : "epochs"}`,
+    `gross ${d.grossLamports}, allocated ${d.allocatedLamports} to ${d.leaves} members`,
+    `root ${d.root}`,
+    `audit hash ${d.auditHash}`,
+  ].join("\n");
+}
+
+// The operator's read of a run, and whether the command succeeded: a refusal, a distribution
+// that only waits (planned, blocked, nothing due) and a failure all exit non-zero.
+export function describeRunOutcome(out: OperatorOutcome): { ok: boolean; text: string } {
+  switch (out.status) {
+    case "refused":
+      return {
+        ok: false,
+        text: `refused: ${out.reason}${"detail" in out && out.detail ? ` (${out.detail})` : ""}`,
+      };
+    case "published":
+      return {
+        ok: true,
+        text: `${out.recovered ? "recorded (already on-chain)" : "published"}: ${out.signature}, root ${out.root}, ${out.leaves} leaves`,
+      };
+    case "rolled_over":
+      return {
+        ok: true,
+        text: `epoch ${out.epochIndex} rolled over (${out.reason}): nothing was sent and the lamports stay in the vault; run again to decide the next epoch`,
+      };
+    case "waiting":
+      return {
+        ok: false,
+        text: `epoch ${out.epochIndex} is not final yet: ${out.blockers.join(", ") || "waiting"}`,
+      };
+    case "nothing_due":
+      return { ok: false, text: "nothing is due: no closed epoch waits for a decision" };
+    case "planned":
+      return {
+        ok: false,
+        text: `planned, not sent (${out.reason}): the stored distribution waits for a signer that is the community admin`,
+      };
+    case "no_policy":
+      return { ok: false, text: "refused: no_payout_policy" };
+  }
 }

@@ -14,6 +14,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb } from "../rewards/test-db.js";
 import { loadDistributionIntent } from "./distribution-intent.js";
 import { type SettleChain, type SettleOutcome, settleCommunity } from "./distribution-settle.js";
+import { MYCEL_MINT } from "./holds.js";
 import { buildPublication } from "./publication.js";
 import { type PublishArgs, type PublishChain, publishEpoch } from "./publish.js";
 import { randomAddress, seedReadyEpoch } from "./ready-seed.js";
@@ -692,5 +693,18 @@ describe("settleCommunity: several epochs", () => {
       reason: "below_threshold",
     });
     expect((await decisionRows(seed.communityId)).map((d) => d.index)).toEqual([1, 2]);
+  });
+});
+
+describe("settleCommunity: a recorded hold", () => {
+  it("refuses a held community even with auto_publish on and the admin key", async () => {
+    const chainAddress = randomAddress();
+    const seed = await seedReadyEpoch(t.db, { now: NOW, chainAddress, mint: MYCEL_MINT });
+    await policyFor(seed.communityId);
+    const fake = fakeChain({ community: chainAddress, free: 2n * SOL });
+    const out = await settle(fake.chain, seed.communityId);
+    expect(out).toEqual({ status: "refused", reason: "community_held" });
+    expect(fake.calls.publish).toEqual([]);
+    expect(await decisionRows(seed.communityId)).toEqual([]);
   });
 });
