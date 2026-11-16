@@ -1,5 +1,4 @@
 import {
-  fromGateReadyJob,
   type GateReadyJob,
   type GateReadyNote,
   gateReadyJobId,
@@ -34,17 +33,16 @@ export async function queueGateReady(
   return queued;
 }
 
-// The queued note is a snapshot: before it is sent, the epoch must still wait as it says, or an
-// operator could follow a stale instruction (run publishes the next epoch, not this one).
+// The queued note is a snapshot, so the message is rebuilt from current state when it is sent:
+// `current` returns the epoch note as things stand now, or null when it has none (published,
+// superseded, held), and then nothing is sent.
 export async function deliverGateReady(
   job: GateReadyJob,
   send: (chatId: bigint, text: string) => Promise<void>,
-  stillPending: (ref: { communityId: string; epochId: string }) => Promise<boolean>,
+  current: (job: GateReadyJob) => Promise<GateReadyNote | null>,
 ): Promise<"sent" | "stale"> {
-  const note = fromGateReadyJob(job);
-  if (!(await stillPending({ communityId: note.communityId, epochId: note.epochId }))) {
-    return "stale";
-  }
+  const note = await current(job);
+  if (note === null) return "stale";
   await send(note.adminTelegramUserId, gateReadyText(note));
   return "sent";
 }

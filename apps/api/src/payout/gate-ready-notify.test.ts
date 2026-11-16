@@ -38,32 +38,33 @@ describe("queueGateReady", () => {
 });
 
 describe("deliverGateReady", () => {
-  it("messages the community admin with the text while the epoch is still pending", async () => {
+  it("sends the current note, not the queued snapshot", async () => {
     const sent: [bigint, string][] = [];
     const out = await deliverGateReady(
       toGateReadyJob(note),
       async (chat, text) => {
         sent.push([chat, text]);
       },
-      async () => true,
+      async (job) => {
+        expect(job.epochId).toBe(note.epochId);
+        return { ...note, epochIndex: 9, payable: 7 };
+      },
     );
     expect(out).toBe("sent");
     expect(sent).toHaveLength(1);
     expect(sent[0]?.[0]).toBe(42n);
-    expect(sent[0]?.[1]).toContain("epoch 2");
+    expect(sent[0]?.[1]).toContain("epoch 9");
+    expect(sent[0]?.[1]).toContain("7 payable");
   });
 
-  it("sends nothing when the epoch was published or held while the job waited", async () => {
+  it("sends nothing when the epoch no longer has a current note", async () => {
     const sent: string[] = [];
     const out = await deliverGateReady(
       toGateReadyJob(note),
       async (_chat, text) => {
         sent.push(text);
       },
-      async (ref) => {
-        expect(ref).toEqual({ communityId: note.communityId, epochId: note.epochId });
-        return false;
-      },
+      async () => null,
     );
     expect(out).toBe("stale");
     expect(sent).toEqual([]);

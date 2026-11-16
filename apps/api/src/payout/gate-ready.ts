@@ -114,32 +114,19 @@ export function notifiable<T extends { outcome: string }>(decided: readonly T[])
   return planned.length > 0 ? planned : [...decided];
 }
 
-// Whether an epoch is still waiting as the message says: the community is not held, the epoch
-// is closed and unpublished, and the settle loop holds a planned distribution or a rollover for
-// it. Checked again at delivery, because the job may wait in the queue while the operator
-// publishes.
-export async function epochStillPending(
+// The note for one epoch as things stand now, or null when it has none: published, superseded by
+// a planned distribution, held, or no longer decided. Delivery rebuilds the message from this
+// instead of trusting the queued snapshot, which may be stale. Only the instant between this read
+// and the Telegram call is unguarded; the message is advice, and `run` prints the plan before the
+// Ledger is asked.
+export async function currentGateReadyNote(
   db: Db,
+  chain: SettleChain,
   ref: { communityId: string; epochId: string },
-): Promise<boolean> {
-  const [row] = await db
-    .select({
-      mint: communities.mint,
-      status: epochs.status,
-      root: epochs.root,
-      outcome: epochPayoutDecisions.outcome,
-      distributionEpochId: epochPayoutDecisions.distributionEpochId,
-    })
-    .from(epochs)
-    .innerJoin(communities, eq(communities.id, epochs.communityId))
-    .innerJoin(epochPayoutDecisions, eq(epochPayoutDecisions.epochId, epochs.id))
-    .where(and(eq(epochs.id, ref.epochId), eq(epochs.communityId, ref.communityId)));
-  if (!row || communityHold(row.mint)) return false;
-  if (row.status !== "closed" || row.root !== null) return false;
-  return (
-    row.outcome === "distribution_planned" ||
-    (row.outcome === "rolled_over" && row.distributionEpochId === null)
-  );
+  deps: GateDeps = {},
+): Promise<GateReadyNote | null> {
+  const notes = await dueGateReady(db, chain, { communityId: ref.communityId }, deps);
+  return notes.find((n) => n.epochId === ref.epochId) ?? null;
 }
 
 // Decided epochs of one policy community whose gate is ready, with the numbers the message states. Empty for a
@@ -238,6 +225,9 @@ export async function dueGateReady(
     // the index epoch alone may have nobody payable. A rollover is counted from its own gate.
     let payable: number;
     if (planned) {
+      // The send may have landed before the database recorded it: the chain decides, and the
+      // settle loop records it on its next run. Nothing is left for the operator to publish.
+      if ((await chain.readEpoch(onChain.address, BigInt(e.index))) !== null) continue;
       const intent = await loadDistributionIntent(db, e.id);
       if (!intent) continue;
       payable = intent.leaves.length;
