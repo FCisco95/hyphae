@@ -1,5 +1,6 @@
 import { PgBoss } from "pg-boss";
 import { env } from "../env.js";
+import { GATE_READY_QUEUE_OPTIONS } from "../payout/gate-ready-notify.js";
 
 export const QUEUES = {
   score: "score",
@@ -10,6 +11,7 @@ export const QUEUES = {
   rewardClose: "reward-close",
   holdCheck: "hold-check",
   payoutSettle: "payout-settle",
+  gateReady: "gate-ready",
 } as const;
 
 export const boss = new PgBoss({
@@ -69,5 +71,7 @@ export async function startQueue() {
     retryDelay: 60,
     expireInSeconds: 300,
   });
+  // The operator's gate-ready message: one job per epoch under an id derived from the epoch.
+  await boss.createQueue(QUEUES.gateReady, GATE_READY_QUEUE_OPTIONS);
   return boss;
 }

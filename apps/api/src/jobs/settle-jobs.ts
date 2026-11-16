@@ -1,6 +1,8 @@
 import { db } from "../db.js";
 import { env } from "../env.js";
 import { dueSettles, settleCommunity } from "../payout/distribution-settle.js";
+import { dueGateReady } from "../payout/gate-ready.js";
+import { queueGateReady } from "../payout/gate-ready-notify.js";
 import { settleChainFromEnv } from "../payout/settle-chain.js";
 import { boss, QUEUES } from "./queue.js";
 
@@ -40,4 +42,17 @@ export async function settlePayouts(job: PayoutSettleJob): Promise<void> {
       console.log(JSON.stringify({ job: "payout-settle", ...job, ...planned }, plain)),
   });
   console.log(JSON.stringify({ job: "payout-settle", ...job, ...result }, plain));
+  // Read-only and isolated: a failure here never fails the settle job that already ran.
+  await tellOperator(job, await chainOf()).catch((e: unknown) =>
+    console.error(JSON.stringify({ job: "gate-ready", ...job, error: String(e) })),
+  );
+}
+
+// A ready epoch's message goes to the community admin once: the queue holds one job per epoch.
+async function tellOperator(job: PayoutSettleJob, chain: Parameters<typeof dueGateReady>[1]) {
+  const notes = await dueGateReady(db, chain, job);
+  const queued = await queueGateReady(notes, (data, opts) =>
+    boss.send(QUEUES.gateReady, data, opts),
+  );
+  if (queued > 0) console.log(JSON.stringify({ job: "gate-ready", ...job, queued }));
 }
