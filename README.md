@@ -11,7 +11,7 @@ Token communities need a way to distinguish useful work from activity alone. Hyp
 
 [Try local fixtures](#try-local-fixtures) · [Engineering and evidence](docs/portfolio/ENGINEERING.md) · [Integration guide](docs/community/INTEGRATING.md)
 
-Built solo for Colosseum's Crypto World's Fair in 2026, under the Organic/MYCEL umbrella. This public repository is **source-available under BUSL 1.1**.
+Built solo for Colosseum's Crypto World's Fair in 2026. This public repository is **source-available under BUSL 1.1**.
 
 ## See the read path in three steps
 
