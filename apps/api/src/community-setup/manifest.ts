@@ -72,6 +72,14 @@ const Schema = z
       .max(160)
       .regex(/^[A-Za-z0-9._:/-]+$/),
     activationTime: z.string(),
+    // Payout facts the operator attests: the community's initialized on-chain address and the
+    // first epoch that pays. Both optional. A wrong address cannot misdirect funds: publication
+    // reads the account and refuses unless it is this mint's community at that address.
+    chainAddress: z
+      .string()
+      .refine((value): boolean => isAddress(value))
+      .optional(),
+    firstPaidEpoch: z.number().int().min(1).max(2_147_483_647).optional(),
     rewardConfig: RewardConfigPayload,
   })
   .strict();
@@ -115,6 +123,8 @@ export function setupPlan(input: SetupManifest) {
     adminTelegramUserId: m.adminTelegramUserId,
     botUserId: m.botUserId,
     activationTime: new Date(m.activationTime).toISOString(),
+    chainAddress: m.chainAddress ?? null,
+    firstPaidEpoch: m.firstPaidEpoch ?? null,
     effects: ["register one community", "pin its first future epoch", "leave reward intake paused"],
     paymentsEnabled: false,
     authority: "operator-attested; Telegram admin status does not prove Organic mint ownership",

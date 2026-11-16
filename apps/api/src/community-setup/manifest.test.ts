@@ -72,3 +72,37 @@ describe("community setup manifest", () => {
       expect(() => parseSetupManifest({ ...m, rewardConfig })).toThrow("invalid_manifest");
   });
 });
+
+describe("community setup manifest: payout fields", () => {
+  const chainAddress = "7dsxLdz2BeakoH3bjB1WzHtK3t6fHC3PoP4hs2Z3C6EQ";
+
+  it("takes the on-chain address and the first paid epoch, and binds both in the plan hash", () => {
+    const m = manifest();
+    const plan = setupPlan(parseSetupManifest(m));
+    const withBoth = parseSetupManifest({ ...m, chainAddress, firstPaidEpoch: 3 });
+    expect(withBoth).toMatchObject({ chainAddress, firstPaidEpoch: 3 });
+    expect(setupPlan(withBoth).hash).not.toBe(plan.hash);
+    expect(setupPlan(parseSetupManifest({ ...m, chainAddress })).hash).not.toBe(plan.hash);
+    expect(setupPlan(parseSetupManifest({ ...m, firstPaidEpoch: 1 })).hash).not.toBe(plan.hash);
+  });
+
+  it("states both in the plan, so the operator reviews what will be written", () => {
+    const plan = setupPlan(parseSetupManifest({ ...manifest(), chainAddress, firstPaidEpoch: 3 }));
+    expect(plan).toMatchObject({ chainAddress, firstPaidEpoch: 3 });
+    expect(setupPlan(parseSetupManifest(manifest()))).toMatchObject({
+      chainAddress: null,
+      firstPaidEpoch: null,
+    });
+  });
+
+  it.each([
+    { chainAddress: "not-an-address" },
+    { chainAddress: "" },
+    { firstPaidEpoch: 0 },
+    { firstPaidEpoch: 1.5 },
+    { firstPaidEpoch: "3" },
+    { firstPaidEpoch: 2_147_483_648 },
+  ])("refuses a malformed payout field", (patch) => {
+    expect(() => parseSetupManifest({ ...manifest(), ...patch })).toThrow("invalid_manifest");
+  });
+});

@@ -161,3 +161,50 @@ describe("operator-assisted community registration", () => {
     expect(await t.db.select().from(communities)).toEqual([]);
   });
 });
+
+describe("community registration: payout fields", () => {
+  const chainAddress = "7dsxLdz2BeakoH3bjB1WzHtK3t6fHC3PoP4hs2Z3C6EQ";
+  const withPayout = (extra: Record<string, unknown> = {}) =>
+    parseSetupManifest({ ...manifest(), chainAddress, firstPaidEpoch: 2, ...extra });
+  const rowOf = async (id: string) =>
+    (await t.db.select().from(communities).where(eq(communities.id, id)))[0];
+
+  it("writes chain_address and first_paid_epoch with the community", async () => {
+    const m = withPayout();
+    expect(await apply(m)).toMatchObject({ status: "created" });
+    expect(await rowOf(m.communityId)).toMatchObject({ chainAddress, firstPaidEpoch: 2 });
+  });
+
+  it("leaves both unset when the manifest names neither", async () => {
+    const m = parsed();
+    await apply(m);
+    expect(await rowOf(m.communityId)).toMatchObject({ chainAddress: null, firstPaidEpoch: null });
+  });
+
+  it("is idempotent for the same manifest and reports it as existing", async () => {
+    const m = withPayout();
+    await apply(m);
+    expect(await apply(m)).toMatchObject({ status: "existing" });
+    expect(await checkCommunitySetup(t.db, m, telegramFor(m))).toMatchObject({
+      status: "existing",
+    });
+  });
+
+  it.each([
+    ["another chain address", { chainAddress: "So11111111111111111111111111111111111111112" }],
+    ["another first paid epoch", { firstPaidEpoch: 3 }],
+  ])("conflicts with a community registered with %s", async (_what, patch) => {
+    await apply(withPayout());
+    const other = withPayout(patch);
+    await expect(checkCommunitySetup(t.db, other, telegramFor(other))).rejects.toThrow(
+      "registration_conflict",
+    );
+    await expect(apply(other)).rejects.toThrow("registration_conflict");
+  });
+
+  it("conflicts when the manifest names a payout field the registered community lacks", async () => {
+    await apply();
+    const other = withPayout();
+    await expect(apply(other)).rejects.toThrow("registration_conflict");
+  });
+});

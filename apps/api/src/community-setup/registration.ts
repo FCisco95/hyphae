@@ -36,6 +36,10 @@ async function inspect(tx: Db, m: SetupManifest, lock = false): Promise<boolean>
     c.mint !== m.mint ||
     c.telegramChatId !== BigInt(m.telegramChatId) ||
     c.adminTelegramUserId !== BigInt(m.adminTelegramUserId) ||
+    // A payout field the manifest names must be what is registered; one it leaves out is not
+    // compared (a community registered before these fields existed stays valid).
+    (m.chainAddress !== undefined && c.chainAddress !== m.chainAddress) ||
+    (m.firstPaidEpoch !== undefined && c.firstPaidEpoch !== m.firstPaidEpoch) ||
     c.name !== m.name ||
     c.rubricVersion !== m.rewardConfig.rubric.version ||
     canonicalJson(c.rubric) !== canonicalJson(m.rewardConfig.rubric)
@@ -137,6 +141,8 @@ export async function applyCommunitySetup(
         adminTelegramUserId: BigInt(m.adminTelegramUserId),
         rubricVersion: m.rewardConfig.rubric.version,
         rubric: m.rewardConfig.rubric,
+        ...(m.chainAddress !== undefined && { chainAddress: m.chainAddress }),
+        ...(m.firstPaidEpoch !== undefined && { firstPaidEpoch: m.firstPaidEpoch }),
         rewardIntakePausedAt: now,
       });
       // No community can become visible without its pinned epoch. Otherwise /submit would
