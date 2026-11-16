@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { PgBoss } from "pg-boss";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { gateReadyJobId } from "./gate-ready.js";
 import { GATE_READY_QUEUE_OPTIONS, queueGateReady } from "./gate-ready-notify.js";
 
 // The dedupe the gate-ready message relies on, on the real queue: an epoch's message is accepted
@@ -51,13 +52,16 @@ describe("gate-ready queue on Postgres", () => {
     boss = await open();
     expect(await queueGateReady([note], send(boss))).toBe(0);
     expect(await queueGateReady([{ ...note, epochId: randomUUID() }], send(boss))).toBe(1);
+    // Leave the queue empty for the next test.
+    for (const job of await boss.fetch(queue, { batchSize: 10 }))
+      await boss.complete(queue, job.id);
   });
 
   it("never runs a message twice: a handler that fails after Telegram accepted it is not retried", async () => {
     const failing = { ...note, epochId: randomUUID() };
     expect(await queueGateReady([failing], send(boss))).toBe(1);
     const [first] = await boss.fetch(queue);
-    expect(first).toBeDefined();
+    expect(first?.id).toBe(gateReadyJobId(failing.epochId));
     await boss.fail(queue, (first as { id: string }).id);
     // retryLimit 0: the failed job is terminal, so nothing is handed to a worker again, and the
     // epoch's id is still refused.

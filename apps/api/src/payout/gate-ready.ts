@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { BASIS_POINTS } from "@hyphae/core";
 import { communities, type Db, epochPayoutDecisions, epochs, payoutPolicies } from "@hyphae/db";
 import { and, asc, eq, isNull, or } from "drizzle-orm";
+import { loadDistributionIntent } from "./distribution-intent.js";
 import type { SettleChain } from "./distribution-settle.js";
 import { evaluatePayoutGate, type GateDeps } from "./gate.js";
 import { communityHold } from "./holds.js";
@@ -106,6 +107,41 @@ export function gateReadyText(n: GateReadyNote): string {
   ].join("\n");
 }
 
+// A planned distribution pays every rolled-over epoch, so rollover notices for them are
+// superseded the moment it exists: only the planned one is reported.
+export function notifiable<T extends { outcome: string }>(decided: readonly T[]): T[] {
+  const planned = decided.filter((d) => d.outcome === "distribution_planned");
+  return planned.length > 0 ? planned : [...decided];
+}
+
+// Whether an epoch is still waiting as the message says: the community is not held, the epoch
+// is closed and unpublished, and the settle loop holds a planned distribution or a rollover for
+// it. Checked again at delivery, because the job may wait in the queue while the operator
+// publishes.
+export async function epochStillPending(
+  db: Db,
+  ref: { communityId: string; epochId: string },
+): Promise<boolean> {
+  const [row] = await db
+    .select({
+      mint: communities.mint,
+      status: epochs.status,
+      root: epochs.root,
+      outcome: epochPayoutDecisions.outcome,
+      distributionEpochId: epochPayoutDecisions.distributionEpochId,
+    })
+    .from(epochs)
+    .innerJoin(communities, eq(communities.id, epochs.communityId))
+    .innerJoin(epochPayoutDecisions, eq(epochPayoutDecisions.epochId, epochs.id))
+    .where(and(eq(epochs.id, ref.epochId), eq(epochs.communityId, ref.communityId)));
+  if (!row || communityHold(row.mint)) return false;
+  if (row.status !== "closed" || row.root !== null) return false;
+  return (
+    row.outcome === "distribution_planned" ||
+    (row.outcome === "rolled_over" && row.distributionEpochId === null)
+  );
+}
+
 // Decided epochs of one policy community whose gate is ready, with the numbers the message states. Empty for a
 // community without a policy, under a recorded hold, not bound on-chain, or with an unreadable
 // vault: a message that cannot be right is not sent.
@@ -184,16 +220,37 @@ export async function dueGateReady(
       ),
     )
     .orderBy(asc(epochs.index));
+  // The policy that decides the next epoch, as settleCommunity picks it: the lowest epoch with no
+  // decision, or the one after the last epoch when every epoch is decided.
+  const all = await db
+    .select({ index: epochs.index, decided: epochPayoutDecisions.id })
+    .from(epochs)
+    .leftJoin(epochPayoutDecisions, eq(epochPayoutDecisions.epochId, epochs.id))
+    .where(eq(epochs.communityId, input.communityId))
+    .orderBy(asc(epochs.index));
+  const undecided = all.find((e) => e.decided === null && e.index >= first.effectiveFromIndex);
+  const nextIndex = undecided?.index ?? (all.at(-1)?.index ?? 0) + 1;
+  const next = policies.filter((x) => x.effectiveFromIndex <= nextIndex).at(-1) ?? first;
   const notes: GateReadyNote[] = [];
-  for (const e of decided) {
-    const gate = await evaluatePayoutGate(
-      db,
-      { communityId: input.communityId, epochId: e.id },
-      deps,
-    );
-    if (gate.status !== "ready") continue;
-    const p = policies.filter((x) => x.effectiveFromIndex <= e.index).at(-1) ?? first;
+  for (const e of notifiable(decided)) {
     const planned = e.outcome === "distribution_planned";
+    // A planned distribution is counted from its stored intent: it may pay several epochs, and
+    // the index epoch alone may have nobody payable. A rollover is counted from its own gate.
+    let payable: number;
+    if (planned) {
+      const intent = await loadDistributionIntent(db, e.id);
+      if (!intent) continue;
+      payable = intent.leaves.length;
+    } else {
+      const gate = await evaluatePayoutGate(
+        db,
+        { communityId: input.communityId, epochId: e.id },
+        deps,
+      );
+      if (gate.status !== "ready") continue;
+      payable = gate.payable;
+    }
+    const p = next;
     notes.push({
       communityId: input.communityId,
       epochId: e.id,
@@ -201,7 +258,7 @@ export async function dueGateReady(
       mint: community.mint,
       epochIndex: e.index,
       outcome: planned ? "planned" : "rolled_over",
-      payable: gate.payable,
+      payable,
       adminTelegramUserId: community.adminTelegramUserId,
       // A planned distribution met its threshold when it was decided.
       topUpLamports: planned

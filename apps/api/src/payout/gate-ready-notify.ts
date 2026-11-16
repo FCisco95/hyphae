@@ -34,10 +34,17 @@ export async function queueGateReady(
   return queued;
 }
 
+// The queued note is a snapshot: before it is sent, the epoch must still wait as it says, or an
+// operator could follow a stale instruction (run publishes the next epoch, not this one).
 export async function deliverGateReady(
   job: GateReadyJob,
   send: (chatId: bigint, text: string) => Promise<void>,
-): Promise<void> {
+  stillPending: (ref: { communityId: string; epochId: string }) => Promise<boolean>,
+): Promise<"sent" | "stale"> {
   const note = fromGateReadyJob(job);
+  if (!(await stillPending({ communityId: note.communityId, epochId: note.epochId }))) {
+    return "stale";
+  }
   await send(note.adminTelegramUserId, gateReadyText(note));
+  return "sent";
 }
