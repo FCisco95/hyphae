@@ -31,6 +31,8 @@ Store the manifest outside the repository, in the operator's approved private lo
 | `botUserId` | Expected official bot's numeric ID as a string, verified with `getMe` |
 | `approvalReference` | Reference to the operator's recorded community/mint authority and approved configuration; not an authentication token |
 | `activationTime` | Explicit zoned ISO timestamp on a whole-second boundary; must still be future by DB clock when creating the registration |
+| `chainAddress` | Optional. The community's initialized on-chain address, written to `chain_address`. Operator-attested: publication reads the account and refuses unless it is this mint's community at that address, so a wrong value blocks a payout and cannot misdirect one |
+| `firstPaidEpoch` | Optional positive integer, written to `first_paid_epoch`: the first epoch that can pay. Unset, no epoch pays |
 | `rewardConfig` | Complete existing version-2 pinned configuration, including this community's rubric and a registered prompt hash |
 
 Use the existing `buildRewardConfigPayload` helper to prepare an explicitly approved rubric/configuration; the setup parser does not choose another community's rules. Unknown/discarded fields, mismatched rubric identity, invalid weights and unknown prompt pins fail validation. The offline plan includes private IDs; review it privately.
