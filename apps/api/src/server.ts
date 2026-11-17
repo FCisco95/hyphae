@@ -65,6 +65,8 @@ app.route(
     ...(env.READ_API_WEB_TOKEN ? { webToken: env.READ_API_WEB_TOKEN } : {}),
   }),
 );
+// The operator page's chain reads. Never given PAYOUT_PUBLISHER_KEYPAIR: the API holds no key.
+const operatorChain = env.READ_RPC_URL ? readOnlyChain(env.READ_RPC_URL, env.LINK_CHAIN) : null;
 app.route(
   "/admin/v1",
   adminRoutes({
@@ -74,13 +76,14 @@ app.route(
     telegramAdmin: telegramAdministrator(notifyApi),
     ...(env.READ_API_WEB_TOKEN ? { webToken: env.READ_API_WEB_TOKEN } : {}),
     // The operator page: wallet sign-in by the community's on-chain admin, read-only.
-    ...(env.READ_RPC_URL
+    ...(operatorChain
       ? {
           operator: {
             store: operatorAuthStore(),
             origins: [env.PUBLIC_WEB_URL],
             network: env.LINK_CHAIN,
-            onChainAdmin: onChainAdminReader(readOnlyChain(env.READ_RPC_URL, env.LINK_CHAIN)),
+            onChainAdmin: onChainAdminReader(operatorChain),
+            settle: operatorChain,
           },
         }
       : {}),

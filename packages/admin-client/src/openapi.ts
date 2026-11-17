@@ -1,5 +1,16 @@
 import { z } from "zod";
-import { AdminCommunitySchema, AdminIntakeUpdateSchema } from "../../core/src/admin-api.js";
+import {
+  AdminCommunitySchema,
+  AdminIntakeUpdateSchema,
+  OperatorChallengeRequestSchema,
+  OperatorChallengeSchema,
+  OperatorOverviewSchema,
+  OperatorPayableSchema,
+  OperatorSessionCreatedSchema,
+  OperatorSessionRequestSchema,
+  OperatorSessionSchema,
+  OperatorStatusSchema,
+} from "../../core/src/admin-api.js";
 
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
 const content = (name: string) => ({ "application/json": { schema: ref(name) } });
@@ -56,6 +67,141 @@ const parameters = [
   },
 ];
 
+const operatorError = (codes: string[], description: string) => ({
+  description,
+  headers,
+  content: {
+    "application/json": {
+      schema: {
+        type: "object",
+        required: ["error"],
+        additionalProperties: false,
+        properties: { error: { type: "string", enum: codes } },
+      },
+    },
+  },
+});
+const operatorResponses = (ok: string, allow: string, extra: Record<string, unknown> = {}) => ({
+  "200": { description: "Current state.", headers, content: content(ok) },
+  "404": operatorError(
+    ["disabled", "not_found"],
+    "disabled: the operator surface is off (ADMIN_API_ENABLED=off); not_found: unknown community or epoch.",
+  ),
+  "405": {
+    ...error("invalid_request", "Unsupported method; Allow lists the supported ones."),
+    headers: { ...headers, Allow: { schema: { type: "string", const: allow } } },
+  },
+  "429": {
+    ...error("unavailable", "Too many requests. Wait before a deliberate new request."),
+    headers: { ...headers, "Retry-After": { schema: { type: "string", pattern: "^[0-9]+$" } } },
+  },
+  "503": error("unavailable", "Database, chain or deadline failure. Nothing changed."),
+  ...extra,
+});
+const sessionErrors = {
+  "401": error("unauthorized", "Missing, unknown or expired operator session."),
+  "403": error(
+    "forbidden",
+    "The session's wallet is no longer the community's on-chain admin (the session ends), or the session belongs to another community.",
+  ),
+};
+
+// The operator page (roadmap item 3, part A): read-only, no signing or publishing path.
+const operatorPaths = {
+  "/admin/v1/operator/status": {
+    get: {
+      operationId: "getOperatorStatus",
+      summary: "Whether the operator surface is on",
+      responses: operatorResponses("OperatorStatus", "GET"),
+    },
+  },
+  "/admin/v1/operator/challenge": {
+    post: {
+      operationId: "createOperatorChallenge",
+      summary: "A one-use, 5-minute sign-in message for a wallet",
+      description:
+        "One line of printable ASCII naming the purpose, domain, network, community, wallet, nonce and times; it approves no transaction. Sign it with signMessage or the Solana CLI's sign-offchain-message (Ledger). Issuing does not check the wallet; the session step does.",
+      requestBody: {
+        required: true,
+        description: "Strict JSON object; at most 1024 UTF-8 bytes.",
+        content: content("OperatorChallengeRequest"),
+      },
+      responses: operatorResponses("OperatorChallenge", "POST", {
+        "400": error("invalid_request", "Malformed body or content type."),
+        "403": error("forbidden", "The community is not bound to an on-chain account."),
+      }),
+    },
+  },
+  "/admin/v1/operator/session": {
+    get: {
+      operationId: "getOperatorSession",
+      summary: "The current session; rechecks the on-chain admin",
+      security: [{ operatorSession: [] }],
+      responses: operatorResponses("OperatorSession", "GET, POST, DELETE", sessionErrors),
+    },
+    post: {
+      operationId: "createOperatorSession",
+      summary: "Trade a signed challenge for a session token",
+      description:
+        "The challenge is spent by this call whatever its outcome. The signature must be the challenge wallet's ed25519 signature (base58) over the message, raw or in Solana's off-chain message envelope, and that wallet must be the admin of the community's bound on-chain account. The token is returned once; keep it server-side (httpOnly cookie). Sessions last 4 hours, absolute.",
+      requestBody: {
+        required: true,
+        description: "Strict JSON object; at most 1024 UTF-8 bytes.",
+        content: content("OperatorSessionRequest"),
+      },
+      responses: operatorResponses("OperatorSessionCreated", "GET, POST, DELETE", {
+        "400": error("invalid_request", "Malformed body or content type."),
+        "401": error("unauthorized", "Unknown, used or expired challenge, or a bad signature."),
+        "403": error("forbidden", "A valid signature by a wallet that is not the on-chain admin."),
+      }),
+    },
+    delete: {
+      operationId: "endOperatorSession",
+      summary: "Sign out",
+      security: [{ operatorSession: [] }],
+      responses: operatorResponses("OperatorSessionEnded", "GET, POST, DELETE", {
+        "401": sessionErrors["401"],
+      }),
+    },
+  },
+  "/admin/v1/operator/communities/{mint}/overview": {
+    get: {
+      operationId: "getOperatorOverview",
+      summary: "Gate per epoch, top-up, hold, raids and job health",
+      description:
+        "Read-only. The top-up uses the same pricing as the gate-ready message; its status says why there is none.",
+      security: [{ operatorSession: [] }],
+      parameters,
+      responses: operatorResponses("OperatorOverview", "GET", {
+        ...sessionErrors,
+        "400": error("invalid_request", "Malformed mint or a query string."),
+      }),
+    },
+  },
+  "/admin/v1/operator/communities/{mint}/epochs/{index}/payable": {
+    get: {
+      operationId: "getOperatorPayable",
+      summary: "Payable wallets of one epoch",
+      description:
+        "Wallets only, sorted by address: never a handle, member, points or Telegram id beside them. Empty for an epoch the gate does not judge (open or published).",
+      security: [{ operatorSession: [] }],
+      parameters: [
+        ...parameters,
+        {
+          name: "index",
+          in: "path",
+          required: true,
+          schema: { type: "string", pattern: "^(0|[1-9][0-9]{0,8})$" },
+        },
+      ],
+      responses: operatorResponses("OperatorPayable", "GET", {
+        ...sessionErrors,
+        "400": error("invalid_request", "Malformed mint or epoch index."),
+      }),
+    },
+  },
+};
+
 // A build artifact, not a new runtime endpoint or an assertion about an installed service.
 export function adminOpenApiDocument() {
   return {
@@ -97,9 +243,17 @@ export function adminOpenApiDocument() {
           },
         },
       },
+      ...operatorPaths,
     },
     components: {
       securitySchemes: {
+        operatorSession: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "hop_ followed by 43 base64url characters",
+          description:
+            "Operator session token from createOperatorSession. Every request rechecks that the session's wallet is still the community's on-chain admin. Cookies are not API authentication.",
+        },
         adminToken: {
           type: "http",
           scheme: "bearer",
@@ -131,6 +285,20 @@ export function adminOpenApiDocument() {
           ],
         },
         AdminIntakeUpdate: z.toJSONSchema(AdminIntakeUpdateSchema),
+        OperatorStatus: z.toJSONSchema(OperatorStatusSchema),
+        OperatorChallengeRequest: z.toJSONSchema(OperatorChallengeRequestSchema),
+        OperatorChallenge: z.toJSONSchema(OperatorChallengeSchema),
+        OperatorSessionRequest: z.toJSONSchema(OperatorSessionRequestSchema),
+        OperatorSession: z.toJSONSchema(OperatorSessionSchema),
+        OperatorSessionCreated: z.toJSONSchema(OperatorSessionCreatedSchema),
+        OperatorSessionEnded: {
+          type: "object",
+          required: ["ended"],
+          additionalProperties: false,
+          properties: { ended: { type: "boolean", const: true } },
+        },
+        OperatorOverview: z.toJSONSchema(OperatorOverviewSchema),
+        OperatorPayable: z.toJSONSchema(OperatorPayableSchema),
       },
     },
   };

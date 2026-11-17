@@ -7,6 +7,8 @@ export type { AdminCommunity, AdminIntakeUpdate };
 
 export type AdminErrorCode =
   | "invalid_configuration"
+  // The operator surface is switched off (ADMIN_API_ENABLED=off).
+  | "disabled"
   | "invalid_input"
   | "unauthorized"
   | "forbidden"
@@ -249,3 +251,5 @@ export function createHyphaeAdminClient(options: ClientOptions) {
 }
 
 export type HyphaeAdminClient = ReturnType<typeof createHyphaeAdminClient>;
+
+export * from "./operator.js";

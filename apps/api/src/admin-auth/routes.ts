@@ -10,7 +10,10 @@ import { type Context, Hono } from "hono";
 import type { z } from "zod";
 import { AdminError, within } from "../admin/guard.js";
 import { tokenBucket } from "../member-auth/limits.js";
+import type { SettleChain } from "../payout/distribution-settle.js";
+import type { GateDeps } from "../payout/gate.js";
 import { allowedOrigin, signedBy } from "./message.js";
+import { operatorOverview, operatorPayable } from "./reads.js";
 import type { OperatorAuthStore, OperatorSessionRecord } from "./store.js";
 
 // The operator sign-in (roadmap item 3, part A): a challenge, an off-chain signature by the
@@ -27,6 +30,10 @@ export interface OperatorDeps {
   // The admin key of the community account at the bound address, or null when there is no such
   // community for this mint. Throws when the chain cannot be read: that is never a pass.
   onChainAdmin: (input: { mint: string; address: string }) => Promise<string | null>;
+  // The settle loop's chain without a publisher, for the top-up figure. Absent: unavailable.
+  settle?: () => Promise<SettleChain>;
+  gate?: GateDeps;
+  now?: () => Date;
   timeoutMs?: number;
 }
 
@@ -220,6 +227,55 @@ export function operatorAuth(db: Db, deps: OperatorDeps) {
         });
         return c.json({ ...view(session), token });
       });
+    });
+
+    // A session reads only its own community.
+    async function scoped(c: Context) {
+      const mint = c.req.param("mint");
+      if (!mint || !/^[A-Za-z0-9]{1,64}$/.test(mint) || new URL(c.req.url).search !== "")
+        throw new AdminError("invalid_request", 400);
+      const auth = await authenticate(c);
+      if (auth.community.mint !== mint) throw new AdminError("forbidden", 403);
+      return auth;
+    }
+    const reads = {
+      network: deps.network,
+      ...(deps.settle ? { settle: deps.settle } : {}),
+      ...(deps.gate ? { gate: deps.gate } : {}),
+      ...(deps.now ? { now: deps.now } : {}),
+    };
+    app.all("/communities/:mint/overview", async (c) => {
+      const refused = only(c, "GET");
+      if (refused) return refused;
+      const { community, signal } = await scoped(c);
+      return c.json(
+        await within(
+          operatorOverview(
+            db,
+            { ...community, chainAddress: community.chainAddress as string },
+            reads,
+          ),
+          signal,
+        ),
+      );
+    });
+    app.all("/communities/:mint/epochs/:index/payable", async (c) => {
+      const refused = only(c, "GET");
+      if (refused) return refused;
+      const raw = c.req.param("index");
+      if (!/^(0|[1-9][0-9]{0,8})$/.test(raw)) throw new AdminError("invalid_request", 400);
+      const { community, signal } = await scoped(c);
+      const result = await within(
+        operatorPayable(
+          db,
+          { ...community, chainAddress: community.chainAddress as string },
+          Number(raw),
+          reads,
+        ),
+        signal,
+      );
+      if (!result) throw new AdminError("not_found", 404);
+      return c.json(result);
     });
 
     app.notFound((c) => c.json({ error: "not_found" }, 404));

@@ -139,3 +139,81 @@ describe("read API data exposure", () => {
     expect(statsText).not.toMatch(/handle|x\.com|twitter|wallet"/i);
   });
 });
+
+describe("operator API data exposure", () => {
+  it("names no handle, Telegram id or member, and puts nothing beside a payable wallet", async () => {
+    const { adminRoutes } = await import("../admin/routes.js");
+    const { operatorAuthStore } = await import("../admin-auth/store.js");
+    const { seedReadyEpoch, randomAddress } = await import("../payout/ready-seed.js");
+    const { FAKE_ADMIN, fakeSettleChain } = await import("../payout/settle-fake.js");
+    const { communities, members } = await import("@hyphae/db");
+    const { eq } = await import("drizzle-orm");
+    const chainAddress = randomAddress();
+    const seed = await seedReadyEpoch(t.db, { now: NOW, chainAddress });
+    const people = await t.db
+      .select({ id: members.id, telegram: members.telegramUserId })
+      .from(members)
+      .where(eq(members.communityId, seed.communityId));
+    for (const [i, p] of people.entries())
+      await t.db
+        .update(members)
+        .set({ xHandles: [`exposure_handle_${i}`] })
+        .where(eq(members.id, p.id));
+    // Long, unique ids so a match means a leak, not a coincidence.
+    const [community] = await t.db
+      .update(communities)
+      .set({ adminTelegramUserId: 987654321999n })
+      .where(eq(communities.id, seed.communityId))
+      .returning();
+    if (!community) throw new Error("seed");
+    const store = operatorAuthStore();
+    const app = adminRoutes({
+      db: t.db,
+      enabled: true,
+      operator: {
+        store,
+        origins: ["https://hyphae.test"],
+        network: "solana:devnet",
+        onChainAdmin: async () => FAKE_ADMIN,
+        settle: async () => fakeSettleChain({ community: chainAddress, free: 1n }).chain,
+        gate: { clock: () => NOW },
+        now: () => NOW,
+      },
+    });
+    const { token } = store.open({ mint: seed.mint, wallet: FAKE_ADMIN });
+    const bodies: string[] = [];
+    for (const path of [
+      "status",
+      "session",
+      `communities/${seed.mint}/overview`,
+      `communities/${seed.mint}/epochs/1/payable`,
+      `communities/${seed.mint}/epochs/2/payable`,
+    ]) {
+      const r = await app.request(`/operator/${path}`, {
+        headers: { authorization: `Bearer ${token}` },
+      });
+      expect(r.status, path).toBe(200);
+      bodies.push(await r.text());
+    }
+    const all = bodies.join("\n");
+    for (const secret of [
+      ...people.map((p) => p.id),
+      ...people.map((p) => String(p.telegram)),
+      String(community.adminTelegramUserId),
+      String(community.telegramChatId),
+      "exposure_handle_",
+      token.slice(4),
+      seed.wallets.unsigned,
+    ])
+      expect(all, secret).not.toContain(secret);
+    const allKeys = bodies.flatMap((b) => keys(JSON.parse(b)));
+    expect(allKeys.filter((k) => FORBIDDEN_KEY.test(k))).toEqual([]);
+    expect(allKeys.filter((k) => /handle|member|point|x_/i.test(k))).toEqual([]);
+    // The payable list is wallets and nothing else.
+    expect(Object.keys(JSON.parse(bodies[3] as string)).sort()).toEqual([
+      "epoch_index",
+      "gate_status",
+      "wallets",
+    ]);
+  });
+});

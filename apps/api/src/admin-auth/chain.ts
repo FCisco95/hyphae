@@ -18,7 +18,18 @@ export function onChainAdminReader(
   };
 }
 
-export function readOnlyChain(rpcUrl: string, network: SettleChain["network"]) {
-  // No `publisher`: settleChain then holds no signer and cannot send.
-  return () => settleChain({ rpcUrl, wsUrl: "", network });
+// One read-only settle chain per process, rebuilt after a failed build. No `publisher`:
+// settleChain then holds no signer and cannot send.
+export function readOnlyChain(
+  rpcUrl: string,
+  network: SettleChain["network"],
+): () => Promise<SettleChain> {
+  let built: Promise<SettleChain> | undefined;
+  return () => {
+    built ??= settleChain({ rpcUrl, wsUrl: "", network }).catch((error: unknown) => {
+      built = undefined;
+      throw error;
+    });
+    return built;
+  };
 }

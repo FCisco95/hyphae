@@ -66,3 +66,83 @@ export type OperatorChallenge = z.infer<typeof OperatorChallengeSchema>;
 export type OperatorSessionRequest = z.infer<typeof OperatorSessionRequestSchema>;
 export type OperatorSession = z.infer<typeof OperatorSessionSchema>;
 export type OperatorSessionCreated = z.infer<typeof OperatorSessionCreatedSchema>;
+
+const lamports = z.string().regex(/^(0|[1-9][0-9]{0,30})$/);
+const code = z.string().regex(/^[a-z_]{1,64}$/);
+const count = z.number().int().nonnegative();
+
+export const OperatorEpochSchema = z.strictObject({
+  index: z.number().int().nonnegative(),
+  status: z.enum(["open", "closed", "published"]),
+  closes_at: z.iso.datetime(),
+  published: z.boolean(),
+  decision: z.enum(["distribution_planned", "rolled_over", "distributed", "other"]).nullable(),
+  gate: z.strictObject({
+    status: z.enum(["ready", "blocked", "not_evaluated"]),
+    blockers: z.array(code),
+    payable: count,
+    held: count,
+    not_payable: count,
+  }),
+});
+
+// Why there is or is not a top-up figure. "ok" carries the same pricing as the gate-ready message.
+export const OperatorTopUpSchema = z.discriminatedUnion("status", [
+  z.strictObject({
+    status: z.literal("ok"),
+    epoch_index: z.number().int().nonnegative(),
+    outcome: z.enum(["planned", "rolled_over"]),
+    lamports: lamports.nullable(),
+  }),
+  z.strictObject({
+    status: z.enum(["none", "held", "no_policy", "not_bound", "chain_unavailable"]),
+  }),
+]);
+
+export const OperatorOverviewSchema = z.strictObject({
+  community: z.strictObject({
+    mint: operatorMint,
+    name: z.string(),
+    chain_address: operatorWallet,
+    network: z.enum(["solana:mainnet", "solana:devnet"]),
+  }),
+  hold: z.strictObject({ held: z.boolean() }),
+  policy: z.strictObject({ present: z.boolean() }),
+  epochs: z.array(OperatorEpochSchema).max(12),
+  top_up: OperatorTopUpSchema,
+  raids: z.strictObject({
+    by_state: z.array(z.strictObject({ state: code, count })),
+    active: z
+      .array(
+        z.strictObject({
+          id: z.uuid(),
+          target_url: z.string().nullable(),
+          closes_at: z.iso.datetime(),
+        }),
+      )
+      .max(5),
+    deliveries: z.array(z.strictObject({ status: code, count })),
+  }),
+  jobs: z.discriminatedUnion("status", [
+    z.strictObject({
+      status: z.literal("available"),
+      groups: z.array(
+        z.strictObject({ name: z.string().regex(/^[a-z-]{1,64}$/), state: code, count }),
+      ),
+    }),
+    z.strictObject({ status: z.literal("unavailable") }),
+  ]),
+  as_of: z.iso.datetime(),
+});
+
+// Wallets only, sorted by address: no handle, member, points or Telegram id beside them.
+export const OperatorPayableSchema = z.strictObject({
+  epoch_index: z.number().int().nonnegative(),
+  gate_status: z.enum(["ready", "blocked", "not_evaluated"]),
+  wallets: z.array(operatorWallet),
+});
+
+export type OperatorEpoch = z.infer<typeof OperatorEpochSchema>;
+export type OperatorTopUp = z.infer<typeof OperatorTopUpSchema>;
+export type OperatorOverview = z.infer<typeof OperatorOverviewSchema>;
+export type OperatorPayable = z.infer<typeof OperatorPayableSchema>;

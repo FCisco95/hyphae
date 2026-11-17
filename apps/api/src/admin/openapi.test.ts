@@ -1,6 +1,7 @@
 import type { Db } from "@hyphae/db";
 import { expect, it } from "vitest";
 import { adminOpenApiDocument } from "../../../../packages/admin-client/src/openapi.js";
+import { operatorAuthStore } from "../admin-auth/store.js";
 import { adminRoutes } from "./routes.js";
 
 const document = adminOpenApiDocument();
@@ -18,11 +19,19 @@ const routes = adminRoutes({
   telegramAdmin: async () => {
     throw new Error("must not use providers for missing credentials");
   },
+  operator: {
+    store: operatorAuthStore(),
+    origins: ["https://hyphae.test"],
+    network: "solana:devnet",
+    onChainAdmin: async () => {
+      throw new Error("must not read the chain for missing credentials");
+    },
+  },
 });
 
 it("documents every actual admin route without extending the server surface", () => {
   const paths = routes.routes
-    .filter((route) => route.method === "ALL" && route.path !== "/*")
+    .filter((route) => route.method === "ALL" && !route.path.endsWith("/*"))
     .map((route) => `/admin/v1${route.path.replace(/:(\w+)/g, "{$1}")}`)
     .sort();
   expect(Object.keys(document.paths).sort()).toEqual(paths);
@@ -59,3 +68,37 @@ it.each([
     });
   },
 );
+
+it.each([
+  "/operator/communities/MintA/overview",
+  "/operator/communities/MintA/epochs/1/payable",
+  "/operator/session",
+])("answers %s without a session as unauthorized, never reading the chain", async (path) => {
+  const result = await routes.request(path);
+  expect(result.status).toBe(401);
+  expect(await result.json()).toEqual({ error: "unauthorized" });
+  expect(result.headers.get("Cache-Control")).toBe("private, no-store");
+});
+
+it("documents every operator route's Allow header as the server sends it", async () => {
+  const p = document.paths;
+  for (const [path, documented] of [
+    ["/operator/status", p["/admin/v1/operator/status"].get],
+    ["/operator/challenge", p["/admin/v1/operator/challenge"].post],
+    ["/operator/session", p["/admin/v1/operator/session"].get],
+    [
+      "/operator/communities/MintA/overview",
+      p["/admin/v1/operator/communities/{mint}/overview"].get,
+    ],
+    [
+      "/operator/communities/MintA/epochs/1/payable",
+      p["/admin/v1/operator/communities/{mint}/epochs/{index}/payable"].get,
+    ],
+  ] as const) {
+    const result = await routes.request(path, { method: "PATCH" });
+    expect(result.status, path).toBe(405);
+    expect(documented.responses["405"].headers.Allow.schema.const, path).toBe(
+      result.headers.get("Allow"),
+    );
+  }
+});

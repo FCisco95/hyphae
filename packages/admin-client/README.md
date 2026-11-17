@@ -101,3 +101,31 @@ only `zod` at runtime. Tests use isolated fake transports and an in-process Hono
 contract fixture; they make no production calls and do not verify live Privy or
 Telegram permissions. API authorization and lock/concurrency verification belong
 to the API suite.
+
+## Operator client
+
+`createHyphaeOperatorClient` reads the operator surface under `/admin/v1/operator`: a wallet
+sign-in for the community's on-chain admin and read-only views. It signs, publishes and sends
+nothing. The surface answers `disabled` while the API runs with `ADMIN_API_ENABLED=off`.
+
+```ts
+import { createHyphaeOperatorClient } from "@hyphae/admin-client";
+
+const operator = createHyphaeOperatorClient({
+  baseUrl: "https://api.example/admin/v1",
+  // A server holds the session token (an httpOnly cookie), never the browser.
+  getSessionToken: () => readSessionCookie(),
+});
+
+const { challenge_id, message } = await operator.requestChallenge({ mint, wallet });
+// The admin signs `message`: signMessage, or `solana sign-offchain-message` on a Ledger.
+const { token } = await operator.createSession({ challengeId: challenge_id, signature });
+const overview = await operator.overview(mint); // gates per epoch, top-up, hold, raids, jobs
+const payable = await operator.payable(mint, 7); // payable wallets only, sorted
+```
+
+The sign-in message is one line of printable ASCII: purpose, domain, network, community,
+wallet, nonce, and issued and expiry times. A challenge works once and lasts 5 minutes.
+A session lasts 4 hours and is bound to one community. Every read checks again that the
+session's wallet is still the community's on-chain admin. The payable list never puts a
+handle, member, points value or Telegram id next to a wallet.
