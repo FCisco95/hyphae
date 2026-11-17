@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { type AdminIntakeUpdate, AdminIntakeUpdateSchema } from "@hyphae/core";
 import type { Db } from "@hyphae/db";
 import { type Context, Hono } from "hono";
+import { type OperatorDeps, operatorAuth } from "../admin-auth/routes.js";
 import { telegramIdentity } from "../member-auth/identity.js";
 import { tokenBucket } from "../member-auth/limits.js";
 import type { MemberIdentityProvider } from "../member-auth/privy.js";
@@ -65,17 +66,35 @@ export function adminRoutes(deps: {
   telegramAdmin?: TelegramAdmin;
   webToken?: string;
   timeoutMs?: number;
+  // The operator page's wallet sign-in and reads (admin-auth/). Absent: unavailable.
+  operator?: OperatorDeps;
 }) {
   const app = new Hono();
   const ipAllowed = tokenBucket({ capacity: 30, refillPerMinute: 60 });
   const subjectAllowed = tokenBucket({ capacity: 5, refillPerMinute: 20 });
   const expectedWeb = deps.webToken ? Buffer.from(deps.webToken) : null;
+  const operatorPath = (path: string) => /^(?:\/admin\/v1)?\/operator(?:\/|$)/.test(path);
   app.use("*", async (c, next) => {
     c.header("Cache-Control", "private, no-store");
     c.header("Vary", "Authorization");
-    if (deps.enabled !== true) return c.json({ error: "not_found" }, 404);
+    if (deps.enabled !== true)
+      return c.json({ error: operatorPath(c.req.path) ? "disabled" : "not_found" }, 404);
+    if (operatorPath(c.req.path) && !deps.operator) return c.json({ error: "unavailable" }, 503);
     await next();
   });
+  // The visitor's rate-limit key: the web proxy's forwarded address only with the web token.
+  const visitorKey = (c: Context) => {
+    const credential = c.req.header("x-hyphae-web-token");
+    const received = credential && credential.length <= 4096 ? Buffer.from(credential) : null;
+    const trusted =
+      expectedWeb &&
+      received &&
+      expectedWeb.length === received.length &&
+      timingSafeEqual(expectedWeb, received);
+    return ipBucketKey(trusted ? c.req.header("x-hyphae-visitor") : c.req.header("fly-client-ip"));
+  };
+  const operator = deps.operator ? operatorAuth(deps.db, deps.operator) : null;
+  if (operator) app.route("/operator", operator.routes(visitorKey));
 
   async function handle(c: Context, method: "GET" | "PUT") {
     if (c.req.method !== method) {
@@ -85,15 +104,7 @@ export function adminRoutes(deps: {
     const mint = c.req.param("mint");
     if (!mint || !MINT.test(mint) || new URL(c.req.url).search !== "")
       return c.json({ error: "invalid_request" }, 400);
-    const credential = c.req.header("x-hyphae-web-token");
-    const receivedWeb = credential && credential.length <= 4096 ? Buffer.from(credential) : null;
-    const trustedWeb =
-      expectedWeb &&
-      receivedWeb &&
-      expectedWeb.length === receivedWeb.length &&
-      timingSafeEqual(expectedWeb, receivedWeb);
-    const ip = trustedWeb ? c.req.header("x-hyphae-visitor") : c.req.header("fly-client-ip");
-    if (!ipAllowed(ipBucketKey(ip)))
+    if (!ipAllowed(visitorKey(c)))
       return c.json({ error: "unavailable" }, 429, { "Retry-After": "3" });
     if (!deps.identity || !deps.telegramAdmin) return c.json({ error: "unavailable" }, 503);
     const identity = deps.identity;

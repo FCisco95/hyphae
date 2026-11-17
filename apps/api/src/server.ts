@@ -5,6 +5,8 @@ import { Api, webhookCallback } from "grammy";
 import { Hono } from "hono";
 import { adminRoutes } from "./admin/routes.js";
 import { telegramAdministrator } from "./admin/telegram.js";
+import { onChainAdminReader, readOnlyChain } from "./admin-auth/chain.js";
+import { operatorAuthStore } from "./admin-auth/store.js";
 import { registerCommandMenus } from "./bot/command-menus.js";
 import { bot } from "./bot/index.js";
 import { webhookOptions } from "./bot/webhook-options.js";
@@ -71,6 +73,17 @@ app.route(
     ...(memberIdentity ? { identity: memberIdentity } : {}),
     telegramAdmin: telegramAdministrator(notifyApi),
     ...(env.READ_API_WEB_TOKEN ? { webToken: env.READ_API_WEB_TOKEN } : {}),
+    // The operator page: wallet sign-in by the community's on-chain admin, read-only.
+    ...(env.READ_RPC_URL
+      ? {
+          operator: {
+            store: operatorAuthStore(),
+            origins: [env.PUBLIC_WEB_URL],
+            network: env.LINK_CHAIN,
+            onChainAdmin: onChainAdminReader(readOnlyChain(env.READ_RPC_URL, env.LINK_CHAIN)),
+          },
+        }
+      : {}),
   }),
 );
 // Before /v1, so the public read middleware never handles a signed write.
