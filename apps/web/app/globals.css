@@ -1988,3 +1988,172 @@ td:first-child {
     gap: 12px;
   }
 }
+
+/* Operator page (read-only): phone first, two columns from 900px. */
+.operator {
+  display: grid;
+  gap: 1.25rem;
+}
+.operator-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+@media (min-width: 900px) {
+  .operator-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.operator-session {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.operator-wallet,
+.operator-payable ol,
+.operator-command {
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+.operator-banner {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--ink);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: var(--wash);
+  font-weight: 600;
+}
+.operator-notice {
+  display: grid;
+  gap: 0.75rem;
+}
+.operator-signin {
+  display: grid;
+  gap: 1rem;
+}
+.operator-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.operator-tabs [aria-selected="false"] {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--rule);
+}
+.operator-wallets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.operator-cli {
+  display: grid;
+  gap: 0.75rem;
+}
+.operator-cli label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+.operator-cli input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-family: var(--mono);
+}
+.operator-command {
+  margin: 0;
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  background: var(--wash);
+  font-size: var(--step--1);
+  white-space: pre-wrap;
+}
+.operator-error {
+  margin: 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--ink);
+  font-weight: 600;
+}
+.operator-epochs,
+.operator-raids {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+.operator-epochs > li {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--rule);
+}
+.operator-epochs > li:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.operator-epoch-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: baseline;
+}
+.operator-gate {
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+.operator-gate.gate-ready {
+  color: var(--verified);
+  font-weight: 600;
+}
+.operator-gate.gate-blocked {
+  color: var(--ink);
+}
+.operator-epochs p {
+  margin: 0;
+}
+.operator-epochs button,
+.operator-payable button {
+  justify-self: start;
+}
+.operator-payable {
+  display: grid;
+  gap: 0.5rem;
+}
+.operator-payable ol {
+  margin: 0;
+  padding-left: 1.5rem;
+  font-size: var(--step--1);
+}
+.operator-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--step--1);
+}
+.operator-table th,
+.operator-table td {
+  padding: 0.4rem 0.5rem 0.4rem 0;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+}
+.operator-table td:last-child,
+.operator-table th:last-child {
+  text-align: right;
+}
+.operator-table .is-failed td {
+  font-weight: 700;
+}
+.operator-raids li {
+  padding: 0.4rem 0;
+}

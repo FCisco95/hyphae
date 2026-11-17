@@ -4,6 +4,7 @@ import {
   type OperatorChallengeRequest,
   OperatorChallengeRequestSchema,
   OperatorChallengeSchema,
+  type OperatorEpoch,
   type OperatorOverview,
   OperatorOverviewSchema,
   type OperatorPayable,
@@ -21,6 +22,7 @@ import { type AdminErrorCode, HyphaeAdminError } from "./index.js";
 export type {
   OperatorChallenge,
   OperatorChallengeRequest,
+  OperatorEpoch,
   OperatorOverview,
   OperatorPayable,
   OperatorSession,

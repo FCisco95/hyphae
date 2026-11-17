@@ -13,7 +13,8 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./openapi.json": "./dist/openapi.json"
+    "./openapi.json": "./dist/openapi.json",
+    "./source": "./src/index.ts"
   },
   "files": [
     "dist/index.js",

@@ -105,6 +105,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@hyphae/admin-client':
+        specifier: workspace:*
+        version: link:../../packages/admin-client
       '@hyphae/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -10063,7 +10066,7 @@ snapshots:
 
   extension-port-stream@3.0.0:
     dependencies:
-      readable-stream: 3.6.2
+      readable-stream: 4.8.0
       webextension-polyfill: 0.10.0
 
   fast-copy@3.1.0: {}
