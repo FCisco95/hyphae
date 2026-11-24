@@ -46,23 +46,8 @@ export function parseInitArgs(argv: string[]): InitArgs {
   };
 }
 
-const SYSTEM_PROGRAM = "11111111111111111111111111111111";
-
-// The fee address is permanent: the program has no instruction to change it. Only an existing,
-// System-owned wallet account is taken, so a typo, a program, or a program-owned account such as a
-// Squads multisig account (whose vault is the address to pass) is refused before anything is signed.
-export function feeRecipientProblem(
-  account: { owner: string; executable: boolean; dataLength: number; lamports: bigint } | null,
-): string | null {
-  if (!account) return "the fee recipient does not exist on this network";
-  if (account.owner !== SYSTEM_PROGRAM) {
-    return `the fee recipient is owned by ${account.owner}, not the System program: pass a wallet or a Squads vault, never a multisig account`;
-  }
-  if (account.executable || account.dataLength !== 0) {
-    return "the fee recipient is a program or holds data, not a wallet";
-  }
-  return null;
-}
+// Shared with the operator page: src/payout/community-init.ts.
+export { feeRecipientProblem } from "../src/payout/community-init.js";
 
 // What to send the vault so that its unassigned balance covers a pot of `grossLamports`. As in
 // publish_epoch (P6), the vault's own rent and every allocated, unclaimed lamport stay reserved.

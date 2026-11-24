@@ -27,7 +27,9 @@ import {
   isTransactionSendingSigner,
   pipe,
   type Rpc,
+  type RpcSubscriptions,
   type SolanaRpcApi,
+  type SolanaRpcSubscriptionsApi,
   sendAndConfirmTransactionFactory,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
@@ -156,6 +158,53 @@ export async function signSimulated(
   return signTransactionMessageWithSigners(message);
 }
 
+// The blockhash lifetime a transaction is built with.
+export interface BlockhashLifetime {
+  blockhash: Parameters<typeof setTransactionMessageLifetimeUsingBlockhash>[0]["blockhash"];
+  lastValidBlockHeight: bigint;
+}
+
+// The one transaction shape every operator send uses (CLI and operator page alike): a v0
+// message, the signer as fee payer, the blockhash lifetime, then the instructions.
+export function sendMessage(
+  feePayer: TransactionSigner,
+  lifetime: BlockhashLifetime,
+  instructions: Instruction[],
+) {
+  return pipe(
+    createTransactionMessage({ version: 0 }),
+    (m) => setTransactionMessageFeePayerSigner(feePayer, m),
+    (m) => setTransactionMessageLifetimeUsingBlockhash(lifetime, m),
+    (m) => appendTransactionMessageInstructions(instructions, m),
+  );
+}
+
+// publish_epoch's accounts and arguments for a planner's PublishArgs.
+export async function publishAccounts(programId: Address, input: PublishArgs) {
+  const community = address(input.community);
+  return {
+    programId,
+    community,
+    vault: await vaultAddress(programId, community),
+    feeRecipient: address(input.feeRecipient),
+    epoch: await epochAddress(programId, community, input.index),
+    index: input.index,
+    root: hexToBytes(input.root),
+    auditHash: hexToBytes(input.auditHash),
+    grossLamports: input.grossLamports,
+    allocatedLamports: input.allocatedLamports,
+  };
+}
+
+// The one publish_epoch instruction a publish sends, signed by the community admin.
+export async function publishInstructions(
+  programId: Address,
+  admin: TransactionSigner,
+  input: PublishArgs,
+): Promise<Instruction[]> {
+  return [publishEpochInstruction({ admin, ...(await publishAccounts(programId, input)) })];
+}
+
 export async function solanaChain(opts: {
   rpcUrl: string;
   wsUrl: string;
@@ -165,10 +214,13 @@ export async function solanaChain(opts: {
   programId?: Address;
   // A local test validator (clusterProblem), never a public cluster.
   local?: boolean;
+  // Tests inject transports; production builds them from the URLs.
+  rpc?: Rpc<SolanaRpcApi>;
+  rpcSubscriptions?: RpcSubscriptions<SolanaRpcSubscriptionsApi>;
 }) {
   const programId = opts.programId ?? HYPHAE_PROGRAM_ID;
-  const rpc = createSolanaRpc(opts.rpcUrl);
-  const rpcSubscriptions = createSolanaRpcSubscriptions(opts.wsUrl);
+  const rpc = opts.rpc ?? createSolanaRpc(opts.rpcUrl);
+  const rpcSubscriptions = opts.rpcSubscriptions ?? createSolanaRpcSubscriptions(opts.wsUrl);
   const problem = clusterProblem(opts, await rpc.getGenesisHash().send());
   if (problem) throw new Error(`chain: ${problem}`);
   const sendAndConfirm = sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions });
@@ -180,12 +232,7 @@ export async function solanaChain(opts: {
     options: { skipPreflight?: boolean } = {},
   ) {
     const { value: blockhash } = await rpc.getLatestBlockhash({ commitment: "confirmed" }).send();
-    const message = pipe(
-      createTransactionMessage({ version: 0 }),
-      (m) => setTransactionMessageFeePayerSigner(feePayer, m),
-      (m) => setTransactionMessageLifetimeUsingBlockhash(blockhash, m),
-      (m) => appendTransactionMessageInstructions(instructions, m),
-    );
+    const message = sendMessage(feePayer, blockhash, instructions);
     // skipPreflight is for landing a failing transaction on purpose, so it is not simulated.
     const transaction = options.skipPreflight
       ? await signTransactionMessageWithSigners(message)
@@ -207,22 +254,6 @@ export async function solanaChain(opts: {
       .getAccountInfo(at, { encoding: "base64", commitment: "confirmed" })
       .send();
     return programAccount(programId, value);
-  }
-
-  async function publishing(input: PublishArgs) {
-    const community = address(input.community);
-    return {
-      programId,
-      community,
-      vault: await vaultAddress(programId, community),
-      feeRecipient: address(input.feeRecipient),
-      epoch: await epochAddress(programId, community, input.index),
-      index: input.index,
-      root: hexToBytes(input.root),
-      auditHash: hexToBytes(input.auditHash),
-      grossLamports: input.grossLamports,
-      allocatedLamports: input.allocatedLamports,
-    };
   }
 
   const chain: PublishChain = {
@@ -252,10 +283,10 @@ export async function solanaChain(opts: {
       };
     },
     async publishEpoch(input) {
-      return send([publishEpochInstruction({ admin: opts.admin, ...(await publishing(input)) })]);
+      return send(await publishInstructions(programId, opts.admin, input));
     },
     async publishSignature(input) {
-      return publishTransaction(rpc, await publishing(input));
+      return publishTransaction(rpc, await publishAccounts(programId, input));
     },
   };
   return { chain, rpc, programId, send, readAccount };

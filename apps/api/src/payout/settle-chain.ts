@@ -6,7 +6,7 @@ import {
   HYPHAE_PROGRAM_ID,
   vaultAddress,
 } from "@hyphae/core";
-import { bytesToHex, hexToBytes } from "@noble/hashes/utils.js";
+import { bytesToHex } from "@noble/hashes/utils.js";
 import {
   type Address,
   address,
@@ -14,12 +14,20 @@ import {
   createSolanaRpc,
   getAddressDecoder,
   type Rpc,
+  type RpcSubscriptions,
   type SolanaRpcApi,
+  type SolanaRpcSubscriptionsApi,
   type TransactionSigner,
 } from "@solana/kit";
-import { clusterProblem, programAccount, publishTransaction, solanaChain } from "./chain.js";
+import {
+  clusterProblem,
+  programAccount,
+  publishAccounts,
+  publishTransaction,
+  solanaChain,
+} from "./chain.js";
 import type { SettleChain } from "./distribution-settle.js";
-import type { OnChainEpoch, PublishArgs } from "./publish.js";
+import type { OnChainEpoch } from "./publish.js";
 
 // The settle loop's chain on @solana/kit. The reads hold no key; a publish goes through
 // solanaChain's simulated send with the publisher key, when the worker holds one. The RPC must
@@ -31,8 +39,9 @@ export async function settleChain(opts: {
   network: SettleChain["network"];
   publisher?: TransactionSigner;
   programId?: Address;
-  // Tests inject a transport; production builds one from the URL.
+  // Tests inject transports; production builds them from the URLs.
   rpc?: Rpc<SolanaRpcApi>;
+  rpcSubscriptions?: RpcSubscriptions<SolanaRpcSubscriptionsApi>;
   // A local test validator (clusterProblem), never a public cluster.
   local?: boolean;
 }): Promise<SettleChain> {
@@ -47,6 +56,8 @@ export async function settleChain(opts: {
         network: opts.network,
         admin: opts.publisher,
         programId,
+        rpc,
+        ...(opts.rpcSubscriptions && { rpcSubscriptions: opts.rpcSubscriptions }),
         ...(opts.local && { local: true }),
       })
     : null;
@@ -57,21 +68,6 @@ export async function settleChain(opts: {
       .getAccountInfo(at, { encoding: "base64", commitment: "confirmed" })
       .send();
     return value;
-  }
-  async function publishing(input: PublishArgs) {
-    const community = address(input.community);
-    return {
-      programId,
-      community,
-      vault: await vaultAddress(programId, community),
-      feeRecipient: address(input.feeRecipient),
-      epoch: await epochAddress(programId, community, input.index),
-      index: input.index,
-      root: hexToBytes(input.root),
-      auditHash: hexToBytes(input.auditHash),
-      grossLamports: input.grossLamports,
-      allocatedLamports: input.allocatedLamports,
-    };
   }
 
   return {
@@ -138,7 +134,8 @@ export async function settleChain(opts: {
             publishEpoch: (input) => sending.chain.publishEpoch(input),
           }
         : null,
-    publishSignature: async (input) => publishTransaction(rpc, await publishing(input)),
+    publishSignature: async (input) =>
+      publishTransaction(rpc, await publishAccounts(programId, input)),
   };
 }
 
