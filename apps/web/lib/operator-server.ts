@@ -117,3 +117,44 @@ export async function sameSiteJson(request: Request): Promise<unknown | Response
     return failure(400, "invalid_request");
   }
 }
+
+const MINT = /^[A-Za-z0-9]{1,64}$/;
+// Part B's proxy: a session cookie, a well-formed mint and, for a POST, this site's Origin and a
+// small JSON body. The API decides everything else; its answer passes through as fixed codes.
+export async function operatorAction<T>(
+  request: Request,
+  mint: string,
+  work: (client: HyphaeOperatorClient, body: unknown) => Promise<T>,
+): Promise<Response> {
+  if (!MINT.test(mint)) return failure(400, "invalid_request");
+  let body: unknown = null;
+  if (request.method === "POST") {
+    const parsed = await sameSiteJson(request);
+    if (parsed instanceof Response) return parsed;
+    body = parsed;
+  }
+  const token = operatorToken(request.headers.get("cookie"));
+  if (!token) return failure(401, "unauthorized");
+  const client = operatorClient(token, visitorOf(request.headers));
+  if (!client) return failure(503, "unavailable");
+  try {
+    return Response.json(await work(client, body), { headers: PRIVATE });
+  } catch (error) {
+    return fromClientError(error);
+  }
+}
+
+const field = (body: unknown, key: string): string =>
+  typeof body === "object" &&
+  body !== null &&
+  typeof (body as Record<string, unknown>)[key] === "string"
+    ? ((body as Record<string, unknown>)[key] as string)
+    : "";
+export const submitInput = (body: unknown) => ({
+  buildId: field(body, "build_id"),
+  signature: field(body, "signature"),
+});
+export const feeRecipientOf = (body: unknown) => ({ feeRecipient: field(body, "fee_recipient") });
+// A build reads the chain; a submit waits for the transaction's confirmation.
+export const BUILD_TIMEOUT_MS = 25_000;
+export const SUBMIT_TIMEOUT_MS = 95_000;

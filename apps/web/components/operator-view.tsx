@@ -2,10 +2,15 @@ import type { OperatorEpoch, OperatorOverview, OperatorSession } from "@hyphae/a
 import type { ReactNode } from "react";
 import { explorerAddress, sol, utc } from "../lib/format.js";
 import { OperatorPayable, OperatorSignIn, OperatorSignOut } from "./operator-client.js";
+import { OperatorInit, OperatorPublish } from "./operator-publish.js";
 import { Panel, Stat, Stats } from "./ui.js";
 
-// The operator page: one read-only page per community, phone first. Nothing on it signs,
-// publishes or sends; the payout itself stays the Ledger `publish-epoch run` command.
+// The operator page: one page per community, phone first. The reads are read-only. Part B's
+// publish panel (behind OPERATOR_PUBLISH_ENABLED) hands the admin's wallet the transaction the
+// API built; the page itself never builds, changes or sends one.
+
+// Whether the API's publish routes answer: "off" covers disabled and an API without them.
+export type PublishAvailability = "on" | "off" | "unavailable";
 
 const BLOCKERS: Record<string, string> = {
   legacy_epoch: "legacy epoch (before payouts)",
@@ -46,7 +51,7 @@ export function OperatorShell({
       <header className="management-heading">
         <p className="muted">{name}</p>
         <h1>Operator</h1>
-        <p>Payout gate, top-up, raids and job health. Read-only.</p>
+        <p>Payout gate, top-up, raids, job health and publishing.</p>
       </header>
       {children}
     </div>
@@ -130,23 +135,84 @@ function TopUp({ top }: { top: OperatorOverview["top_up"] }) {
   return <p>{text[top.status]}</p>;
 }
 
+function SessionBar({ session }: { session: OperatorSession }) {
+  return (
+    <div className="operator-session">
+      <p className="small">
+        Signed in as <span className="mono operator-wallet">{session.wallet}</span>, until{" "}
+        {utc(session.expires_at)}.
+      </p>
+      <OperatorSignOut />
+    </div>
+  );
+}
+
+function PublishPanel({
+  publish,
+  held,
+  mint,
+  wallet,
+}: {
+  publish: PublishAvailability;
+  held: boolean;
+  mint: string;
+  wallet: string;
+}) {
+  return (
+    <Panel title="Publish">
+      {held ? (
+        <p>Payouts are on hold for this community, so nothing can be published.</p>
+      ) : publish === "off" ? (
+        <p>
+          Publishing from this page is turned off. Publish with the Ledger:{" "}
+          <code className="mono">publish-epoch run</code>.
+        </p>
+      ) : publish === "unavailable" ? (
+        <p>Publishing is unavailable right now. Try again in a minute.</p>
+      ) : (
+        <OperatorPublish mint={mint} wallet={wallet} />
+      )}
+    </Panel>
+  );
+}
+
+// A setup session: the community is recorded for initialization and not yet on-chain.
+export function OperatorSetupView({
+  session,
+  publish,
+}: {
+  session: OperatorSession;
+  publish: PublishAvailability;
+}) {
+  return (
+    <>
+      <SessionBar session={session} />
+      <Panel title="Initialize on-chain">
+        {publish === "on" ? (
+          <OperatorInit mint={session.mint} wallet={session.wallet} />
+        ) : publish === "off" ? (
+          <p>Initializing from this page is turned off. Use init-community with the Ledger.</p>
+        ) : (
+          <p>Initializing is unavailable right now. Try again in a minute.</p>
+        )}
+      </Panel>
+    </>
+  );
+}
+
 export function OperatorView({
   overview,
   session,
+  publish = "off",
 }: {
   overview: OperatorOverview;
   session: OperatorSession;
+  publish?: PublishAvailability;
 }) {
   const { community } = overview;
   return (
     <>
-      <div className="operator-session">
-        <p className="small">
-          Signed in as <span className="mono operator-wallet">{session.wallet}</span>, until{" "}
-          {utc(session.expires_at)}.
-        </p>
-        <OperatorSignOut />
-      </div>
+      <SessionBar session={session} />
       {overview.hold.held ? (
         <p className="operator-banner" role="status">
           Payouts are on hold for this community. Nothing is planned, messaged or published while
@@ -201,6 +267,12 @@ export function OperatorView({
           )}
         </Panel>
       </div>
+      <PublishPanel
+        publish={publish}
+        held={overview.hold.held}
+        mint={community.mint}
+        wallet={session.wallet}
+      />
       <Panel title="Payout gate per epoch">
         {overview.epochs.length === 0 ? (
           <p>No epochs yet.</p>

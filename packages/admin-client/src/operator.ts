@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  type OperatorBuildState,
   type OperatorChallenge,
   type OperatorChallengeRequest,
   OperatorChallengeRequestSchema,
@@ -32,6 +33,7 @@ import {
 import { type AdminErrorCode, HyphaeAdminError } from "./index.js";
 
 export type {
+  OperatorBuildState,
   OperatorChallenge,
   OperatorChallengeRequest,
   OperatorEpoch,

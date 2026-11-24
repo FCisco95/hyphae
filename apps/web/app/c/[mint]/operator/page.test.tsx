@@ -22,6 +22,10 @@ vi.mock("../../../../components/operator-client.js", () => ({
   OperatorSignOut: () => <button type="button">Sign out</button>,
   OperatorPayable: ({ index }: { index: number }) => <p>Fixture payable {index}</p>,
 }));
+vi.mock("../../../../components/operator-publish.js", () => ({
+  OperatorPublish: ({ wallet }: { wallet: string }) => <p>Fixture publish {wallet}</p>,
+  OperatorInit: ({ mint }: { mint: string }) => <p>Fixture init {mint}</p>,
+}));
 
 const params = { params: Promise.resolve({ mint: community.mint }) };
 const json = (body: unknown, status = 200) =>
@@ -136,9 +140,14 @@ describe("operator page", () => {
       "/status": () => json({ state: "enabled" }),
       "/session": () => json(session),
       [`/communities/${community.mint}/overview`]: () => json(overview),
+      [`/communities/${community.mint}/publish/status`]: () =>
+        json({ state: "enabled", build: null }),
     });
     const html = renderToStaticMarkup(await OperatorPage(params));
     expect(html).toContain("Payouts are on hold");
+    // Held: the publish panel says so and offers no publish.
+    expect(html).toContain("nothing can be published");
+    expect(html).not.toContain("Fixture publish");
     expect(html).toContain("Top-up needed: 0.6 SOL (600000000 lamports)");
     expect(html).toContain("Epoch 7");
     expect(html).toContain("3 payable");
@@ -148,9 +157,61 @@ describe("operator page", () => {
     expect(html).toContain("is-failed");
     expect(html).not.toContain(TOKEN);
     const auth = fetch.mock.calls
-      .filter(([url]) => !String(url).endsWith("/status"))
+      .filter(([url]) => !String(url).endsWith("/operator/status"))
       .map(([, init]) => ((init?.headers ?? {}) as Record<string, string>).authorization);
-    expect(auth).toEqual([`Bearer ${TOKEN}`, `Bearer ${TOKEN}`]);
+    expect(auth).toEqual([`Bearer ${TOKEN}`, `Bearer ${TOKEN}`, `Bearer ${TOKEN}`]);
+  });
+
+  it.each([
+    ["disabled", json({ error: "disabled" }, 404), "Publishing from this page is turned off"],
+    [
+      "absent (an older API)",
+      json({ error: "not_found" }, 404),
+      "Publishing from this page is turned off",
+    ],
+    ["down", json({ error: "unavailable" }, 503), "Publishing is unavailable right now"],
+  ])("says so when publish is %s, and offers no publish", async (_what, reply, text) => {
+    cookie = TOKEN;
+    api({
+      "/status": () => json({ state: "enabled" }),
+      "/session": () => json(session),
+      [`/communities/${community.mint}/overview`]: () =>
+        json({ ...overview, hold: { held: false } }),
+      [`/communities/${community.mint}/publish/status`]: () => reply.clone(),
+    });
+    const html = renderToStaticMarkup(await OperatorPage(params));
+    expect(html).toContain(text);
+    expect(html).not.toContain("Fixture publish");
+    expect(html).toContain("Epoch 7");
+  });
+
+  it("offers the publish panel when it is on and the community is not held", async () => {
+    cookie = TOKEN;
+    api({
+      "/status": () => json({ state: "enabled" }),
+      "/session": () => json(session),
+      [`/communities/${community.mint}/overview`]: () =>
+        json({ ...overview, hold: { held: false } }),
+      [`/communities/${community.mint}/publish/status`]: () =>
+        json({ state: "enabled", build: null }),
+    });
+    expect(renderToStaticMarkup(await OperatorPage(params))).toContain(`Fixture publish ${WALLET}`);
+  });
+
+  it("shows a setup session only the init panel, and no reads", async () => {
+    cookie = TOKEN;
+    const fetch = api({
+      "/status": () => json({ state: "enabled" }),
+      "/session": () => json({ ...session, role: "setup" }),
+      [`/communities/${community.mint}/publish/status`]: () =>
+        json({ state: "enabled", build: null }),
+    });
+    const html = renderToStaticMarkup(await OperatorPage(params));
+    expect(html).toContain(`Fixture init ${community.mint}`);
+    expect(html).not.toContain("Payout gate per epoch");
+    expect(fetch.mock.calls.map(([u]) => String(u))).not.toContain(
+      `https://api.test/admin/v1/operator/communities/${community.mint}/overview`,
+    );
   });
 
   it("never shows another community's session", async () => {

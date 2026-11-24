@@ -4,10 +4,12 @@ import { notFound } from "next/navigation.js";
 import {
   OperatorDisabled,
   OperatorForbidden,
+  OperatorSetupView,
   OperatorShell,
   OperatorSignedOut,
   OperatorUnavailable,
   OperatorView,
+  type PublishAvailability,
 } from "../../../../components/operator-view.js";
 import { OPERATOR_COOKIE, operatorClient, operatorToken } from "../../../../lib/operator-server.js";
 import { readCommunity } from "../../../../lib/reads.js";
@@ -42,11 +44,22 @@ export default async function OperatorPage(props: { params: Promise<{ mint: stri
     return shell(off ? <OperatorDisabled /> : <OperatorUnavailable />);
   }
   if (!token) return shell(<OperatorSignedOut mint={mint} />);
+  // Part B's routes: off (disabled, or an API image without them) and down are told apart.
+  const publishOf = async (): Promise<PublishAvailability> => {
+    try {
+      await client.publishStatus(mint);
+      return "on";
+    } catch (error) {
+      return code(error) === "disabled" || code(error) === "not_found" ? "off" : "unavailable";
+    }
+  };
   try {
     const session = await client.session();
     if (session.mint !== mint) return shell(<OperatorForbidden />);
-    const overview = await client.overview(mint);
-    return shell(<OperatorView overview={overview} session={session} />);
+    if (session.role === "setup")
+      return shell(<OperatorSetupView session={session} publish={await publishOf()} />);
+    const [overview, publish] = await Promise.all([client.overview(mint), publishOf()]);
+    return shell(<OperatorView overview={overview} session={session} publish={publish} />);
   } catch (error) {
     const c = code(error);
     if (c === "unauthorized") return shell(<OperatorSignedOut mint={mint} expired />);
