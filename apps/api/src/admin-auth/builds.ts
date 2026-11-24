@@ -12,8 +12,7 @@ export const BUILD_TTL_MS = 120_000;
 // How long a finished build stays visible to the page's status poll.
 const KEEP_MS = 10 * 60_000;
 const MAX_BUILDS = 200;
-// How long a message stays its first session's (see owners below), and how many are kept.
-export const OWNER_KEEP_MS = 60 * 60_000;
+// How many messages keep an owner at once (see owners below).
 const MAX_OWNERS = 5000;
 
 export type BuildState = "awaiting_signature" | "submitting" | "done" | "failed" | "expired";
@@ -48,13 +47,16 @@ export function buildStore(opts: { now?: () => number; max?: number; maxOwners?:
   const maxOwners = opts.maxOwners ?? MAX_OWNERS;
   // Insertion order is creation order.
   const builds = new Map<string, BuildRecord>();
-  // A message belongs to the session that built it first, for as long as its blockhash could
-  // still be valid. ed25519 is deterministic, so one admin signature fits every build of the same
-  // bytes; without this, a session could submit a signature another session obtained (review
-  // rounds 2 to 4). Validity is 150 blocks, about a minute, a few at worst: OWNER_KEEP_MS is far
-  // past it, independent of any build's life. Full: new builds are refused, never an owner evicted.
-  const owners = new Map<string, { sessionId: string; since: number }>();
+  // A message belongs to the session that built it first until a block height read from the
+  // chain is past its last valid height: no wall clock proves a blockhash expired (a stalled
+  // chain keeps it valid). ed25519 is deterministic, so one admin signature fits every build of
+  // the same bytes; without this, a session could submit a signature another session obtained
+  // (review rounds 2 to 5). Full: new builds are refused, never an owner evicted. The restart
+  // case (an empty table) is closed by the build's start-height floor (publish.ts).
+  const owners = new Map<string, { sessionId: string; lastValid: bigint }>();
   const fingerprint = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+  // The highest block height read from the chain.
+  let observed = -1n;
 
   const end = (b: BuildRecord, state: BuildState, t: number) => {
     b.state = state;
@@ -65,7 +67,7 @@ export function buildStore(opts: { now?: () => number; max?: number; maxOwners?:
       if (b.state === "awaiting_signature" && b.expiresAt.getTime() <= t) end(b, "expired", t);
       if (b.endedAt && b.endedAt.getTime() + KEEP_MS <= t) builds.delete(id);
     }
-    for (const [key, o] of owners) if (o.since + OWNER_KEEP_MS <= t) owners.delete(key);
+    for (const [key, o] of owners) if (observed > o.lastValid) owners.delete(key);
   };
 
   return {
@@ -94,7 +96,11 @@ export function buildStore(opts: { now?: () => number; max?: number; maxOwners?:
       };
       builds.set(build.id, build);
       // The first session keeps the bytes; a later build of them never takes them over.
-      if (!owners.has(key)) owners.set(key, { sessionId: build.sessionId, since: t });
+      if (!owners.has(key))
+        owners.set(key, {
+          sessionId: build.sessionId,
+          lastValid: build.lifetime.lastValidBlockHeight,
+        });
       return build;
     },
     // Taken once, before any other check looks at it: whatever happens next, it is spent. Only
@@ -115,13 +121,19 @@ export function buildStore(opts: { now?: () => number; max?: number; maxOwners?:
         return { status: "refused", reason: "expired" };
       }
       // The same bytes, first built by another session: its signature must not land here.
+      // Missing means freed: the chain is past its height, so the bytes can no longer land.
       const owner = owners.get(fingerprint(b.messageBytes));
-      if (owner && owner.sessionId !== who.sessionId) {
+      if (!owner || owner.sessionId !== who.sessionId) {
         end(b, "failed", t);
         return { status: "refused", reason: "build_unknown" };
       }
       b.state = "submitting";
       return { status: "ok", build: b };
+    },
+    // A block height read from the chain (a submit's check); it frees messages past their height.
+    observe(height: bigint) {
+      if (height > observed) observed = height;
+      sweep(now());
     },
     finish(build: BuildRecord, state: "done" | "failed" | "expired", signature: string | null) {
       build.signature = signature ?? build.signature;

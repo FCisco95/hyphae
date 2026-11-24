@@ -52,6 +52,17 @@ export function publishDeps(
   const wsUrl = `wss://${rpcUrl.slice("https://".length)}`;
   const rpc = createSolanaRpc(rpcUrl);
   const rpcSubscriptions = createSolanaRpcSubscriptions(wsUrl);
+  const height = () => rpc.getBlockHeight({ commitment: "confirmed" }).send();
+  // Read at boot, before any build; a failed read is retried by the next build instead of kept.
+  let started: Promise<bigint> | undefined;
+  const startHeight = () => {
+    started ??= height().catch((error: unknown) => {
+      started = undefined;
+      throw error;
+    });
+    return started;
+  };
+  void startHeight().catch(() => undefined);
   return {
     network,
     chain: (publisher) =>
@@ -66,7 +77,8 @@ export function publishDeps(
     sending: (signer) =>
       solanaChain({ rpcUrl, wsUrl, network, admin: signer, rpc, rpcSubscriptions }),
     send: handoffSender(rpc, rpcSubscriptions),
-    blockHeight: () => rpc.getBlockHeight({ commitment: "confirmed" }).send(),
+    blockHeight: height,
+    startHeight,
     builds: buildStore(),
     setupRecords: records,
     log: (line) => console.log(JSON.stringify(line)),

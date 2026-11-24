@@ -42,6 +42,9 @@ const routes = adminRoutes({
       blockHeight: async () => {
         throw new Error("must not read the chain for missing credentials");
       },
+      startHeight: async () => {
+        throw new Error("must not read the chain for missing credentials");
+      },
       builds: buildStore(),
       setupRecords: [],
     },

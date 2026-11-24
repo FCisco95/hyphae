@@ -54,6 +54,9 @@ export interface PublishDeps {
   send(transaction: SignedHandoff): Promise<string>;
   // The cluster's confirmed block height, to refuse a build whose blockhash has expired.
   blockHeight(): Promise<bigint>;
+  // The block height when this process started. Builds use only blockhashes produced after it,
+  // so no signature made before a restart (whose builds were in memory) can fit a new build.
+  startHeight(): Promise<bigint>;
   builds: BuildStore;
   setupRecords: readonly SetupRecord[];
   gate?: GateDeps;
@@ -98,12 +101,19 @@ export function buildView(b: BuildRecord): OperatorBuildState {
   };
 }
 
-function store(
+// A blockhash's last valid height is its block height plus 150; one produced before this process
+// started has a last valid height of at most the start height plus 150 (review round 5).
+const MAX_PROCESSING_AGE = 150n;
+
+async function store(
   deps: PublishDeps,
   operator: Operator,
   plan: BuildPlan,
   handoff: SignatureRequired,
-): BuildRecord {
+): Promise<BuildRecord> {
+  if (handoff.lifetime.lastValidBlockHeight <= (await deps.startHeight()) + MAX_PROCESSING_AGE) {
+    throw new Error("operator: the blockhash is not newer than the API's start; build again");
+  }
   // The build lives no longer than its blockhash: the wallet's signature is useless after it.
   return deps.builds.put({
     sessionId: operator.id,
@@ -149,6 +159,7 @@ async function takeSigned(
     deps.builds.finish(build, "failed", null);
     throw error;
   }
+  deps.builds.observe(height);
   if (height > build.lifetime.lastValidBlockHeight) {
     deps.builds.finish(build, "expired", null);
     return { status: "refused", reason: "expired" };
@@ -205,7 +216,7 @@ export function buildPublish(
     } catch (error) {
       if (!(error instanceof SignatureRequired) || args === null) throw error;
       const planned: PublishArgs = args;
-      const build = store(
+      const build = await store(
         deps,
         operator,
         { kind: "publish", args: planned, epochIndex: Number(planned.index) },
@@ -447,7 +458,7 @@ export function buildInit(
       if (!(error instanceof SignatureRequired)) throw error;
       handoff = error;
     }
-    const build = store(
+    const build = await store(
       deps,
       operator,
       {

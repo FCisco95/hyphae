@@ -124,6 +124,7 @@ async function world(
       return text;
     },
     blockHeight: async () => height,
+    startHeight: async () => 0n,
     builds: buildStore(),
     setupRecords: [],
     gate: { clock: () => NOW },
@@ -517,6 +518,7 @@ async function setupWorld(o: { bound?: boolean; exists?: boolean } = {}) {
       return text;
     },
     blockHeight: async () => 10n,
+    startHeight: async () => 0n,
     builds: buildStore(),
     setupRecords: [{ mint: seed.mint, network: "solana:devnet", admin: kp.address, feeRecipient }],
   };
@@ -804,5 +806,19 @@ describe("browser publish submit, review round 2", () => {
     expect(
       (await submitPublish(t.db, w.deps, other, { buildId: fresh.build.id, signature })).status,
     ).toBe("published");
+  });
+});
+
+// Review round 5 (Codex, 2026-11-24): a signature made before an API restart.
+describe("browser publish after an API restart", () => {
+  it("builds only on a blockhash newer than the API's start", async () => {
+    const w = await world();
+    // The process started at a height whose blockhashes are the ones the RPC still serves.
+    const { FAKE_LAST_VALID } = await import("../payout/rpc-fake.js");
+    w.deps.startHeight = async () => FAKE_LAST_VALID - 150n;
+    await expect(buildPublish(t.db, w.deps, w.operator)).rejects.toThrow(/newer than/);
+    expect(w.deps.builds.latest(w.operator.id, w.seed.mint)).toBeNull();
+    w.deps.startHeight = async () => FAKE_LAST_VALID - 151n;
+    awaiting(await buildPublish(t.db, w.deps, w.operator));
   });
 });

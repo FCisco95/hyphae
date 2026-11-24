@@ -83,6 +83,7 @@ async function world(
       return text;
     },
     blockHeight: async () => 10n,
+    startHeight: async () => 0n,
     builds: buildStore(),
     setupRecords: (o.records ?? []).map((r) => ({ ...r, mint: r.mint || seed.mint })),
     gate: { clock: () => NOW },

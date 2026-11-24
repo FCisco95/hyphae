@@ -298,6 +298,7 @@ describe("operator API data exposure", () => {
           send: async (tx) =>
             getBase58Decoder().decode(Object.values(tx.signatures)[0] as Uint8Array),
           blockHeight: async () => 10n,
+          startHeight: async () => 0n,
           builds: buildStore(),
           setupRecords: [],
           gate: { clock: () => NOW },
