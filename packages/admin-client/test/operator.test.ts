@@ -165,7 +165,7 @@ describe("operator client, part B (browser publish and init)", () => {
   const BUILD = "11111111-2222-4333-8444-555555555555";
   const SIG = "2".repeat(88);
   it("reads the publish status, and says disabled or not_found when the routes are off or absent", async () => {
-    const status = { state: "enabled", build: null };
+    const status = { state: "enabled", build: null, builds: [] };
     const replies = [
       json(status),
       json({ error: "disabled" }, 404),

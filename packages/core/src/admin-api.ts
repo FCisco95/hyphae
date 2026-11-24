@@ -171,7 +171,9 @@ export const OperatorBuildStateSchema = z.strictObject({
 // 404 disabled when OPERATOR_PUBLISH_ENABLED is off; an older API image answers not_found.
 export const OperatorPublishStatusSchema = z.strictObject({
   state: z.literal("enabled"),
+  // The session's latest build, and its recent ones (oldest first): poll a build by its id.
   build: OperatorBuildStateSchema.nullable(),
+  builds: z.array(OperatorBuildStateSchema).max(5),
 });
 
 // What the wallet is asked to sign: the unsigned wire transaction (its one signature slot
@@ -251,13 +253,11 @@ export const OperatorSubmitRequestSchema = z.strictObject({
   signature,
 });
 
-const submitRefusal = z.enum([
-  "build_unknown",
-  "expired",
-  "signature_invalid",
-  "plan_changed",
-  "send_failed",
-]);
+const submitRefusal = z.enum(["build_unknown", "expired", "signature_invalid", "plan_changed"]);
+
+// Sent, but its confirmation failed: it may or may not be on-chain. Building again records it if
+// it landed (an epoch already on-chain is recorded, never sent twice).
+const unconfirmed = z.strictObject({ status: z.literal("unconfirmed"), signature });
 
 export const OperatorPublishSubmitSchema = z.discriminatedUnion("status", [
   z.strictObject({
@@ -266,6 +266,7 @@ export const OperatorPublishSubmitSchema = z.discriminatedUnion("status", [
     epoch_index: z.number().int().nonnegative(),
     recovered: z.boolean(),
   }),
+  unconfirmed,
   z.strictObject({
     status: z.literal("refused"),
     reason: z.union([submitRefusal, OperatorPublishRefusalSchema]),
@@ -307,6 +308,7 @@ export const OperatorInitBuildSchema = z.discriminatedUnion("status", [
 ]);
 
 export const OperatorInitSubmitSchema = z.discriminatedUnion("status", [
+  unconfirmed,
   z.strictObject({
     status: z.literal("initialized"),
     signature,

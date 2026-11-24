@@ -141,7 +141,7 @@ describe("operator page", () => {
       "/session": () => json(session),
       [`/communities/${community.mint}/overview`]: () => json(overview),
       [`/communities/${community.mint}/publish/status`]: () =>
-        json({ state: "enabled", build: null }),
+        json({ state: "enabled", build: null, builds: [] }),
     });
     const html = renderToStaticMarkup(await OperatorPage(params));
     expect(html).toContain("Payouts are on hold");
@@ -193,7 +193,7 @@ describe("operator page", () => {
       [`/communities/${community.mint}/overview`]: () =>
         json({ ...overview, hold: { held: false } }),
       [`/communities/${community.mint}/publish/status`]: () =>
-        json({ state: "enabled", build: null }),
+        json({ state: "enabled", build: null, builds: [] }),
     });
     expect(renderToStaticMarkup(await OperatorPage(params))).toContain(`Fixture publish ${WALLET}`);
   });
@@ -204,7 +204,7 @@ describe("operator page", () => {
       "/status": () => json({ state: "enabled" }),
       "/session": () => json({ ...session, role: "setup" }),
       [`/communities/${community.mint}/publish/status`]: () =>
-        json({ state: "enabled", build: null }),
+        json({ state: "enabled", build: null, builds: [] }),
     });
     const html = renderToStaticMarkup(await OperatorPage(params));
     expect(html).toContain(`Fixture init ${community.mint}`);

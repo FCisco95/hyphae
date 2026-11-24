@@ -400,7 +400,7 @@ describe("browser publish submit", () => {
     expect(w.sent).toEqual([]);
   });
 
-  it("says send_failed when the cluster refuses the transaction", async () => {
+  it("says unconfirmed, and records nothing, when the cluster refuses the transaction", async () => {
     const w = await world();
     const { SendError } = await import("../payout/chain.js");
     w.deps.send = async () => {
@@ -410,7 +410,7 @@ describe("browser publish submit", () => {
     const signature = await signedBy(w.kp, messageOf(built));
     expect(
       await submitPublish(t.db, w.deps, w.operator, { buildId: built.build.id, signature }),
-    ).toEqual({ status: "refused", reason: "send_failed" });
+    ).toEqual({ status: "unconfirmed", signature: "x" });
     const [epoch] = await t.db.select().from(epochs).where(eq(epochs.id, w.seed.epochId));
     expect(epoch?.status).toBe("closed");
   });
@@ -627,5 +627,120 @@ describe("browser init-community", () => {
       }),
     ).toEqual({ status: "refused", reason: "community_exists" });
     expect(w.sent).toEqual([]);
+  });
+});
+
+// Review round 1 (Codex, 2026-11-24): recovery, unconfirmed sends and the session's builds.
+async function replacePlan(w: Awaited<ReturnType<typeof world>>, free: bigint) {
+  const [intent] = await t.db
+    .select({ id: distributionPublications.id })
+    .from(distributionPublications)
+    .where(eq(distributionPublications.communityId, w.seed.communityId));
+  if (!intent) throw new Error("no intent");
+  await t.db
+    .delete(distributionPublicationEpochMembers)
+    .where(eq(distributionPublicationEpochMembers.publicationId, intent.id));
+  await t.db
+    .delete(distributionPublicationMembers)
+    .where(eq(distributionPublicationMembers.publicationId, intent.id));
+  await t.db.delete(distributionPublications).where(eq(distributionPublications.id, intent.id));
+  await t.db
+    .delete(epochPayoutDecisions)
+    .where(eq(epochPayoutDecisions.communityId, w.seed.communityId));
+  w.fake.state.free = free;
+}
+
+describe("browser publish submit, recovery and uncertain sends", () => {
+  it("records the build's own plan when it is already on-chain, with its signature", async () => {
+    const w = await world();
+    const built = awaiting(await buildPublish(t.db, w.deps, w.operator));
+    const plan = w.deps.builds.latest(w.operator.id, w.seed.mint)?.plan;
+    if (plan?.kind !== "publish") throw new Error("no plan");
+    // This build's transaction landed earlier (a lost response), unrecorded.
+    w.fake.state.onChain.set(plan.args.index, {
+      root: plan.args.root,
+      auditHash: plan.args.auditHash,
+      grossLamports: plan.args.grossLamports,
+      allocatedLamports: plan.args.allocatedLamports,
+    });
+    const signature = await signedBy(w.kp, messageOf(built));
+    expect(
+      await submitPublish(t.db, w.deps, w.operator, { buildId: built.build.id, signature }),
+    ).toEqual({
+      status: "published",
+      signature: "sig-found-on-chain",
+      epoch_index: 1,
+      recovered: true,
+    });
+    expect(w.sent).toEqual([]);
+    expect(w.deps.builds.latest(w.operator.id, w.seed.mint)).toMatchObject({
+      state: "done",
+      signature: "sig-found-on-chain",
+    });
+  });
+
+  it("refuses to recover another plan than the one signed, and records nothing", async () => {
+    const w = await world();
+    const built = awaiting(await buildPublish(t.db, w.deps, w.operator));
+    // The plan is replaced by a larger one, which another run sent and did not record.
+    await replacePlan(w, 3n * SOL);
+    const other = await cliRun(w);
+    if (!other.args) throw new Error("no plan");
+    w.fake.state.onChain.set(other.args.index, {
+      root: other.args.root,
+      auditHash: other.args.auditHash,
+      grossLamports: other.args.grossLamports,
+      allocatedLamports: other.args.allocatedLamports,
+    });
+    const signature = await signedBy(w.kp, messageOf(built));
+    expect(
+      await submitPublish(t.db, w.deps, w.operator, { buildId: built.build.id, signature }),
+    ).toEqual({ status: "refused", reason: "plan_changed" });
+    const [epoch] = await t.db.select().from(epochs).where(eq(epochs.id, w.seed.epochId));
+    expect(epoch?.status).toBe("closed");
+    expect(w.sent).toEqual([]);
+  });
+
+  it("keeps the signature of a send whose confirmation failed, and says it is unconfirmed", async () => {
+    const w = await world();
+    const { SendError } = await import("../payout/chain.js");
+    const built = awaiting(await buildPublish(t.db, w.deps, w.operator));
+    const signature = await signedBy(w.kp, messageOf(built));
+    w.deps.send = async () => {
+      throw new SendError(signature, new Error("block height exceeded"));
+    };
+    expect(
+      await submitPublish(t.db, w.deps, w.operator, { buildId: built.build.id, signature }),
+    ).toEqual({ status: "unconfirmed", signature });
+    expect(w.deps.builds.latest(w.operator.id, w.seed.mint)).toMatchObject({
+      state: "failed",
+      signature,
+    });
+  });
+
+  it("finds each of the session's builds by id, not only the latest", async () => {
+    const w = await world();
+    const first = awaiting(await buildPublish(t.db, w.deps, w.operator));
+    const second = awaiting(await buildPublish(t.db, w.deps, w.operator));
+    const recent = w.deps.builds.recent(w.operator.id, w.seed.mint).map((b) => b.id);
+    expect(recent).toEqual([first.build.id, second.build.id]);
+    expect(w.deps.builds.recent(crypto.randomUUID(), w.seed.mint)).toEqual([]);
+  });
+});
+
+describe("browser init submit, uncertain sends", () => {
+  it("keeps the signature of an init whose confirmation failed", async () => {
+    const w = await setupWorld();
+    const { SendError } = await import("../payout/chain.js");
+    const built = awaiting(
+      await buildInit(t.db, w.deps, w.operator, { feeRecipient: w.feeRecipient }),
+    );
+    const signature = await signedBy(w.kp, messageOf(built));
+    w.deps.send = async () => {
+      throw new SendError(signature, new Error("block height exceeded"));
+    };
+    expect(
+      await submitInit(t.db, w.deps, w.operator, { buildId: built.build.id, signature }),
+    ).toEqual({ status: "unconfirmed", signature });
   });
 });

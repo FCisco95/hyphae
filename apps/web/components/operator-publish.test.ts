@@ -13,7 +13,7 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from "@solana/kit";
 import { describe, expect, it } from "vitest";
-import { cliCommand, pollText, signatureFromWallet } from "./operator-publish.js";
+import { cliCommand, finishedBuild, pollText, signatureFromWallet } from "./operator-publish.js";
 
 const WALLET = "CCgEo8Yzb5vpfuaCixZ8NVJqv8ssAzXmKm5vsfhfmhe2";
 const OTHER = "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR";
@@ -99,5 +99,29 @@ describe("pollText", () => {
       /^Sent \(SIG\) but not recorded yet/,
     );
     expect(pollText({ ...base, state: "failed", signature: null })).toMatch(/did not go through/);
+  });
+});
+
+describe("finishedBuild", () => {
+  const build = (id: string, state: "awaiting_signature" | "submitting" | "done" | "failed") => ({
+    id,
+    kind: "publish",
+    state,
+    signature: state === "done" ? "SIG" : null,
+    expires_at: "2026-11-24T12:00:00.000Z",
+  });
+  const A = "11111111-2222-4333-8444-555555555555";
+  const B = "11111111-2222-4333-8444-666666666666";
+  it("reads only this tab's build, and only once it has finished", () => {
+    // Tab B prepared another epoch after tab A's submit: A keeps waiting for its own build.
+    const status = {
+      state: "enabled",
+      build: build(B, "awaiting_signature"),
+      builds: [build(A, "submitting"), build(B, "awaiting_signature")],
+    };
+    expect(finishedBuild(status, A)).toBeNull();
+    const later = { ...status, builds: [build(A, "done"), build(B, "awaiting_signature")] };
+    expect(finishedBuild(later, A)).toMatchObject({ id: A, state: "done", signature: "SIG" });
+    expect(finishedBuild({ state: "enabled", build: null }, A)).toBeNull();
   });
 });

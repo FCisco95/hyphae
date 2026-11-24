@@ -104,12 +104,16 @@ export function buildStore(opts: { now?: () => number; max?: number } = {}) {
       build.signature = signature ?? build.signature;
       end(build, state, now());
     },
-    // The session's latest build for this community, for the page's status poll.
+    // The session's latest build for this community.
     latest(sessionId: string, mint: string): BuildRecord | null {
+      return this.recent(sessionId, mint).at(-1) ?? null;
+    },
+    // The session's recent builds for this community, oldest first: a page polls its own build
+    // by id, so another tab's newer build is never read as its outcome.
+    recent(sessionId: string, mint: string, limit = 5): BuildRecord[] {
       sweep(now());
-      let found: BuildRecord | null = null;
-      for (const b of builds.values()) if (b.sessionId === sessionId && b.mint === mint) found = b;
-      return found;
+      const mine = [...builds.values()].filter((b) => b.sessionId === sessionId && b.mint === mint);
+      return mine.slice(-limit);
     },
   };
 }

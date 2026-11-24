@@ -266,7 +266,7 @@ const publishPaths = {
       operationId: "submitOperatorPublish",
       summary: "Send a signed build and record it as the CLI run does",
       description:
-        "The build is spent by this call whatever its outcome. The signature must verify over the stored bytes with the session's wallet. The planner runs again with every check; it sends only if it reaches the same publish_epoch, byte for byte (otherwise plan_changed). Up to 90 s: on a timeout, read publish/status.",
+        "The build is spent by this call whatever its outcome. The signature must verify over the stored bytes with the session's wallet. The planner runs again with every check; it sends only if it reaches the same publish_epoch, byte for byte, and records an epoch already on-chain only if it is this build's plan (otherwise plan_changed). A send whose confirmation failed answers unconfirmed with its signature: build again, which records it if it landed. Up to 90 s: on a timeout, find this build by id in publish/status.",
       security: [{ operatorSession: [] }],
       parameters,
       requestBody: submitBody,

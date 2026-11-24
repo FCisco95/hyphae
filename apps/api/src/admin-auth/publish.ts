@@ -319,9 +319,14 @@ export function submitPublish(
     try {
       const read = await deps.chain();
       // The planner runs again from the database and the chain; it reaches this publisher only
-      // if it sends again, and the send must be the build's, byte for byte.
+      // if it sends again, and the send must be the build's, byte for byte. An epoch it finds
+      // already on-chain is recorded only if it is this build's plan (review round 1, P2).
       const chain: SettleChain = {
         ...read,
+        publishSignature: async (args) => {
+          if (!sameArgs(args, plan.args)) throw new PlanChanged();
+          return read.publishSignature(args);
+        },
         publisher: {
           address: operator.wallet,
           publishEpoch: async (args) => {
@@ -355,21 +360,35 @@ export function submitPublish(
                   recovered: out.recovered,
                 }
               : { status: "refused", reason: "plan_changed" };
-      deps.builds.finish(build, result.status === "published" ? "done" : "failed", sent);
+      const done = result.status === "published";
+      deps.builds.finish(build, done ? "done" : "failed", done ? result.signature : sent);
       deps.log?.({
         event: "operator_publish_submit",
         mint: operator.mint,
         wallet: operator.wallet,
         epoch_index: plan.epochIndex,
         build: build.id,
-        outcome: result.status === "published" ? "published" : result.reason,
-        signature: result.status === "published" ? result.signature : sent,
+        outcome: done ? "published" : result.reason,
+        signature: done ? result.signature : sent,
       });
       return result;
     } catch (error) {
+      // A send whose confirmation failed may still land: its signature is kept and reported.
+      if (error instanceof SendError) sent = error.signature;
       deps.builds.finish(build, "failed", sent);
       if (error instanceof PlanChanged) return { status: "refused", reason: "plan_changed" };
-      if (error instanceof SendError) return { status: "refused", reason: "send_failed" };
+      if (error instanceof SendError) {
+        deps.log?.({
+          event: "operator_publish_submit",
+          mint: operator.mint,
+          wallet: operator.wallet,
+          epoch_index: plan.epochIndex,
+          build: build.id,
+          outcome: "unconfirmed",
+          signature: error.signature,
+        });
+        return { status: "unconfirmed", signature: error.signature };
+      }
       throw error;
     }
   });
@@ -538,8 +557,10 @@ export function submitInit(
         vault: plan.vault,
       };
     } catch (error) {
+      // A send whose confirmation failed may still land: its signature is kept and reported.
+      if (error instanceof SendError) sent = error.signature;
       deps.builds.finish(build, "failed", sent);
-      if (error instanceof SendError) return { status: "refused", reason: "send_failed" };
+      if (error instanceof SendError) return { status: "unconfirmed", signature: error.signature };
       throw error;
     }
   });

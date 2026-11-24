@@ -9,7 +9,7 @@ import type {
 } from "@hyphae/admin-client/source";
 import { getBase58Decoder, getBase64Encoder, getTransactionDecoder } from "@solana/kit";
 import { getWallets } from "@wallet-standard/app";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { sol, utc } from "../lib/format.js";
 
 // The operator page's publish and init (roadmap item 3, part B). The API builds the exact
@@ -39,8 +39,6 @@ const TEXT: Record<string, string> = {
   signature_invalid:
     "The signature does not match the transaction this page built. Nothing was sent.",
   plan_changed: "The plan changed since this transaction was built. Nothing was sent.",
-  send_failed:
-    "The network refused or did not confirm the transaction. It may still land: prepare it again to check before signing anything new.",
   not_setup: "This community is not recorded for setup with this wallet.",
   fee_recipient_mismatch: "That fee recipient is not the recorded one.",
   community_exists: "The community is already initialized on-chain.",
@@ -267,6 +265,9 @@ function publishOutcome(out: Exclude<OperatorPublishBuild, { status: "awaiting_s
 
 // A finished build as the poll reads it. A failed build with a signature was sent: it may be
 // on-chain without its record, and preparing again records it rather than sending twice.
+export const unconfirmedText = (signature: string) =>
+  `Sent (${signature}), but its confirmation failed: it may or may not be on-chain. Prepare it again before signing anything new: an epoch already on-chain is recorded, never sent twice.`;
+
 export function pollText(b: OperatorBuildState): string {
   if (b.state === "done") return `Published: ${b.signature}`;
   if (b.signature)
@@ -274,7 +275,28 @@ export function pollText(b: OperatorBuildState): string {
   return "It did not go through. Prepare it again to see the current state.";
 }
 
-function Polling({ mint, onState }: { mint: string; onState: (s: OperatorBuildState) => void }) {
+// This page's own build in a status answer, once it has finished. Another tab's newer build is
+// never read as this one's outcome (review round 1, P3); an unfinished build keeps the poll going.
+export function finishedBuild(data: unknown, id: string): OperatorBuildState | null {
+  const builds = (data as { builds?: unknown })?.builds;
+  if (!Array.isArray(builds)) return null;
+  const mine = (builds as OperatorBuildState[]).find((b) => b?.id === id);
+  return mine && (mine.state === "done" || mine.state === "failed" || mine.state === "expired")
+    ? mine
+    : null;
+}
+
+function Polling({
+  mint,
+  buildId,
+  onState,
+}: {
+  mint: string;
+  buildId: string;
+  onState: (s: OperatorBuildState | null) => void;
+}) {
+  const report = useRef(onState);
+  report.current = onState;
   useEffect(() => {
     let stop = false;
     const tick = async () => {
@@ -285,18 +307,19 @@ function Polling({ mint, onState }: { mint: string; onState: (s: OperatorBuildSt
             `/api/operator/${encodeURIComponent(mint)}/publish/status`,
             "GET",
           );
-          const build = data.build as OperatorBuildState | null;
-          if (build && build.state !== "submitting") return onState(build);
+          const done = finishedBuild(data, buildId);
+          if (done) return report.current(done);
         } catch {
           // Keep polling: the send may still be confirming.
         }
       }
+      if (!stop) report.current(null);
     };
     void tick();
     return () => {
       stop = true;
     };
-  }, [mint, onState]);
+  }, [mint, buildId]);
   return <p role="status">Sent. Waiting for the confirmation…</p>;
 }
 
@@ -305,7 +328,7 @@ export function OperatorPublish({ mint, wallet }: { mint: string; wallet: string
     | { kind: "idle" }
     | { kind: "busy" }
     | { kind: "built"; out: Awaiting<OperatorPublishBuild> }
-    | { kind: "polling" }
+    | { kind: "polling"; buildId: string }
     | { kind: "result"; text: string; ok: boolean }
   >({ kind: "idle" });
   const base = `/api/operator/${encodeURIComponent(mint)}/publish`;
@@ -334,12 +357,14 @@ export function OperatorPublish({ mint, wallet }: { mint: string; wallet: string
               ok: true,
               text: `Published epoch ${out.epoch_index}: ${out.signature}`,
             }
-          : { kind: "result", ok: false, text: explain(out.reason) },
+          : out.status === "unconfirmed"
+            ? { kind: "result", ok: false, text: unconfirmedText(out.signature) }
+            : { kind: "result", ok: false, text: explain(out.reason) },
       );
     } catch (e) {
       const code = e instanceof Error ? e.message : "";
       // A slow confirmation can outlive the request: the API keeps going, so ask it.
-      if (code === "unavailable") return setState({ kind: "polling" });
+      if (code === "unavailable") return setState({ kind: "polling", buildId });
       setState({ kind: "result", text: explain(code), ok: false });
     }
   }
@@ -348,12 +373,17 @@ export function OperatorPublish({ mint, wallet }: { mint: string; wallet: string
     return (
       <Polling
         mint={mint}
+        buildId={state.buildId}
         onState={(b) =>
-          setState({
-            kind: "result",
-            ok: b.state === "done",
-            text: pollText(b),
-          })
+          setState(
+            b
+              ? { kind: "result", ok: b.state === "done", text: pollText(b) }
+              : {
+                  kind: "result",
+                  ok: false,
+                  text: "No answer yet. Prepare it again: an epoch already on-chain is recorded, never sent twice.",
+                },
+          )
         }
       />
     );
@@ -455,7 +485,9 @@ export function OperatorInit({ mint, wallet }: { mint: string; wallet: string })
               ok: true,
               text: `Initialized: community ${out.community}, vault ${out.vault} (${out.signature}). Binding it to this community is the next, separate step (bind-community).`,
             }
-          : { kind: "result", ok: false, text: explain(out.reason) },
+          : out.status === "unconfirmed"
+            ? { kind: "result", ok: false, text: unconfirmedText(out.signature) }
+            : { kind: "result", ok: false, text: explain(out.reason) },
       );
     } catch (e) {
       setState({ kind: "result", text: explain(e instanceof Error ? e.message : ""), ok: false });

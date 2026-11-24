@@ -356,8 +356,13 @@ export function operatorAuth(db: Db, deps: OperatorDeps) {
       const refused = only(c, "GET");
       if (refused) return refused;
       const { session } = await scoped(c, "any");
-      const latest = p.builds.latest(session.id, session.mint);
-      return c.json({ state: "enabled", build: latest ? buildView(latest) : null });
+      const recent = p.builds.recent(session.id, session.mint);
+      const latest = recent.at(-1);
+      return c.json({
+        state: "enabled",
+        build: latest ? buildView(latest) : null,
+        builds: recent.map(buildView),
+      });
     });
 
     app.all("/communities/:mint/publish/build", async (c) => {
