@@ -325,7 +325,9 @@ export function submitPublish(
         ...read,
         publishSignature: async (args) => {
           if (!sameArgs(args, plan.args)) throw new PlanChanged();
-          return read.publishSignature(args);
+          // Kept before the record: a failed record still reports what is on-chain (round 2).
+          sent = await read.publishSignature(args);
+          return sent;
         },
         publisher: {
           address: operator.wallet,

@@ -744,3 +744,65 @@ describe("browser init submit, uncertain sends", () => {
     ).toEqual({ status: "unconfirmed", signature });
   });
 });
+
+// Review round 2 (Codex, 2026-11-24).
+describe("browser publish submit, review round 2", () => {
+  it("keeps a recovered signature when the record after it fails", async () => {
+    const w = await world();
+    const built = awaiting(await buildPublish(t.db, w.deps, w.operator));
+    const plan = w.deps.builds.latest(w.operator.id, w.seed.mint)?.plan;
+    if (plan?.kind !== "publish") throw new Error("no plan");
+    w.fake.state.onChain.set(plan.args.index, {
+      root: plan.args.root,
+      auditHash: plan.args.auditHash,
+      grossLamports: plan.args.grossLamports,
+      allocatedLamports: plan.args.allocatedLamports,
+    });
+    // The database refuses the record once the lookup has found the transaction.
+    let found = false;
+    const lookup = w.fake.chain.publishSignature;
+    w.fake.chain.publishSignature = async (input) => {
+      const signature = await lookup(input);
+      found = true;
+      return signature;
+    };
+    const transaction = t.db.transaction.bind(t.db);
+    const spy = vi.spyOn(t.db, "transaction").mockImplementation(((...a: unknown[]) => {
+      if (found) throw new Error("database down");
+      return (transaction as (...b: unknown[]) => unknown)(...a);
+    }) as never);
+    try {
+      const signature = await signedBy(w.kp, messageOf(built));
+      await expect(
+        submitPublish(t.db, w.deps, w.operator, { buildId: built.build.id, signature }),
+      ).rejects.toThrow("database down");
+    } finally {
+      spy.mockRestore();
+    }
+    expect(w.deps.builds.latest(w.operator.id, w.seed.mint)).toMatchObject({
+      state: "failed",
+      signature: "sig-found-on-chain",
+    });
+  });
+
+  it("refuses one session's signature on another session's identical build", async () => {
+    const w = await world();
+    const a = awaiting(await buildPublish(t.db, w.deps, w.operator));
+    // Same wallet, same plan, same blockhash: the same message, built for another session.
+    const other = { ...w.operator, id: crypto.randomUUID() };
+    const b = awaiting(await buildPublish(t.db, w.deps, other));
+    expect(sameBytes(messageOf(a), messageOf(b))).toBe(true);
+    const signatureA = await signedBy(w.kp, messageOf(a));
+    expect(
+      await submitPublish(t.db, w.deps, other, { buildId: b.build.id, signature: signatureA }),
+    ).toEqual({ status: "refused", reason: "build_unknown" });
+    expect(w.sent).toEqual([]);
+    // Once the blockhash moves on, the other session builds and sends its own message.
+    w.rpc.setBlockhash("EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG");
+    const fresh = awaiting(await buildPublish(t.db, w.deps, other));
+    const signature = await signedBy(w.kp, messageOf(fresh));
+    expect(
+      (await submitPublish(t.db, w.deps, other, { buildId: fresh.build.id, signature })).status,
+    ).toBe("published");
+  });
+});
