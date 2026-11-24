@@ -160,3 +160,64 @@ describe("operator client", () => {
     expect(() => createHyphaeOperatorClient({ ...ok, timeoutMs: 0 })).toThrow(HyphaeAdminError);
   });
 });
+
+describe("operator client, part B (browser publish and init)", () => {
+  const BUILD = "11111111-2222-4333-8444-555555555555";
+  const SIG = "2".repeat(88);
+  it("reads the publish status, and says disabled or not_found when the routes are off or absent", async () => {
+    const status = { state: "enabled", build: null };
+    const replies = [
+      json(status),
+      json({ error: "disabled" }, 404),
+      json({ error: "not_found" }, 404),
+    ];
+    const { client, fetch } = make(() => replies.shift() as Response);
+    expect(await client.publishStatus("CommunityA")).toEqual(status);
+    expect(await code(client.publishStatus("CommunityA"))).toBe("disabled");
+    expect(await code(client.publishStatus("CommunityA"))).toBe("not_found");
+    expect(String(fetch.mock.calls[0]?.[0])).toBe(
+      "https://api.example/admin/v1/operator/communities/CommunityA/publish/status",
+    );
+  });
+
+  it("posts an empty build and a signature-only submit, never transaction bytes", async () => {
+    const replies = [
+      json({ status: "nothing_due" }),
+      json({ status: "refused", reason: "plan_changed" }),
+    ];
+    const { client, fetch } = make(() => replies.shift() as Response);
+    expect(await client.buildPublish("CommunityA")).toEqual({ status: "nothing_due" });
+    expect(
+      await client.submitPublish(
+        "CommunityA",
+        { buildId: BUILD, signature: SIG },
+        { timeoutMs: 95_000 },
+      ),
+    ).toEqual({ status: "refused", reason: "plan_changed" });
+    expect(fetch.mock.calls[0]?.[1]?.body).toBe("{}");
+    expect(JSON.parse(String(fetch.mock.calls[1]?.[1]?.body))).toEqual({
+      build_id: BUILD,
+      signature: SIG,
+    });
+  });
+
+  it("refuses malformed submit and init input before any request", async () => {
+    const { client, fetch } = make(() => json({}));
+    expect(await code(client.submitPublish("CommunityA", { buildId: "x", signature: SIG }))).toBe(
+      "invalid_input",
+    );
+    expect(await code(client.submitInit("CommunityA", { buildId: BUILD, signature: "0OIl" }))).toBe(
+      "invalid_input",
+    );
+    expect(await code(client.buildInit("CommunityA", { feeRecipient: "nope" }))).toBe(
+      "invalid_input",
+    );
+    expect(await code(client.buildPublish("bad mint!"))).toBe("invalid_input");
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("refuses a response that is not one of the documented outcomes", async () => {
+    const { client } = make(() => json({ status: "published", signature: SIG }));
+    expect(await code(client.buildPublish("CommunityA"))).toBe("schema_mismatch");
+  });
+});

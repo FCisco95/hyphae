@@ -5,10 +5,21 @@ import {
   OperatorChallengeRequestSchema,
   OperatorChallengeSchema,
   type OperatorEpoch,
+  type OperatorInitBuild,
+  OperatorInitBuildSchema,
+  OperatorInitRequestSchema,
+  type OperatorInitSubmit,
+  OperatorInitSubmitSchema,
   type OperatorOverview,
   OperatorOverviewSchema,
   type OperatorPayable,
   OperatorPayableSchema,
+  type OperatorPublishBuild,
+  OperatorPublishBuildSchema,
+  type OperatorPublishStatus,
+  OperatorPublishStatusSchema,
+  type OperatorPublishSubmit,
+  OperatorPublishSubmitSchema,
   type OperatorSession,
   type OperatorSessionCreated,
   OperatorSessionCreatedSchema,
@@ -16,6 +27,7 @@ import {
   OperatorSessionSchema,
   type OperatorStatus,
   OperatorStatusSchema,
+  OperatorSubmitRequestSchema,
 } from "../../core/src/admin-api.js";
 import { type AdminErrorCode, HyphaeAdminError } from "./index.js";
 
@@ -23,8 +35,13 @@ export type {
   OperatorChallenge,
   OperatorChallengeRequest,
   OperatorEpoch,
+  OperatorInitBuild,
+  OperatorInitSubmit,
   OperatorOverview,
   OperatorPayable,
+  OperatorPublishBuild,
+  OperatorPublishStatus,
+  OperatorPublishSubmit,
   OperatorSession,
   OperatorSessionCreated,
   OperatorStatus,
@@ -47,6 +64,8 @@ export interface OperatorClientOptions {
 
 export interface OperatorRequestOptions {
   signal?: AbortSignal;
+  /** Overrides the client's timeout for this call (a submit waits for its confirmation). */
+  timeoutMs?: number;
 }
 
 const MINT = /^[A-Za-z0-9]{1,64}$/;
@@ -101,8 +120,11 @@ export function createHyphaeOperatorClient(options: OperatorClientOptions) {
     path: string,
     schema: T,
     init: { method: "GET" | "POST" | "DELETE"; body?: unknown; auth: boolean },
-    { signal }: OperatorRequestOptions,
+    { signal, timeoutMs: callTimeoutMs }: OperatorRequestOptions,
   ): Promise<z.infer<T>> {
+    const limit = callTimeoutMs ?? timeoutMs;
+    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 2_147_483_647)
+      throw new HyphaeAdminError("invalid_input");
     if (signal?.aborted) throw new HyphaeAdminError("aborted");
     const controller = new AbortController();
     let timedOut = false;
@@ -111,7 +133,7 @@ export function createHyphaeOperatorClient(options: OperatorClientOptions) {
     const timer = setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, timeoutMs);
+    }, limit);
     const cancelled = () => new HyphaeAdminError(timedOut ? "timeout" : "aborted");
     let response: Response | undefined;
     try {
@@ -288,6 +310,88 @@ export function createHyphaeOperatorClient(options: OperatorClientOptions) {
       );
       if (result.epoch_index !== epochIndex) throw new HyphaeAdminError("identity_mismatch");
       return result;
+    },
+    /**
+     * Part B. Whether browser publish is on (off rejects with "disabled"; an API without these
+     * routes with "not_found"), and this session's latest build.
+     */
+    async publishStatus(
+      mint: string,
+      opts: OperatorRequestOptions = {},
+    ): Promise<OperatorPublishStatus> {
+      const m = mintOf(mint);
+      return call(
+        `/communities/${m}/publish/status`,
+        OperatorPublishStatusSchema,
+        { method: "GET", auth: true },
+        opts,
+      );
+    },
+    /** Plans the next decided epoch and builds its publish_epoch for the admin's wallet. */
+    async buildPublish(
+      mint: string,
+      opts: OperatorRequestOptions = {},
+    ): Promise<OperatorPublishBuild> {
+      const m = mintOf(mint);
+      return call(
+        `/communities/${m}/publish/build`,
+        OperatorPublishBuildSchema,
+        { method: "POST", body: {}, auth: true },
+        opts,
+      );
+    },
+    /** Sends the wallet's base58 signature over the build's message. Not retried. */
+    async submitPublish(
+      mint: string,
+      input: { buildId: string; signature: string },
+      opts: OperatorRequestOptions = {},
+    ): Promise<OperatorPublishSubmit> {
+      const m = mintOf(mint);
+      const parsed = OperatorSubmitRequestSchema.safeParse({
+        build_id: input?.buildId,
+        signature: input?.signature,
+      });
+      if (!parsed.success) throw new HyphaeAdminError("invalid_input");
+      return call(
+        `/communities/${m}/publish/submit`,
+        OperatorPublishSubmitSchema,
+        { method: "POST", body: parsed.data, auth: true },
+        opts,
+      );
+    },
+    /** Setup sessions: builds initialize_community with the recorded fee recipient. */
+    async buildInit(
+      mint: string,
+      input: { feeRecipient: string },
+      opts: OperatorRequestOptions = {},
+    ): Promise<OperatorInitBuild> {
+      const m = mintOf(mint);
+      const parsed = OperatorInitRequestSchema.safeParse({ fee_recipient: input?.feeRecipient });
+      if (!parsed.success) throw new HyphaeAdminError("invalid_input");
+      return call(
+        `/communities/${m}/init/build`,
+        OperatorInitBuildSchema,
+        { method: "POST", body: parsed.data, auth: true },
+        opts,
+      );
+    },
+    async submitInit(
+      mint: string,
+      input: { buildId: string; signature: string },
+      opts: OperatorRequestOptions = {},
+    ): Promise<OperatorInitSubmit> {
+      const m = mintOf(mint);
+      const parsed = OperatorSubmitRequestSchema.safeParse({
+        build_id: input?.buildId,
+        signature: input?.signature,
+      });
+      if (!parsed.success) throw new HyphaeAdminError("invalid_input");
+      return call(
+        `/communities/${m}/init/submit`,
+        OperatorInitSubmitSchema,
+        { method: "POST", body: parsed.data, auth: true },
+        opts,
+      );
     },
   };
 }

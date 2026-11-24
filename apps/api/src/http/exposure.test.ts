@@ -216,4 +216,132 @@ describe("operator API data exposure", () => {
       "wallets",
     ]);
   });
+
+  it("names no handle, Telegram id or member in the publish build, status and submit", async () => {
+    const { adminRoutes } = await import("../admin/routes.js");
+    const { operatorAuthStore } = await import("../admin-auth/store.js");
+    const { buildStore } = await import("../admin-auth/builds.js");
+    const { testKey } = await import("../admin-auth/test-key.js");
+    const { seedReadyEpoch, randomAddress } = await import("../payout/ready-seed.js");
+    const { fakeSettleChain } = await import("../payout/settle-fake.js");
+    const { fakeRpc } = await import("../payout/rpc-fake.js");
+    const { solanaChain } = await import("../payout/chain.js");
+    const { communities, members, payoutPolicies } = await import("@hyphae/db");
+    const { eq } = await import("drizzle-orm");
+    const { getBase64Encoder, getBase58Decoder } = await import("@solana/kit");
+    const key = testKey();
+    const chainAddress = randomAddress();
+    const seed = await seedReadyEpoch(t.db, { now: NOW, chainAddress });
+    await t.db.insert(payoutPolicies).values({
+      communityId: seed.communityId,
+      effectiveFromIndex: 1,
+      thresholdVolumeLamports: 100_000_000_000n,
+      basis: "cumulative",
+      rewardBpsOfVolume: 100,
+      autoPublish: false,
+    });
+    const people = await t.db
+      .select({ id: members.id, telegram: members.telegramUserId })
+      .from(members)
+      .where(eq(members.communityId, seed.communityId));
+    for (const [i, p] of people.entries())
+      await t.db
+        .update(members)
+        .set({ xHandles: [`publish_handle_${i}`] })
+        .where(eq(members.id, p.id));
+    const [community] = await t.db
+      .update(communities)
+      .set({ adminTelegramUserId: 987654321888n })
+      .where(eq(communities.id, seed.communityId))
+      .returning();
+    if (!community) throw new Error("seed");
+    const fake = fakeSettleChain({
+      community: chainAddress,
+      free: 2_000_000_000n,
+      admin: key.wallet,
+    });
+    const rpc = fakeRpc();
+    const sending = (signer: Parameters<typeof solanaChain>[0]["admin"]) =>
+      solanaChain({
+        rpcUrl: "https://rpc.test",
+        wsUrl: "wss://rpc.test",
+        network: "solana:devnet",
+        admin: signer,
+        rpc: rpc.rpc,
+        rpcSubscriptions: rpc.rpcSubscriptions,
+      });
+    const store = operatorAuthStore();
+    const app = adminRoutes({
+      db: t.db,
+      enabled: true,
+      operator: {
+        store,
+        origins: ["https://hyphae.test"],
+        network: "solana:devnet",
+        onChainAdmin: async () => key.wallet,
+        gate: { clock: () => NOW },
+        now: () => NOW,
+        publishEnabled: true,
+        publish: {
+          network: "solana:devnet",
+          chain: async (publisher) => ({
+            ...fake.chain,
+            publisher: publisher
+              ? {
+                  address: publisher.address,
+                  publishEpoch: async (input) =>
+                    (await sending(publisher)).chain.publishEpoch(input),
+                }
+              : null,
+          }),
+          sending,
+          send: async (tx) =>
+            getBase58Decoder().decode(Object.values(tx.signatures)[0] as Uint8Array),
+          blockHeight: async () => 10n,
+          builds: buildStore(),
+          setupRecords: [],
+          gate: { clock: () => NOW },
+        },
+      },
+    });
+    const { token } = store.open({ mint: seed.mint, wallet: key.wallet });
+    const request = (method: string, path: string, body?: unknown) =>
+      app.request(`/operator/communities/${seed.mint}/${path}`, {
+        method,
+        headers: {
+          authorization: `Bearer ${token}`,
+          ...(body ? { "content-type": "application/json" } : {}),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+    const bodies: string[] = [];
+    const build = await request("POST", "publish/build", {});
+    expect(build.status).toBe(200);
+    const built = (await build.json()) as { build: { id: string }; message: string };
+    bodies.push(JSON.stringify(built));
+    bodies.push(await (await request("GET", "publish/status")).text());
+    const submit = await request("POST", "publish/submit", {
+      build_id: built.build.id,
+      signature: key.signRaw(new Uint8Array(getBase64Encoder().encode(built.message))),
+    });
+    expect(submit.status).toBe(200);
+    bodies.push(await submit.text());
+    const all = bodies.join("\n");
+    for (const secret of [
+      ...people.map((p) => p.id),
+      ...people.map((p) => String(p.telegram)),
+      String(community.adminTelegramUserId),
+      String(community.telegramChatId),
+      "publish_handle_",
+      token.slice(4),
+      seed.wallets.unsigned,
+    ])
+      expect(all, secret).not.toContain(secret);
+    const allKeys = bodies.flatMap((b) => keys(JSON.parse(b)));
+    expect(allKeys.filter((k) => FORBIDDEN_KEY.test(k))).toEqual([]);
+    expect(allKeys.filter((k) => /handle|member|point|x_/i.test(k))).toEqual([]);
+    // The build names no payable wallet: only how many there are.
+    for (const wallet of Object.values(seed.wallets))
+      expect(bodies[0], wallet).not.toContain(wallet);
+  });
 });

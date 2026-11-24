@@ -4,12 +4,19 @@ import {
   AdminIntakeUpdateSchema,
   OperatorChallengeRequestSchema,
   OperatorChallengeSchema,
+  OperatorInitBuildSchema,
+  OperatorInitRequestSchema,
+  OperatorInitSubmitSchema,
   OperatorOverviewSchema,
   OperatorPayableSchema,
+  OperatorPublishBuildSchema,
+  OperatorPublishStatusSchema,
+  OperatorPublishSubmitSchema,
   OperatorSessionCreatedSchema,
   OperatorSessionRequestSchema,
   OperatorSessionSchema,
   OperatorStatusSchema,
+  OperatorSubmitRequestSchema,
 } from "../../core/src/admin-api.js";
 
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` });
@@ -202,6 +209,106 @@ const operatorPaths = {
   },
 };
 
+// Part B: browser publish and init-community, off unless OPERATOR_PUBLISH_ENABLED=on. The API
+// builds the transaction the CLI would and keeps its message bytes; the admin's wallet signs; only
+// the signature comes back. The API never takes transaction bytes and holds no key.
+const publishResponses = (ok: string, allow: string, extra: Record<string, unknown> = {}) =>
+  operatorResponses(ok, allow, {
+    ...sessionErrors,
+    "403": error(
+      "forbidden",
+      "Another community's session, the wrong session kind (publish needs an admin session, init a setup session), or the wallet is no longer the on-chain admin.",
+    ),
+    "404": operatorError(
+      ["disabled", "not_found"],
+      "disabled: OPERATOR_PUBLISH_ENABLED or ADMIN_API_ENABLED is off; not_found: an API without these routes.",
+    ),
+    ...extra,
+  });
+const submitBody = {
+  required: true,
+  description:
+    "The wallet's ed25519 signature (base58) over the build's message bytes, exactly as built. Strict JSON object; at most 1024 UTF-8 bytes.",
+  content: content("OperatorSubmitRequest"),
+};
+const publishPaths = {
+  "/admin/v1/operator/communities/{mint}/publish/status": {
+    get: {
+      operationId: "getOperatorPublishStatus",
+      summary: "Whether browser publish is on, and this session's latest build",
+      security: [{ operatorSession: [] }],
+      parameters,
+      responses: publishResponses("OperatorPublishStatus", "GET"),
+    },
+  },
+  "/admin/v1/operator/communities/{mint}/publish/build": {
+    post: {
+      operationId: "buildOperatorPublish",
+      summary: "Plan the next decided epoch and build its publish_epoch for the wallet",
+      description:
+        "Runs publish-epoch run's planner and chain code with a hand-off signer: refusals (recorded hold, no payout policy, no chain binding, wallet not the on-chain admin) come first; an epoch below the threshold is rolled over as the CLI does. awaiting_signature returns the unsigned transaction, its message bytes and every number it commits to. One open build per community, single use, valid until its blockhash expires (at most 120 s).",
+      security: [{ operatorSession: [] }],
+      parameters,
+      requestBody: {
+        required: true,
+        description: "An empty JSON object.",
+        content: {
+          "application/json": { schema: { type: "object", additionalProperties: false } },
+        },
+      },
+      responses: publishResponses("OperatorPublishBuild", "POST", {
+        "400": error("invalid_request", "Malformed mint, body or content type."),
+      }),
+    },
+  },
+  "/admin/v1/operator/communities/{mint}/publish/submit": {
+    post: {
+      operationId: "submitOperatorPublish",
+      summary: "Send a signed build and record it as the CLI run does",
+      description:
+        "The build is spent by this call whatever its outcome. The signature must verify over the stored bytes with the session's wallet. The planner runs again with every check; it sends only if it reaches the same publish_epoch, byte for byte (otherwise plan_changed). Up to 90 s: on a timeout, read publish/status.",
+      security: [{ operatorSession: [] }],
+      parameters,
+      requestBody: submitBody,
+      responses: publishResponses("OperatorPublishSubmit", "POST", {
+        "400": error("invalid_request", "Malformed mint, body or content type."),
+      }),
+    },
+  },
+  "/admin/v1/operator/communities/{mint}/init/build": {
+    post: {
+      operationId: "buildOperatorInit",
+      summary: "Build initialize_community for a recorded, not yet initialized community",
+      description:
+        "Setup sessions only (the community is recorded in setup-records.ts with this wallet as admin and is not bound). The fee recipient must equal the recorded one. Runs init-community's checks: program deployed, community account absent, fee recipient a System-owned wallet. Writes no database.",
+      security: [{ operatorSession: [] }],
+      parameters,
+      requestBody: {
+        required: true,
+        description: "Strict JSON object; at most 1024 UTF-8 bytes.",
+        content: content("OperatorInitRequest"),
+      },
+      responses: publishResponses("OperatorInitBuild", "POST", {
+        "400": error("invalid_request", "Malformed mint, body or content type."),
+      }),
+    },
+  },
+  "/admin/v1/operator/communities/{mint}/init/submit": {
+    post: {
+      operationId: "submitOperatorInit",
+      summary: "Send a signed initialize_community and read the account back",
+      description:
+        "As publish/submit. Binding communities.chain_address stays the operator's bind-community step.",
+      security: [{ operatorSession: [] }],
+      parameters,
+      requestBody: submitBody,
+      responses: publishResponses("OperatorInitSubmit", "POST", {
+        "400": error("invalid_request", "Malformed mint, body or content type."),
+      }),
+    },
+  },
+};
+
 // A build artifact, not a new runtime endpoint or an assertion about an installed service.
 export function adminOpenApiDocument() {
   return {
@@ -244,6 +351,7 @@ export function adminOpenApiDocument() {
         },
       },
       ...operatorPaths,
+      ...publishPaths,
     },
     components: {
       securitySchemes: {
@@ -299,6 +407,13 @@ export function adminOpenApiDocument() {
         },
         OperatorOverview: z.toJSONSchema(OperatorOverviewSchema),
         OperatorPayable: z.toJSONSchema(OperatorPayableSchema),
+        OperatorPublishStatus: z.toJSONSchema(OperatorPublishStatusSchema),
+        OperatorPublishBuild: z.toJSONSchema(OperatorPublishBuildSchema),
+        OperatorSubmitRequest: z.toJSONSchema(OperatorSubmitRequestSchema),
+        OperatorPublishSubmit: z.toJSONSchema(OperatorPublishSubmitSchema),
+        OperatorInitRequest: z.toJSONSchema(OperatorInitRequestSchema),
+        OperatorInitBuild: z.toJSONSchema(OperatorInitBuildSchema),
+        OperatorInitSubmit: z.toJSONSchema(OperatorInitSubmitSchema),
       },
     },
   };

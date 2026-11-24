@@ -52,6 +52,8 @@ export const OperatorSessionSchema = z.strictObject({
   wallet: operatorWallet,
   mint: operatorMint,
   expires_at: z.iso.datetime(),
+  // Present only for a setup session (part B): it may only initialize the community on-chain.
+  role: z.literal("setup").optional(),
 });
 
 // Returned once, to the server that holds it (the web proxy's httpOnly cookie).
@@ -146,3 +148,184 @@ export type OperatorEpoch = z.infer<typeof OperatorEpochSchema>;
 export type OperatorTopUp = z.infer<typeof OperatorTopUpSchema>;
 export type OperatorOverview = z.infer<typeof OperatorOverviewSchema>;
 export type OperatorPayable = z.infer<typeof OperatorPayableSchema>;
+
+// The operator page's browser publish and init-community (roadmap item 3, part B). The API builds
+// the exact transaction the CLI would, the admin's wallet signs it, and only the signature comes
+// back: the API never takes transaction bytes from a client, and holds no key.
+const signature = z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{64,90}$/);
+const hex32 = z.string().regex(/^[0-9a-f]{64}$/);
+const base64 = z
+  .string()
+  .max(2048)
+  .regex(/^[A-Za-z0-9+/]+={0,2}$/);
+const network = z.enum(["solana:mainnet", "solana:devnet"]);
+
+export const OperatorBuildStateSchema = z.strictObject({
+  id: z.uuid(),
+  kind: z.enum(["publish", "init"]),
+  state: z.enum(["awaiting_signature", "submitting", "done", "failed", "expired"]),
+  signature: signature.nullable(),
+  expires_at: z.iso.datetime(),
+});
+
+// 404 disabled when OPERATOR_PUBLISH_ENABLED is off; an older API image answers not_found.
+export const OperatorPublishStatusSchema = z.strictObject({
+  state: z.literal("enabled"),
+  build: OperatorBuildStateSchema.nullable(),
+});
+
+// What the wallet is asked to sign: the unsigned wire transaction (its one signature slot
+// empty) and its message bytes, both base64. The signature over `message` is what comes back.
+const handoff = {
+  build: z.strictObject({ id: z.uuid(), expires_at: z.iso.datetime() }),
+  transaction: base64,
+  message: base64,
+};
+
+// Every number the transaction commits to, shown before the wallet opens.
+export const OperatorPublishSummarySchema = z.strictObject({
+  network,
+  program_id: operatorWallet,
+  epoch_index: z.number().int().nonnegative(),
+  epochs_paid: z.number().int().positive(),
+  gross_lamports: lamports,
+  fee_lamports: lamports,
+  fee_bps: z.number().int().nonnegative(),
+  net_lamports: lamports,
+  allocated_lamports: lamports,
+  cap_remainder_lamports: lamports,
+  dust_lamports: lamports,
+  payable_wallets: count,
+  root: hex32,
+  audit_hash: hex32,
+  accounts: z.strictObject({
+    fee_payer: operatorWallet,
+    community: operatorWallet,
+    vault: operatorWallet,
+    fee_recipient: operatorWallet,
+    epoch: operatorWallet,
+  }),
+  blockhash: operatorWallet,
+  last_valid_block_height: lamports,
+  // base58(sha256(message)): what the Ledger Solana app shows when it blind-signs.
+  message_hash: operatorWallet,
+});
+
+export const OperatorPublishRefusalSchema = z.enum([
+  "community_unknown",
+  "community_held",
+  "no_payout_policy",
+  "community_not_on_chain",
+  "publisher_not_admin",
+]);
+
+export const OperatorPublishBuildSchema = z.discriminatedUnion("status", [
+  z.strictObject({
+    status: z.literal("awaiting_signature"),
+    ...handoff,
+    summary: OperatorPublishSummarySchema,
+  }),
+  z.strictObject({ status: z.literal("refused"), reason: OperatorPublishRefusalSchema }),
+  z.strictObject({
+    status: z.literal("waiting"),
+    epoch_index: z.number().int().nonnegative(),
+    blockers: z.array(code),
+  }),
+  z.strictObject({ status: z.literal("nothing_due") }),
+  z.strictObject({
+    status: z.literal("rolled_over"),
+    epoch_index: z.number().int().nonnegative(),
+    reason: code,
+  }),
+  // Already on-chain (a run sent it and did not record it): recorded now, nothing to sign.
+  z.strictObject({
+    status: z.literal("published"),
+    signature,
+    epoch_index: z.number().int().nonnegative(),
+    recovered: z.literal(true),
+  }),
+]);
+
+export const OperatorSubmitRequestSchema = z.strictObject({
+  build_id: z.uuid(),
+  signature,
+});
+
+const submitRefusal = z.enum([
+  "build_unknown",
+  "expired",
+  "signature_invalid",
+  "plan_changed",
+  "send_failed",
+]);
+
+export const OperatorPublishSubmitSchema = z.discriminatedUnion("status", [
+  z.strictObject({
+    status: z.literal("published"),
+    signature,
+    epoch_index: z.number().int().nonnegative(),
+    recovered: z.boolean(),
+  }),
+  z.strictObject({
+    status: z.literal("refused"),
+    reason: z.union([submitRefusal, OperatorPublishRefusalSchema]),
+  }),
+]);
+
+export const OperatorInitRequestSchema = z.strictObject({ fee_recipient: operatorWallet });
+
+export const OperatorInitSummarySchema = z.strictObject({
+  network,
+  program_id: operatorWallet,
+  admin: operatorWallet,
+  mint: operatorMint,
+  community: operatorWallet,
+  vault: operatorWallet,
+  fee_recipient: operatorWallet,
+  rent_lamports: lamports,
+  admin_lamports: lamports,
+  blockhash: operatorWallet,
+  last_valid_block_height: lamports,
+  message_hash: operatorWallet,
+});
+
+export const OperatorInitRefusalSchema = z.enum([
+  "not_setup",
+  "fee_recipient_mismatch",
+  "community_exists",
+  "fee_recipient_invalid",
+  "program_missing",
+]);
+
+export const OperatorInitBuildSchema = z.discriminatedUnion("status", [
+  z.strictObject({
+    status: z.literal("awaiting_signature"),
+    ...handoff,
+    summary: OperatorInitSummarySchema,
+  }),
+  z.strictObject({ status: z.literal("refused"), reason: OperatorInitRefusalSchema }),
+]);
+
+export const OperatorInitSubmitSchema = z.discriminatedUnion("status", [
+  z.strictObject({
+    status: z.literal("initialized"),
+    signature,
+    community: operatorWallet,
+    vault: operatorWallet,
+  }),
+  z.strictObject({
+    status: z.literal("refused"),
+    reason: z.union([submitRefusal, OperatorInitRefusalSchema]),
+  }),
+]);
+
+export type OperatorBuildState = z.infer<typeof OperatorBuildStateSchema>;
+export type OperatorPublishStatus = z.infer<typeof OperatorPublishStatusSchema>;
+export type OperatorPublishSummary = z.infer<typeof OperatorPublishSummarySchema>;
+export type OperatorPublishBuild = z.infer<typeof OperatorPublishBuildSchema>;
+export type OperatorSubmitRequest = z.infer<typeof OperatorSubmitRequestSchema>;
+export type OperatorPublishSubmit = z.infer<typeof OperatorPublishSubmitSchema>;
+export type OperatorInitRequest = z.infer<typeof OperatorInitRequestSchema>;
+export type OperatorInitSummary = z.infer<typeof OperatorInitSummarySchema>;
+export type OperatorInitBuild = z.infer<typeof OperatorInitBuildSchema>;
+export type OperatorInitSubmit = z.infer<typeof OperatorInitSubmitSchema>;

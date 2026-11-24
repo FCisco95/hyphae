@@ -1,6 +1,7 @@
 import type { Db } from "@hyphae/db";
 import { expect, it } from "vitest";
 import { adminOpenApiDocument } from "../../../../packages/admin-client/src/openapi.js";
+import { buildStore } from "../admin-auth/builds.js";
 import { operatorAuthStore } from "../admin-auth/store.js";
 import { adminRoutes } from "./routes.js";
 
@@ -25,6 +26,24 @@ const routes = adminRoutes({
     network: "solana:devnet",
     onChainAdmin: async () => {
       throw new Error("must not read the chain for missing credentials");
+    },
+    publishEnabled: true,
+    publish: {
+      network: "solana:devnet",
+      chain: async () => {
+        throw new Error("must not read the chain for missing credentials");
+      },
+      sending: async () => {
+        throw new Error("must not read the chain for missing credentials");
+      },
+      send: async () => {
+        throw new Error("must not send for missing credentials");
+      },
+      blockHeight: async () => {
+        throw new Error("must not read the chain for missing credentials");
+      },
+      builds: buildStore(),
+      setupRecords: [],
     },
   },
 });
@@ -73,8 +92,14 @@ it.each([
   "/operator/communities/MintA/overview",
   "/operator/communities/MintA/epochs/1/payable",
   "/operator/session",
-])("answers %s without a session as unauthorized, never reading the chain", async (path) => {
-  const result = await routes.request(path);
+  "/operator/communities/MintA/publish/status",
+  "POST /operator/communities/MintA/publish/build",
+  "POST /operator/communities/MintA/publish/submit",
+  "POST /operator/communities/MintA/init/build",
+  "POST /operator/communities/MintA/init/submit",
+])("answers %s without a session as unauthorized, never reading the chain", async (route) => {
+  const [method, path] = route.startsWith("POST ") ? ["POST", route.slice(5)] : ["GET", route];
+  const result = await routes.request(path as string, { method: method as string });
   expect(result.status).toBe(401);
   expect(await result.json()).toEqual({ error: "unauthorized" });
   expect(result.headers.get("Cache-Control")).toBe("private, no-store");
@@ -93,6 +118,26 @@ it("documents every operator route's Allow header as the server sends it", async
     [
       "/operator/communities/MintA/epochs/1/payable",
       p["/admin/v1/operator/communities/{mint}/epochs/{index}/payable"].get,
+    ],
+    [
+      "/operator/communities/MintA/publish/status",
+      p["/admin/v1/operator/communities/{mint}/publish/status"].get,
+    ],
+    [
+      "/operator/communities/MintA/publish/build",
+      p["/admin/v1/operator/communities/{mint}/publish/build"].post,
+    ],
+    [
+      "/operator/communities/MintA/publish/submit",
+      p["/admin/v1/operator/communities/{mint}/publish/submit"].post,
+    ],
+    [
+      "/operator/communities/MintA/init/build",
+      p["/admin/v1/operator/communities/{mint}/init/build"].post,
+    ],
+    [
+      "/operator/communities/MintA/init/submit",
+      p["/admin/v1/operator/communities/{mint}/init/submit"].post,
     ],
   ] as const) {
     const result = await routes.request(path, { method: "PATCH" });

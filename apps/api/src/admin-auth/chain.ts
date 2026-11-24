@@ -1,5 +1,11 @@
+import { createSolanaRpc, createSolanaRpcSubscriptions } from "@solana/kit";
+import { solanaChain } from "../payout/chain.js";
 import type { SettleChain } from "../payout/distribution-settle.js";
+import { handoffSender } from "../payout/handoff.js";
 import { settleChain } from "../payout/settle-chain.js";
+import { buildStore } from "./builds.js";
+import type { PublishDeps } from "./publish.js";
+import { SETUP_RECORDS, type SetupRecord } from "./setup-records.js";
 
 // The on-chain admin of a bound community, through the settle loop's own validated read (owner,
 // mint and the address the admin derives). Built without a publisher: this process never holds
@@ -31,5 +37,38 @@ export function readOnlyChain(
       throw error;
     });
     return built;
+  };
+}
+
+// Part B's chain (browser publish and init-community), from the read RPC. No key: the hand-off
+// signer stands where a key would, and only signatures made by the admin's wallet are sent.
+// Null without an https RPC to derive the websocket from.
+export function publishDeps(
+  rpcUrl: string,
+  network: SettleChain["network"],
+  records: readonly SetupRecord[] = SETUP_RECORDS,
+): PublishDeps | null {
+  if (!rpcUrl.startsWith("https://")) return null;
+  const wsUrl = `wss://${rpcUrl.slice("https://".length)}`;
+  const rpc = createSolanaRpc(rpcUrl);
+  const rpcSubscriptions = createSolanaRpcSubscriptions(wsUrl);
+  return {
+    network,
+    chain: (publisher) =>
+      settleChain({
+        rpcUrl,
+        wsUrl,
+        network,
+        rpc,
+        rpcSubscriptions,
+        ...(publisher && { publisher }),
+      }),
+    sending: (signer) =>
+      solanaChain({ rpcUrl, wsUrl, network, admin: signer, rpc, rpcSubscriptions }),
+    send: handoffSender(rpc, rpcSubscriptions),
+    blockHeight: () => rpc.getBlockHeight({ commitment: "confirmed" }).send(),
+    builds: buildStore(),
+    setupRecords: records,
+    log: (line) => console.log(JSON.stringify(line)),
   };
 }

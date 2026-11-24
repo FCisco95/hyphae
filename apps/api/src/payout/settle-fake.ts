@@ -16,14 +16,19 @@ export function fakeSettleChain(o: {
   outstanding?: bigint;
   // undefined: the publisher is the admin; null: no publisher is configured.
   publisher?: string | null;
+  // The community's on-chain admin; FAKE_ADMIN unless a test holds the admin's key.
+  admin?: string;
 }) {
+  const admin = o.admin ?? FAKE_ADMIN;
   const state = {
     free: o.free,
     outstanding: o.outstanding ?? 0n,
     onChain: new Map<bigint, OnChainEpoch>(),
+    // A test may rotate the admin mid-run.
+    admin,
   };
   const calls = { read: 0, publish: [] as PublishArgs[], found: [] as PublishArgs[] };
-  const publisher = o.publisher === undefined ? FAKE_ADMIN : o.publisher;
+  const publisher = o.publisher === undefined ? admin : o.publisher;
   const chain: SettleChain = {
     network: "solana:devnet",
     programId: HYPHAE_PROGRAM_ID,
@@ -33,7 +38,7 @@ export function fakeSettleChain(o: {
       if (address !== o.community) return null;
       return {
         address,
-        admin: FAKE_ADMIN,
+        admin: state.admin,
         feeRecipient: FAKE_FEE_RECIPIENT,
         outstandingLamports: state.outstanding,
         vaultLamports: FAKE_RENT + state.outstanding + state.free,

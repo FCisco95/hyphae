@@ -5,7 +5,7 @@ import { Api, webhookCallback } from "grammy";
 import { Hono } from "hono";
 import { adminRoutes } from "./admin/routes.js";
 import { telegramAdministrator } from "./admin/telegram.js";
-import { onChainAdminReader, readOnlyChain } from "./admin-auth/chain.js";
+import { onChainAdminReader, publishDeps, readOnlyChain } from "./admin-auth/chain.js";
 import { operatorAuthStore } from "./admin-auth/store.js";
 import { registerCommandMenus } from "./bot/command-menus.js";
 import { bot } from "./bot/index.js";
@@ -84,6 +84,15 @@ app.route(
             network: env.LINK_CHAIN,
             onChainAdmin: onChainAdminReader(operatorChain),
             settle: operatorChain,
+            // Part B: build for the admin's wallet, send only what it signed. Off by default.
+            publishEnabled: env.OPERATOR_PUBLISH_ENABLED === "on",
+            ...(() => {
+              const publish =
+                env.OPERATOR_PUBLISH_ENABLED === "on" && env.READ_RPC_URL
+                  ? publishDeps(env.READ_RPC_URL, env.LINK_CHAIN)
+                  : null;
+              return publish ? { publish } : {};
+            })(),
           },
         }
       : {}),

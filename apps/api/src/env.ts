@@ -30,6 +30,9 @@ const Env = z.object({
   READ_API_WEB_TOKEN: z.string().min(32).optional(),
   // Private community overview and intake controls. Activation is a separate operator step.
   ADMIN_API_ENABLED: z.enum(["on", "off"]).default("off"),
+  // The operator page's browser publish and init-community (item 3 part B), inside the admin
+  // surface. Off: those routes answer 404 disabled. The API holds no key either way.
+  OPERATOR_PUBLISH_ENABLED: z.enum(["on", "off"]).default("off"),
   // A partial/invalid member-auth configuration disables this separate surface.
   PRIVY_APP_ID: z.string().optional(),
   PRIVY_APP_SECRET: z.string().optional(),

@@ -16,6 +16,11 @@ export interface Challenge extends OperatorMessageFields {
 }
 
 export interface OperatorSessionRecord {
+  // Names the session to the builds it made; never handed out.
+  id: string;
+  // "admin": the community's on-chain admin. "setup": the admin a setup record names for a
+  // community not yet initialized on-chain (setup-records.ts); it may only initialize it.
+  role: "admin" | "setup";
   mint: string;
   wallet: string;
   createdAt: Date;
@@ -67,7 +72,7 @@ export function operatorAuthStore(
       challenges.delete(id);
       return challenge.expiresAt.getTime() > now() ? challenge : null;
     },
-    open(input: { mint: string; wallet: string }): {
+    open(input: { mint: string; wallet: string; role?: OperatorSessionRecord["role"] }): {
       token: string;
       session: OperatorSessionRecord;
     } {
@@ -82,7 +87,9 @@ export function operatorAuthStore(
         sessions.delete(oldest);
       }
       const token = `hop_${randomBytes(32).toString("base64url")}`;
-      const session = {
+      const session: OperatorSessionRecord = {
+        id: randomUUID(),
+        role: input.role ?? "admin",
         mint: input.mint,
         wallet: input.wallet,
         createdAt: new Date(t),
