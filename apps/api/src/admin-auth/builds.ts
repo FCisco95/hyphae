@@ -84,9 +84,13 @@ export function buildStore(opts: { now?: () => number; max?: number } = {}) {
         endedAt: null,
       };
       builds.set(build.id, build);
+      // The first session owns the bytes for as long as any build of them can live: a later
+      // build of the same bytes stretches the ownership, never outlives it (review round 3).
       const key = fingerprint(build.messageBytes);
-      if (!owners.has(key))
-        owners.set(key, { sessionId: build.sessionId, until: t + BUILD_TTL_MS });
+      const owner = owners.get(key);
+      const until = build.expiresAt.getTime();
+      if (!owner) owners.set(key, { sessionId: build.sessionId, until });
+      else owner.until = Math.max(owner.until, until);
       return build;
     },
     // Taken once, before any other check looks at it: whatever happens next, it is spent. Only

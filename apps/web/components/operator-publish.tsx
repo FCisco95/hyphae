@@ -268,11 +268,15 @@ function publishOutcome(out: Exclude<OperatorPublishBuild, { status: "awaiting_s
 export const unconfirmedText = (signature: string) =>
   `Sent (${signature}), but its confirmation failed: it may or may not be on-chain. Prepare it again before signing anything new: an epoch already on-chain is recorded, never sent twice.`;
 
+// A failed build without a signature proves nothing either way: a chain lookup or the record may
+// have failed with the epoch already on-chain (review round 3). Only an expired build is known
+// unsent: it expires before anything is sent.
 export function pollText(b: OperatorBuildState): string {
   if (b.state === "done") return `Published: ${b.signature}`;
   if (b.signature)
     return `Sent (${b.signature}) but not recorded yet. Prepare it again: an epoch already on-chain is recorded, never sent twice.`;
-  return "It did not go through. Prepare it again to see the current state.";
+  if (b.state === "expired") return "The transaction expired before it was sent. Prepare it again.";
+  return "The outcome is not known yet. Prepare it again before signing anything new: an epoch already on-chain is recorded, never sent twice.";
 }
 
 // This page's own build in a status answer, once it has finished. Another tab's newer build is

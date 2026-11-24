@@ -98,7 +98,12 @@ describe("pollText", () => {
     expect(pollText({ ...base, state: "failed", signature: "SIG" })).toMatch(
       /^Sent \(SIG\) but not recorded yet/,
     );
-    expect(pollText({ ...base, state: "failed", signature: null })).toMatch(/did not go through/);
+    // A failed build without a signature proves nothing: the lookup or the record may have failed
+    // with the epoch on-chain (review round 3).
+    const unknown = pollText({ ...base, state: "failed", signature: null });
+    expect(unknown).not.toMatch(/did not go through/);
+    expect(unknown).toMatch(/not known/);
+    expect(pollText({ ...base, state: "expired", signature: null })).toMatch(/expired before/);
   });
 });
 
