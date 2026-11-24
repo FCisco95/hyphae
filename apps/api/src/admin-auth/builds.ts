@@ -12,6 +12,9 @@ export const BUILD_TTL_MS = 120_000;
 // How long a finished build stays visible to the page's status poll.
 const KEEP_MS = 10 * 60_000;
 const MAX_BUILDS = 200;
+// How long a message stays its first session's (see owners below), and how many are kept.
+export const OWNER_KEEP_MS = 60 * 60_000;
+const MAX_OWNERS = 5000;
 
 export type BuildState = "awaiting_signature" | "submitting" | "done" | "failed" | "expired";
 
@@ -39,15 +42,18 @@ export type Taken =
   | { status: "ok"; build: BuildRecord }
   | { status: "refused"; reason: "build_unknown" | "expired" };
 
-export function buildStore(opts: { now?: () => number; max?: number } = {}) {
+export function buildStore(opts: { now?: () => number; max?: number; maxOwners?: number } = {}) {
   const now = opts.now ?? Date.now;
   const max = opts.max ?? MAX_BUILDS;
+  const maxOwners = opts.maxOwners ?? MAX_OWNERS;
   // Insertion order is creation order.
   const builds = new Map<string, BuildRecord>();
-  // A message belongs to the session that built it first, for as long as a build of it can live.
-  // ed25519 is deterministic, so one admin signature fits every build of the same bytes; without
-  // this, a session could submit a signature another session obtained (review round 2).
-  const owners = new Map<string, { sessionId: string; until: number }>();
+  // A message belongs to the session that built it first, for as long as its blockhash could
+  // still be valid. ed25519 is deterministic, so one admin signature fits every build of the same
+  // bytes; without this, a session could submit a signature another session obtained (review
+  // rounds 2 to 4). Validity is 150 blocks, about a minute, a few at worst: OWNER_KEEP_MS is far
+  // past it, independent of any build's life. Full: new builds are refused, never an owner evicted.
+  const owners = new Map<string, { sessionId: string; since: number }>();
   const fingerprint = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 
   const end = (b: BuildRecord, state: BuildState, t: number) => {
@@ -59,7 +65,7 @@ export function buildStore(opts: { now?: () => number; max?: number } = {}) {
       if (b.state === "awaiting_signature" && b.expiresAt.getTime() <= t) end(b, "expired", t);
       if (b.endedAt && b.endedAt.getTime() + KEEP_MS <= t) builds.delete(id);
     }
-    for (const [key, o] of owners) if (o.until <= t) owners.delete(key);
+    for (const [key, o] of owners) if (o.since + OWNER_KEEP_MS <= t) owners.delete(key);
   };
 
   return {
@@ -67,6 +73,9 @@ export function buildStore(opts: { now?: () => number; max?: number } = {}) {
     put(input: Omit<BuildRecord, "id" | "createdAt" | "state" | "signature" | "endedAt">) {
       const t = now();
       sweep(t);
+      const key = fingerprint(input.messageBytes);
+      if (!owners.has(key) && owners.size >= maxOwners)
+        throw new Error("builds: too many recent messages; try again in a while");
       for (const b of builds.values())
         if (b.mint === input.mint && b.state === "awaiting_signature") end(b, "expired", t);
       while (builds.size >= max) {
@@ -84,13 +93,8 @@ export function buildStore(opts: { now?: () => number; max?: number } = {}) {
         endedAt: null,
       };
       builds.set(build.id, build);
-      // The first session owns the bytes for as long as any build of them can live: a later
-      // build of the same bytes stretches the ownership, never outlives it (review round 3).
-      const key = fingerprint(build.messageBytes);
-      const owner = owners.get(key);
-      const until = build.expiresAt.getTime();
-      if (!owner) owners.set(key, { sessionId: build.sessionId, until });
-      else owner.until = Math.max(owner.until, until);
+      // The first session keeps the bytes; a later build of them never takes them over.
+      if (!owners.has(key)) owners.set(key, { sessionId: build.sessionId, since: t });
       return build;
     },
     // Taken once, before any other check looks at it: whatever happens next, it is spent. Only
@@ -112,7 +116,7 @@ export function buildStore(opts: { now?: () => number; max?: number } = {}) {
       }
       // The same bytes, first built by another session: its signature must not land here.
       const owner = owners.get(fingerprint(b.messageBytes));
-      if (owner && owner.until > t && owner.sessionId !== who.sessionId) {
+      if (owner && owner.sessionId !== who.sessionId) {
         end(b, "failed", t);
         return { status: "refused", reason: "build_unknown" };
       }
