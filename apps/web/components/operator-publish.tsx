@@ -265,6 +265,15 @@ function publishOutcome(out: Exclude<OperatorPublishBuild, { status: "awaiting_s
   }
 }
 
+// A finished build as the poll reads it. A failed build with a signature was sent: it may be
+// on-chain without its record, and preparing again records it rather than sending twice.
+export function pollText(b: OperatorBuildState): string {
+  if (b.state === "done") return `Published: ${b.signature}`;
+  if (b.signature)
+    return `Sent (${b.signature}) but not recorded yet. Prepare it again: an epoch already on-chain is recorded, never sent twice.`;
+  return "It did not go through. Prepare it again to see the current state.";
+}
+
 function Polling({ mint, onState }: { mint: string; onState: (s: OperatorBuildState) => void }) {
   useEffect(() => {
     let stop = false;
@@ -343,10 +352,7 @@ export function OperatorPublish({ mint, wallet }: { mint: string; wallet: string
           setState({
             kind: "result",
             ok: b.state === "done",
-            text:
-              b.state === "done"
-                ? `Published: ${b.signature}`
-                : "It did not go through. Prepare it again to see the current state.",
+            text: pollText(b),
           })
         }
       />

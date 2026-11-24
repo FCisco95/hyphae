@@ -13,7 +13,7 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from "@solana/kit";
 import { describe, expect, it } from "vitest";
-import { cliCommand, signatureFromWallet } from "./operator-publish.js";
+import { cliCommand, pollText, signatureFromWallet } from "./operator-publish.js";
 
 const WALLET = "CCgEo8Yzb5vpfuaCixZ8NVJqv8ssAzXmKm5vsfhfmhe2";
 const OTHER = "AZo8KrxCovSGasUBcTbsjugkp7pJ5uqRVFF3pYTbpUDR";
@@ -84,5 +84,20 @@ describe("cliCommand", () => {
       `node --import tsx scripts/publish-sign.ts --network mainnet --signer "ledger:44'/501'/2'/0'" --message AQID`,
     );
     expect(cliCommand("solana:devnet", "AQID")).toContain("--network devnet");
+  });
+});
+
+describe("pollText", () => {
+  const base = {
+    id: "11111111-2222-4333-8444-555555555555",
+    kind: "publish" as const,
+    expires_at: "2026-11-24T12:00:00.000Z",
+  };
+  it("never says a sent transaction did not go through", () => {
+    expect(pollText({ ...base, state: "done", signature: "SIG" })).toBe("Published: SIG");
+    expect(pollText({ ...base, state: "failed", signature: "SIG" })).toMatch(
+      /^Sent \(SIG\) but not recorded yet/,
+    );
+    expect(pollText({ ...base, state: "failed", signature: null })).toMatch(/did not go through/);
   });
 });
